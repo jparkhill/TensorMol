@@ -1,0 +1,443 @@
+import numpy as np
+import random
+from pyscf import scf
+from pyscf import gto
+from pyscf import dft
+
+def MakeUniform(point,disp,num):
+	''' Uniform Grids of dim numxnumxnum around a point'''
+	grids = np.mgrid[-disp:disp:num*1j, -disp:disp:num*1j, -disp:disp:num*1j]
+	grids = grids.transpose()
+	grids = grids.reshape((grids.shape[0]*grids.shape[1]*grids.shape[2], grids.shape[3]))
+	return point+grids
+
+def GridstoRaw(grids, ngrids=250, save_name="mol", save_path ="./densities/"):
+	#print "Writing Grid Mx, Mn, Std, Sum ", np.max(grids),np.min(grids),np.std(grids),np.sum(grids)
+	mgrids = np.copy(grids)
+	mgrids *= (254/np.max(grids))
+	mgrids = np.array(mgrids, dtype=np.uint8)
+	#print np.bincount(mgrids)
+	#print "Writing Grid Mx, Mn, Std, Sum ", np.max(mgrids),np.min(mgrids),np.std(mgrids),np.sum(mgrids)
+	print "Saving density to:",save_path+save_name+".raw"
+	f = open(save_path+save_name+".raw", "wb")
+	f.write(bytes(np.array([ngrids,ngrids,ngrids],dtype=np.uint8).tostring())+bytes(mgrids.tostring()))
+	f.close()
+
+def MatrixPower(A,p):
+	''' Raise a Hermitian Matrix to a possibly fractional power. '''
+	#w,v=np.linalg.eig(A)
+	# Use SVD
+	u,s,v = np.linalg.svd(A)
+	for i in range(len(s)):
+		if (abs(s[i]) < np.power(10.0,-8)):
+			s[i] == np.power(10.0,-8)
+	#print("Matrixpower?",np.dot(np.dot(v,np.diag(w)),v.T), A)
+	#return np.dot(np.dot(v,np.diag(np.power(w,p))),v.T)
+	return np.dot(u,np.dot(np.diag(np.power(s,p)),v))
+
+#
+# The H@0 atom is for fitting the potential near equilibrium and it's small...
+#
+ATOM_BASIS={'H@0': gto.basis.parse('''
+H    S
+	  15.0					1.0
+		''')}
+TOTAL_SENSORY_BASIS={'C': gto.basis.parse('''
+C    S
+	  1.0					1.0000000
+C    S
+	  0.5					1.0000000
+C    S
+	  0.1					1.0000000
+C    S
+	  0.02					1.0000000
+C    S
+	  0.005					1.0000000
+C    P
+	  1.0					1.0000000
+C    P
+	  0.5					1.0000000
+C    P
+	  0.1					1.0000000
+C    P
+	  0.02					1.0000000
+C    P
+	  0.005					1.0000000
+C    D
+	  0.5					1.0000000
+C    D
+	  0.05					1.0000000
+C    D
+	  0.01					1.0000000
+C    F
+	  0.2					1.0000000
+C    F
+	  0.02					1.0000000
+C    G
+	  0.1					1.0000000
+C    G
+	  0.02					1.0000000
+C    H
+	  0.1					1.0000000
+C    H
+	  0.02					1.0000000
+C    I
+	  0.02					1.0000000
+	  '''),'H@0': gto.basis.parse('''
+H    S
+	  1.5					1.0
+		'''),'H@1': gto.basis.parse('''
+H    S
+	  3              1.0
+		'''),'H@2': gto.basis.parse('''
+H    S
+	  2.6				1.0
+		'''),'H@3': gto.basis.parse('''
+H    S
+	  2.34					1.0
+		'''),'H@4': gto.basis.parse('''
+H    S
+	  2				1.0
+		'''),'H@5': gto.basis.parse('''
+H    S
+	  1.7				1.0
+		'''),'H@6': gto.basis.parse('''
+H    S
+	  1.3					1.0
+		'''),'H@7': gto.basis.parse('''
+H    S
+	  1					1.0
+		'''),'H@8': gto.basis.parse('''
+H    S
+	  .6666             1.0
+		'''),'H@9': gto.basis.parse('''
+H    S
+	  .3333             1.0
+		''')}
+
+class Grids:
+	""" Precomputes and stores orthogonalized grids for embedding molecules and potentials. 
+		self,NGau_=6, GridRange_=0.6, NPts_=45 is a good choice for a 1 Angstrom potential fit
+	"""
+	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=30):
+		self.GridRange = GridRange_
+		self.NGau=NGau_ # Number of gaussians in each direction.
+		self.NPts=NPts_ # Number of gaussians in each direction.
+		self.NGau3=NGau_*NGau_*NGau_ # Number of gaussians in each direction.
+		self.NPts3=NPts_*NPts_*NPts_
+		self.OBFs=None # matrix of orthogonal basis functions stored on grid, once.
+		self.GauGrid=None
+		self.Grid=None
+		self.dx = 0.0
+		self.dy = 0.0
+		self.dz = 0.0
+		#
+		# These are for embedding molecular environments.
+		#
+		self.SenseRange = 3.5
+		self.NSense = self.NGau
+		self.SenseGrid = None
+		self.SenseS = None
+		self.SenseSinv = None
+		return
+
+	def	MyGrid(self):
+		if (self.Grid==None):
+			self.Populate()
+		return self.Grid
+
+	def Populate(self):
+		print "Populating Grids... "
+		
+		#
+		# Populate output Bases
+		#
+		
+		self.GauGrid = MakeUniform([0,0,0],self.GridRange*.8,self.NGau)
+		self.Grid = MakeUniform([0,0,0],self.GridRange,self.NPts)
+		self.dx=(np.max(self.Grid[:,0])-np.min(self.Grid[:,0]))/self.NPts*1.889725989
+		self.dy=(np.max(self.Grid[:,1])-np.min(self.Grid[:,1]))/self.NPts*1.889725989
+		self.dz=(np.max(self.Grid[:,2])-np.min(self.Grid[:,2]))/self.NPts*1.889725989
+		mol = gto.Mole()
+		mol.atom = ''.join(["H@0 "+str(self.GauGrid[iii,0])+" "+str(self.GauGrid[iii,1])+" "+str(self.GauGrid[iii,2])+";" for iii in range(len(self.GauGrid))])[:-1]
+		if (self.NGau3%2==0):
+			mol.spin = 0
+		else:
+			mol.spin = 1
+		if (ATOM_BASIS == None):
+			raise("missing ATOM_BASIS")
+		mol.basis = ATOM_BASIS
+		try:
+			mol.build()
+		except Exception as Ex:
+			print mol.atom
+			raise Ex
+		# All this shit could be Pre-Computed...
+		# Really any grid could be used.
+		orbs=gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,self.Grid*1.889725989)
+		nbas=orbs.shape[1]
+		if (nbas!=self.NGau3):
+			raise Exception("insanity")
+		S=mol.intor('cint1e_ovlp_sph')
+		#S = np.zeros(shape=(nbas,nbas))
+		#for i in range(nbas):
+		#	for j in range(nbas):
+		#		S[i,j] += np.sum(orbs[:,i]*orbs[:,j])
+		C = MatrixPower(S,-0.5)
+		if (0):
+			for i in range(nbas):
+				CM = np.dot(self.Grid.T,orbs[:,i])
+				print "Centers of Mass, i", np.dot(self.Grid.T,orbs[:,i]*orbs[:,i])*self.dx*self.dy*self.dz, self.GauGrid[i]
+				Rsq = np.array(map(np.linalg.norm,self.Grid-CM))
+				print "Rsq of Mass, i", np.sqrt(np.dot(Rsq,orbs[:,i]*orbs[:,i]))*self.dx*self.dy*self.dz
+				for j in range(nbas):
+					print "Normalization of grid i.", np.sum(orbs[:,i]*orbs[:,j])*self.dx*self.dy*self.dz
+		self.OBFs = np.zeros(shape=(self.NGau3,self.NPts3))
+		for i in range(nbas):
+			for j in range(nbas):
+				self.OBFs[i,:] += (C.T[i,j]*orbs[:,j]).T
+
+		# Populate Sensory bases.
+		self.PopulateSense()
+
+		print "Storage cost: ",self.OBFs.size*64/1024/1024, "Mb"
+
+		#for i in range(nbas):
+		#	GridstoRaw(orbs[:,i]*orbs[:,i],self.NPts,"BF"+str(i))
+		#	GridstoRaw(self.OBFs[i,:]*self.OBFs[i,:],self.NPts,"OBF"+str(i))
+
+		# Quickly check orthonormality.
+		#for i in range(nbas):
+		#		for j in range(nbas):
+		#			print np.dot(self.OBFs[i],self.OBFs[j])*self.dx*self.dy*self.dz
+		#		print ""
+
+	def PopulateSense(self):
+		mol = gto.Mole()
+		self.SenseGrid = MakeUniform([0,0,0],self.SenseRange,self.NSense)
+		#pyscfatomstring="C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";"
+		mol.atom = ''.join(["H@0 "+str(self.SenseGrid[iii,0])+" "+str(self.SenseGrid[iii,1])+" "+str(self.SenseGrid[iii,2])+";" for iii in range(len(self.SenseGrid))])
+		na = self.NSense
+		if (na%2 == 0):
+			mol.spin = 0
+		else:
+			mol.spin = 1
+		if (TOTAL_SENSORY_BASIS == None): 
+			raise("missing sensory basis")
+		mol.basis = TOTAL_SENSORY_BASIS
+		nsaos = 0
+		try:
+			mol.build()
+		except Exception as Ex:
+			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			raise Ex
+		nbas = gto.nao_nr(mol)
+		self.SenseS = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nbas,0,nbas))
+		self.SenseSinv = MatrixPower(self.SenseS,-1.0)
+		return
+
+	def Vectorize(self,input, QualityOfFit=False):
+		''' 
+		Input is rasterized volume information, 
+		output is a vector of NGau3 coefficients fitting that volume. 
+		
+		The underlying grid is assumed to be MyGrid(), although it can be scaled.
+		'''
+		if self.Grid==None:
+			self.Populate()
+		CM = np.dot(self.Grid.T,input)
+		if ((self.GridRange-np.max(CM))/self.GridRange < 0.2):
+			print "Warning... GridRange ", ((self.GridRange-np.max(CM))/self.GridRange)
+		output = np.tensordot(self.OBFs,np.power(input,0.5),axes=[[1],[0]])*self.dx*self.dy*self.dz
+		if (QualityOfFit and np.linalg.norm(input)!=0.0):
+			GridstoRaw(input,self.NPts,"Input")
+			print "Coefs", output
+			tmp = self.Rasterize(output)
+			GridstoRaw(tmp,self.NPts,"Output")
+			print "Sum of Input and reconstruction", np.sum(input), np.sum(tmp)
+			print "Average of Input and reconstruction", np.average(input), np.average(tmp)
+			print "Max of Input and reconstruction", np.max(input), np.max(tmp)
+			print "relative norm of difference:", np.linalg.norm(tmp-input)/np.linalg.norm(input)
+			GridstoRaw(input-tmp,self.NPts,"Diff")
+			tmp /= np.sum(tmp)
+			print "Centers of Mass, in", np.dot(self.Grid.T,input)," and out ", np.dot(self.Grid.T,tmp)
+			Rsq = np.array(map(np.linalg.norm,self.Grid-CM))
+			print "Variance of In", np.dot(Rsq.T,input)
+			print "Variance of Out", np.dot(Rsq.T,tmp)
+		return output
+
+	def Rasterize(self,inp):
+		if (len(inp)!=self.NGau3):
+			raise Exception("Bad input dim.")
+		return np.power(np.tensordot(inp,self.OBFs,axes=[[0],[0]]),2.0)
+
+	def MolDensity(self,samps,m,p=[0.0,0.0,0.0]):
+		Ps = np.zeros(len(samps))
+		mol = gto.Mole()
+		pyscfatomstring=''
+		for j in range(len(m.atoms)):
+			pyscfatomstring=pyscfatomstring+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
+		mol.atom = pyscfatomstring
+		mol.basis = TOTAL_SENSORY_BASIS
+		mol.verbose = 0
+		if (len(m.atoms)%2 == 0):
+			mol.spin = 0
+		else:
+			mol.spin = 1
+		try:
+			mol.build()
+		except Exception as Ex:
+			print mol.atom, mol.basis, m.atoms, m.coords
+			raise Ex
+		return np.sum(gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,samps*1.889725989),axis=1)
+
+	def AtomEmbedAtomCentered(self,samps,m,p,i):
+		mol = gto.Mole()
+		MaxEmbedded = 30
+		SensedAtoms = [a for a in m.AtomsWithin(30.0,p) if a != i]
+		if (len(SensedAtoms)>MaxEmbedded):
+			SensedAtoms=SensedAtoms[:MaxEmbedded]
+		if (len(SensedAtoms)==0):
+			raise Exception("NoAtomsInSensoryRadius")
+		mol.atom="C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";"
+		na=0
+		for j in SensedAtoms:
+			mol.atom=mol.atom+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!=SensedAtoms[-1] else "")
+			na=na+1
+		#print mol.atom
+		#print self.atoms
+		#print self.coords
+		#print "Basis Atom",[mol.bas_atom(i) for i in range(mol.nbas)]
+		if (na%2 == 0):
+			mol.spin = 0
+		else:
+			mol.spin = 1
+		if (TOTAL_SENSORY_BASIS == None): 
+			raise("missing sensory basis")
+		mol.basis = TOTAL_SENSORY_BASIS
+		nsaos = 0
+		try:
+			mol.build()
+		except Exception as Ex:
+			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			raise Ex
+		nsaos = gto.nao_nr_range(mol,0,mol.atom_nshells(0))[1]
+		nbas = gto.nao_nr(mol)
+		print "nAtoms: ",m.NAtoms()," nsaos: ", nsaos, " nbas ", nbas
+		S = mol.intor('cint1e_ovlp_sph',shls_slice=(0,mol.atom_nshells(0),0,mol.atom_nshells(0)))
+		Sinv = MatrixPower(S,-1.0)
+		SBFs = gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,samps*1.889725989,comp=1,shls_slice=(0,mol.atom_nshells(0)))
+		print "SBFs.shape", SBFs.shape
+		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,mol.atom_nshells(0),mol.atom_nshells(0),mol.nbas))
+		print "Cs.shape", Cs.shape
+	#	for i in range(len(Cs[0])):
+	#		tmp = np.dot(SBFs,np.dot(Sinv,Cs[:,i]))
+	#		GridstoRaw(tmp*tmp,150,"Atoms"+str(i))
+	#	exit(0)
+		Sd = np.sum(np.dot(SBFs,np.dot(Sinv,Cs)),axis=1)
+		print "Sd.shape", Sd.shape
+		return Sd
+
+
+	def TestGridGauEmbedding(self,samps,m,p,i):
+		mol = gto.Mole()
+		MaxEmbedded = 15
+		SensedAtoms = [a for a in m.AtomsWithin(10.0,p) if a != i]
+		if (len(SensedAtoms)>MaxEmbedded):
+			SensedAtoms=SensedAtoms[:MaxEmbedded]
+		if (len(SensedAtoms)==0):
+			raise Exception("NoAtomsInSensoryRadius")
+
+		GauGrid = MakeUniform([0,0,0],3.5,self.NGau)
+		#pyscfatomstring="C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";"
+		mol.atom = ''.join(["H@0 "+str(GauGrid[iii,0])+" "+str(GauGrid[iii,1])+" "+str(GauGrid[iii,2])+";" for iii in range(len(GauGrid))])
+
+		na = len(GauGrid)
+		#na=0
+		for j in SensedAtoms:
+			mol.atom=mol.atom+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!=SensedAtoms[-1] else "")
+			na=na+1
+		#print mol.atom
+		#print self.atoms
+		#print self.coords
+		#print "Basis Atom",[mol.bas_atom(i) for i in range(mol.nbas)]
+
+		if (na%2 == 0):
+			mol.spin = 0
+		else:
+			mol.spin = 1
+		if (TOTAL_SENSORY_BASIS == None): 
+			raise("missing sensory basis")
+		mol.basis = TOTAL_SENSORY_BASIS
+		nsaos = 0
+
+		try:
+			mol.build()
+		except Exception as Ex:
+			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			raise Ex
+		
+		nsaos = len(GauGrid)
+		nbas = gto.nao_nr(mol)
+		print "nAtoms: ",m.NAtoms()," nsaos: ", nsaos, " nbas ", nbas
+		S = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,0,nsaos))
+		Sinv = MatrixPower(S,-1.0)
+		SBFs = gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,samps*1.889725989,comp=1,shls_slice=(0,nsaos))
+		print "SBFs.shape", SBFs.shape
+		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,nsaos,mol.nbas))
+		print "Cs.shape", Cs.shape
+		Sd = np.sum(np.dot(SBFs,np.dot(Sinv,Cs)),axis=1)
+		print "Sd.shape", Sd.shape
+		return Sd
+
+	def EmbedAtom(self,m,p,i):
+		''' 
+			Returns coefficents embedding the environment of atom i, centered at point p.
+		'''
+		mol = gto.Mole()
+		MaxEmbedded = 15
+		SensedAtoms = [a for a in m.AtomsWithin(10.0,p) if a != i]
+		if (len(SensedAtoms)>MaxEmbedded):
+			SensedAtoms=SensedAtoms[:MaxEmbedded]
+		if (len(SensedAtoms)==0):
+			raise Exception("NoAtomsInSensoryRadius")
+		tmpgrid = self.SenseGrid + p
+		mol.atom = ''.join(["H@0 "+str(tmpgrid[iii,0])+" "+str(tmpgrid[iii,1])+" "+str(tmpgrid[iii,2])+";" for iii in range(len(tmpgrid))])
+		na = self.NSense
+		for j in SensedAtoms:
+			mol.atom=mol.atom+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!=SensedAtoms[-1] else "")
+			na=na+1
+		if (na%2 == 0):
+			mol.spin = 0
+		else:
+			mol.spin = 1
+		if (TOTAL_SENSORY_BASIS == None): 
+			raise("missing sensory basis")
+		mol.basis = TOTAL_SENSORY_BASIS
+		nsaos = 0
+		try:
+			mol.build()
+		except Exception as Ex:
+			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			raise Ex
+		nsaos = len(self.SenseSinv)
+		nbas = gto.nao_nr(mol)
+		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,nsaos,mol.nbas))
+		return np.sum(np.dot(self.SenseSinv,Cs),axis=1)
+
+
+	def TestSense(self,m,p=[0.0, 0.0, 0.0],ngrid=150):
+		samps, vol = m.SpanningGrid(ngrid,2)
+		# Make the atom densities.
+		Ps = self.MolDensity(samps,m,p)
+		GridstoRaw(Ps,ngrid,"Atoms")
+		for i in range(m.NAtoms()):
+			Pe = self.TestGridGauEmbedding(samps,m,p,i)
+			GridstoRaw(Pe,ngrid,"Atoms"+str(i))
+
+
+
+
+
+
+
