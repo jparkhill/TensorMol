@@ -3,6 +3,8 @@ import random
 from pyscf import scf
 from pyscf import gto
 from pyscf import dft
+import math
+from math import pi as Pi
 
 def MakeUniform(point,disp,num):
 	''' Uniform Grids of dim numxnumxnum around a point'''
@@ -34,6 +36,43 @@ def MatrixPower(A,p):
 	#print("Matrixpower?",np.dot(np.dot(v,np.diag(w)),v.T), A)
 	#return np.dot(np.dot(v,np.diag(np.power(w,p))),v.T)
 	return np.dot(u,np.dot(np.diag(np.power(s,p)),v))
+
+def RotationMatrix(axis, theta):
+    """
+    Return the rotation matrix associated with counterclockwise rotation about
+    the given axis by theta radians.
+    """
+    axis = np.asarray(axis)
+    axis = axis/np.linalg.norm(axis)
+    a = math.cos(theta/2.0)
+    b, c, d = -axis*math.sin(theta/2.0)
+    aa, bb, cc, dd = a*a, b*b, c*c, d*d
+    bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
+    return np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
+                     [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
+                     [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
+
+def ReflectionMatrix(axis1,axis2):
+	axis1 = np.asarray(axis1)
+	axis2 = np.asarray(axis2)
+	a1=axis1/np.linalg.norm(axis1)
+	a2=axis2/np.linalg.norm(axis2)
+	unitNormal=np.cross(a1,a2)
+	return np.eye(3) - 2.0*np.outer(unitNormal,unitNormal)
+
+def OctahedralOperations():
+	''' 
+		Transformation matrices for symmetries of an octahedral shape.
+		Far from the complete set but enough for debugging and seeing if it helps.
+	'''
+	FaceRotations=[RotationMatrix([1,0,0], Pi/2.0),RotationMatrix([0,1,0], Pi/2.0),RotationMatrix([0,0,1], Pi/2.0),RotationMatrix([-1,0,0], Pi/2.0),RotationMatrix([0,-1,0], Pi/2.0),RotationMatrix([0,0,-1], Pi/2.0)]
+	FaceRotations2=[RotationMatrix([1,0,0], Pi),RotationMatrix([0,1,0], Pi),RotationMatrix([0,0,1], Pi),RotationMatrix([-1,0,0], Pi),RotationMatrix([0,-1,0], Pi),RotationMatrix([0,0,-1], Pi)]
+	FaceRotations3=[RotationMatrix([1,0,0], 3.0*Pi/2.0),RotationMatrix([0,1,0], 3.0*Pi/2.0),RotationMatrix([0,0,1], 3.0*Pi/2.0),RotationMatrix([-1,0,0], 3.0*Pi/2.0),RotationMatrix([0,-1,0], 3.0*Pi/2.0),RotationMatrix([0,0,-1], 3.0*Pi/2.0)]
+	CornerRotations=[RotationMatrix([1,1,1], 2.0*Pi/3.0),RotationMatrix([-1,1,1], 2.0*Pi/3.0),RotationMatrix([-1,-1,1], 2.0*Pi/3.0),RotationMatrix([-1,-1,-1], 2.0*Pi/3.0),RotationMatrix([-1,1,-1], 2.0*Pi/3.0),RotationMatrix([1,-1,-1], 2.0*Pi/3.0),RotationMatrix([1,1,-1], 2.0*Pi/3.0),RotationMatrix([1,-1,1], 2.0*Pi/3.0)]
+	CornerRotations2=[RotationMatrix([1,1,1], 4.0*Pi/3.0),RotationMatrix([-1,1,1], 4.0*Pi/3.0),RotationMatrix([-1,-1,1], 4.0*Pi/3.0),RotationMatrix([-1,-1,-1], 4.0*Pi/3.0),RotationMatrix([-1,1,-1], 4.0*Pi/3.0),RotationMatrix([1,-1,-1], 4.0*Pi/3.0),RotationMatrix([1,1,-1], 4.0*Pi/3.0),RotationMatrix([1,-1,1], 4.0*Pi/3.0)]
+	EdgeRotations=[RotationMatrix([1,1,0], Pi),RotationMatrix([1,0,1], Pi),RotationMatrix([0,1,1], Pi)]
+	EdgeReflections=[ReflectionMatrix([1,0,0],[0,1,0]),ReflectionMatrix([0,0,1],[0,1,0]),ReflectionMatrix([1,0,0],[0,0,1])]
+	return FaceRotations+FaceRotations2+FaceRotations3+CornerRotations+CornerRotations2+EdgeRotations+EdgeReflections
 
 #
 # The H@0 atom is for fitting the potential near equilibrium and it's small...
@@ -139,6 +178,9 @@ class Grids:
 		self.SenseGrid = None
 		self.SenseS = None
 		self.SenseSinv = None
+		self.Isometries = None
+		self.InvIsometries = None
+		self.IsometryRelabelings = None
 		return
 
 	def	MyGrid(self):
@@ -146,13 +188,35 @@ class Grids:
 			self.Populate()
 		return self.Grid
 
+	def	BasisRelabelingUnderTransformation(self,trans,i):
+		v=self.GauGrid[i]
+		vp=np.dot(trans,v)
+		dgr = np.array(map(lambda x: np.linalg.norm(x-vp),self.GauGrid))
+		poss = np.where(dgr<0.000001)[0][0]
+		return poss
+
+	def BuildIsometries(self):
+		self.Isometries = OctahedralOperations()
+		self.InvIsometries = OctahedralOperations()
+		self.IsometryRelabelings = np.zeros(shape=(len(self.Isometries),len(self.GauGrid)),dtype=np.int64)
+		for i in range(len(self.Isometries)):
+			op=self.Isometries[i]
+			i0=range(len(self.GauGrid))
+			self.InvIsometries[i] = np.linalg.inv(op)
+			self.IsometryRelabelings[i]=np.array(map(lambda x: self.BasisRelabelingUnderTransformation(op,x), i0))
+			# print ip
+			# Check that it's an isometry.
+			if (i0 != sorted(self.IsometryRelabelings[i])):
+				print "Not an isometry :( ", i0,self.IsometryRelabelings[i]
+				raise Exception("Bad Isometry")
+		return
+
+
 	def Populate(self):
 		print "Populating Grids... "
-		
 		#
 		# Populate output Bases
 		#
-		
 		self.GauGrid = MakeUniform([0,0,0],self.GridRange*.8,self.NGau)
 		self.Grid = MakeUniform([0,0,0],self.GridRange,self.NPts)
 		self.dx=(np.max(self.Grid[:,0])-np.min(self.Grid[:,0]))/self.NPts*1.889725989
@@ -196,10 +260,11 @@ class Grids:
 		for i in range(nbas):
 			for j in range(nbas):
 				self.OBFs[i,:] += (C.T[i,j]*orbs[:,j]).T
-
 		# Populate Sensory bases.
 		self.PopulateSense()
+		self.BuildIsometries()
 
+		print "Using ", len(self.Isometries), " isometries."
 		print "Storage cost: ",self.OBFs.size*64/1024/1024, "Mb"
 
 		#for i in range(nbas):
@@ -265,6 +330,14 @@ class Grids:
 			print "Variance of In", np.dot(Rsq.T,input)
 			print "Variance of Out", np.dot(Rsq.T,tmp)
 		return output
+
+	def CenterOfP(self,POnGrid,AGrid=None):
+		if (len(POnGrid)!=self.NPts3):
+			raise Exception("Bad input dim.")
+		if (AGrid==None):
+			return np.array([np.dot(self.MyGrid().T,POnGrid)])[0]
+		else:
+			return np.array([np.dot(AGrid.T,POnGrid)])[0]
 
 	def Rasterize(self,inp):
 		if (len(inp)!=self.NGau3):
@@ -338,7 +411,6 @@ class Grids:
 		print "Sd.shape", Sd.shape
 		return Sd
 
-
 	def TestGridGauEmbedding(self,samps,m,p,i):
 		mol = gto.Mole()
 		MaxEmbedded = 15
@@ -396,7 +468,11 @@ class Grids:
 		'''
 		mol = gto.Mole()
 		MaxEmbedded = 15
-		SensedAtoms = [a for a in m.AtomsWithin(10.0,p) if a != i]
+		SensedAtoms = None
+		if (i != -1):
+			SensedAtoms = [a for a in m.AtomsWithin(10.0,p) if a != i]
+		else:
+			SensedAtoms = [a for a in m.AtomsWithin(10.0,[0,0,0])]
 		if (len(SensedAtoms)>MaxEmbedded):
 			SensedAtoms=SensedAtoms[:MaxEmbedded]
 		if (len(SensedAtoms)==0):
@@ -425,7 +501,6 @@ class Grids:
 		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,nsaos,mol.nbas))
 		return np.sum(np.dot(self.SenseSinv,Cs),axis=1)
 
-
 	def TestSense(self,m,p=[0.0, 0.0, 0.0],ngrid=150):
 		samps, vol = m.SpanningGrid(ngrid,2)
 		# Make the atom densities.
@@ -434,6 +509,44 @@ class Grids:
 		for i in range(m.NAtoms()):
 			Pe = self.TestGridGauEmbedding(samps,m,p,i)
 			GridstoRaw(Pe,ngrid,"Atoms"+str(i))
+
+	def TransformGrid(self,aGrid,IsoOp):
+		return np.array([np.dot(IsoOp,pt) for pt in aGrid])
+
+	def ExpandIsometries(inputs,outputs):
+		ncase=len(inputs)
+		niso=len(self.Isometries)
+		if (len(outputs)!=ncase):
+			raise Exception("Nonsense inputs")
+		ins=list(inputs.shape)
+		ous=list(outputs.shape)
+		ins[0] = ncase*niso
+		ous[0] = ncase*niso
+		newins=np.zeros(ins)
+		newout=np.zeros(ous)
+		for i in range(len(ncase)):
+			for j in range(niso):
+				newins[i*niso+j] = inputs[i][self.IsometryRelabelings[j]]
+				newout[i*niso+j] = np.dot(self.InvIsometries[i],outputs[i])
+		return inputs,outputs
+		
+
+	def TestIsometries(self,m,p=[0.0, 0.0, 0.0],ngrid=150):
+		''' Tests that isometries of the basis match up to isometries of the fit. '''
+		samps, vol = m.SpanningGrid(ngrid,2)
+		# Make the atom densities.
+		Ps = self.MolDensity(samps,m,p)
+		GridstoRaw(Ps,ngrid,"Atoms")
+		Cs = self.EmbedAtom(m,p,-1)
+		Pe = self.Rasterize(Cs)
+		GridstoRaw(Pe,self.NPts,"Atoms0")
+		CoP=self.CenterOfP(Pe)
+		print "COM:",CoP
+		for i in range(len(self.IsometryRelabelings)):
+			PCs = self.Rasterize(Cs[self.IsometryRelabelings[i]])
+			print "Transformed",np.dot(self.InvIsometries[i],CoP)
+			print "COM:",self.CenterOfP(PCs)
+			#GridstoRaw(PCs,self.NPts,"Atoms"+str(i+1))
 
 
 

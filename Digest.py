@@ -21,15 +21,15 @@ class Digester:
 		 # In Atomic units at 300K
 		# These are the key variables which determine the type of digestion.
 		self.name = name_ # Embedding type.
-		self.OType = "SmoothP" # Output Type: HardP, SmoothP, StoP, Force, Energy etc. See Emb() for options.
+		self.OType = "Disp" # Output Type: HardP, SmoothP, StoP, Disp, Force, Energy etc. See Emb() for options.
 		if (OType_ != ""):
 			self.OType=OType_
-		self.SamplingType = "Smooth" # No hard cutoff of sampled points.
+		self.SamplingType = "Smooth" # No hard cutoff of sampled points, random probabilites of distortion too.
 		if (SamplingType_ != ""):
 			self.SamplingType = SamplingType_
 
 		self.NTrainSamples=15 # Samples per atom. Should be made a parameter.
-		if (self.OType == "SmoothP"):
+		if (self.OType == "SmoothP" or self.OType == "Disp"):
 			self.NTrainSamples=1 #Smoothprobability only needs one sample because it fits the go-probability and pgaussians-center.
 
 		self.eles = eles_ # Consistent list of atoms in the order they are treated.
@@ -97,6 +97,8 @@ class Digester:
 				Outs = self.HardCut(xyz_-coords_[at_])
 			elif (self.OType=="SmoothP"):
 				Outs = mol_.FitGoProb(at_)
+			elif (self.OType=="Disp"):
+				Outs = mol_.GoDisp(at_)
 			elif (self.OType=="StoP"):
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):
@@ -197,7 +199,7 @@ class Digester:
 		casep=0
 		for i in range(len(mol_.atoms)):
 			if (mol_.atoms[i]==ele_):
-				if (self.OType == "SmoothP"):
+				if (self.OType == "SmoothP" or self.OType == "Disp"):
 					inputs, outputs = self.Emb(mol_,i,[mol_.coords[i]]) # will deal with getting energies if it's needed.
 				elif(self.SamplingType=="Smooth"): #If Smooth is now a property of the Digester: OType SmoothP
 					samps=PointsNear(mol_.coords[i], self.NTrainSamples, self.TrainSampDistance)

@@ -14,7 +14,6 @@ class MSet:
 		self.mols=[]
 		self.path=path_
 		self.name=name_
-		self.NDistorts = 1
 		self.suffix=".pdb" #Pickle Database? Poor choice.
 
 	def Save(self):
@@ -34,18 +33,18 @@ class MSet:
 		print self.AtomTypes(), " Types "
 		return
 
-	def DistortedClone(self, NDistorts_=1, random=True):
-		self.NDistorts = NDistorts_
+	def DistortedClone(self, NDistorts=1, random=True):
+		''' Create a distorted copy of a set'''
 		print "Making distorted clone of:", self.name
 		s = MSet(self.name+"_NEQ")
 		ord = range(len(self.mols))
 		if(random):
-			np.random.seed(time.time()) 
+			np.random.seed(int(time.time()))
 			ord=np.random.permutation(len(self.mols))
 		for j in ord: 
-			for i in range (0, self.NDistorts):
+			for i in range (0, NDistorts):
 				s.mols.append(copy.deepcopy(self.mols[j]))
-				s.mols[-1].Distort(seed=i)
+				s.mols[-1].Distort()
 		return s
 
 	def NAtoms(self):

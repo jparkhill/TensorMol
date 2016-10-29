@@ -72,13 +72,13 @@ class Mol:
 		f.write("\n\n")	
 		f.close()
 
-	def Distort(self,seed=0,disp=0.35):
+	def Distort(self,disp=0.4,movechance=.85):
 		''' Randomly distort my coords, but save eq. coords first '''
 		self.BuildDistanceMatrix()
-		random.seed(seed)
 		for i in range (0, self.atoms.shape[0]):
 			for j in range (0, 3):
-				self.coords[i,j] = self.coords[i,j] + disp*random.uniform(-1, 1)
+				if (random.uniform(0, 1)<movechance):
+					self.coords[i,j] = self.coords[i,j] + disp*random.uniform(-1, 1)
 
 	def AtomTypes(self):
 		return np.unique(self.atoms)
@@ -353,6 +353,15 @@ class Mol:
 			print "Disp CENTER:", Pc
 		return forces
 
+	def GoDisp(self,ii,Print=False):
+		''' 
+			Generates a Go-potential for atom i on a uniform grid of 4A with 50 pts/direction
+			And fits that go potential with the H@0 basis centered at the same point
+			In practice 9 (1A) gaussians separated on a 1A grid around the sensory point appears to work for moderate distortions.
+		'''
+		Ps = self.POfAtomMoves(GRIDS.MyGrid(),ii)
+		return np.array([np.dot(GRIDS.MyGrid().T,Ps)])
+	
 	def FitGoProb(self,ii,Print=False):
 		''' 
 			Generates a Go-potential for atom i on a uniform grid of 4A with 50 pts/direction

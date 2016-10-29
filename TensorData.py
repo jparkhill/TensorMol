@@ -13,7 +13,7 @@ class TensorData():
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=5400):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=20400):
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
@@ -132,7 +132,6 @@ class TensorData():
 				if (mi%100==0):
 					print "Digested ", mi ," of ",len(self.set.mols)
 				ins,outs = self.dig.TrainDigest(self.set.mols[mi],element)
-				gc.collect()
 				GotOut = outs.shape[0]
 				if (GotOut!=ins.shape[0]):
 					raise Exception("Insane Digest")
@@ -151,6 +150,8 @@ class TensorData():
 					if  (not np.isfinite(np.average(labels[:casep]))):
 						raise Exception("Bad Labels")
 				#ins, outs = self.dig.TrainDigestWGoForce(self.set.mols[mi], element)
+				if (mi%300):
+					gc.collect()
 				if (mi%1000==0):
 					print mi
 			# Write the numpy arrays for this element.
@@ -273,7 +274,7 @@ class TensorData():
 				inf.close()
 				ouf.close()
 
-	def LoadElement(self, ele, random=False):
+	def LoadElement(self, ele, Random=False):
 		insname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in.npy"
 		outsname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_out.npy"
 		try:
@@ -290,15 +291,18 @@ class TensorData():
 			raise Exception("Bad Training Data.")
 		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
 		#to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
-		if (random):
+		if (Random):
 			idx = np.random.permutation(ti.shape[0])
 			ti = ti[idx]
 			to = to[idx]
 		self.ScratchNCase = to.shape[0]
 		return ti, to
 
-	def LoadElementToScratch(self,ele, random=True):
-		ti, to = self.LoadElement(ele, random)
+	def LoadElementToScratch(self,ele, Random=True, ExpandIsometries=True):
+		ti, to = self.LoadElement(ele, Random)
+		if (ExpandIsometries and self.dig.name=="SensoryBasis" and self.dig.OType=="Disp"):
+			print "Expanding the given set over isometries."
+			ti,to = GRIDS.ExpandIsometries(ti,to)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]

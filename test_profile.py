@@ -7,14 +7,19 @@ import cProfile, pstats, StringIO
 pr = cProfile.Profile()
 
 # 1 - Get molecules into memory
-a=MSet("gdb9_NEQ")
-a.Load()
+#a=MSet("gdb9")
+#a.Load()
+#b=a.DistortedClone()
+#b.Save()
+
+b=MSet("gdb9_NEQ")
+b.Load()
 # Choose allowed atoms.
-TreatedAtoms = a.AtomTypes()
+TreatedAtoms = b.AtomTypes()
 # 2 - Choose Digester
-d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="SmoothP")
+d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="Disp")
 # 4 - Generate training set samples.
-tset = TensorData(a,d,None,100) #100s/element
+tset = TensorData(b,d,None,10) #100s/element
 pr.enable()
 tset.BuildTrain("gdb9_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
 pr.disable()
