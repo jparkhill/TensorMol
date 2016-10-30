@@ -525,10 +525,17 @@ class Grids:
 		ous=[ncase*niso]+(list(outputs.shape)[1:])
 		newins=np.zeros(shape=ins)
 		newout=np.zeros(shape=ous)
-		for i in range(ncase):
-			for j in range(niso):
-				newins[i*niso+j] = inputs[i][self.IsometryRelabelings[j]]
-				newout[i*niso+j] = np.dot(self.InvIsometries[j],outputs[i])
+		#for i in range(ncase):
+		#	for j in range(niso):
+		#		newins[i*niso+j] = inputs[i][self.IsometryRelabelings[j]]
+		#		newout[i*niso+j] = np.dot(self.InvIsometries[j],outputs[i])
+		for j in range(niso):
+			newins[j*ncase:(j+1)*ncase]=inputs[:,self.IsometryRelabelings[j]]
+			newout[j*ncase:(j+1)*ncase]=np.tensordot(outputs,self.InvIsometries[j],axes=[[1],[1]])
+		#for i in range(ncase):
+		#	for j in range(niso):
+		#		newins[i*niso+j] = inputs[i][self.IsometryRelabelings[j]]
+		#		newout[i*niso+j] = np.dot(self.InvIsometries[j],outputs[i])
 		return newins,newout
 
 	def	NIso(self):
