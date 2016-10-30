@@ -33,6 +33,8 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
+		self.ExpandIsometries = False
+		
 		# Ordinarily during training batches will be requested repeatedly
 		# for the same element. Introduce some scratch space for that.
 		if (not os.path.isdir(self.path)):
@@ -55,30 +57,16 @@ class TensorData():
 		self.scratch_test_outputs=None
 		return
 
-	def NTrainCasesInScratch(self):
-		return self.scratch_inputs.shape[0]
-	def NTestCasesInScratch(self):
-		return self.scratch_inputs.shape[0]
-
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
 		print "self.ScratchNCase", self.ScratchNCase
+		print "self.NTrainCasesInScratch()", self.NTrainCasesInScratch()
 		print "self.ScratchPointer",self.ScratchPointer
 		if (self.scratch_outputs != None):
 			print "self.scratch_inputs.shape",self.scratch_inputs.shape
 			print "self.scratch_outputs.shape",self.scratch_outputs.shape
 			print "scratch_test_inputs.shape",self.scratch_test_inputs.shape
 			print "scratch_test_outputs.shape",self.scratch_test_outputs.shape
-
-	def QueryAvailable(self):
-		""" If Tensordata has already been made, this looks for it under a passed name."""
-		for i in range(MAX_ATOMIC_NUMBER):
-			if (os.path.isfile(self.path+self.name+"_"+self.dig.name+"_"+str(i)+"_in.npy") and os.path.isfile(self.path+self.name+"_"+self.dig.name+"_"+str(i)+"_out.npy")):
-				if (self.AvailableElements.count(i)==0):
-					self.AvailableElements.append(i)
-		self.AvailableElements.sort()
-		# It should probably check the sanity of each input/outputfile as well...
-		return
 
 	def CheckShapes(self):
 		# Establish case and label shapes.
@@ -220,16 +208,25 @@ class TensorData():
 		Cache.Save()
 		return
 
-	def GetTrainBatch(self,ele,ncases=2000,random=False):
+	def GetTrainBatch(self,ele,ncases=2000,ExpandIsometries=True,random=False):
 		if (self.ScratchState != ele):
 			self.LoadElementToScratch(ele)
-		if (ncases>self.ScratchNCase):
+		if (ncases>self.NTrainCasesInScratch()):
 			raise Exception("Training Data is less than the batchsize... :( ")
-		if ( self.ScratchPointer+ncases >= self.scratch_inputs.shape[0]):
-			self.ScratchPointer = 0 #Sloppy.
-		tmp=(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+ncases], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+ncases])
-		self.ScratchPointer += ncases
-		return tmp
+		if (self.ExpandIsometries):
+			if ( self.ScratchPointer*GRIDS.NIso()+ncases >= self.NTrainCasesInScratch() ):
+				self.ScratchPointer = 0 #Sloppy.
+			neff = int(ncases/GRIDS.NIso())+1
+			tmp=GRIDS.ExpandIsometries(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+neff], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+neff])
+			#print tmp[0].shape, tmp[1].shape
+			self.ScratchPointer += neff
+			return tmp[0][:ncases], tmp[1][:ncases]
+		else:
+			if ( self.ScratchPointer+ncases >= self.NTrainCasesInScratch()):
+				self.ScratchPointer = 0 #Sloppy.
+			tmp=(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+ncases], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+ncases])
+			self.ScratchPointer += ncases
+			return tmp
 
 	def GetTestBatch(self,ele,ncases=200, ministep = 0):
 		if (self.ScratchState != ele):
@@ -274,44 +271,6 @@ class TensorData():
 				inf.close()
 				ouf.close()
 
-	def LoadElement(self, ele, Random=False):
-		insname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in.npy"
-		outsname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_out.npy"
-		try:
-			inf = open(insname,"rb")
-			ouf = open(outsname,"rb")
-			ti = np.load(inf)
-			to = np.load(ouf)
-			inf.close()
-			ouf.close()
-		except Exception as Ex:
-			print "Failed to read:",insname, " or ",outsname
-			raise Ex
-		if (ti.shape[0] != to.shape[0]):
-			raise Exception("Bad Training Data.")
-		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
-		#to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
-		if (Random):
-			idx = np.random.permutation(ti.shape[0])
-			ti = ti[idx]
-			to = to[idx]
-		self.ScratchNCase = to.shape[0]
-		return ti, to
-
-	def LoadElementToScratch(self,ele, Random=True, ExpandIsometries=True):
-		ti, to = self.LoadElement(ele, Random)
-		if (ExpandIsometries and self.dig.name=="SensoryBasis" and self.dig.OType=="Disp"):
-			print "Expanding the given set over isometries."
-			ti,to = GRIDS.ExpandIsometries(ti,to)
-		self.NTest = int(self.TestRatio * ti.shape[0])
-		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
-		self.scratch_outputs = to[:ti.shape[0]-self.NTest]
-		self.scratch_test_inputs = ti[ti.shape[0]-self.NTest:]
-		self.scratch_test_outputs = to[ti.shape[0]-self.NTest:]
-		self.ScratchState = ele
-		self.ScratchPointer=0
-		return
-
 	def NormalizeInputs(self, ele):
 		mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))
 		std = (np.std(self.scratch_inputs, axis=0)).reshape((1, -1))
@@ -343,9 +302,82 @@ class TensorData():
 		print "Training data manager loaded."
 		print "Based on ", len(self.set.mols), " molecules "
 		print "Based on files: ",self.AvailableDataFiles
+		self.QueryAvailable()
 		self.PrintSampleInformation()
 		self.dig.Print()
 		return
+
+	def QueryAvailable(self):
+		""" If Tensordata has already been made, this looks for it under a passed name."""
+		self.AvailableElements=[]
+		self.SamplesPerElement=[]
+		for i in range(MAX_ATOMIC_NUMBER):
+			if (os.path.isfile(self.path+self.name+"_"+self.dig.name+"_"+str(i)+"_in.npy") and os.path.isfile(self.path+self.name+"_"+self.dig.name+"_"+str(i)+"_out.npy")):
+				self.AvailableElements.append(i)
+				ifname = self.path+self.name+"_"+self.dig.name+"_"+str(i)+"_out.npy"
+				ofname = self.path+self.name+"_"+self.dig.name+"_"+str(i)+"_out.npy"
+				inf = open(ifname,"rb")
+				ouf = open(ofname,"rb")
+				ti = np.load(inf)
+				to = np.load(ouf)
+				inf.close()
+				ouf.close()
+				if (len(ti)!=len(to)):
+					print "...Retrain element i"
+				else:
+					self.SamplesPerElement.append(len(ti))
+		self.AvailableElements.sort()
+		# It should probably check the sanity of each input/outputfile as well...
+		return
+
+	def LoadElement(self, ele, Random=False):
+		insname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in.npy"
+		outsname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_out.npy"
+		try:
+			inf = open(insname,"rb")
+			ouf = open(outsname,"rb")
+			ti = np.load(inf)
+			to = np.load(ouf)
+			inf.close()
+			ouf.close()
+		except Exception as Ex:
+			print "Failed to read:",insname, " or ",outsname
+			raise Ex
+		if (ti.shape[0] != to.shape[0]):
+			raise Exception("Bad Training Data.")
+		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
+		#to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
+		if (Random):
+			idx = np.random.permutation(ti.shape[0])
+			ti = ti[idx]
+			to = to[idx]
+		self.ScratchNCase = to.shape[0]
+		return ti, to
+
+	def LoadElementToScratch(self,ele, Random=True):
+		ti, to = self.LoadElement(ele, Random)
+		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp"):
+			print "Expanding the given set over isometries."
+			self.ExpandIsometries = True
+#			ti,to = GRIDS.ExpandIsometries(ti,to)
+		self.NTest = int(self.TestRatio * ti.shape[0])
+		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
+		self.scratch_outputs = to[:ti.shape[0]-self.NTest]
+		self.scratch_test_inputs = ti[ti.shape[0]-self.NTest:]
+		self.scratch_test_outputs = to[ti.shape[0]-self.NTest:]
+		self.ScratchState = ele
+		self.ScratchPointer=0
+		print "Element ", ele, " loaded..."
+		return
+
+	def NTrainCasesInScratch(self):
+		if (self.ExpandIsometries):
+			return self.scratch_inputs.shape[0]*GRIDS.NIso()
+		else:
+			return self.scratch_inputs.shape[0]
+	
+	def NTestCasesInScratch(self):
+		return self.scratch_inputs.shape[0]
 
 	def PrintSampleInformation(self):
 		for i in range(len(self.AvailableElements)):

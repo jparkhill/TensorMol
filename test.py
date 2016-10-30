@@ -8,7 +8,7 @@ from Opt import *
 if (1):
 	# To read gdb9 xyz files and populate an Mset.
 	# Because we use pickle to save. if you write new routines on Mol you need to re-execute this.
-	if (1):
+	if (0):
 		a=MSet("gdb9")
 		#a.ReadGDB9Unpacked()
 		#a.Save()
@@ -37,7 +37,7 @@ if (1):
 		tset.BuildTrain("OptMols",TreatedAtoms) # generates dataset numpy arrays for each atom.
 
 	# To generate training data for all the atoms in the GDB 9
-	if (1):
+	if (0):
 		# 1 - Get molecules into memory
 		a=MSet("gdb9_NEQ")
 		a.Load()
@@ -57,7 +57,7 @@ if (1):
 		tset1.MergeWith(tset2)
 
 	# This Trains the networks.
-	if (0):
+	if (1):
 		tset = TensorData(None,None,"gdb9_NEQ_SensoryBasis")
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 

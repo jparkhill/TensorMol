@@ -155,8 +155,11 @@ H    S
 		''')}
 
 class Grids:
-	""" Precomputes and stores orthogonalized grids for embedding molecules and potentials. 
+	""" 
+		Precomputes and stores orthogonalized grids for embedding molecules and potentials.
 		self,NGau_=6, GridRange_=0.6, NPts_=45 is a good choice for a 1 Angstrom potential fit
+		
+		Also now has a few
 	"""
 	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=30):
 		self.GridRange = GridRange_
@@ -265,7 +268,7 @@ class Grids:
 		self.BuildIsometries()
 
 		print "Using ", len(self.Isometries), " isometries."
-		print "Storage cost: ",self.OBFs.size*64/1024/1024, "Mb"
+		print "Grid storage cost: ",self.OBFs.size*64/1024/1024, "Mb"
 
 		#for i in range(nbas):
 		#	GridstoRaw(orbs[:,i]*orbs[:,i],self.NPts,"BF"+str(i))
@@ -510,26 +513,26 @@ class Grids:
 			Pe = self.TestGridGauEmbedding(samps,m,p,i)
 			GridstoRaw(Pe,ngrid,"Atoms"+str(i))
 
-	def TransformGrid(self,aGrid,IsoOp):
-		return np.array([np.dot(IsoOp,pt) for pt in aGrid])
+	def TransformGrid(self,aGrid,ALinearOperator):
+		return np.array([np.dot(ALinearOperator,pt) for pt in aGrid])
 
-	def ExpandIsometries(inputs,outputs):
-		ncase=len(inputs)
-		niso=len(self.Isometries)
+	def ExpandIsometries(self,inputs,outputs):
+		ncase=inputs.shape[0]
+		niso=self.NIso()
 		if (len(outputs)!=ncase):
 			raise Exception("Nonsense inputs")
-		ins=list(inputs.shape)
-		ous=list(outputs.shape)
-		ins[0] = ncase*niso
-		ous[0] = ncase*niso
-		newins=np.zeros(ins)
-		newout=np.zeros(ous)
-		for i in range(len(ncase)):
+		ins=[ncase*niso]+(list(inputs.shape)[1:])
+		ous=[ncase*niso]+(list(outputs.shape)[1:])
+		newins=np.zeros(shape=ins)
+		newout=np.zeros(shape=ous)
+		for i in range(ncase):
 			for j in range(niso):
 				newins[i*niso+j] = inputs[i][self.IsometryRelabelings[j]]
-				newout[i*niso+j] = np.dot(self.InvIsometries[i],outputs[i])
-		return inputs,outputs
-		
+				newout[i*niso+j] = np.dot(self.InvIsometries[j],outputs[i])
+		return newins,newout
+
+	def	NIso(self):
+		return len(self.Isometries)
 
 	def TestIsometries(self,m,p=[0.0, 0.0, 0.0],ngrid=150):
 		''' Tests that isometries of the basis match up to isometries of the fit. '''
