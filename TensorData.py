@@ -358,8 +358,8 @@ class TensorData():
 		ti, to = self.LoadElement(ele, Random)
 		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp"):
 			print "Expanding the given set over isometries."
-			self.ExpandIsometries = True
-#			ti,to = GRIDS.ExpandIsometries(ti,to)
+			#self.ExpandIsometries = True
+			ti,to = GRIDS.ExpandIsometries(ti,to)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]
