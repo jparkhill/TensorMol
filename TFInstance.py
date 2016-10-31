@@ -477,9 +477,9 @@ class Instance_fc_classify(Instance):
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None, Test_TData_=None):
 		Instance.__init__(self, TData_, ele_, Name_, Test_TData_)
-		self.hidden1 = 2000
+		self.hidden1 = 500
 		self.hidden2 = 2000
-		self.hidden3 = 1000
+		self.hidden3 = 500
 		self.NetType = "fc_sqdiff"
 		self.summary_op =None
 		self.summary_writer=None
