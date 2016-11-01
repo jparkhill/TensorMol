@@ -41,10 +41,10 @@ class Mol:
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(rm,crds[i])
 
-	def Transform(self,ltransf):
+	def Transform(self,ltransf,center=np.array([0.0,0.0,0.0])):
 		crds=np.copy(self.coords)
 		for i in range(len(self.coords)):
-			self.coords[i] = np.dot(ltransf,crds[i])
+			self.coords[i] = np.dot(ltransf,crds[i]-center) + center
 
 	def MoveToCenter(self):
 		first_atom = (self.coords[0]).copy()

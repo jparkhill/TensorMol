@@ -54,7 +54,7 @@ class MSet:
 		ord = range(len(self.mols))
 		for j in ord:
 				s.mols.append(copy.deepcopy(self.mols[j]))
-				s.mols[-1].Transform(GRIDS.InvIsometries(transf_num))
+				s.mols[-1].Transform(GRIDS.InvIsometries[transf_num])
 		return s
 
 	def NAtoms(self):
