@@ -70,6 +70,8 @@ class TFManage:
 			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None, self.Test_TData)
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None, self.Test_TData)
+		elif (self.NetType == "3conv_sqdiff"):
+			self.Instances[ele] = Instance_3dconv_sqdiff(self.TData, ele, None, self.Test_TData)
 		else:
 			raise Exception("Unknown Network Type!")
 		#self.Instances[ele].train_prepare()
@@ -98,6 +100,8 @@ class TFManage:
 				self.Instances[self.TrainedAtoms[i]] = Instance_fc_classify(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
 			elif (self.NetType == "fc_sqdiff"):
 				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
+			elif (self.NetType == "3conv_sqdiff"):
+				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
 			else:
 				raise Exception("Unknown Network Type!")	
 		# Raise TF instances for each atom which have already been trained.

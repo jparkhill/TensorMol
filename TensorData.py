@@ -13,7 +13,7 @@ class TensorData():
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=20400):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=20400, ChopTo_=None ):
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
@@ -34,6 +34,7 @@ class TensorData():
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
 		self.ExpandIsometries = False
+		self.ChopTo = ChopTo_
 		
 		# Ordinarily during training batches will be requested repeatedly
 		# for the same element. Introduce some scratch space for that.
@@ -325,7 +326,10 @@ class TensorData():
 				if (len(ti)!=len(to)):
 					print "...Retrain element i"
 				else:
-					self.SamplesPerElement.append(len(ti))
+					if (self.ChopTo!=None):
+						self.SamplesPerElement.append(min(len(ti),self.ChopTo))
+					else:
+						self.SamplesPerElement.append(len(ti))
 		self.AvailableElements.sort()
 		# It should probably check the sanity of each input/outputfile as well...
 		return
@@ -345,6 +349,11 @@ class TensorData():
 			raise Ex
 		if (ti.shape[0] != to.shape[0]):
 			raise Exception("Bad Training Data.")
+		
+		if (self.ChopTo!=None):
+			ti = ti[:self.ChopTo]
+			to = to[:self.ChopTo]
+
 		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
 		#to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
 		if (Random):

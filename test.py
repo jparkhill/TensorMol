@@ -58,8 +58,8 @@ if (1):
 
 	# This Trains the networks.
 	if (1):
-		tset = TensorData(None,None,"gdb9_NEQ_SensoryBasis")
-		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+		tset = TensorData(None,None,"gdb9_NEQ_SensoryBasis",None,6000)
+		manager=TFManage("",tset,True,"3conv_sqdiff") # True indicates train all atoms
 
 	# This Tests the optimizer.
 	if (1):
