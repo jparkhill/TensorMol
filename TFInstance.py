@@ -36,7 +36,7 @@ class Instance:
 			os.mkdir(self.path)
 		#	self.checkpoint_file_mini =self.path+self.name
 		self.chk_file = ''
-		self.learning_rate = 0.00001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
+		self.learning_rate = 0.000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
 		self.momentum = 0.9
 		self.max_steps = 100000
 		self.batch_size = 8000 # This is just the train batch size.
@@ -642,17 +642,17 @@ class Instance_3dconv_sqdiff(Instance):
 		return inputs_pl, outputs_pl
 
 	def _weight_variable(self, name, shape):
-		return tf.get_variable(name, shape, tf.float32, tf.truncated_normal_initializer(stddev=0.1))
+		return tf.get_variable(name, shape, tf.float32, tf.truncated_normal_initializer(stddev=0.01))
 
 	def _bias_variable(self, name, shape):
-		return tf.get_variable(name, shape, tf.float32, tf.constant_initializer(0.1, dtype=tf.float32))
+		return tf.get_variable(name, shape, tf.float32, tf.constant_initializer(0.01, dtype=tf.float32))
 
 	def inference(self, input):
 		FC_SIZE = 512
 		with tf.variable_scope('conv1') as scope:
 			in_filters = 1
 			out_filters = 8
-			kernel = self._weight_variable('weights', [3, 3, 3, in_filters, out_filters])
+			kernel = self._weight_variable('weights', [2, 2, 2, in_filters, out_filters])
 			conv = tf.nn.conv3d(input, kernel, [1, 1, 1, 1, 1], padding='SAME') # third arg. is the strides case,xstride,ystride,zstride,channel stride
 			biases = self._bias_variable('biases', [out_filters])
 			bias = tf.nn.bias_add(conv, biases)
@@ -676,15 +676,6 @@ class Instance_3dconv_sqdiff(Instance):
 		
 		# normalize prev_layer here
 		# prev_layer = tf.nn.max_pool3d(prev_layer, ksize=[1, 3, 3, 3, 1], strides=[1, 2, 2, 2, 1], padding='SAME')
-
-		with tf.variable_scope('conv3_1') as scope:
-			out_filters = 32
-			kernel = self._weight_variable('weights', [2, 2, 2, in_filters, out_filters])
-			conv = tf.nn.conv3d(prev_layer, kernel, [1, 1, 1, 1, 1], padding='SAME')
-			biases = self._bias_variable('biases', [out_filters])
-			bias = tf.nn.bias_add(conv, biases)
-			prev_layer = tf.nn.relu(bias, name=scope.name)
-			in_filters = out_filters
 
 		with tf.variable_scope('local1') as scope:
 			dim = np.prod(prev_layer.get_shape().as_list()[1:])
