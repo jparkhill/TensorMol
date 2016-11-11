@@ -26,6 +26,7 @@ class TensorData():
 		self.TestRatio = 0.2 # number of cases withheld for testing.
 		self.MxTimePerElement=MxTimePerElement_
 		self.MxMemPerElement=8000 # Max Array for an element in MB
+		self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
 		self.ScratchNCase = 0
 		self.ScratchState=None
 		self.ScratchPointer=0 # for non random batch iteration.
@@ -33,7 +34,8 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.ExpandIsometries = False
+		self.ExpandIsometriesAltogether = False
+		self.ExpandIsometriesBatchwise = False
 		self.ChopTo = ChopTo_
 		
 		# Ordinarily during training batches will be requested repeatedly
@@ -79,7 +81,7 @@ class TensorData():
 		if (self.dig.eshape == None or self.dig.lshape ==None):
 			raise Exception("Ain't got no fucking shape.")
 
-	def BuildTrain(self, name_="gdb9", atypes=[], append=False):
+	def BuildTrain(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		""" 
 			Generates probability inputs for all training data using the chosen digester.
 			All the inputs for a given atom are built separately.
@@ -111,6 +113,7 @@ class TensorData():
 				truncto[element]=int(self.MxMemPerElement/reqmem[element]*nofe[element])
 				print "Truncating element ", element, " to ",truncto[element]," Samples"
 		for element in atypes:
+			DebugCases=[]
 			print "Digesting atom: ", element
 			cases = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32)
 			labels = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32)
@@ -120,7 +123,12 @@ class TensorData():
 				m = self.set.mols[mi]
 				if (mi%100==0):
 					print "Digested ", mi ," of ",len(self.set.mols)
-				ins,outs = self.dig.TrainDigest(self.set.mols[mi],element)
+				ins,outs=None,None
+				if (MakeDebug):
+					ins,outs,db = self.dig.TrainDigest(self.set.mols[mi],element,True)
+					DebugCases = DebugCases + db
+				else:
+					ins,outs = self.dig.TrainDigest(self.set.mols[mi],element)
 				GotOut = outs.shape[0]
 				if (GotOut!=ins.shape[0]):
 					raise Exception("Insane Digest")
@@ -138,7 +146,6 @@ class TensorData():
 					print "Average label: ", np.average(labels[:casep])
 					if  (not np.isfinite(np.average(labels[:casep]))):
 						raise Exception("Bad Labels")
-				#ins, outs = self.dig.TrainDigestWGoForce(self.set.mols[mi], element)
 				if (mi%300):
 					gc.collect()
 				if (mi%1000==0):
@@ -163,6 +170,11 @@ class TensorData():
 				np.save(ouf,labels)
 				inf.close()
 				ouf.close()
+			if (MakeDebug):
+				dbgname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_dbg.tdt"
+				f=open(dbgname,"wb")
+				pickle.dump(DebugCases, f, protocol=1)
+				f.close()
 		self.Save() #write a convenience pickle.
 		return
 
@@ -209,12 +221,12 @@ class TensorData():
 		Cache.Save()
 		return
 
-	def GetTrainBatch(self,ele,ncases=2000,ExpandIsometries=True,random=False):
+	def GetTrainBatch(self,ele,ncases=2000,random=True):
 		if (self.ScratchState != ele):
-			self.LoadElementToScratch(ele)
+			self.LoadElementToScratch(ele,random)
 		if (ncases>self.NTrainCasesInScratch()):
 			raise Exception("Training Data is less than the batchsize... :( ")
-		if (self.ExpandIsometries):
+		if (self.ExpandIsometriesBatchwise):
 			if ( self.ScratchPointer*GRIDS.NIso()+ncases >= self.NTrainCasesInScratch() ):
 				self.ScratchPointer = 0 #Sloppy.
 			neff = int(ncases/GRIDS.NIso())+1
@@ -231,7 +243,7 @@ class TensorData():
 
 	def GetTestBatch(self,ele,ncases=200, ministep = 0):
 		if (self.ScratchState != ele):
-			self.LoadElementToScratch(ele)
+			self.LoadElementToScratch(ele,False)
 		if (ncases>self.scratch_test_inputs.shape[0]):
 			raise Exception("Test Data is less than the batchsize... :( ")
 		return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)])
@@ -334,9 +346,10 @@ class TensorData():
 		# It should probably check the sanity of each input/outputfile as well...
 		return
 
-	def LoadElement(self, ele, Random=False):
+	def LoadElement(self, ele, Random=True, DebugData_=True):
 		insname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in.npy"
 		outsname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_out.npy"
+		dbgname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_dbg.tdt"
 		try:
 			inf = open(insname,"rb")
 			ouf = open(outsname,"rb")
@@ -349,11 +362,25 @@ class TensorData():
 			raise Ex
 		if (ti.shape[0] != to.shape[0]):
 			raise Exception("Bad Training Data.")
-		
 		if (self.ChopTo!=None):
 			ti = ti[:self.ChopTo]
 			to = to[:self.ChopTo]
+		if (DebugData_):
+			print "DEBUGGING, ", len(ti), " cases.."
+			f = open(dbgname,"rb")
+			dbg=pickle.load(f)
+			f.close()
+			print "Found ", len(dbg), " pieces of debug information for this element... "
+			for i in range(len(dbg)):
+				print "CASE:", i, " was for ATOM", dbg[i][1], " At Point ", dbg[i][2]
+				ds=GRIDS.Rasterize(ti[i])
+				GridstoRaw(ds, GRIDS.NPts, "InpCASE"+str(i))
+				print dbg[i][0].coords
+				print dbg[i][0].atoms
+				
+		
 
+		
 		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
 		#to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
 		if (Random):
@@ -363,11 +390,10 @@ class TensorData():
 		self.ScratchNCase = to.shape[0]
 		return ti, to
 
-	def LoadElementToScratch(self,ele, Random=True):
-		ti, to = self.LoadElement(ele, Random)
-		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp"):
+	def LoadElementToScratch(self,ele):
+		ti, to = self.LoadElement(ele, self.Random)
+		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp" and self.ExpandIsometriesAltogether):
 			print "Expanding the given set over isometries."
-			#self.ExpandIsometries = True
 			ti,to = GRIDS.ExpandIsometries(ti,to)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]

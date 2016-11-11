@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 from TensorData import *
 import numpy as np
 import math,pickle
@@ -19,7 +18,7 @@ import sys
 #
 
 class Instance:
-	def __init__(self, TData_, ele_ = 1 , Name_=None, Test_TData_=None):
+	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		self.path='./networks/'
 		self.normalize = False
 		if (Name_ !=  None):
@@ -31,7 +30,6 @@ class Instance:
 		
 		self.element = ele_
 		self.TData = TData_
-		self.Test_TData = Test_TData_
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
 		#	self.checkpoint_file_mini =self.path+self.name
@@ -101,8 +99,6 @@ class Instance:
 		print("Saving TFInstance...")
 		if (self.TData!=None):
 			self.TData.CleanScratch()
-		if (self.Test_TData!=None):
-			self.Test_TData.CleanScratch()
 		self.Clean()
 		f=open(self.path+self.name+".tfn","wb")
 		pickle.dump(self.__dict__, f, protocol=1)
@@ -293,8 +289,8 @@ class Instance:
 		return 
 
 class Instance_fc_classify(Instance):
-	def __init__(self, TData_, ele_ = 1 , Name_=None, Test_TData_=None):
-		Instance.__init__(self, TData_, ele_, Name_, Test_TData_)
+	def __init__(self, TData_, ele_ = 1 , Name_=None):
+		Instance.__init__(self, TData_, ele_, Name_)
 		self.hidden1 = 500
 		self.hidden2 = 500
 		self.hidden3 = 500
@@ -466,17 +462,12 @@ class Instance_fc_classify(Instance):
 			duration = time.time() - test_start_time
 			print("testing...")
 			self.print_training(step, test_loss, test_correct, Ncase_test, duration)
-			if (self.Test_TData!=None):
-				batch_data= self.Test_TData.LoadElement(self.element)
-				predicts=self.evaluate(batch_data[0])
-				print("another testing ...")
-				print (batch_data[1], predicts) 
 		return test_loss, feed_dict
 
 
 class Instance_fc_sqdiff(Instance):
-	def __init__(self, TData_, ele_ = 1 , Name_=None, Test_TData_=None):
-		Instance.__init__(self, TData_, ele_, Name_, Test_TData_)
+	def __init__(self, TData_, ele_ = 1 , Name_=None):
+		Instance.__init__(self, TData_, ele_, Name_)
 		self.hidden1 = 1024
 		self.hidden2 = 1024
 		self.hidden3 = 512
@@ -615,8 +606,8 @@ class Instance_fc_sqdiff(Instance):
 
 class Instance_3dconv_sqdiff(Instance):
 	''' Let's see if a 3d-convolutional network improves the learning rate on the Gaussian grids. '''
-	def __init__(self, TData_, ele_ = 1 , Name_=None, Test_TData_=None):
-		Instance.__init__(self, TData_, ele_, Name_, Test_TData_)
+	def __init__(self, TData_, ele_ = 1 , Name_=None):
+		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "3conv_sqdiff"
 		self.summary_op =None
 		self.summary_writer=None
@@ -801,6 +792,11 @@ class Instance_3dconv_sqdiff(Instance):
 			return
 
 	def PrepareData(self, batch_data):
+		
+		#for i in range(self.batch_size):
+		#	ds=GRIDS.Rasterize(batch_data[0][i])
+		#	GridstoRaw(ds, GRIDS.NPts, "Inp"+str(i))
+		
 		if (batch_data[0].shape[0]==self.batch_size):
 			batch_data=[batch_data[0].reshape(batch_data[0].shape[0],GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1), batch_data[1]]
 		elif (batch_data[0].shape[0] < self.batch_size):

@@ -189,10 +189,12 @@ class Digester:
 #  Various types of Batch Digests.
 #
 
-	def TrainDigest(self, mol_, ele_):
+	def TrainDigest(self, mol_, ele_,MakeDebug=False):
 		""" 
 			Returns list of inputs and output gaussians.
 			Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+			if MakeDebug is True, it also returns a list with debug information to trace possible errors in digestion.
+			
 			"""
 		if (self.eshape==None or self.lshape==None):
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
@@ -201,14 +203,15 @@ class Digester:
 			print "Assigned Digester shapes: ",self.eshape,self.lshape
 		
 		ncase = mol_.NumOfAtomsE(ele_)*self.NTrainSamples
-		
 		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float32)
 		outs=np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
+		dbg=[]
 		casep=0
 		for i in range(len(mol_.atoms)):
 			if (mol_.atoms[i]==ele_):
 				if (self.OType == "SmoothP" or self.OType == "Disp"):
 					inputs, outputs = self.Emb(mol_,i,[mol_.coords[i]]) # will deal with getting energies if it's needed.
+					dbg.append([mol_,i,mol_.coords[i]])
 				elif(self.SamplingType=="Smooth"): #If Smooth is now a property of the Digester: OType SmoothP
 					samps=PointsNear(mol_.coords[i], self.NTrainSamples, self.TrainSampDistance)
 					inputs, outputs = self.Emb(mol_,i,samps) # will deal with getting energies if it's needed.
@@ -221,7 +224,10 @@ class Digester:
 				ins[casep:casep+self.NTrainSamples] = np.array(inputs)
 				outs[casep:casep+self.NTrainSamples] = outputs
 				casep += self.NTrainSamples
-		return ins,outs
+		if (MakeDebug):
+			return ins,outs,dbg
+		else:
+			return ins,outs
 
 
 	def SampleDigestWPyscf(self, mol_, ele_,uniform=False):

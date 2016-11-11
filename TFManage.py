@@ -8,7 +8,7 @@ import gc
 
 
 class TFManage:
-	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_classify", Test_TData_=None):  #Test_TData_ is some other randon independent test data
+	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_classify", RandomTData_=True):  #Test_TData_ is some other randon independent test data
 	        self.path = "./networks/"	
 		if (Name_ != ""):
 			# This will unpickle and instantiate TData...
@@ -16,8 +16,9 @@ class TFManage:
 			self.Prepare()
 			return
 		self.TData = TData_
-		self.Test_TData = Test_TData_
-		self.NetType = NetType_ 
+		if (RandomTData_==False):
+			self.TData.Randomize=False
+		self.NetType = NetType_
 		print self.TData.AvailableElements
 		print self.TData.AvailableDataFiles
 		print self.TData.SamplesPerElement
@@ -67,11 +68,11 @@ class TFManage:
 			raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.
 		if (self.NetType == "fc_classify"):
-			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None, self.Test_TData)
+			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None)
 		elif (self.NetType == "fc_sqdiff"):
-			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None, self.Test_TData)
+			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "3conv_sqdiff"):
-			self.Instances[ele] = Instance_3dconv_sqdiff(self.TData, ele, None, self.Test_TData)
+			self.Instances[ele] = Instance_3dconv_sqdiff(self.TData, ele, None)
 		else:
 			raise Exception("Unknown Network Type!")
 		#self.Instances[ele].train_prepare()
