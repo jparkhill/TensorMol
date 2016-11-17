@@ -90,7 +90,12 @@ class MSet:
 			self.mols[-1].FromXYZString(mol)
 		return
 
-	def CutSet(self, allowed_eles):
+	def pop(self, ntopop):
+		for i in range(ntopop):
+			self.mols.pop()
+		return
+
+	def OnlyWithElements(self, allowed_eles):
 		mols=[]
 		for mol in self.mols:
 			if set(list(mol.atoms)).issubset(allowed_eles):

@@ -8,7 +8,7 @@ from Opt import *
 if (1):
 	# To read gdb9 xyz files and populate an Mset.
 	# Because we use pickle to save. if you write new routines on Mol you need to re-execute this.
-	if (1):
+	if (0):
 		a=MSet("gdb9")
 		#a.ReadGDB9Unpacked()
 		#a.Save()
@@ -37,7 +37,7 @@ if (1):
 		tset.BuildTrain("OptMols",TreatedAtoms) # generates dataset numpy arrays for each atom.
 
 	# To generate training data for all the atoms in the GDB 9
-	if (1):
+	if (0):
 		# 1 - Get molecules into memory
 		a=MSet("gdb9_NEQ")
 		a.Load()
@@ -47,7 +47,25 @@ if (1):
 		d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="Disp")
 		# 4 - Generate training set samples.
 		tset = TensorData(a,d)
-		tset.BuildTrain("gdb9_NEQ",TreatedAtoms,False,True) # generates dataset numpy arrays for each atom.
+		tset.BuildTrain("gdb9_NEQ",TreatedAtoms,False) #fourth arg. generates debug data.
+
+	# To generate training data for all the atoms in the GDB 9
+	if (1):
+		b=MSet("OptMols")
+		b.Load()
+		a = b.DistortedClone(1,False)
+		a.Save()
+		
+		# 1 - Get molecules into memory
+		a=MSet("OptMols_NEQ")
+		a.Load()
+		# Choose allowed atoms.
+		TreatedAtoms = a.AtomTypes()
+		# 2 - Choose Digester
+		d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="Disp")
+		# 4 - Generate training set samples.
+		tset = TensorData(a,d)
+		tset.BuildTrain("OptMols_NEQ",TreatedAtoms,False,True) #fourth arg. generates debug data
 
 	#Merges two training datas...
 	if (0):

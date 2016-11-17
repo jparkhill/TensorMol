@@ -153,7 +153,11 @@ H    S
 		'''),'H@9': gto.basis.parse('''
 H    S
 	  .3333             1.0
-		''')}
+		'''),'H@999': gto.basis.parse('''
+H    S
+	  0.001             1.0
+		''')
+		}
 
 class Grids:
 	""" 
@@ -162,7 +166,7 @@ class Grids:
 		
 		Also now has a few
 	"""
-	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=30):
+	def __init__(self,NGau_=7, GridRange_=0.8, NPts_=40):
 		self.GridRange = GridRange_
 		self.NGau=NGau_ # Number of gaussians in each direction.
 		self.NPts=NPts_ # Number of gaussians in each direction.
@@ -348,12 +352,33 @@ class Grids:
 			raise Exception("Bad input dim.")
 		return np.power(np.tensordot(inp,self.OBFs,axes=[[0],[0]]),2.0)
 
-	def MolDensity(self,samps,m,p=[0.0,0.0,0.0]):
+	def VecToRaw(self,inp,Nm_="VecToRaw"):
+		GridstoRaw(self.Rasterize(inp),self.NPts,Nm_)
+
+	def VdwDensity(self,m,p=[0.0, 0.0, 0.0],ngrid=150,Nm_="Atoms",tag=None):
+		samps, vol = m.SpanningGrid(ngrid,2)
+		print "Grid ranges (A):",np.max(samps[:,0]),np.min(samps[:,0])
+		print "Grid ranges (A):",np.max(samps[:,1]),np.min(samps[:,1])
+		print "Grid ranges (A):",np.max(samps[:,2]),np.min(samps[:,2])
+		# Make the atom densities.
+		Ps = self.MolDensity(samps,m,p,Nm_)
+		GridstoRaw(Ps,ngrid,Nm_)
+		return
+
+	def MolDensity(self,samps,m,p=[0.0,0.0,0.0],tag=None):
 		Ps = np.zeros(len(samps))
 		mol = gto.Mole()
 		pyscfatomstring=''
-		for j in range(len(m.atoms)):
-			pyscfatomstring=pyscfatomstring+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
+		if (tag==None):
+			for j in range(len(m.atoms)):
+				pyscfatomstring=pyscfatomstring+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
+		else:
+			for j in range(len(m.atoms)):
+				if (j == tag):
+					print 
+					pyscfatomstring=pyscfatomstring+"H@999"+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
+				else:
+					pyscfatomstring=pyscfatomstring+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
 		mol.atom = pyscfatomstring
 		mol.basis = TOTAL_SENSORY_BASIS
 		mol.verbose = 0
@@ -505,14 +530,14 @@ class Grids:
 		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,nsaos,mol.nbas))
 		return np.sum(np.dot(self.SenseSinv,Cs),axis=1)
 
-	def TestSense(self,m,p=[0.0, 0.0, 0.0],ngrid=150):
+	def TestSense(self,m,p=[0.0, 0.0, 0.0],ngrid=150,Nm_="Atoms"):
 		samps, vol = m.SpanningGrid(ngrid,2)
 		# Make the atom densities.
 		Ps = self.MolDensity(samps,m,p)
-		GridstoRaw(Ps,ngrid,"Atoms")
+		GridstoRaw(Ps,ngrid,Nm_)
 		for i in range(m.NAtoms()):
 			Pe = self.TestGridGauEmbedding(samps,m,p,i)
-			GridstoRaw(Pe,ngrid,"Atoms"+str(i))
+			GridstoRaw(Pe,ngrid,Nm_+str(i))
 
 	def TransformGrid(self,aGrid,ALinearOperator):
 		return np.array([np.dot(ALinearOperator,pt) for pt in aGrid])

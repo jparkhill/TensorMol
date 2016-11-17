@@ -211,7 +211,12 @@ class Digester:
 			if (mol_.atoms[i]==ele_):
 				if (self.OType == "SmoothP" or self.OType == "Disp"):
 					inputs, outputs = self.Emb(mol_,i,[mol_.coords[i]]) # will deal with getting energies if it's needed.
-					dbg.append([mol_,i,mol_.coords[i]])
+					if (MakeDebug):
+						print "debug case", i
+						GRIDS.VdwDensity(mol_,[0.0,0.0,0.0],150,"dbg"+str(i),i)
+						GRIDS.VecToRaw(inputs[0],"dbgi"+str(i))
+						print mol_.coords[i], outputs
+						dbg.append([mol_,i,mol_.coords[i]])
 				elif(self.SamplingType=="Smooth"): #If Smooth is now a property of the Digester: OType SmoothP
 					samps=PointsNear(mol_.coords[i], self.NTrainSamples, self.TrainSampDistance)
 					inputs, outputs = self.Emb(mol_,i,samps) # will deal with getting energies if it's needed.
