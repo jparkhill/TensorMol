@@ -19,7 +19,7 @@ class TFMolManage:
 		self.Test_TData = Test_TData_
 		self.NetType = NetType_ 
 		print self.TData.AvailableDataFiles
-		self.name = self.TData.name+self.TData.dig.name+"_"+self.NetType
+		self.name = self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		print "--- TF will be fed by ---",self.TData.name
 
 		self.TrainedAtoms=[] # In order of the elements in TData
@@ -119,11 +119,12 @@ class TFMolManage:
                 to = to[to.shape[0]-NTest:]
 		acc_nn = np.zeros((to.shape[0],2))
 		acc=self.TData.ApplyNormalize(to)
-		nn=self.Eval(ti)
+		nn, gradient=self.Eval(ti)
 		acc_nn[:,0]=acc.reshape(acc.shape[0])
-		acc_nn[:,1]=nn[0].reshape(nn[0].shape[0])
+		acc_nn[:,1]=nn.reshape(nn.shape[0])
 		mean, std = self.TData.Get_Mean_Std()	
 		acc_nn = acc_nn*std+mean
 		np.savetxt(save_file,acc_nn)
+		np.savetxt("dist_2b.dat", ti[:,1])
 		return
 

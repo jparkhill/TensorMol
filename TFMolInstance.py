@@ -34,12 +34,15 @@ class Instance:
 			os.mkdir(self.path)
 		#	self.checkpoint_file_mini =self.path+self.name
 		self.chk_file = ''
-		self.learning_rate = 0.000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
+		self.learning_rate = 0.0001 # for adam
+		#self.learning_rate = 0.00001 # for adadelta 
+		#self.learning_rate = 0.000001 # 1st sgd
+		#self.learning_rate = 0.0000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
 		self.momentum = 0.9
 		self.max_steps = 100000
-		self.batch_size = 1280 # This is just the train batch size.
+		self.batch_size = 8*400 # This is just the train batch size.
 		self.NetType = "None"
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.TData.LoadDataToScratch( True)
 		self.TData.PrintStatus()
@@ -55,6 +58,12 @@ class Instance:
 
 		if (self.normalize):
 			self.TData.NormalizeOutputs()
+
+		#dist_out = np.zeros((self.TData.scratch_outputs.shape[0],2))
+                #dist_out[:,0] = 1/(self.TData.scratch_inputs[:,2])
+                #dist_out[:,1] = self.TData.scratch_outputs.reshape(self.TData.scratch_outputs.shape[0])
+		#np.savetxt("dist_out.dat", dist_out)
+		print ("std of the output", (self.TData.scratch_outputs.reshape(self.TData.scratch_outputs.shape[0])).std())
 
 		# The parameters below belong to tensorflow and its graph
 		# all tensorflow variables cannot be pickled they are populated by Prepare
@@ -231,18 +240,18 @@ class Instance:
 				hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
 
 		# Hidden 3
-		with tf.name_scope('hidden3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden3_units]),
-				name='biases')
-				hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
+#		with tf.name_scope('hidden3'):
+#				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.5 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+#				biases = tf.Variable(tf.zeros([hidden3_units]),
+#				name='biases')
+#				hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
 
 		# Linear
 		with tf.name_scope('regression_linear'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
 				biases = tf.Variable(tf.zeros([self.outshape]),
 				name='biases')
-				output = tf.matmul(hidden3, weights) + biases
+				output = tf.matmul(hidden2, weights) + biases
 		return output
 
 	def loss_op(self, output, labels):
@@ -269,7 +278,9 @@ class Instance:
 		train_op: The Op for training.
 		"""
 		tf.scalar_summary(loss.op.name, loss)
-		optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
+		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
+		#optimizer = tf.train.AdadeltaOptimizer(learning_rate)
+		optimizer = tf.train.AdamOptimizer(learning_rate)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
 		train_op = optimizer.minimize(loss, global_step=global_step)
 		return train_op
@@ -312,15 +323,15 @@ class Instance:
 
 	def print_training(self, step, loss, Ncase, duration):
 		denom = max((int(Ncase/self.batch_size)),1)
-		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/denom))
+		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
 		return 
 
 class Instance_fc_classify(Instance):
 	def __init__(self, TData_,  Name_=None, Test_TData_=None):
 		Instance.__init__(self, TData_,  Name_, Test_TData_)
-		self.hidden1 = 500
-		self.hidden2 = 500
-		self.hidden3 = 500
+		self.hidden1 = 200
+		self.hidden2 = 200
+		self.hidden3 = 200
 		self.NetType = "fc_classify"
 		self.prob = None
 #		self.inshape = self.TData.scratch_inputs.shape[1] 
@@ -492,7 +503,7 @@ class Instance_fc_sqdiff(Instance):
 #		self.inshape = self.TData.scratch_inputs.shape[1] 
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
@@ -507,13 +518,11 @@ class Instance_fc_sqdiff(Instance):
 		#images_placeholder, labels_placeholder = self.placeholder_inputs(Ncase) Made by Prepare()
 		feed_dict = self.fill_feed_dict(batch_data,self.images_placeholder,self.labels_placeholder)
 		tmp, gradient =  (self.sess.run([self.output, self.gradient], feed_dict=feed_dict))
-		#print ("tmp:",tmp, "gradient:",gradient, "self.PreparedFor", self.PreparedFor,"eval_input.shape[0]", eval_input.shape[0])
 		if (not np.all(np.isfinite(tmp))):
 			print("TFsession returned garbage")
 			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]], gradient[:eval_input.shape[0]]
-		#print ("tmp:",tmp, "gradient:",gradient)
 		return tmp, gradient
 	
 	def Prepare(self, eval_input, Ncase=125000):
@@ -586,7 +595,7 @@ class Instance_fc_sqdiff(Instance):
 			print("another testing ...")
 			for i in range (0, actual_size):
 				print (batch_data[1][i], predicts[0][i])
-		print (output_value, batch_data[1])
+		print ("input:",batch_data[0], "predict:",output_value, "accu:",batch_data[1])
 		return test_loss, feed_dict
 
 	def train_prepare(self,  continue_training =False):

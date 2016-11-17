@@ -17,9 +17,9 @@ class NN_MBE:
 
 
 	def NN_Energy(self, mol):
-		mol.Generate_All_MBE_term(atom_group=1, cutoff=3, center_atom=0)  # one needs to change the variable here 
+		mol.Generate_All_MBE_term(atom_group=3, cutoff=6, center_atom=0)  # one needs to change the variable here 
 		nn_energy = 0.0
-		for i in range (2, mol.mbe_order+1):
+		for i in range (1, mol.mbe_order+1):
 			nn_energy += self.nn_mbe[i].Eval_Mol(mol)
 		mol.Set_MBE_Force()
 		mol.nn_energy = nn_energy

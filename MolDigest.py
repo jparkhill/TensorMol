@@ -34,7 +34,9 @@ class MolDigester:
 		CM=np.zeros((natoms, natoms))
 		deri_CM = np.zeros((natoms, natoms, 6))
 		xyz = (mol_.coords).copy()
-		ele = (mol_.atoms).copy()
+		#ele = (mol_.atoms).copy()
+		ele = np.zeros(natoms)  # for eebug
+		ele.fill(1.0)   # for debug, set ele value to 1
 		code = """
 		double dist = 0.0;
 		double deri[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -76,7 +78,10 @@ class MolDigester:
 
 
 	def GetUpTri(self, CM):
-		return  CM[np.triu_indices(CM.shape[0], 0)]
+		CM = CM[np.triu_indices(CM.shape[0], 1)].copy() ##for debug purpose, ignore the diagnoal element
+		#index = np.array([2,3,4,6,7,8,9,10,11]) # for debug, ignore the AA, BB block, only remain AB
+		#CM = CM[index].copy()  # for debug
+		return  CM  #for debug purpose, ignore the diagnoal element
 			
 
 

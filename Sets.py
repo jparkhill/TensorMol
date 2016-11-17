@@ -110,4 +110,36 @@ class MSet:
 			self.name = self.name + b.name
 		self.mols.append(b.mols) 
 		return
-			
+		
+	def MBE(self,  atom_group=1, cutoff=10, center_atom=0):
+		for mol in self.mols:
+			mol.MBE(atom_group, cutoff, center_atom)		
+		return  
+
+	def PySCF_Energy(self):
+		for mol in self.mols:
+			mol.PySCF_Energy()
+		return 	
+	
+
+	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
+		for mol in self.mols:
+                	mol.Generate_All_MBE_term(atom_group, cutoff, center_atom)
+                return 
+	
+	def Calculate_All_Frag_Energy(self, method="pyscf"):
+		for mol in self.mols:
+			mol.Calculate_All_Frag_Energy(method)
+               # 	mol.Set_MBE_Energy()
+		return
+
+
+	def Get_All_Qchem_Frag_Energy(self):
+		for mol in self.mols:
+			mol.Get_All_Qchem_Frag_Energy()
+		return 
+	
+	def Get_Permute_Frags(self, indis=[0]):
+		for mol in self.mols:
+			mol.Get_Permute_Frags(indis)
+		return  

@@ -5,13 +5,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import gc
+import random
 import numpy as np
 import os,sys,pickle,re
 import math
 import time
 from math import pi as Pi
 import scipy.special
+import itertools
 import warnings
+from scipy.weave import inline
+from collections import defaultdict
+from collections import Counter
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 #
@@ -29,6 +35,7 @@ atoc = {1: 40, 6: 100, 7: 150, 8: 200, 9:240}
 KAYBEETEE = 0.000950048 # At 300K
 BOHRPERA = 1.889725989
 GRIDS = None
+Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 
 #
 # -- begin Environment set up.
@@ -52,6 +59,7 @@ try:
 	from pyscf import scf
 	from pyscf import gto
 	from pyscf import dft
+	from pyscf import mp
 	HAS_PYSCF = True
 	print("Pyscf has been found")
 except Exception as Ex:
@@ -121,8 +129,51 @@ def SamplingFunc_v2(S, maxdisp):    ## with sampling function f(x)=M/(x+1)^2+N; 
 	N = ((-1 - 2*maxdisp - maxdisp*maxdisp)/(2 + maxdisp)) + maxdisp
 	return M/(S+1.0)**2 + N
 
+
+def LtoS(l):
+	s=""
+	for i in l:
+		s+=str(i)+" "
+	return s	
+	
+		
+
 def ErfSoftCut(dist, width, x):
 	return (1-scipy.special.erf(1.0/width*(x-dist)))/2.0	
+
+def CosSoftCut(dist, x):
+	if x > dist:
+		return 0
+	else:
+		return 0.5*(math.cos(math.pi*x/dist)+1.0)
+
+	return
+
+def nCr(n, r):
+	f = math.factorial
+	return int(f(n)/f(r)/f(n-r)) 
+
+def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase = str(0), maxcase = str(1000), name = "MBE", ncore = str(4), queue="long"):
+	lines = "#!/bin/csh\n"+"# Submit a job for 8  processors\n"+"#$ -N "+name+"\n#$ -t "+mincase+"-"+maxcase+":1\n"+"#$ -pe smp "+ncore+"\n"+"#$ -r n\n"+"#$ -q "+queue+"\n\n\n"
+	lines += "module load gcc/5.2.0\nsetenv  QC /afs/crc.nd.edu/group/parkhill/qchem85\nsetenv  QCAUX /afs/crc.nd.edu/group/parkhill/QCAUX_1022\nsetenv  QCPLATFORM LINUX_Ix86\n\n\n"
+	lines += "/afs/crc.nd.edu/group/parkhill/qchem85/bin/qchem  -nt "+ncore+"   "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".in  "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".out\n\nrm MBE*.o*"
+	return lines
+
+def Binominal_Combination(indis=[0,1,2], group=3):
+	if (group==1):
+		index=list(itertools.permutations(indis))
+		new_index =[]
+		for i in range (0, len(index)):
+			new_index.append(list(index[i]))
+		return new_index
+	else:
+		index=list(itertools.permutations(indis))
+		new_index=[]
+		for sub_list in Binominal_Combination(indis, group-1):
+			for sub_index in index:
+				new_index.append(list(sub_list)+list(sub_index))
+		return new_index		
+	
 
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

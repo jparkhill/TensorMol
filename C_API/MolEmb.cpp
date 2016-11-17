@@ -160,32 +160,25 @@ static PyObject* Make_Go(PyObject *self, PyObject  *args) {
 	if (nxyz != noutmat)
 		std::cout << "Bad input arrays :( " << std::endl;
 
-		int i=theatom;
-		for (int j=i+1; j<natom; j++)
-			for (int s=0; s<nxyz; s++)
-				outmat[s] += 0.01*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*j],coords[3*j+1],coords[3*j+2]),2.0);
-		int j=theatom;
-		for (int i=0; i<j; i++)
-			for (int s=0; s<nxyz; s++)
-				outmat[s] += 0.01*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*i],coords[3*i+1],coords[3*i+2]),2.0);
-/*
+	for (int s=0; s<nxyz; s++)
+	{
+		//std::cout << xyz_data[3*s] << " " << xyz_data[3*s+1] << " " << xyz_data[3*s+2] << std::endl;
 		for (int i=0; i<natom; i++)
 		{
 			for (int j=i+1; j<natom; j++)
 			{
 				if (i==theatom)
 				{
-					for (int s=0; s<nxyz; s++)
-						outmat[s] += 0.125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*j],coords[3*j+1],coords[3*j+2]),2.0);
+					outmat[s] += 0.125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*j],coords[3*j+1],coords[3*j+2]),2.0);
 				}
 				else if (j==theatom)
 				{
-					for (int s=0; s<nxyz; s++)
-						outmat[s] += 0.125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*i],coords[3*i+1],coords[3*i+2]),2.0);
+					outmat[s] += 0.125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*i],coords[3*i+1],coords[3*i+2]),2.0);
 				}
 			}
 		}
-*/
+	}
+
 	PyObject* nlist = PyList_New(0);
 	return nlist;
 }
@@ -538,8 +531,8 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
          uint8_t* atoms=(uint8_t*)atoms_->data;
          double center[3]; // x y z of the center 
          int natom, num_PGaussian;
-         array<std::vector<int>, 100> ele_index;  // hold max 100 elements most 
-         array<std::vector<double>, 100> ele_dist;  //  hold max 100 elements most
+         std::array<std::vector<int>, 100> ele_index;  // hold max 100 elements most 
+         std::array<std::vector<double>, 100> ele_dist;  //  hold max 100 elements most
 
 
 	 npy_intp* Nxyz = xyz->dimensions;

@@ -13,12 +13,13 @@ class TensorMolData():
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3):
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1):
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
 		self.dig = Dig_
 		self.order = order_
+		self.num_indis = num_indis_
 		self.AvailableDataFiles = []
 		self.NTest = 0  # assgin this value when the data is loaded
 		self.TestRatio = 0.2 # number of cases withheld for testing.
@@ -88,6 +89,7 @@ class TensorMolData():
 		casep=0
 		for mi in range(len(self.set.mols)):
 			for frag in self.set.mols[mi].mbe_permute_frags[self.order]:
+				#print  frag.dist[0], frag.frag_mbe_energy
 				ins,outs = self.dig.TrainDigest(frag)
 				cases[casep:casep+1] += ins
 				labels[casep:casep+1] += outs
@@ -159,12 +161,36 @@ class TensorMolData():
 		ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
 		to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
 		group = 1
+		tmp = 1
 		for i in range (1, self.order+1):
 			group = group*i
+		for i in range (1, self.num_indis+1):
+			tmp = tmp*i
+		group = group*(tmp**self.order)
+		print "randomize group:", group
 		if (random):
 			ti, to = self.Randomize(ti, to, group)
 		self.NTrain = to.shape[0]
 		return ti, to
+
+	def KRR(self):
+		from sklearn.kernel_ridge import KernelRidge
+		ti, to = self.LoadData(True)
+		#krr = KernelRidge()
+		krr = KernelRidge(alpha=0.0001, kernel='rbf')
+		trainsize = int(ti.shape[0]*0.5)
+		krr.fit(ti[0:trainsize,:], to[0:trainsize])
+		predict  = krr.predict(ti[trainsize:, : ])
+		print predict.shape
+		krr_acc_pred  = np.zeros((predict.shape[0],2))	
+		krr_acc_pred[:,0] = to[trainsize:].reshape(to[trainsize:].shape[0])
+		krr_acc_pred[:,1] = predict.reshape(predict.shape[0])
+		np.savetxt("krr_acc_pred.dat", krr_acc_pred)
+		print "KRR train R^2:", krr.score(ti[0:trainsize, : ], to[0:trainsize])
+                print "KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:])
+		return 	
+		
+
 
 	def LoadDataToScratch(self, random=True):
 		ti, to = self.LoadData( random)
@@ -178,6 +204,7 @@ class TensorMolData():
 			self.scratch_test_inputs, self.scratch_test_outputs = self.Randomize(self.scratch_test_inputs, self.scratch_test_outputs, 1)
 		self.ScratchState = self.order
 		self.ScratchPointer=0
+		
 		return
 
 	def NormalizeInputs(self):
@@ -191,12 +218,14 @@ class TensorMolData():
 
 
 	def NormalizeOutputs(self):
+		print self.scratch_outputs
                 mean = (np.mean(self.scratch_outputs, axis=0)).reshape((1,-1))
                 std = (np.std(self.scratch_outputs, axis=0)).reshape((1, -1))
                 self.scratch_outputs = (self.scratch_outputs-mean)/std
                 self.scratch_test_outputs = (self.scratch_test_outputs-mean)/std
                 np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy", mean)
                 np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy",std)
+		print mean, std, self.scratch_outputs
                 return
 
 	def Get_Mean_Std(self):
