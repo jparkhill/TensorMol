@@ -24,12 +24,13 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 # GLOBALS
 #	Any global variables of the code must be put here, and must be in all caps.
 #	Global variables are almost never acceptable except in these few cases
-#
+#  TODO: have some type of param file. 
 
 MAX_ATOMIC_NUMBER = 10
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
+HAS_GRIDS=False
 atoi = {'H':1,'He':2,'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,'K':19,'Ca':20,'Sc':21,'Ti':22,'Si':23,'V':24,'Cr':25}
 atoc = {1: 40, 6: 100, 7: 150, 8: 200, 9:240}
 KAYBEETEE = 0.000950048 # At 300K
@@ -86,7 +87,7 @@ print("TensorMol ready...")
 
 TOTAL_SENSORY_BASIS=None
 SENSORY_BASIS=None
-if (HAS_PYSCF):
+if (HAS_PYSCF and HAS_GRIDS):
 	from Grids import *
 	GRIDS = Grids()
 	GRIDS.Populate()

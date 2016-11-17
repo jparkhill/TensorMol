@@ -568,7 +568,7 @@ class Mol:
 				mbe_frags_energy += frag.frag_mbe_energy
 				print "Finished, spent ", time.time()-time_log," seconds"
 				time_log = time.time()
-		self.mbe_frags_energy[order] = mbe_frags_energy
+			self.mbe_frags_energy[order] = mbe_frags_energy
 		else:
 			raise Exception("unknow ab-initio software!")		
 		return 0
