@@ -35,6 +35,7 @@ atoc = {1: 40, 6: 100, 7: 150, 8: 200, 9:240}
 KAYBEETEE = 0.000950048 # At 300K
 BOHRPERA = 1.889725989
 GRIDS = None
+MBE_ORDER = 2
 Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 
 #
