@@ -39,7 +39,7 @@ if (1):
 		a.Save()
 
 	# Prepare data for neural newtork training.
-	if (1):
+	if (0):
 		a=MSet("H2O_tinker_amoeba")
                 a.Load()
 		d = MolDigester()  # Initialize a digester that apply descriptor for the fragments.
@@ -67,7 +67,7 @@ if (1):
 if (0):
 	# load molecule
 	a=MSet("H2O_opt")
-	a.ReadGDB9Unpacked("./H2O_opt/", mbe_order=2)
+	a.ReadGDB9Unpacked("./H2O_opt/")
 	# load pre-trained networks {many-body order: network name}
 	tfm = {1:"H2O_tinker_amoebaCoulomb_fc_sqdiff_1", 2:"H2O_tinker_amoebaCoulomb_fc_sqdiff_2"}
 	# launch NN-MBE model 
@@ -78,10 +78,10 @@ if (0):
 		nn_mbe.NN_Energy(mol)
 
 # use NN-MBE model to optimize molecule. 
-if (0):
+if (1):
 	# load molecule
         a=MSet("H2O_opt")
-        a.ReadGDB9Unpacked("./H2O_opt/", mbe_order=2)
+        a.ReadGDB9Unpacked("./H2O_opt/")
         # load pre-trained networks {many-body order: network name}
         tfm = {1:"H2O_tinker_amoebaCoulomb_fc_sqdiff_1", 2:"H2O_tinker_amoebaCoulomb_fc_sqdiff_2"}
         # launch NN-MBE model 
