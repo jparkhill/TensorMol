@@ -84,45 +84,44 @@ H    S
 		''')}
 TOTAL_SENSORY_BASIS={'C': gto.basis.parse('''
 C    S
-	  1.0					1.0000000
+   1861.0916331              0.0744171        
+    642.9939764              0.1653957        
+    235.1105725              0.5576484        
+     90.7028894              1.3108298        
+     36.7794552              2.1694681        
+     15.6046273              1.7668846        
+      6.8907294              0.2930769        
 C    S
-	  0.5					1.0000000
+      3.1478850              1.0000000        
 C    S
-	  0.1					1.0000000
+      1.4777287              1.0000000        
 C    S
-	  0.02					1.0000000
+      0.7076466              1.0000000        
 C    S
-	  0.005					1.0000000
+      0.3430122              1.0000000        
+C    S
+      0.1669453              1.0000000        
 C    P
-	  1.0					1.0000000
+     13.5472892             -0.0206477        
+      5.4669419             -0.0115282        
 C    P
-	  0.5					1.0000000
+      2.1751721              1.0000000        
 C    P
-	  0.1					1.0000000
+      0.8582194              1.0000000        
 C    P
-	  0.02					1.0000000
-C    P
-	  0.005					1.0000000
+      0.3376720              1.0000000        
 C    D
-	  0.5					1.0000000
+      5.9287253             -0.0225948        
+      1.9809209             -0.0476827        
 C    D
-	  0.05					1.0000000
+      0.8055417              1.0000000        
 C    D
-	  0.01					1.0000000
+      0.3531244              1.0000000        
 C    F
-	  0.2					1.0000000
-C    F
-	  0.02					1.0000000
+      1.6755626              0.0088798        
+      0.5997536              0.0069903        
 C    G
-	  0.1					1.0000000
-C    G
-	  0.02					1.0000000
-C    H
-	  0.1					1.0000000
-C    H
-	  0.02					1.0000000
-C    I
-	  0.02					1.0000000
+      1.0024600              1.0000000
 	  '''),'H@0': gto.basis.parse('''
 H    S
 	  1.5					1.0
@@ -153,9 +152,9 @@ H    S
 		'''),'H@9': gto.basis.parse('''
 H    S
 	  .3333             1.0
-		'''),'H@999': gto.basis.parse('''
+		'''),'N@0': gto.basis.parse('''
 H    S
-	  0.001             1.0
+	  1.0             -1.0
 		''')
 		}
 
@@ -166,7 +165,10 @@ class Grids:
 		
 		Also now has a few
 	"""
-	def __init__(self,NGau_=7, GridRange_=0.8, NPts_=40):
+	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=40):
+		# Coulomb Fitting parameters
+		self.Spherical = True
+		# Cartesian Embedding parameters.
 		self.GridRange = GridRange_
 		self.NGau=NGau_ # Number of gaussians in each direction.
 		self.NPts=NPts_ # Number of gaussians in each direction.
@@ -183,6 +185,9 @@ class Grids:
 		#
 		self.SenseRange = 3.5
 		self.NSense = self.NGau
+		if (self.Spherical):
+			self.SenseRange = 12.0
+			self.NSense = None
 		self.SenseGrid = None
 		self.SenseS = None
 		self.SenseSinv = None
@@ -270,15 +275,13 @@ class Grids:
 				self.OBFs[i,:] += (C.T[i,j]*orbs[:,j]).T
 		# Populate Sensory bases.
 		self.PopulateSense()
-		self.BuildIsometries()
-
-		print "Using ", len(self.Isometries), " isometries."
+		if (not self.Spherical):
+			self.BuildIsometries()
+			print "Using ", len(self.Isometries), " isometries."
 		print "Grid storage cost: ",self.OBFs.size*64/1024/1024, "Mb"
-
 		#for i in range(nbas):
 		#	GridstoRaw(orbs[:,i]*orbs[:,i],self.NPts,"BF"+str(i))
 		#	GridstoRaw(self.OBFs[i,:]*self.OBFs[i,:],self.NPts,"OBF"+str(i))
-
 		# Quickly check orthonormality.
 		#for i in range(nbas):
 		#		for j in range(nbas):
@@ -287,22 +290,31 @@ class Grids:
 
 	def PopulateSense(self):
 		mol = gto.Mole()
-		self.SenseGrid = MakeUniform([0,0,0],self.SenseRange,self.NSense)
-		#pyscfatomstring="C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";"
-		mol.atom = ''.join(["H@0 "+str(self.SenseGrid[iii,0])+" "+str(self.SenseGrid[iii,1])+" "+str(self.SenseGrid[iii,2])+";" for iii in range(len(self.SenseGrid))])
-		na = self.NSense
-		if (na%2 == 0):
-			mol.spin = 0
+		if (self.Spherical):
+			mol.atom ="C 0.0 0.0 0.0"
+			#mol.atom = ''.join(["H@0 "+str(self.SenseGrid[iii,0])+" "+str(self.SenseGrid[iii,1])+" "+str(self.SenseGrid[iii,2])+";" for iii in range(len(self.SenseGrid))])
+			na = 1
+			if (na%2 == 0):
+				mol.spin = 0
+			else:
+				mol.spin = 1
 		else:
-			mol.spin = 1
-		if (TOTAL_SENSORY_BASIS == None): 
+			self.SenseGrid = MakeUniform([0,0,0],self.SenseRange,self.NSense)
+			#pyscfatomstring="C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";"
+			mol.atom = ''.join(["H@0 "+str(self.SenseGrid[iii,0])+" "+str(self.SenseGrid[iii,1])+" "+str(self.SenseGrid[iii,2])+";" for iii in range(len(self.SenseGrid))])
+			na = self.NSense
+			if (na%2 == 0):
+				mol.spin = 0
+			else:
+				mol.spin = 1
+		if (TOTAL_SENSORY_BASIS == None):
 			raise("missing sensory basis")
 		mol.basis = TOTAL_SENSORY_BASIS
 		nsaos = 0
 		try:
 			mol.build()
 		except Exception as Ex:
-			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			print mol.atom, mol.basis
 			raise Ex
 		nbas = gto.nao_nr(mol)
 		self.SenseS = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nbas,0,nbas))
@@ -361,7 +373,7 @@ class Grids:
 		print "Grid ranges (A):",np.max(samps[:,1]),np.min(samps[:,1])
 		print "Grid ranges (A):",np.max(samps[:,2]),np.min(samps[:,2])
 		# Make the atom densities.
-		Ps = self.MolDensity(samps,m,p,Nm_)
+		Ps = self.MolDensity(samps,m,p,tag)
 		GridstoRaw(Ps,ngrid,Nm_)
 		return
 
@@ -375,8 +387,8 @@ class Grids:
 		else:
 			for j in range(len(m.atoms)):
 				if (j == tag):
-					print 
-					pyscfatomstring=pyscfatomstring+"H@999"+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
+					print "Tagging atom", j
+					pyscfatomstring=pyscfatomstring+"N@0"+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
 				else:
 					pyscfatomstring=pyscfatomstring+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
 		mol.atom = pyscfatomstring
