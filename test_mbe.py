@@ -45,8 +45,10 @@ if (1):
 		TreatedAtoms = a.AtomTypes()
 		print "TreatedAtoms ", TreatedAtoms 
 		d = MolDigester(TreatedAtoms, name_="SymFunc")  # Initialize a digester that apply descriptor for the fragments.
-		tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-		tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
+		#tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+		#tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
+		tset = TensorMolData_BP(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+		tset.BuildTrain("H2O_tinker_amoeba")
 
 	# doing the KRR for the set for debug purpose.
 	if (0):
@@ -80,7 +82,7 @@ if (0):
 		nn_mbe.NN_Energy(mol)
 
 # use NN-MBE model to optimize molecule. 
-if (1):
+if (0):
 	# load molecule
         a=MSet("H2O_opt")
         a.ReadGDB9Unpacked("./H2O_opt/")

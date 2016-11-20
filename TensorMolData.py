@@ -72,7 +72,7 @@ class TensorMolData():
 
 	def CheckShapes(self):
 		# Establish case and label shapes.
-		tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_permute_frags[self.order][0])
+		tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_frags[self.order][0])
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape
 		if (self.dig.eshape == None or self.dig.lshape ==None):
@@ -267,5 +267,89 @@ class TensorMolData():
 		return
 
 
+class TensorMolData_BP(TensorMolData):
+        """
+                A Training Set is a Molecule set, with a sampler and an embedding
+                The sampler chooses points in the molecular volume.
+                The embedding turns that into inputs and labels for a network to regress.
+        """
+        def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1):
+		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_)
+		self.atom_index = None
+		self.eles = list(self.set.AtomTypes())
+		return 
 
 
+	def BuildTrain(self, name_="gdb9",  append=False):
+                self.CheckShapes()
+                self.name=name_
+                total_case = 0
+                for mi in range(len(self.set.mols)):
+                        total_case += len(self.set.mols[mi].mbe_frags[self.order])
+                cases = []
+                labels = np.zeros((total_case, self.dig.lshape))
+                casep=0
+		self.atom_index = self.Generate_Atom_Index()
+                for mi in range(len(self.set.mols)):
+                        for frag in self.set.mols[mi].mbe_frags[self.order]:
+                                #print  frag.dist[0], frag.frag_mbe_energy
+                                ins,outs = self.dig.TrainDigest(frag)
+                                cases.append(ins)
+                                labels[casep:casep+1] += outs
+                                casep += 1
+				#print cases, labels, cases.shape, labels.shape
+		cases = np.asarray(cases)
+                insname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
+                outsname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+                if (not append):
+                        inf = open(insname,"wb")
+                        ouf = open(outsname,"wb")
+                        np.save(inf,cases[:casep])
+                        np.save(ouf,labels[:casep])
+                        inf.close()
+                        ouf.close()
+                        self.AvailableDataFiles.append([insname,outsname])
+                else:
+                        inf = open(insname,"a+b")
+                        ouf = open(outsname,"a+b")
+                        np.save(inf,cases)
+                        np.save(ouf,labels)
+                        inf.close()
+                        ouf.close()
+                self.Save() #write a convenience pickle.
+                return
+
+	def Sort_SymFunc_By_Ele(self, inputs):
+		eles= list(self.set.AtomTypes())
+                sym_funcs = dict()
+		for ele in eles:
+			sym_funcs[ele]=[]
+	
+		loop_index = 0
+		for mol in self.set.mols:
+			for frag in mol.mbe_frags[self.order]:
+				for i in range (0, frag.NAtoms()):
+					sym_funcs[int(frag.atoms[i])].append(inputs[loop_index][i])
+				loop_index += 1	
+		#print "sym_funcs: ", len(sym_funcs[1]), len(sym_funcs[8])
+		return sym_funcs
+
+
+	def Generate_Atom_Index(self):
+		eles= list(self.set.AtomTypes())
+		atom_index = dict()
+
+		total_case = 0
+                for mi in range(len(self.set.mols)):
+                        total_case += len(self.set.mols[mi].mbe_frags[self.order])
+
+		for ele in eles:
+			atom_index[ele]=[0]*total_case
+
+		loop_index = 0
+		for i in range (0, len(self.set.mols)):
+			for  j, frag in enumerate(self.set.mols[i].mbe_frags[self.order]):
+				for k in range (0, frag.NAtoms()):
+					atom_index[int(frag.atoms[k])][loop_index] += 1
+				loop_index += 1
+		return atom_index

@@ -45,10 +45,12 @@ class MolDigester:
 		for i in range (0, mol.NAtoms()):
                 	sym =  MolEmb.Make_Sym(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), i, self.SensRadius, zeta, eta1, eta2, Rs)
                 	sym = np.asarray(sym[0], dtype=np.float32)
-                	sym = sym.reshape((1, self.nsym,  sym.shape[1] *  sym.shape[2]))
-			print "sym", sym
+                	sym = sym.reshape((self.nsym*sym.shape[1] *  sym.shape[2]))
+			#print "sym", sym
 			SYM.append(sym)
-                return SYM
+		SYM =  np.asarray(SYM)
+		SYM_deri = np.zeros((SYM.shape[0], SYM.shape[1])) # debug, it will take some work to implement to derivative of sym func. 
+                return SYM, SYM_deri
 
 
 
@@ -118,13 +120,24 @@ class MolDigester:
                 return UpTri, deri_CM
 
 	def TrainDigest(self, mol_):
-		CM, deri_CM = (self.EmbF(mol_))(mol_)
-		UpTri = self.GetUpTri(CM)
-		out = mol_.frag_mbe_energy
-		if self.lshape ==None or self.eshape==None:
-			self.lshape=1
-			self.eshape=UpTri.shape[0] 
-		return UpTri, out
+		if (self.name =="Coulomb"):
+			CM, deri_CM = (self.EmbF(mol_))(mol_)
+			UpTri = self.GetUpTri(CM)
+			out = mol_.frag_mbe_energy
+			if self.lshape ==None or self.eshape==None:
+				self.lshape=1
+				self.eshape=UpTri.shape[0] 
+			return UpTri, out
+		elif (self.name == "SymFunc"):
+			SYM, SYM_deri = (self.EmbF(mol_))(mol_)
+			out = mol_.frag_mbe_energy
+			if self.lshape ==None or self.eshape==None:
+				self.lshape = 1
+				self.eshape = [SYM.shape[0], SYM.shape[1]]
+			return SYM, out
+		else:
+                        raise Exception("Unknown Embedding Function")
+                return
 
 	def Print(self):
 		print "Digest name: ", self.name

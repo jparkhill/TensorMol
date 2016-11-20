@@ -639,8 +639,8 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
          for (int i = 0; i < dim_Rs; i++)
             Rs[i] = PyFloat_AsDouble(PyList_GetItem(Rs_py, i));
 
-	 for (int j = 0; j < 10; j++) 
-		std::cout<<xyz_data[j]<<std::endl;
+	 //for (int j = 0; j < 10; j++) 
+	//	std::cout<<xyz_data[j]<<std::endl;
 
          for (int j = 0; j < natom; j++) {
 	    if (j==theatom)
