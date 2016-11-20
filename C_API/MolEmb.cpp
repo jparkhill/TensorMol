@@ -129,7 +129,7 @@ void  G2(double *data, const double *zeta, const double *eta, int dim_zeta, int 
              fc1=fc(dist1, dist_cut),fc2=fc(dist2, dist_cut),fc3=fc(dist3, dist_cut);
              theta = (dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2);
              for (int n = 0; n <  dim_zeta; n++) {
-		A=1.0;
+		A=pow(2.0,1-zeta[n])*pow(1+lambda*theta,zeta[n]);
                 C=fc1*fc2*fc3;
                 distsum=dist1*dist1+dist2*dist2+dist3*dist3;
                 for (int m = 0; m <  dim_eta; m++) {
@@ -626,6 +626,8 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
          xyz_data = (double*) xyz->data;
          grids_data = (double*) grids -> data;
 
+	 //for (int i=0; i < natom; i++) 
+	 //    std::cout<<"atoms[i]:"<<static_cast<int16_t>(atoms[i])<<std::endl;   // tricky way to print uint8, uint8 can not printed by cout directly. 
          
          for (int i = 0; i < dim_zeta; i++) {
             zeta[i] = PyFloat_AsDouble(PyList_GetItem(zeta_py, i));
@@ -637,11 +639,14 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
          for (int i = 0; i < dim_Rs; i++)
             Rs[i] = PyFloat_AsDouble(PyList_GetItem(Rs_py, i));
 
+	 for (int j = 0; j < 10; j++) 
+		std::cout<<xyz_data[j]<<std::endl;
+
          for (int j = 0; j < natom; j++) {
 	    if (j==theatom)
                         continue;
             for (int k=0; k < nele; k++) {
-               if (atoms[j] == ele[k]) 
+               if (atoms[j] == ele[k])  
                   ele_index[k].push_back(j);
             }
          }

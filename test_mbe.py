@@ -39,10 +39,12 @@ if (1):
 		a.Save()
 
 	# Prepare data for neural newtork training.
-	if (0):
+	if (1):
 		a=MSet("H2O_tinker_amoeba")
                 a.Load()
-		d = MolDigester()  # Initialize a digester that apply descriptor for the fragments.
+		TreatedAtoms = a.AtomTypes()
+		print "TreatedAtoms ", TreatedAtoms 
+		d = MolDigester(TreatedAtoms, name_="SymFunc")  # Initialize a digester that apply descriptor for the fragments.
 		tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
 		tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
 
