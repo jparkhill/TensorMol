@@ -274,8 +274,10 @@ class TensorMolData_BP(TensorMolData):
                 The embedding turns that into inputs and labels for a network to regress.
         """
         def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1):
-		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_)
 		self.atom_index = None
+		self.test_atom_index = None
+		self.train_atom_index = None
+		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_)
 		self.eles = list(self.set.AtomTypes())
 		return 
 
@@ -319,19 +321,19 @@ class TensorMolData_BP(TensorMolData):
                 self.Save() #write a convenience pickle.
                 return
 
-	def Sort_SymFunc_By_Ele(self, inputs):
+	def Sort_SymFunc_By_Ele(self, inputs, atom_index):
 		eles= list(self.set.AtomTypes())
                 sym_funcs = dict()
 		for ele in eles:
 			sym_funcs[ele]=[]
-	
-		loop_index = 0
-		for mol in self.set.mols:
-			for frag in mol.mbe_frags[self.order]:
-				for i in range (0, frag.NAtoms()):
-					sym_funcs[int(frag.atoms[i])].append(inputs[loop_index][i])
-				loop_index += 1	
+		
+		for i in range (0, inputs.shape[0]):
+			for ele in eles:
+				for j  in range (0, len(atom_index[ele][i])):
+					sym_funcs[ele].append(inputs[i][atom_index[ele][i][j]])
 		#print "sym_funcs: ", len(sym_funcs[1]), len(sym_funcs[8])
+		for ele in eles:
+                        sym_funcs[ele]=np.asarray(sym_funcs[ele])
 		return sym_funcs
 
 
@@ -344,12 +346,96 @@ class TensorMolData_BP(TensorMolData):
                         total_case += len(self.set.mols[mi].mbe_frags[self.order])
 
 		for ele in eles:
-			atom_index[ele]=[0]*total_case
+			atom_index[ele]=[[] for i in range(total_case)]
 
 		loop_index = 0
 		for i in range (0, len(self.set.mols)):
 			for  j, frag in enumerate(self.set.mols[i].mbe_frags[self.order]):
 				for k in range (0, frag.NAtoms()):
-					atom_index[int(frag.atoms[k])][loop_index] += 1
+					(atom_index[int(frag.atoms[k])][loop_index]).append(k)
 				loop_index += 1
+
+		for ele in eles:
+                        atom_index[ele] = np.asarray(atom_index[ele])
+		#print atom_index, atom_index[1].shape, atom_index[8].shape
 		return atom_index
+
+
+	def Randomize(self, ti, to):
+                random.seed(0)
+                idx = np.random.permutation(ti.shape[0])
+                ti = ti[idx]
+                to = to[idx]
+		atom_index =dict()
+		for ele in self.eles:
+			atom_index[ele] = self.atom_index[ele][idx]
+                return ti, to, atom_index
+
+        def LoadData(self, random=False):
+                insname = self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
+                outsname = self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+                inf = open(insname,"rb")
+        	ouf = open(outsname,"rb")
+                ti = np.load(inf)
+                to = np.load(ouf)
+                inf.close()
+                ouf.close()
+                if (ti.shape[0] != to.shape[0]):
+                        raise Exception("Bad Training Data.")
+                #ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
+                to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
+                if (random):
+                        ti, to, atom_index = self.Randomize(ti, to)
+		print ti.shape, to.shape, atom_index[1].shape, atom_index[8].shape
+                self.NTrain = to.shape[0]
+                return ti, to, atom_index
+
+
+	def LoadDataToScratch(self, random=True):
+                ti, to, atom_index = self.LoadData( random)
+
+                self.NTest = int(self.TestRatio * ti.shape[0])
+               
+		self.scratch_outputs = to[:ti.shape[0]-self.NTest] 
+		tmp_inputs = ti[:ti.shape[0]-self.NTest]
+		train_atom_index=dict()
+		self.train_mol_len = dict()
+		for ele in self.eles:
+			train_atom_index[ele]=atom_index[ele][:ti.shape[0]-self.NTest]
+			self.train_mol_len[ele]=[]
+			for i in range (0, train_atom_index[ele].shape[0]):
+				self.train_mol_len[ele].append(len(train_atom_index[ele][i]))
+		self.scratch_inputs = self.Sort_SymFunc_By_Ele(tmp_inputs, train_atom_index)
+
+                self.scratch_test_outputs = to[ti.shape[0]-self.NTest:]
+		tmp_test_inputs = ti[ti.shape[0]-self.NTest:]
+		test_atom_index=dict()
+		self.test_mol_len = dict()
+                for ele in self.eles:
+                        test_atom_index[ele]=atom_index[ele][ti.shape[0]-self.NTest:]
+			self.test_mol_len[ele]=[]
+                        for i in range (0, test_atom_index[ele].shape[0]):
+                                self.test_mol_len[ele].append(len(test_atom_index[ele][i]))
+                self.scratch_test_inputs = self.Sort_SymFunc_By_Ele(tmp_test_inputs, test_atom_index)
+
+                self.ScratchState = self.order
+                self.ScratchPointer=0
+		print self.test_mol_len, self.train_mol_len
+		return
+
+
+        def GetTrainBatch(self,ncases=1280,random=False):
+                if (self.ScratchState != self.order):
+                        self.LoadDataToScratch()
+                if (ncases>self.NTrain):
+                        raise Exception("Training Data is less than the batchsize... :( ")
+                if ( self.ScratchPointer+ncases >= self.NTrain):
+                        self.ScratchPointer = 0 #Sloppy.
+                tmp=(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+ncases], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+ncases])
+                self.ScratchPointer += ncases
+                return tmp
+
+        def GetTestBatch(self,ncases=1280, ministep = 0):
+                if (ncases>self.NTest):
+                        raise Exception("Test Data is less than the batchsize... :( ")
+                return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)]) 

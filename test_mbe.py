@@ -39,7 +39,7 @@ if (1):
 		a.Save()
 
 	# Prepare data for neural newtork training.
-	if (1):
+	if (0):
 		a=MSet("H2O_tinker_amoeba")
                 a.Load()
 		TreatedAtoms = a.AtomTypes()
@@ -54,8 +54,15 @@ if (1):
 	if (0):
 		tset = TensorMolData(MSet(),MolDigester([]),"H2O_tinker_amoeba_Coulomb_1") # Load the generated data for training the neural network.
 		tset.KRR()
+	
+	# testing the BP TensorMolData
+	if (1):
+                tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2")
+		tset.LoadDataToScratch(True)
 
 	# Train the neural network.
+
+
 	if (0):
 		tset = TensorMolData(MSet(),MolDigester([]),"H2O_tinker_amoeba_Coulomb_2") # Load the generated data for training the neural network.
 		manager=TFMolManage("",tset,False,"fc_sqdiff") # Initialzie a manager than manage the training of neural network.
