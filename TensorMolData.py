@@ -283,7 +283,7 @@ class TensorMolData_BP(TensorMolData):
 		self.num_train_atoms = None
 		self.train_mol_len = None
 		self.scratch_outputs = None
-		self.self.scratch_test_outputs = None
+		self.scratch_test_outputs = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_)
 		self.eles.sort()
 		print "self.eles", self.eles
@@ -300,7 +300,7 @@ class TensorMolData_BP(TensorMolData):
                 self.num_train_atoms = None
                 self.train_mol_len = None
                 self.scratch_outputs = None
-                self.self.scratch_test_outputs = None
+                self.scratch_test_outputs = None
                 return
 
 
@@ -469,6 +469,7 @@ class TensorMolData_BP(TensorMolData):
 		
 
         def GetTrainBatch(self,ncases=1200, num_mol = 1200/6):
+		start_time = time.time()
                 if (self.ScratchState != self.order):
                         self.LoadDataToScratch()
                 if (ncases> self.NTrain):
@@ -503,6 +504,7 @@ class TensorMolData_BP(TensorMolData):
                 #tmp=(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+ncases], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+num_mol])
                 self.ScratchPointer += num_mol
 		#print inputs[1], inputs[-1], outputs[1], outputs[-1],  number_atom_per_ele, index_matrix
+		print "time cost of get batch:", time.time() - start_time
                 return inputs, outputs, number_atom_per_ele, index_matrix
 
         def GetTestBatch(self,ncases=1280, ministep = 0):
