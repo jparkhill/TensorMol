@@ -59,7 +59,7 @@ if (1):
 	if (1):
                 tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2")
 		tset.LoadDataToScratch(True)
-
+		tset.GetTrainBatch()
 	# Train the neural network.
 
 
