@@ -40,7 +40,7 @@ class Instance:
 		#self.learning_rate = 0.0000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
 		self.momentum = 0.9
 		self.max_steps = 100000
-		self.batch_size = 8*400 # This is just the train batch size.
+		self.batch_size = 100 # This is just the train batch size.
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
@@ -636,7 +636,7 @@ class Instance_fc_sqdiff(Instance):
 
 
 	def train_step(self,step):
-		Ncase_train = self.TData.NTrain()
+		Ncase_train = self.TData.NTrain
 		start_time = time.time()
            	train_loss =  0.0
            	for ministep in range (0, int(Ncase_train/self.batch_size)):
@@ -653,13 +653,14 @@ class Instance_fc_sqdiff(Instance):
 class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 	def __init__(self, TData_, aver_atom_per_mol_ = 6,  Name_=None, Test_TData_=None):
                 Instance.__init__(self, TData_,  Name_, Test_TData_)
+		self.inshape =  self.TData.dig.eshape[1]
 		self.aver_atom_per_mol = aver_atom_per_mol_
 		self.input_case = self.batch_size * self.aver_atom_per_mol 
                 self.hidden1 = 500
                 self.hidden2 = 500
                 self.hidden3 = 500
-		self.H_length = None
-		self.O_length = None
+		self.H_length = 0  # start with a  random int for inference
+		self.O_length = 0  # start with a  random int for inference
 		self.H_index_matrix = None
 		self.O_index_matrix = None
                 self.NetType = "fc_sqdiff_BP"
@@ -676,7 +677,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 		O_index_mat = tf.cast(O_index_mat,tf.float32)
 		# define the Hydrogen network
 		with tf.name_scope('H_hidden1'):
-				H_inputs = tf.slice(images, [0,0], [H_index_mat, self.inshape]) # debug the indexing.  The tf.slice is kind of weired 
+				H_inputs = tf.slice(images, [0,0], [H_length, self.inshape]) # debug the indexing.  The tf.slice is kind of weired 
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
 				biases = tf.Variable(tf.zeros([hidden1_units]),
 				name='biases')
@@ -699,7 +700,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 	
 		# define the Oxygen newtork
 		with tf.name_scope('O_hidden1'):
-				O_inputs = tf.slice(images, [H_index_mat,0], [O_index_mat, self.inshape])
+				O_inputs = tf.slice(images, [H_length,0], [O_length, self.inshape])
                                 weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
                                 biases = tf.Variable(tf.zeros([hidden1_units]),
                                 name='biases')
@@ -792,13 +793,14 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 
 
 	def train_step(self, step):
-		Ncase_train = self.TData.NTrain()
+		Ncase_train = self.TData.NTrain
 		start_time = time.time()
                 train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
-			raw_data=self.TData.GetTrainBatch( self.batch_size) # batch_data strucutre: inputs (self.input_case*self.eshape), outputs (self.batch_size*self.lshape), number_atom_per_ele (dic[1(H)]=2000, dic[8(0)]=1000), index_matrix(dic[1(H)]: number_atom_per_ele[1(H)]*self.batch_size)
+			raw_data=self.TData.GetTrainBatch(self.input_case, self.batch_size) # batch_data strucutre: inputs (self.input_case*self.eshape), outputs (self.batch_size*self.lshape), number_atom_per_ele (dic[1(H)]=2000, dic[8(0)]=1000), index_matrix(dic[1(H)]: number_atom_per_ele[1(H)]*self.batch_size)
+			print ("raw_data:", raw_data)
 			batch_data, atom_index_matrix=self.PrepareData(raw_data)
-			feed_dict = self.fill_feed_dict(batch_data, atom_index_matrix, self.images_placeholder, self.labels_placeholder, self.H_index_feed, self.O_index_feed)
+			feed_dict = self.fill_feed_dict(batch_data, atom_index_matrix, self.images_placeholder, self.labels_placeholder, self.H_index_matrix, self.O_index_matrix)
 			_, total_loss_value, loss_value  = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
                         train_loss = train_loss + loss_value
                 duration = time.time() - start_time

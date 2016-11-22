@@ -56,16 +56,14 @@ if (1):
 		tset.KRR()
 	
 	# testing the BP TensorMolData
-	if (1):
+	if (0):
                 tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2")
 		tset.LoadDataToScratch(True)
-		tset.GetTrainBatch()
 	# Train the neural network.
 
-
-	if (0):
-		tset = TensorMolData(MSet(),MolDigester([]),"H2O_tinker_amoeba_Coulomb_2") # Load the generated data for training the neural network.
-		manager=TFMolManage("",tset,False,"fc_sqdiff") # Initialzie a manager than manage the training of neural network.
+	if (1):
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2") # Load the generated data for training the neural network.
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=20000)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 
 	# Test the neural network.

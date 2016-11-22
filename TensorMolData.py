@@ -62,8 +62,6 @@ class TensorMolData():
 			print "scratch_test_inputs.shape",self.scratch_test_inputs.shape
 			print "scratch_test_outputs.shape",self.scratch_test_outputs.shape
 
-	def NTrain(self):
-		return len(self.scratch_outputs)
 
 	def QueryAvailable(self):
 		""" If Tensordata has already been made, this looks for it under a passed name."""
@@ -473,7 +471,8 @@ class TensorMolData_BP(TensorMolData):
 		start_time = time.time()
                 if (self.ScratchState != self.order):
                         self.LoadDataToScratch()
-                if (ncases> self.NTrain):
+		print "NTrain:", self.NTrain, "num_mol:", num_mol
+                if (num_mol> self.NTrain):
                         raise Exception("Training Data is less than the batchsize... :( ")
 
 		reset = False
@@ -512,3 +511,12 @@ class TensorMolData_BP(TensorMolData):
                 if (ncases>self.NTest):
                         raise Exception("Test Data is less than the batchsize... :( ")
                 return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)]) 
+
+
+        def PrintStatus(self):
+                print "self.ScratchState",self.ScratchState
+                print "self.ScratchPointer",self.ScratchPointer
+                if (self.scratch_outputs != None):
+			print "number of training molecules:",self.NTrain, " number of training molecules:", self.NTest 
+			for ele in self.eles:
+                        	print "element: ",AtomicSymbol(ele),  " Input Shape:", self.scratch_inputs[ele].shape
