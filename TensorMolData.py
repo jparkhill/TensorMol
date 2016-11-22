@@ -195,6 +195,7 @@ class TensorMolData():
 	def LoadDataToScratch(self, random=True):
 		ti, to = self.LoadData( random)
 		self.NTest = int(self.TestRatio * ti.shape[0])
+		self.NTrain = int(ti.shape[0]-self.NTest)
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]
 		self.scratch_test_inputs = ti[ti.shape[0]-self.NTest:]
