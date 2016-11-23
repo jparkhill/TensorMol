@@ -130,7 +130,7 @@ class MolDigester:
 			return UpTri, out
 		elif (self.name == "SymFunc"):
 			SYM, SYM_deri = (self.EmbF(mol_))(mol_)
-			out = mol_.frag_mbe_energy
+			out = mol_.frag_energy   # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
 			if self.lshape ==None or self.eshape==None:
 				self.lshape = 1
 				self.eshape = [SYM.shape[0], SYM.shape[1]]

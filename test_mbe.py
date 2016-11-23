@@ -29,7 +29,7 @@ if (1):
 		a.Load() # Load generated training set (.pdb file).
 		#a.Calculate_All_Frag_Energy(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
 		a.Get_All_Qchem_Frag_Energy()
-		#a.Save() 
+		a.Save() 
 
 	# Do the permutation if it is necessary.
 	if (0):
@@ -58,9 +58,9 @@ if (1):
 	# testing the BP TensorMolData
 	if (0):
                 tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2")
-		tset.LoadDataToScratch(True)
-	# Train the neural network.
+		#tset.LoadDataToScratch(True)
 
+	# Train the neural network.
 	if (1):
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2") # Load the generated data for training the neural network.
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.

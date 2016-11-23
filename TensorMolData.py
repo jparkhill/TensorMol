@@ -284,13 +284,13 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_outputs = None
 		self.scratch_test_outputs = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_)
+		self.eles = list(self.set.AtomTypes()) 
 		self.eles.sort()
 		print "self.eles", self.eles
 		return 
 
 	def CleanScratch(self):
 		TensorMolData.CleanScratch(self)
-		self.atom_index = None
                 self.test_atom_index = None
                 self.train_atom_index = None
                 self.Ele_ScratchPointer = None
@@ -376,7 +376,7 @@ class TensorMolData_BP(TensorMolData):
 
 		for ele in self.eles:
                         atom_index[ele] = np.asarray(atom_index[ele])
-		#print atom_index, atom_index[1].shape, atom_index[8].shape
+		print "atom_index:", atom_index, atom_index[1].shape, atom_index[8].shape
 		return atom_index
 
 
