@@ -461,7 +461,8 @@ class TensorMolData_BP(TensorMolData):
 			atom_index = 0
 			for i in range (self.ScratchPointer, self.ScratchPointer + num_mol):
 				for j in range (atom_index, atom_index + self.train_mol_len[ele][i]):
-					index_matrix[ele][j][i]=True
+					#print "index of mol:", i, "index of atom:", j
+					index_matrix[ele][j][i-self.ScratchPointer]=True
 				atom_index += self.train_mol_len[ele][i]	
 		#print "index_matrix", index_matrix
 		return index_matrix
@@ -471,7 +472,7 @@ class TensorMolData_BP(TensorMolData):
 		start_time = time.time()
                 if (self.ScratchState != self.order):
                         self.LoadDataToScratch()
-		print "NTrain:", self.NTrain, "num_mol:", num_mol
+		#print "NTrain:", self.NTrain, "num_mol:", num_mol
                 if (num_mol> self.NTrain):
                         raise Exception("Training Data is less than the batchsize... :( ")
 
@@ -504,7 +505,7 @@ class TensorMolData_BP(TensorMolData):
                 #tmp=(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+ncases], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+num_mol])
                 self.ScratchPointer += num_mol
 		#print inputs[1], inputs[-1], outputs[1], outputs[-1],  number_atom_per_ele, index_matrix
-		print "time cost of get batch:", time.time() - start_time
+		#print "time cost of get batch:", time.time() - start_time
                 return inputs, outputs, number_atom_per_ele, index_matrix
 
         def GetTestBatch(self,ncases=1280, ministep = 0):

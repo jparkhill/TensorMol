@@ -34,13 +34,14 @@ class Instance:
 			os.mkdir(self.path)
 		#	self.checkpoint_file_mini =self.path+self.name
 		self.chk_file = ''
-		self.learning_rate = 0.0001 # for adam
+		self.learning_rate = 0.01
+		#self.learning_rate = 0.0001 # for adam
 		#self.learning_rate = 0.00001 # for adadelta 
 		#self.learning_rate = 0.000001 # 1st sgd
 		#self.learning_rate = 0.0000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
 		self.momentum = 0.9
 		self.max_steps = 100000
-		self.batch_size = 100 # This is just the train batch size.
+		self.batch_size = 1000 # This is just the train batch size.
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
@@ -287,7 +288,7 @@ class Instance:
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 10
+		test_freq = 1000
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -661,8 +662,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 self.hidden3 = 500
 		self.H_length = 0  # start with a  random int for inference
 		self.O_length = 0  # start with a  random int for inference
-		self.H_index_matrix = None
-		self.O_index_matrix = None
+		self.index_matrix = None
                 self.NetType = "fc_sqdiff_BP"
 #               self.inshape = self.TData.scratch_inputs.shape[1] 
                 self.summary_op =None
@@ -671,10 +671,9 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 
 
 
-	def inference(self, images,  H_index_mat, O_index_mat, H_length, O_length,  hidden1_units, hidden2_units):
+	def inference(self, images, index_mat, H_length, O_length,  hidden1_units, hidden2_units):
 		# convert the index matrix from bool to float
-		H_index_mat = tf.cast(H_index_mat,tf.float32)
-		O_index_mat = tf.cast(O_index_mat,tf.float32)
+		index_mat = tf.cast(index_mat,tf.float32)
 		# define the Hydrogen network
 		with tf.name_scope('H_hidden1'):
 				H_inputs = tf.slice(images, [0,0], [H_length, self.inshape]) # debug the indexing.  The tf.slice is kind of weired 
@@ -695,6 +694,9 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 				name='biases')
 				H_output = tf.matmul(H_hidden2, weights) + biases
 				H_output = tf.reshape(H_output, [1, H_length])  # this needs to be replaced by the natom
+			
+				H_index_mat = tf.slice(index_mat, [0,0], [H_length, self.batch_size])
+
 				H_output = tf.matmul(H_output, H_index_mat) 
 				H_output = tf.reshape(H_output, [self.batch_size, 1]) # this needs to be replaced by the nmol	
 	
@@ -718,6 +720,9 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                                 name='biases')
                                 O_output = tf.matmul(O_hidden2, weights) + biases
 				O_output = tf.reshape(O_output, [1, O_length])  # this needs to be replace by the natom
+
+				O_index_mat = tf.slice(index_mat, [H_length,0],[H_length+O_length, self.batch_size])	
+
                                 O_output = tf.matmul(O_output, O_index_mat)
                                 O_output = tf.reshape(O_output, [self.batch_size, 1])
 			
@@ -734,16 +739,19 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 		
 		self.H_length = raw_data[2][1]
 		self.O_length = raw_data[2][8]
+
+		index_matrix = np.zeros((self.input_case, self.batch_size),dtype=bool)
+		index_matrix[0:self.H_length, :] = H_index_matrix
+		index_matrix[self.H_length:self.H_length + self.O_length, :] = O_index_matrix
+	
+		return [raw_data[0], raw_data[1]], index_matrix
 		
-		return [raw_data[0], raw_data[1]], [H_index_matrix, O_index_matrix]
-		
-	def fill_feed_dict(self, batch_data, index_matrix, images_pl, labels_pl, H_index_mat_pl, O_index_mat_pl):
+	def fill_feed_dict(self, batch_data, index_matrix, images_pl, labels_pl, index_mat_pl):
                 # Create the feed_dict for the placeholders filled with the next
                 # `batch size` examples.
                 images_feed = batch_data[0]
                 labels_feed = batch_data[1]
-		H_index_feed = index_matrix[0]
-		O_index_feed = index_matrix[1]
+		index_feed = index_matrix
                 # Don't eat shit. 
                 if (not np.all(np.isfinite(images_feed),axis=(0,1))):
                         print("I was fed shit")
@@ -754,8 +762,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 feed_dict = {
                 images_pl: images_feed,
                 labels_pl: labels_feed,
-                H_index_mat_pl: H_index_feed,
-		O_index_mat_pl: O_index_feed,
+                index_mat_pl: index_feed,
                 }
                 return feed_dict
 
@@ -763,15 +770,14 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 # rather than the full size of the train or test data sets.
                 inputs_pl = tf.placeholder(tf.float32, shape=(self.input_case, self.inshape)) # JAP : Careful about the shapes... should be flat for now.
                 outputs_pl = tf.placeholder(tf.float32, shape=(batch_size, self.outshape))
-		H_index_mat_pl = tf.placeholder(tf.bool, shape=((self.H_length, batch_size)))	
-                O_index_mat_pl = tf.placeholder(tf.bool, shape=((self.O_length, batch_size)))  
-                return inputs_pl, outputs_pl, H_index_mat_pl, O_index_mat_pl 
+		index_mat_pl = tf.placeholder(tf.bool, shape=((self.input_case, batch_size)))	
+                return inputs_pl, outputs_pl, index_mat_pl 
 
 	def train_prepare(self,  continue_training =False):
                 """Train for a number of steps."""
                 with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-                        self.images_placeholder, self.labels_placeholder, self.H_index_matrix, self.O_index_matrix = self.placeholder_inputs(self.batch_size)
-                        self.output = self.inference(self.images_placeholder, self.H_index_matrix, self.O_index_matrix, self.H_length, self.O_length, self.hidden1, self.hidden2)
+                        self.images_placeholder, self.labels_placeholder, self.index_matrix = self.placeholder_inputs(self.batch_size)
+                        self.output = self.inference(self.images_placeholder, self.index_matrix, self.H_length, self.O_length, self.hidden1, self.hidden2)
                         self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
                         self.summary_op = tf.merge_all_summaries()
@@ -798,13 +804,12 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			raw_data=self.TData.GetTrainBatch(self.input_case, self.batch_size) # batch_data strucutre: inputs (self.input_case*self.eshape), outputs (self.batch_size*self.lshape), number_atom_per_ele (dic[1(H)]=2000, dic[8(0)]=1000), index_matrix(dic[1(H)]: number_atom_per_ele[1(H)]*self.batch_size)
-			print ("raw_data:", raw_data)
-			batch_data, atom_index_matrix=self.PrepareData(raw_data)
-			feed_dict = self.fill_feed_dict(batch_data, atom_index_matrix, self.images_placeholder, self.labels_placeholder, self.H_index_matrix, self.O_index_matrix)
+			#print ("raw_data:", raw_data)
+			batch_data, index_matrix=self.PrepareData(raw_data)
+			feed_dict = self.fill_feed_dict(batch_data, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix)
 			_, total_loss_value, loss_value  = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
                         train_loss = train_loss + loss_value
                 duration = time.time() - start_time
-                print ("time to generate the mol index matrix:", index_time)
                 self.print_training(step, train_loss, Ncase_train, duration)
                 return
 
