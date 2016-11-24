@@ -293,10 +293,6 @@ int  Make_AM (const double *center_m, const array<std::vector<int>, 100>  ele_in
 	
 }
 
-
-
-
-
 static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 {
 	

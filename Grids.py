@@ -84,44 +84,55 @@ H    S
 		''')}
 TOTAL_SENSORY_BASIS={'C': gto.basis.parse('''
 C    S
-   1861.0916331              0.0744171        
-    642.9939764              0.1653957        
-    235.1105725              0.5576484        
-     90.7028894              1.3108298        
-     36.7794552              2.1694681        
-     15.6046273              1.7668846        
-      6.8907294              0.2930769        
+	  1.0					1.0000000
 C    S
-      3.1478850              1.0000000        
+	  0.5					1.0000000
 C    S
-      1.4777287              1.0000000        
+	  0.1					1.0000000
 C    S
-      0.7076466              1.0000000        
+	  0.02					1.0000000
 C    S
-      0.3430122              1.0000000        
-C    S
-      0.1669453              1.0000000        
+	  0.005					1.0000000
 C    P
-     13.5472892             -0.0206477        
-      5.4669419             -0.0115282        
+	  1.0					1.0000000
 C    P
-      2.1751721              1.0000000        
+	  0.5					1.0000000
 C    P
-      0.8582194              1.0000000        
+	  0.1					1.0000000
 C    P
-      0.3376720              1.0000000        
+	  0.02					1.0000000
+C    P
+	  0.005					1.0000000
 C    D
-      5.9287253             -0.0225948        
-      1.9809209             -0.0476827        
+	  0.5					1.0000000
 C    D
-      0.8055417              1.0000000        
+	  0.05					1.0000000
 C    D
-      0.3531244              1.0000000        
+	  0.01					1.0000000
+C    D
+	  0.004					1.0000000
 C    F
-      1.6755626              0.0088798        
-      0.5997536              0.0069903        
+	  0.2					1.0000000
+C    F
+	  0.02					1.0000000
+C    F
+	  0.004					1.0000000
 C    G
-      1.0024600              1.0000000
+	  0.1					1.0000000
+C    G
+	  0.02					1.0000000
+C    G
+	  0.004					1.0000000
+C    H
+	  0.1					1.0000000
+C    H
+	  0.02					1.0000000
+C    H
+	  0.004					1.0000000
+C    I
+	  0.02					1.0000000
+C    I
+	  0.004					1.0000000
 	  '''),'H@0': gto.basis.parse('''
 H    S
 	  1.5					1.0
@@ -224,7 +235,6 @@ class Grids:
 				raise Exception("Bad Isometry")
 		return
 
-
 	def Populate(self):
 		print "Populating Grids... "
 		#
@@ -292,12 +302,7 @@ class Grids:
 		mol = gto.Mole()
 		if (self.Spherical):
 			mol.atom ="C 0.0 0.0 0.0"
-			#mol.atom = ''.join(["H@0 "+str(self.SenseGrid[iii,0])+" "+str(self.SenseGrid[iii,1])+" "+str(self.SenseGrid[iii,2])+";" for iii in range(len(self.SenseGrid))])
-			na = 1
-			if (na%2 == 0):
-				mol.spin = 0
-			else:
-				mol.spin = 1
+			mol.spin = 0
 		else:
 			self.SenseGrid = MakeUniform([0,0,0],self.SenseRange,self.NSense)
 			#pyscfatomstring="C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";"
@@ -316,8 +321,10 @@ class Grids:
 		except Exception as Ex:
 			print mol.atom, mol.basis
 			raise Ex
-		nbas = gto.nao_nr(mol)
-		self.SenseS = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nbas,0,nbas))
+		#nbas = gto.nao_nr(mol)
+		#print nbas
+		self.SenseS = mol.intor('cint1e_ovlp_sph',shls_slice=(0,mol.nbas,0,mol.nbas))
+		self.NSense = self.SenseS.shape[0]
 		self.SenseSinv = MatrixPower(self.SenseS,-1.0)
 		return
 
@@ -351,6 +358,18 @@ class Grids:
 			print "Variance of Out", np.dot(Rsq.T,tmp)
 		return output
 
+	def Rasterize(self,inp):
+		if (self.Spherical):
+			grd = MakeUniform([0,0,0],self.SenseRange, self.NPts)
+			orbs = self.SenseOnGrid([0.0,0.0,0.0],grd)
+			if (len(inp)!=self.NSense):
+				raise Exception("Bad input dim.")
+			return np.tensordot(inp,orbs,axes=[[0],[1]])
+		else :
+			if (len(inp)!=self.NGau3):
+				raise Exception("Bad input dim.")
+			return np.power(np.tensordot(inp,self.OBFs,axes=[[0],[0]]),2.0)
+
 	def CenterOfP(self,POnGrid,AGrid=None):
 		if (len(POnGrid)!=self.NPts3):
 			raise Exception("Bad input dim.")
@@ -359,10 +378,20 @@ class Grids:
 		else:
 			return np.array([np.dot(AGrid.T,POnGrid)])[0]
 
-	def Rasterize(self,inp):
-		if (len(inp)!=self.NGau3):
-			raise Exception("Bad input dim.")
-		return np.power(np.tensordot(inp,self.OBFs,axes=[[0],[0]]),2.0)
+	def SenseOnGrid(self,p,grd_):
+		mol = gto.Mole()
+		mol.atom =''
+		if (not self.Spherical):
+			tmpgrid = self.SenseGrid + p
+			mol.atom = ''.join(["H@0 "+str(tmpgrid[iii,0])+" "+str(tmpgrid[iii,1])+" "+str(tmpgrid[iii,2])+";" for iii in range(len(tmpgrid))])
+		else:
+			mol.atom = ''.join("C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";")
+		mol.spin = 0
+		if (TOTAL_SENSORY_BASIS == None): 
+			raise("missing sensory basis")
+		mol.basis = TOTAL_SENSORY_BASIS
+		mol.build()
+		return gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,grd_*1.889725989)
 
 	def VecToRaw(self,inp,Nm_="VecToRaw"):
 		GridstoRaw(self.Rasterize(inp),self.NPts,Nm_)
@@ -405,7 +434,7 @@ class Grids:
 			raise Ex
 		return np.sum(gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,samps*1.889725989),axis=1)
 
-	def AtomEmbedAtomCentered(self,samps,m,p,i):
+	def AtomEmbedAtomCentered(self,samps,m,p,i=-1):
 		mol = gto.Mole()
 		MaxEmbedded = 30
 		SensedAtoms = [a for a in m.AtomsWithin(30.0,p) if a != i]
@@ -503,7 +532,7 @@ class Grids:
 		print "Sd.shape", Sd.shape
 		return Sd
 
-	def EmbedAtom(self,m,p,i):
+	def EmbedAtom(self,m,p,i=-1):
 		''' 
 			Returns coefficents embedding the environment of atom i, centered at point p.
 		'''
@@ -513,14 +542,20 @@ class Grids:
 		if (i != -1):
 			SensedAtoms = [a for a in m.AtomsWithin(10.0,p) if a != i]
 		else:
-			SensedAtoms = [a for a in m.AtomsWithin(10.0,[0,0,0])]
+			SensedAtoms = [a for a in m.AtomsWithin(10.0,p)]
 		if (len(SensedAtoms)>MaxEmbedded):
 			SensedAtoms=SensedAtoms[:MaxEmbedded]
 		if (len(SensedAtoms)==0):
 			raise Exception("NoAtomsInSensoryRadius")
-		tmpgrid = self.SenseGrid + p
-		mol.atom = ''.join(["H@0 "+str(tmpgrid[iii,0])+" "+str(tmpgrid[iii,1])+" "+str(tmpgrid[iii,2])+";" for iii in range(len(tmpgrid))])
-		na = self.NSense
+		mol.atom =''
+		if (not self.Spherical):
+			tmpgrid = self.SenseGrid + p
+			mol.atom = ''.join(["H@0 "+str(tmpgrid[iii,0])+" "+str(tmpgrid[iii,1])+" "+str(tmpgrid[iii,2])+";" for iii in range(len(tmpgrid))])
+		else:
+			mol.atom = ''.join("C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";")
+		na = 0
+		if (not self.Spherical):
+			na = self.NSense
 		for j in SensedAtoms:
 			mol.atom=mol.atom+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!=SensedAtoms[-1] else "")
 			na=na+1
@@ -538,7 +573,8 @@ class Grids:
 			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
 			raise Ex
 		nsaos = len(self.SenseSinv)
-		nbas = gto.nao_nr(mol)
+		if (self.Spherical):
+			nsaos = mol.atom_nshells(0)
 		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,nsaos,mol.nbas))
 		return np.sum(np.dot(self.SenseSinv,Cs),axis=1)
 

@@ -215,6 +215,7 @@ class Digester:
 						print "debug case", i
 						GRIDS.VdwDensity(mol_,[0.0,0.0,0.0],150,"dbg"+str(i),i)
 						GRIDS.VecToRaw(inputs[0],"dbgi"+str(i))
+						print inputs[0]
 						print mol_.coords[i], outputs
 						dbg.append([mol_,i,mol_.coords[i]])
 				elif(self.SamplingType=="Smooth"): #If Smooth is now a property of the Digester: OType SmoothP
