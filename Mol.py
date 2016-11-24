@@ -717,6 +717,7 @@ class Frag(Mol):
 			self.dist = None
 		self.frag_mbe_energies=dict()
 		self.frag_mbe_energy = None
+		self.frag_energy = None
 		self.permute_index = range (0, self.FragOrder)
 		self.permute_sub_index = None	
 		return
@@ -864,6 +865,8 @@ class Frag(Mol):
 
 	def Set_Frag_MBE_Energy(self):
 		self.frag_mbe_energy =  self.Frag_MBE_Energy()
+		self.frag_energy = self.frag_mbe_energies[LtoS(self.permute_index)]
+		print " self.frag_energy : ",  self.frag_energy
 		prod = 1
 		for i in self.dist:
 			prod = i*prod

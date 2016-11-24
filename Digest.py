@@ -32,7 +32,8 @@ class Digester:
 		if (self.OType == "SmoothP" or self.OType == "Disp"):
 			self.NTrainSamples=1 #Smoothprobability only needs one sample because it fits the go-probability and pgaussians-center.
 
-		self.eles = eles_ # Consistent list of atoms in the order they are treated.
+		self.eles = list(eles_)
+		self.eles.sort() # Consistent list of atoms in the order they are treated.
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
 		self.TrainSampDistance=2.0 #how far in Angs to sample on average.
 		
@@ -41,8 +42,6 @@ class Digester:
 		self.npgaussian = self.neles # channel of PGaussian
 		# Instead self.emb should know it's return shape or it should be testable.
 		self.lshape=None # shape of label array.
-		self.eles = eles_ # Consistent list of atoms in the order they are treated.
-		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
 		self.BlurRadius = BlurRadius_ # Stdev of gaussian used as prob of atom
 		self.SensRadius=6.0 # Distance which is used for input.
 

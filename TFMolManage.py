@@ -61,6 +61,9 @@ class TFMolManage:
 			self.Instances = Instance_fc_classify(self.TData, None, self.Test_TData)
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances = Instance_fc_sqdiff(self.TData, None, self.Test_TData)
+		elif (self.NetType == "fc_sqdiff_BP"):
+			NAtom_in_mol = 6  # debug ..this needs to be a member in TensorMolData or Mol
+			self.Instances = Instance_fc_sqdiff_BP(self.TData, NAtom_in_mol, None, self.Test_TData)
 		else:
 			raise Exception("Unknown Network Type!")
 

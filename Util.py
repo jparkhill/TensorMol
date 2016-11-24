@@ -28,7 +28,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 MAX_ATOMIC_NUMBER = 10
 GRIDS = None
 MBE_ORDER = 2
-HAS_GRIDS=True
+HAS_GRIDS=False
 
 # Derived Quantities and useful things. 
 HAS_PYSCF = False
