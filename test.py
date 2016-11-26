@@ -62,7 +62,7 @@ if (1):
 		# Choose allowed atoms.
 		TreatedAtoms = a.AtomTypes()
 		# 2 - Choose Digester
-		d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="Disp")
+		d = Digester(TreatedAtoms, name_="GauInv",OType_ ="Disp")
 		# 4 - Generate training set samples.
 		tset = TensorData(a,d)
 		tset.BuildTrain("OptMols_NEQ",TreatedAtoms,False,True) #fourth arg. generates debug data

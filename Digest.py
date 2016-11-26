@@ -16,7 +16,7 @@ if (HAS_EMB):
 	import MolEmb
 
 class Digester:
-	def __init__(self, eles_, name_="SensoryBasis", OType_="", SamplingType_="", BlurRadius_ = 0.05 ):
+	def __init__(self, eles_, name_="GauSH", OType_="", SamplingType_="", BlurRadius_ = 0.05 ):
 		
 		 # In Atomic units at 300K
 		# These are the key variables which determine the type of digestion.
@@ -89,7 +89,22 @@ class Digester:
 #
 
 	def Emb(self, mol_, at_, xyz_, MakeOutputs=True):
-		Ins=(self.EmbF(mol_))(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
+		if (self.name=="Coulomb"):
+			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
+		elif (self.name=="GauSH"):
+			Ins= MolEmb.Make_SH(mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
+		elif (self.name=="GauInv"):
+			Ins= MolEmb.Make_Inv(mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
+		elif (self.name=="RDF"):
+			Ins= MolEmb.Make_RDF(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
+		elif (self.name=="SensoryBasis"):
+			Ins= mol_.OverlapEmbeddings(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
+		elif (self.name=="SymFunc"):
+			Ins= self.make_sym(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
+		elif (self.name=="PGaussian"):
+			Ins= self.make_pgaussian(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
+		else:
+			raise Exception("Unknown Embedding Function.")
 		Outs=None
 		if (MakeOutputs):
 			if (self.OType=="HardP"):
@@ -128,20 +143,6 @@ class Digester:
 			return Ins,Outs
 		else:
 			return Ins
-
-	def EmbF(self,mol_=None):
-		if (self.name=="Coulomb"):
-			return MolEmb.Make_CM
-		elif (self.name=="RDF"):
-			return MolEmb.Make_RDF
-		elif (self.name=="SensoryBasis"):
-			return mol_.OverlapEmbeddings
-		elif (self.name=="SymFunc"):
-			return self.make_sym
-		elif (self.name=="PGaussian"):
-			return self.make_pgaussian
-		else:
-			raise Exception("Unknown Embedding Function.")
 
 	def EvaluateTestOutputs(self, desired, predicted):
 		print "Evaluating, ", len(desired), " predictions... "
@@ -209,14 +210,64 @@ class Digester:
 		for i in range(len(mol_.atoms)):
 			if (mol_.atoms[i]==ele_):
 				if (self.OType == "SmoothP" or self.OType == "Disp"):
-					inputs, outputs = self.Emb(mol_,i,[mol_.coords[i]]) # will deal with getting energies if it's needed.
+					inputs, outputs = self.Emb(mol_,i,mol_.coords[i]) # will deal with getting energies if it's needed.
 					if (MakeDebug):
-						print "debug case", i
-						GRIDS.VdwDensity(mol_,[0.0,0.0,0.0],150,"dbg"+str(i),i)
-						GRIDS.VecToRaw(inputs[0],"dbgi"+str(i))
-						print inputs[0]
-						print mol_.coords[i], outputs
-						dbg.append([mol_,i,mol_.coords[i]])
+						print "debug case", i, mol_.coords
+						if (0):
+							print "debug case", i, mol_.coords
+							molgrid = GRIDS.VdwDensity(mol_,[0.0,0.0,0.0],120,"dbg"+str(i),i)
+							print inputs[0],outputs[0]
+							mol_.Transform(RotationMatrix([1.0,0.0,0.0],0.2),mol_.coords[i])
+							molgrid = GRIDS.VdwDensity(mol_,[0.0,0.0,0.0],120,"dbg2"+str(i),i)
+							inputs, outputs = self.Emb(mol_,i,mol_.coords[i])
+							print "Rotated", mol_.coords,"Inputs and outputs", inputs[0],outputs[0]
+						if (0):
+							funcs = MolEmb.Raster_SH(molgrid); # Nonorthogonal basis samples.
+							tmp = MolEmb.Project_SH(np.array([1.0,1.0,1.0]))
+							print "Coeffs:",tmp.shape,tmp
+							print "s11",GRIDS.SH_S[1,1],"Sinv33:",GRIDS.SH_Sinv[3,3]
+							Co = np.tensordot(GRIDS.SH_Sinv,tmp,axes=[[1],[1]])
+							print "Normalization of the delta projections:", np.sum(Co*Co)
+							Proj = np.tensordot(Co,funcs,axes=[[0],[0]])
+							GridstoRaw(Proj,120,"dbgPX1")
+
+							tmp = MolEmb.Project_SH(np.array([1.0,1.5,0.5]))
+							print "Coeffs:",tmp
+							Co = np.tensordot(GRIDS.SH_Sinv,tmp,axes=[[1],[1]])
+							print "Normalization of the delta projections:", np.sum(Co*Co)
+							Proj = np.tensordot(Co,funcs,axes=[[0],[0]])
+							GridstoRaw(Proj,120,"dbgPX2")
+
+
+							tmp = MolEmb.Project_SH(np.array([-1.0,1.5,0.5]))
+							Co = np.tensordot(GRIDS.SH_Sinv,tmp,axes=[[1],[1]])
+							print "Normalization of the delta projections:", np.sum(Co*Co)
+							Proj = np.tensordot(Co,funcs,axes=[[0],[0]])
+							GridstoRaw(Proj,120,"dbgPX3")
+							
+							
+							tmp = MolEmb.Project_SH(np.array([-1.0,1.5,0.5]))
+							tmp += MolEmb.Project_SH(np.array([1.0,0.5,0.0]))
+							tmp += MolEmb.Project_SH(np.array([1.0,1.0,2.0]))
+							Co = np.tensordot(GRIDS.SH_Sinv,tmp,axes=[[1],[1]])
+							print "Normalization of the delta projections:", np.sum(Co*Co)
+							Proj = np.tensordot(Co,funcs,axes=[[0],[0]])
+							GridstoRaw(Proj,120,"dbgPX4")
+						
+						if (0):
+							print inputs.shape
+							print inputs[0]
+							funcs = MolEmb.Raster_SH(molgrid); # Nonorthogonal basis samples.
+							print funcs.shape
+							Co = np.tensordot(GRIDS.SH_Sinv,inputs,axes=[[1],[1]])
+							print "Normalization of the delta projections:", np.sum(Co*Co)
+							Proj = np.tensordot(Co,funcs,axes=[[0],[0]])
+							GridstoRaw(Proj,120,"dbgP"+str(i))
+			
+						#GRIDS.VecToRaw(inputs[0],"dbgi"+str(i))
+						#print inputs[0]
+						#print mol_.coords[i], outputs
+						#dbg.append([mol_,i,mol_.coords[i]])
 				elif(self.SamplingType=="Smooth"): #If Smooth is now a property of the Digester: OType SmoothP
 					samps=PointsNear(mol_.coords[i], self.NTrainSamples, self.TrainSampDistance)
 					inputs, outputs = self.Emb(mol_,i,samps) # will deal with getting energies if it's needed.

@@ -25,14 +25,16 @@ def GridstoRaw(grids, ngrids=250, save_name="mol", save_path ="./densities/"):
 	f.write(bytes(np.array([ngrids,ngrids,ngrids],dtype=np.uint8).tostring())+bytes(mgrids.tostring()))
 	f.close()
 
-def MatrixPower(A,p):
+def MatrixPower(A,p,PrintCondition=False):
 	''' Raise a Hermitian Matrix to a possibly fractional power. '''
 	#w,v=np.linalg.eig(A)
 	# Use SVD
 	u,s,v = np.linalg.svd(A)
+	if (PrintCondition):
+		print "MatrixPower: Minimal Eigenvalue =", np.min(s)
 	for i in range(len(s)):
-		if (abs(s[i]) < np.power(10.0,-8)):
-			s[i] == np.power(10.0,-8)
+		if (abs(s[i]) < np.power(10.0,-14.0)):
+			s[i] = np.power(10.0,-14.0)
 	#print("Matrixpower?",np.dot(np.dot(v,np.diag(w)),v.T), A)
 	#return np.dot(np.dot(v,np.diag(np.power(w,p))),v.T)
 	return np.dot(u,np.dot(np.diag(np.power(s,p)),v))
@@ -178,7 +180,7 @@ class Grids:
 	"""
 	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=40):
 		# Coulomb Fitting parameters
-		self.Spherical = True
+		self.Spherical = False
 		# Cartesian Embedding parameters.
 		self.GridRange = GridRange_
 		self.NGau=NGau_ # Number of gaussians in each direction.
@@ -191,6 +193,11 @@ class Grids:
 		self.dx = 0.0
 		self.dy = 0.0
 		self.dz = 0.0
+		
+		self.SH_S = None
+		self.SH_Sinv = None
+		self.SH_C = None
+		
 		#
 		# These are for embedding molecular environments.
 		#
@@ -245,6 +252,12 @@ class Grids:
 		self.dx=(np.max(self.Grid[:,0])-np.min(self.Grid[:,0]))/self.NPts*1.889725989
 		self.dy=(np.max(self.Grid[:,1])-np.min(self.Grid[:,1]))/self.NPts*1.889725989
 		self.dz=(np.max(self.Grid[:,2])-np.min(self.Grid[:,2]))/self.NPts*1.889725989
+		import MolEmb
+		self.SH_S = MolEmb.Overlap_SH()
+		self.SH_Sinv = MatrixPower(self.SH_S,-1.0,True)
+		self.SH_C = MatrixPower(self.SH_S,-0.5)
+		return
+		
 		mol = gto.Mole()
 		mol.atom = ''.join(["H@0 "+str(self.GauGrid[iii,0])+" "+str(self.GauGrid[iii,1])+" "+str(self.GauGrid[iii,2])+";" for iii in range(len(self.GauGrid))])[:-1]
 		if (self.NGau3%2==0):
@@ -404,7 +417,7 @@ class Grids:
 		# Make the atom densities.
 		Ps = self.MolDensity(samps,m,p,tag)
 		GridstoRaw(Ps,ngrid,Nm_)
-		return
+		return samps
 
 	def MolDensity(self,samps,m,p=[0.0,0.0,0.0],tag=None):
 		Ps = np.zeros(len(samps))

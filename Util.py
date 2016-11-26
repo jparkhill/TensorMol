@@ -28,7 +28,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 MAX_ATOMIC_NUMBER = 10
 GRIDS = None
 MBE_ORDER = 2
-HAS_GRIDS=False
+HAS_GRIDS=True
 
 # Derived Quantities and useful things. 
 HAS_PYSCF = False
@@ -132,14 +132,11 @@ def SamplingFunc_v2(S, maxdisp):    ## with sampling function f(x)=M/(x+1)^2+N; 
 	N = ((-1 - 2*maxdisp - maxdisp*maxdisp)/(2 + maxdisp)) + maxdisp
 	return M/(S+1.0)**2 + N
 
-
 def LtoS(l):
 	s=""
 	for i in l:
 		s+=str(i)+" "
-	return s	
-	
-		
+	return s
 
 def ErfSoftCut(dist, width, x):
 	return (1-scipy.special.erf(1.0/width*(x-dist)))/2.0	
