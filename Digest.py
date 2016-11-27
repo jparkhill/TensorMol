@@ -159,7 +159,7 @@ class Digester:
 		#print desired.shape, predicted.shape
 		if (self.OType=="HardP"):
 			raise Exception("Unknown Digester Output Type.")
-		elif (self.OType=="Disp"):
+		elif (self.OType=="Disp" or self.OType=="Force"):
 			ders=np.zeros(len(desired))
 			comp=np.zeros(len(desired))
 			for i in range(len(desired)):
@@ -186,8 +186,6 @@ class Digester:
 		elif (self.OType=="StoP"):
 			raise Exception("Unknown Digester Output Type.")
 		elif (self.OType=="Energy"):
-			raise Exception("Unknown Digester Output Type.")
-		elif (self.OType=="Force"):
 			raise Exception("Unknown Digester Output Type.")
 		elif (self.OType=="GoForce_old_version"): # python version is fine for here
 			raise Exception("Unknown Digester Output Type.")

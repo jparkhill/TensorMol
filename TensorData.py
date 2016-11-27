@@ -377,10 +377,6 @@ class TensorData():
 				GridstoRaw(ds, GRIDS.NPts, "InpCASE"+str(i))
 				print dbg[i][0].coords
 				print dbg[i][0].atoms
-				
-		
-
-		
 		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
 		#to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
 		if (Random):
