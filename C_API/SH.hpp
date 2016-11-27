@@ -6,7 +6,7 @@
 using namespace std;
 #define PI 3.14159265358979
 
-#define SH_NRAD 12
+#define SH_NRAD 11
 #define SH_LMAX 6
 // r0, sigma
 // if you want to sense beyond 15A, you need to fix this grid.
@@ -401,7 +401,7 @@ double Gau(double r, double r0, double sigma)
 //  Exp[-(x-r)^2/(2 sigma^2)]*Y_{LM}(theta,phi)
 //
 // which will occupy a vector of length Nrad*(1+lmax)**2
-void RadSHProjection(double x, double y, double z, double* output)
+void RadSHProjection(double x, double y, double z, double* output, double fac=1.0)
 {
 	double r = sqrt(x*x+y*y+z*z);
 	if (r<pow(10.0,-9))
@@ -416,7 +416,7 @@ void RadSHProjection(double x, double y, double z, double* output)
 		{
 			for (int m=-l; m<l+1 ; ++m)
 			{
-				output[op] += Gv*RealSphericalHarmonic(l,m,theta,phi);
+				output[op] += Gv*RealSphericalHarmonic(l,m,theta,phi)*fac;
 				++op;
 			}
 		}
@@ -428,7 +428,7 @@ void RadSHProjection(double x, double y, double z, double* output)
 //  Exp[-(x-r)^2/(2 sigma^2)]*Y_{LM}(theta,phi)
 //
 // which will occupy a vector of length Nrad*(1+lmax)**2
-void RadInvProjection(double x, double y, double z, double* output)
+void RadInvProjection(double x, double y, double z, double* output, double fac=1.0)
 {
 	double r = sqrt(x*x+y*y+z*z);
 	if (r<pow(10.0,-9))
@@ -436,17 +436,19 @@ void RadInvProjection(double x, double y, double z, double* output)
 	double theta = acos(z/r);
 	double phi = atan2(y,x);
 	int op=0;
+	double tmp,tmp2;
 	for (int i=0; i<SH_NRAD ; ++i)
 	{
 		double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
 		for (int l=0; l<SH_LMAX+1 ; ++l)
 		{
-			double tmp = 0.0;
+			tmp = 0.0;
 			for (int m=-l; m<l+1 ; ++m)
 			{
-				tmp += pow(Gv*RealSphericalHarmonic(l,m,theta,phi),2.0);
+				tmp2 = Gv*RealSphericalHarmonic(l,m,theta,phi);
+				tmp += tmp2*tmp2;
 			}
-			output[op] += tmp;
+			output[op] += tmp*fac;
 			++op;
 		}
 	}

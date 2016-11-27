@@ -453,11 +453,10 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
-	if (!PyArg_ParseTuple(args, "O!O!O!diid",
-						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &ngrids, &theatom, &mask))
+	if (!PyArg_ParseTuple(args, "O!O!O!di",
+						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &theatom))
 		return NULL;
 
-	const int nele = (elements->dimensions)[0];
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
 	npy_intp* Nxyz = xyz->dimensions;
@@ -474,7 +473,6 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 	
-	int ai=0;
 //	for (int i = 0; i < natom; i++)
 //	{
 	int i = theatom;
@@ -487,7 +485,7 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 			double x = xyz_data[j*Nxyz[1]+0];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
-			RadInvProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX));
+			RadInvProjection(x-xc,y-yc,z-zc,SH_data,(double)atoms[j]);
 		}
 //	}
 	return SH;
@@ -565,10 +563,9 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	z=xyz_data[2];
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 	int Nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
-	int Nang = (1+SH_LMAX)*(1+SH_LMAX);
-	
+//	int Nang = (1+SH_LMAX)*(1+SH_LMAX);
 	double r = sqrt(x*x+y*y+z*z);
-	
+
 	if (r<pow(10.0,-11.0))
 		return SH;
 	double theta = acos(z/r);
@@ -899,8 +896,6 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 	
 	return  nlist;
 }
-
-
 
 static PyMethodDef EmbMethods[] =
 {

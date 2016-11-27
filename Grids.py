@@ -178,7 +178,7 @@ class Grids:
 		
 		Also now has a few
 	"""
-	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=40):
+	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=30):
 		# Coulomb Fitting parameters
 		self.Spherical = False
 		# Cartesian Embedding parameters.

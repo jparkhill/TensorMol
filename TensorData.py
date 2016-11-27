@@ -13,7 +13,7 @@ class TensorData():
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=20400, ChopTo_=None ):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=3600, ChopTo_=None ):
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
@@ -346,10 +346,10 @@ class TensorData():
 		# It should probably check the sanity of each input/outputfile as well...
 		return
 
-	def LoadElement(self, ele, Random=True, DebugData_=True):
+	def LoadElement(self, ele, Random=True, DebugData_=False):
 		insname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in.npy"
 		outsname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_out.npy"
-		dbgname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_dbg.tdt"
+		dbgname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_dbg.tdt"
 		try:
 			inf = open(insname,"rb")
 			ouf = open(outsname,"rb")
@@ -406,7 +406,7 @@ class TensorData():
 		return
 
 	def NTrainCasesInScratch(self):
-		if (self.ExpandIsometries):
+		if (self.ExpandIsometriesBatchwise):
 			return self.scratch_inputs.shape[0]*GRIDS.NIso()
 		else:
 			return self.scratch_inputs.shape[0]

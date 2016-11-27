@@ -237,23 +237,34 @@ class Mol:
 		newd = newd*newd
 		return 0.0625*np.sum(newd)
 
-	def GoForce(self):
+	def GoForce(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
 		if (self.DistMatrix==None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
-		forces = np.zeros((self.NAtoms(),3))
-		for i in range(len(self.coords)):
+		if (at_!=-1):
+			forces = np.zeros((1,3))
 			for j in range(len(self.coords)):
 				# compute force on i due to all j's
-				u = self.coords[j]-self.coords[i]
+				u = self.coords[j]-self.coords[at_]
 				dij = np.linalg.norm(u)
 				if (dij != 0.0):
 					u = u/np.linalg.norm(u)
-				forces[i] += 0.5*(dij-self.DistMatrix[i,j])*u
-		return forces
+				forces[0] += 0.5*(dij-self.DistMatrix[at_,j])*u
+			return forces
+		else:
+			forces = np.zeros((self.NAtoms(),3))
+			for i in range(len(self.coords)):
+				for j in range(len(self.coords)):
+					# compute force on i due to all j's
+					u = self.coords[j]-self.coords[i]
+					dij = np.linalg.norm(u)
+					if (dij != 0.0):
+						u = u/np.linalg.norm(u)
+					forces[i] += 0.5*(dij-self.DistMatrix[i,j])*u
+			return forces
 
 	def SoftCutGoForce(self, cutdist=6):
 		if (self.DistMatrix==None):

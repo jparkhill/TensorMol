@@ -48,6 +48,9 @@ class Digester:
 		self.eshape=None  #shape of an embedded case
 		self.lshape=None  #shape of the labels of an embedded case.
 		
+		self.embtime=0.0
+		self.outtime=0.0
+		
 		self.Print()
 		return
 
@@ -89,12 +92,13 @@ class Digester:
 #
 
 	def Emb(self, mol_, at_, xyz_, MakeOutputs=True):
+		#start = time.time()
 		if (self.name=="Coulomb"):
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):
 			Ins= MolEmb.Make_SH(mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauInv"):
-			Ins= MolEmb.Make_Inv(mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
+			Ins= MolEmb.Make_Inv(mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, at_)
 		elif (self.name=="RDF"):
 			Ins= MolEmb.Make_RDF(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="SensoryBasis"):
@@ -105,6 +109,8 @@ class Digester:
 			Ins= self.make_pgaussian(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		else:
 			raise Exception("Unknown Embedding Function.")
+		#self.embtime += (time.time() - start)
+		#start = time.time()
 		Outs=None
 		if (MakeOutputs):
 			if (self.OType=="HardP"):
@@ -113,6 +119,8 @@ class Digester:
 				Outs = mol_.FitGoProb(at_)
 			elif (self.OType=="Disp"):
 				Outs = mol_.GoDisp(at_)
+			elif (self.OType=="Force"):
+				Outs = mol_.GoForce(at_)
 			elif (self.OType=="StoP"):
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):
@@ -140,6 +148,8 @@ class Digester:
 					raise Exception("Empty energies...")
 			else:
 				raise Exception("Unknown Digester Output Type.")
+			#self.outtime += (time.time() - start)
+			#print "Embtime: ", self.embtime, " OutTime: ", self.outtime
 			return Ins,Outs
 		else:
 			return Ins
@@ -209,7 +219,7 @@ class Digester:
 		casep=0
 		for i in range(len(mol_.atoms)):
 			if (mol_.atoms[i]==ele_):
-				if (self.OType == "SmoothP" or self.OType == "Disp"):
+				if (self.OType == "SmoothP" or self.OType == "Disp" or self.OType == "Force"):
 					inputs, outputs = self.Emb(mol_,i,mol_.coords[i]) # will deal with getting energies if it's needed.
 					if (MakeDebug):
 						print "debug case", i, mol_.coords
@@ -263,7 +273,6 @@ class Digester:
 							print "Normalization of the delta projections:", np.sum(Co*Co)
 							Proj = np.tensordot(Co,funcs,axes=[[0],[0]])
 							GridstoRaw(Proj,120,"dbgP"+str(i))
-			
 						#GRIDS.VecToRaw(inputs[0],"dbgi"+str(i))
 						#print inputs[0]
 						#print mol_.coords[i], outputs

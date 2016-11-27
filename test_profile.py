@@ -17,7 +17,7 @@ b.Load()
 # Choose allowed atoms.
 TreatedAtoms = b.AtomTypes()
 # 2 - Choose Digester
-d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="Disp")
+d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 # 4 - Generate training set samples.
 tset = TensorData(b,d,None,10) #100s/element
 pr.enable()

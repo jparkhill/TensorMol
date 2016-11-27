@@ -16,7 +16,7 @@ if (1):
 		b=MSet("OptMols")
 		b.ReadXYZ("OptMols")
 		b.Save()
-		c=a.DistortedClone(1)
+		c=a.DistortedClone(5)
 		c.Save()
 		d=b.DistortedClone()
 		d.Save()
@@ -44,13 +44,13 @@ if (1):
 		# Choose allowed atoms.
 		TreatedAtoms = a.AtomTypes()
 		# 2 - Choose Digester
-		d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="Disp")
+		d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 		# 4 - Generate training set samples.
 		tset = TensorData(a,d)
 		tset.BuildTrain("gdb9_NEQ",TreatedAtoms,False) #fourth arg. generates debug data.
 
-	# To generate training data for all the atoms in the GDB 9
-	if (1):
+	# To generate training debugs.
+	if (0):
 		b=MSet("OptMols")
 		b.Load()
 		a = b.DistortedClone(1,False)
@@ -76,8 +76,8 @@ if (1):
 
 	# This Trains the networks.
 	if (1):
-		tset = TensorData(None,None,"gdb9_NEQ_SensoryBasis",None,6000)
-		manager=TFManage("",tset,True,"3conv_sqdiff") # True indicates train all atoms
+		tset = TensorData(None,None,"gdb9_NEQ_GauSH",None,6000)
+		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 
 	# This Tests the optimizer.
 	if (1):
@@ -90,12 +90,12 @@ if (1):
 			optimizer.GoOptProb(test_mol) # This works perfectly.
 		print test_mol.coords
 		print test_mol.atoms
-		manager=TFManage("gdb9_NEQ_SensoryBasis_fc_sqdiff",None,False)
+		manager=TFManage("gdb9_NEQ_GauSH_fc_sqdiff",None,False)
 		optimizer  = Optimizer(manager)
 		optimizer.Opt(test_mol)
 
 # Kun's tests.
-if (1):
+if (0):
 	if (0):
 		#a=MSet("CxHy_test")
 		#a.ReadXYZ("CxHy_test")
