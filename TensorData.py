@@ -153,7 +153,26 @@ class TensorData():
 			# Write the numpy arrays for this element.
 			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
 			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
-			if (not append):
+			alreadyexists = (os.path.isfile(insname) and os.path.isfile(outsname))
+			if (append and alreadyexists):
+				ti=None
+				to=None
+				try:
+					inf = open(insname,"rb")
+					ouf = open(outsname,"rb")
+					ti = np.load(inf)
+					to = np.load(ouf)
+					inf.close()
+					ouf.close()
+				cases = np.concatenate((cases[:casep],ti))
+				labels = np.concatenate((labels[:casep],t0))
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases)
+				np.save(ouf,labels)
+				inf.close()
+				ouf.close()
+			else:
 				inf = open(insname,"wb")
 				ouf = open(outsname,"wb")
 				np.save(inf,cases[:casep])
@@ -163,13 +182,6 @@ class TensorData():
 				self.AvailableDataFiles.append([insname,outsname])
 				self.AvailableElements.append(element)
 				self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
-			else:
-				inf = open(insname,"a+b")
-				ouf = open(outsname,"a+b")
-				np.save(inf,cases)
-				np.save(ouf,labels)
-				inf.close()
-				ouf.close()
 			if (MakeDebug):
 				dbgname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_dbg.tdt"
 				f=open(dbgname,"wb")
