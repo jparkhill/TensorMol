@@ -79,7 +79,7 @@ class TFManage:
 		#for step in range (0, 10):
 			#self.Instances[ele].train_step(step)
 		#tself.Instances[ele].test(step)
-		self.Instances[ele].train(1200) # Just for the sake of debugging.
+		self.Instances[ele].train(1500) # Just for the sake of debugging.
 		nm = self.Instances[ele].name
 		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:

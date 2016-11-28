@@ -172,6 +172,9 @@ class TensorData():
 				np.save(ouf,labels)
 				inf.close()
 				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
 			else:
 				inf = open(insname,"wb")
 				ouf = open(outsname,"wb")
@@ -423,7 +426,8 @@ class TensorData():
 		return self.scratch_inputs.shape[0]
 
 	def PrintSampleInformation(self):
-		for i in range(len(self.AvailableElements)):
+		lim = min(len(self.AvailableElements),len(self.SamplesPerElement),len(self.AvailableDataFiles))
+		for i in range(lim):
 			print "AN: ", self.AvailableElements[i], " contributes ", self.SamplesPerElement[i] , " samples "
 			print "From files: ", self.AvailableDataFiles[i]
 		return
