@@ -6,6 +6,34 @@ from Opt import *
 
 # John's tests
 if (1):
+	# Whole sequence just for morphine to debug.
+	if (1):
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		b=a.DistortedClone(1000)
+		b.Save()
+		TreatedAtoms = b.AtomTypes()
+		# 2 - Choose Digester
+		d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+		# 4 - Generate training set samples.
+		tset = TensorData(b,d)
+		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
+	if (1)
+		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
+		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	# This Tests the optimizer.
+	if (1):
+		a=MSet("OptMols_NEQ")
+		a.Load()
+		test_mol = a.mols[0]
+		print "Orig Coords", test_mol.coords
+		test_mol.Distort()
+		print test_mol.coords
+		print test_mol.atoms
+		manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
+		optimizer  = Optimizer(manager)
+		optimizer.Opt(test_mol)
+
 	# To read gdb9 xyz files and populate an Mset.
 	# Because we use pickle to save. if you write new routines on Mol you need to re-execute this.
 	if (0):
@@ -13,29 +41,8 @@ if (1):
 		#a.ReadGDB9Unpacked()
 		#a.Save()
 		a.Load()
-		b=MSet("OptMols")
-		b.ReadXYZ("OptMols")
-		b.Save()
 		c=a.DistortedClone(5)
 		c.Save()
-		d=b.DistortedClone()
-		d.Save()
-
-	if (0):
-		# 1 - Get molecules into memory
-		b=MSet("OptMols")
-		b.Load()
-		a = b.DistortedClone()
-		#m = b.mols[0]
-		#GRIDS.TestSense(m)
-		# Choose allowed atoms.
-		TreatedAtoms = a.AtomTypes()
-		# 2 - Choose Digester
-		d = Digester(TreatedAtoms, name_="SensoryBasis",OType_ ="SmoothP")
-		# 4 - Generate training set samples.
-		tset = TensorData(a,d)
-		tset.BuildTrain("OptMols",TreatedAtoms) # generates dataset numpy arrays for each atom.
-
 	# To generate training data for all the atoms in the GDB 9
 	if (0):
 		# 1 - Get molecules into memory
@@ -48,14 +55,12 @@ if (1):
 		# 4 - Generate training set samples.
 		tset = TensorData(a,d)
 		tset.BuildTrain("gdb9_NEQ",TreatedAtoms,True) #fourth arg. generates debug data.
-
 	# To generate training debugs.
 	if (0):
 		b=MSet("OptMols")
 		b.Load()
 		a = b.DistortedClone(1,False)
 		a.Save()
-		
 		# 1 - Get molecules into memory
 		a=MSet("OptMols_NEQ")
 		a.Load()
@@ -66,19 +71,16 @@ if (1):
 		# 4 - Generate training set samples.
 		tset = TensorData(a,d)
 		tset.BuildTrain("OptMols_NEQ",TreatedAtoms,False,True) #fourth arg. generates debug data
-
 	#Merges two training datas...
 	if (0):
 		tset1 = TensorData(None,None,"gdb9_NEQ_SensoryBasis")
 		tset2 = TensorData(None,None,"gdb92_NEQ_SensoryBasis")
 		tset2.name="gdb92_NEQ"
 		tset1.MergeWith(tset2)
-
 	# This Trains the networks.
 	if (0):
 		tset = TensorData(None,None,"gdb9_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-
 	# This Tests the optimizer.
 	if (1):
 		a=MSet("OptMols")
