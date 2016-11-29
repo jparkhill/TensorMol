@@ -84,6 +84,22 @@ if (1):
 		a=MSet("OptMols")
 		a.Load()
 		test_mol = a.mols[0]
+		print "Orig Coords", test_mol.coords
+		test_mol.Distort()
+		if (1):
+			optimizer  = Optimizer(None)
+			optimizer.OptGoForce(test_mol) # This works perfectly.
+		print test_mol.coords
+		print test_mol.atoms
+		manager=TFManage("gdb9_NEQ_GauSH_fc_sqdiff",None,False)
+		optimizer  = Optimizer(manager)
+		optimizer.Opt(test_mol)
+
+	# This Tests the optimizer.
+	if (1):
+		a=MSet("OptMols")
+		a.Load()
+		test_mol = a.mols[0]
 		test_mol.Distort(0,0.5)
 		if (0):
 			optimizer  = Optimizer(None)
