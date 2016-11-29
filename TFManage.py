@@ -98,11 +98,11 @@ class TFManage:
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData
 		for i  in range (0, len(self.TrainedAtoms)):
 			if (self.NetType == "fc_classify"):
-				self.Instances[self.TrainedAtoms[i]] = Instance_fc_classify(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
+				self.Instances[self.TrainedAtoms[i]] = Instance_fc_classify(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			elif (self.NetType == "fc_sqdiff"):
-				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
+				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			elif (self.NetType == "3conv_sqdiff"):
-				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
+				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			else:
 				raise Exception("Unknown Network Type!")	
 		# Raise TF instances for each atom which have already been trained.
@@ -124,6 +124,24 @@ class TFManage:
 			raise Exception("BadTFOutput")
 		p = mol_.UseGoProb(atom_, output)
 		return p
+
+	def evaluate(self, mol, atom):
+		input = self.TData.dig.Emb(mol, atom, mol.coords[atom])
+		p = self.Instances[mol.atoms[atom]].evaluate(input)
+		return p[0]
+
+	def EvalOneAtom(self, mol, atom, maxstep = 0.2, ngrid = 50):
+		xyz, inputs = self.SampleAtomGrid( mol, atom, maxstep, ngrid)
+		p = self.Instances[mol.atoms[atom]].evaluate(inputs)
+		if (np.sum(p**2)**0.5 != 0):
+			p = p/(np.sum(p**2))**0.5
+		else:
+			p.fill(1.0)
+		#Check finite-ness or throw
+		if(not np.all(np.isfinite(p))):
+			print p 
+			raise Exception("BadTFOutput")
+		return xyz, p
 
 	def EvalOneAtom(self, mol, atom, maxstep = 0.2, ngrid = 50):
 		xyz, inputs = self.SampleAtomGrid( mol, atom, maxstep, ngrid)

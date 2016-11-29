@@ -295,6 +295,8 @@ class Instance_fc_classify(Instance):
 		self.hidden2 = 500
 		self.hidden3 = 500
 		self.NetType = "fc_classify"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
 		self.prob = None
 #		self.inshape = self.TData.scratch_inputs.shape[1] 
 		self.correct = None
@@ -345,7 +347,11 @@ class Instance_fc_classify(Instance):
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			self.saver.restore(self.sess, self.chk_file)
+			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+			if (len(chkfiles)>0):
+				most_recent_chk_file=chkfiles[0]
+				print("Restoring training from Checkpoint: ",most_recent_chk_file)
+				self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
 		return
 
@@ -472,6 +478,8 @@ class Instance_fc_sqdiff(Instance):
 		self.hidden2 = 1024
 		self.hidden3 = 512
 		self.NetType = "fc_sqdiff"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -504,7 +512,11 @@ class Instance_fc_sqdiff(Instance):
 				self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 				self.saver = tf.train.Saver()
-				self.saver.restore(self.sess, self.chk_file)
+				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+				if (len(chkfiles)>0):
+					most_recent_chk_file=chkfiles[0]
+					print("Restoring training from Checkpoint: ",most_recent_chk_file)
+					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
 		return
 
@@ -609,6 +621,8 @@ class Instance_3dconv_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "3conv_sqdiff"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -720,7 +734,11 @@ class Instance_3dconv_sqdiff(Instance):
 			self.output = self.inference(self.embeds_placeholder)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			self.saver.restore(self.sess, self.chk_file)
+			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+			if (len(chkfiles)>0):
+				most_recent_chk_file=chkfiles[0]
+				print("Restoring training from Checkpoint: ",most_recent_chk_file)
+				self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
 		return
 	
