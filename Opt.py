@@ -77,7 +77,7 @@ class Optimizer:
 			tmp_m = Mol(new_m.atoms, coords)
 			for i in range(m.NAtoms()):
 				if (self.probtype==0):
-					new_m.coords[i] = self.tfm.evaluate(new_m, i, ,new_m.coords[i])
+					new_m.coords[i] = self.tfm.evaluate(new_m, i)
 				#Update with momentum.
 			veloc = new_m.coords - tmp_m.coords
 			# Remove average torque
