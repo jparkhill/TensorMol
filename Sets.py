@@ -85,7 +85,7 @@ class MSet:
 		""" Reads XYZs concatenated into a single separated by @@@ file as a molset """
 		f = open(self.path+filename+".xyz","r")
 		txts = f.read()
-		for mol in txts.split("@@@")[1:]:
+		for mol in txts.split("\n\n"):
 			self.mols.append(Mol())
 			self.mols[-1].FromXYZString(mol)
 		return

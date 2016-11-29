@@ -94,7 +94,7 @@ class Mol:
 		for i in range (0, self.atoms.shape[0]):
 			for j in range (0, 3):
 				if (random.uniform(0, 1)<movechance):
-					self.coords[i,j] = self.coords[i,j] + disp*random.uniform(-1, 1)
+					self.coords[i,j] = self.coords[i,j] + numpy.random.normal(0.0, disp)
 
 	def AtomTypes(self):
 		return np.unique(self.atoms)
