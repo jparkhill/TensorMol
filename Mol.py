@@ -75,26 +75,22 @@ class Mol:
 				break
 		return idx[:mxidx]
 
-	def WriteXYZfile(self, fpath=".", fname="mol"):
-		if (os.path.isfile(fpath+"/"+fname+".xyz")):
-			f = open(fpath+"/"+fname+".xyz","a")
-		else:
-			f = open(fpath+"/"+fname+".xyz","w")
-		natom = self.atoms.shape[0]
-		f.write(str(natom)+"\n\n")
-		for i in range (0, natom):
-			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
-			f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")	
-		f.write("\n\n")	
-		f.close()
-
-	def Distort(self,disp=0.4,movechance=.85):
+	def Distort(self,disp=0.38,movechance=.20):
 		''' Randomly distort my coords, but save eq. coords first '''
 		self.BuildDistanceMatrix()
-		for i in range (0, self.atoms.shape[0]):
-			for j in range (0, 3):
+		for i in range(0, self.atoms.shape[0]):
+			for j in range(0, 3):
 				if (random.uniform(0, 1)<movechance):
-					self.coords[i,j] = self.coords[i,j] + numpy.random.normal(0.0, disp)
+					#only accept collisionless moves.
+					accepted = False
+					while (not accepted):
+						tmp = self.coords
+						tmp[i,j] += np.random.normal(0.0, disp)
+						mindist = np.min([ np.linalg.norm(tmp[i,:]-tmp[k,:]) if i!=k else 1.0 for k in range(self.NAtoms()) ])
+						if (mindist>0.35):
+							accepted = True
+							self.coords = tmp
+
 
 	def AtomTypes(self):
 		return np.unique(self.atoms)
@@ -129,11 +125,13 @@ class Mol:
 
 	def FromXYZString(self,string):
 		lines = string.split("\n")
-		natoms=int(lines[1])
+		natoms=int(lines[0])
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
-			line = lines[i+3].split()
+			line = lines[i+2].split()
+			if len(line)==0:
+				return
 			self.atoms[i]=AtomicNumber(line[0])
 			try:
 				self.coords[i,0]=float(line[1])
@@ -148,6 +146,18 @@ class Mol:
 			except:
 				self.coords[i,2]=scitodeci(line[3])
 		return
+
+	def WriteXYZfile(self, fpath=".", fname="mol"):
+		if (os.path.isfile(fpath+"/"+fname+".xyz")):
+			f = open(fpath+"/"+fname+".xyz","a")
+		else:
+			f = open(fpath+"/"+fname+".xyz","w")
+		natom = self.atoms.shape[0]
+		f.write(str(natom)+"\nComment:\n")
+		for i in range (0, natom):
+			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
+			f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+		f.close()
 
 	def NEle(self):
 		return np.sum(self.atoms)

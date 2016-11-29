@@ -10,15 +10,17 @@ if (1):
 	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
-		b=a.DistortedClone(1000)
+		b=a.DistortedClone(200)
+		print len(b.mols)
 		b.Save()
+		b.WriteXYZ()
 		TreatedAtoms = b.AtomTypes()
 		# 2 - Choose Digester
 		d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 		# 4 - Generate training set samples.
 		tset = TensorData(b,d)
 		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-	if (1)
+	if (1):
 		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
