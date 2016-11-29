@@ -44,7 +44,7 @@ if (1):
                 a.Load()
 		TreatedAtoms = a.AtomTypes()
 		print "TreatedAtoms ", TreatedAtoms 
-		d = MolDigester(TreatedAtoms, name_="SymFunc")  # Initialize a digester that apply descriptor for the fragments.
+		d = MolDigester(TreatedAtoms, name_="GauInv")  # Initialize a digester that apply descriptor for the fragments.
 		#tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
 		#tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
 		tset = TensorMolData_BP(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
@@ -52,17 +52,17 @@ if (1):
 
 	# doing the KRR for the set for debug purpose.
 	if (0):
-		tset = TensorMolData(MSet(),MolDigester([]),"H2O_tinker_amoeba_Coulomb_1") # Load the generated data for training the neural network.
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_GauInv_1") # Load the generated data for training the neural network.
 		tset.KRR()
 	
 	# testing the BP TensorMolData
 	if (0):
-                tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2")
+                tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_1")
 		#tset.LoadDataToScratch(True)
 
 	# Train the neural network.
 	if (1):
-		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2") # Load the generated data for training the neural network.
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_GauInv_2") # Load the generated data for training the neural network.
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=20000)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 

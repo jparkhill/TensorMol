@@ -70,7 +70,7 @@ class TensorMolData():
 
 	def CheckShapes(self):
 		# Establish case and label shapes.
-		tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_frags[self.order][0])
+		tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_permute_frags[self.order][0])
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape
 		if (self.dig.eshape == None or self.dig.lshape ==None):
@@ -174,6 +174,7 @@ class TensorMolData():
 	def KRR(self):
 		from sklearn.kernel_ridge import KernelRidge
 		ti, to = self.LoadData(True)
+		print "KRR: input shape", ti.shape, " output shape", to.shape
 		#krr = KernelRidge()
 		krr = KernelRidge(alpha=0.0001, kernel='rbf')
 		trainsize = int(ti.shape[0]*0.5)
@@ -308,13 +309,13 @@ class TensorMolData_BP(TensorMolData):
                 self.name=name_
                 total_case = 0
                 for mi in range(len(self.set.mols)):
-                        total_case += len(self.set.mols[mi].mbe_frags[self.order])
+                        total_case += len(self.set.mols[mi].mbe_frags[self.order])  # debug
                 cases = []
                 labels = np.zeros((total_case, self.dig.lshape))
                 casep=0
 		self.atom_index = self.Generate_Atom_Index()
                 for mi in range(len(self.set.mols)):
-                        for frag in self.set.mols[mi].mbe_frags[self.order]:
+                        for frag in self.set.mols[mi].mbe_frags[self.order]:  # debug
                                 #print  frag.dist[0], frag.frag_mbe_energy
                                 ins,outs = self.dig.TrainDigest(frag)
                                 cases.append(ins)
@@ -390,6 +391,29 @@ class TensorMolData_BP(TensorMolData):
 			atom_index[ele] = self.atom_index[ele][idx]
                 return ti, to, atom_index
 
+
+	def KRR(self):
+                from sklearn.kernel_ridge import KernelRidge
+                ti, to, atom_index = self.LoadData(True)
+		ti = ti.reshape(( to.shape[0], -1 ))
+
+                print "KRR: input shape", ti.shape, " output shape", to.shape, " input", ti
+                #krr = KernelRidge()
+                krr = KernelRidge(alpha=0.0001, kernel='rbf')
+                trainsize = int(ti.shape[0]*0.5)
+                krr.fit(ti[0:trainsize,:], to[0:trainsize])
+                predict  = krr.predict(ti[trainsize:, : ])
+                print predict.shape
+                krr_acc_pred  = np.zeros((predict.shape[0],2))
+                krr_acc_pred[:,0] = to[trainsize:].reshape(to[trainsize:].shape[0])
+                krr_acc_pred[:,1] = predict.reshape(predict.shape[0])
+                np.savetxt("krr_acc_pred.dat", krr_acc_pred)
+                print "KRR train R^2:", krr.score(ti[0:trainsize, : ], to[0:trainsize])
+                print "KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:])
+                return
+
+
+
         def LoadData(self, random=False):
                 insname = self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
                 outsname = self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
@@ -405,6 +429,8 @@ class TensorMolData_BP(TensorMolData):
                 to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
                 if (random):
                         ti, to, atom_index = self.Randomize(ti, to)
+		else:
+			atom_index = self.atom_index
 		print ti.shape, to.shape, atom_index[1].shape, atom_index[8].shape
                 self.NTrain = to.shape[0]
                 return ti, to, atom_index
