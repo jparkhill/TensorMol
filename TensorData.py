@@ -157,13 +157,12 @@ class TensorData():
 			if (append and alreadyexists):
 				ti=None
 				to=None
-				try:
-					inf = open(insname,"rb")
-					ouf = open(outsname,"rb")
-					ti = np.load(inf)
-					to = np.load(ouf)
-					inf.close()
-					ouf.close()
+				inf = open(insname,"rb")
+				ouf = open(outsname,"rb")
+				ti = np.load(inf)
+				to = np.load(ouf)
+				inf.close()
+				ouf.close()
 				cases = np.concatenate((cases[:casep],ti))
 				labels = np.concatenate((labels[:casep],t0))
 				inf = open(insname,"wb")

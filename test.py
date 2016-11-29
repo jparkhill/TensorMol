@@ -47,7 +47,7 @@ if (1):
 		d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 		# 4 - Generate training set samples.
 		tset = TensorData(a,d)
-		tset.BuildTrain("gdb9_NEQ",TreatedAtoms,False) #fourth arg. generates debug data.
+		tset.BuildTrain("gdb9_NEQ",TreatedAtoms,True) #fourth arg. generates debug data.
 
 	# To generate training debugs.
 	if (0):
