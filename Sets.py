@@ -82,12 +82,22 @@ class MSet:
 		return
 
 	def ReadXYZ(self,filename):
-		""" Reads XYZs concatenated into a single separated by @@@ file as a molset """
+		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """
 		f = open(self.path+filename+".xyz","r")
-		txts = f.read()
-		for mol in txts.split("@@@")[1:]:
-			self.mols.append(Mol())
-			self.mols[-1].FromXYZString(mol)
+		txts = f.readlines()
+		for line in range(len(txts)):
+			if (txts[line].count('Comment:')>0):
+				line0=line-1
+				nlines=int(txts[line0])
+				self.mols.append(Mol())
+				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+		return
+
+	def WriteXYZ(self,filename=None):
+		if filename == None:
+			filename = self.name
+		for mol in self.mols:
+			mol.WriteXYZfile(self.path,filename)
 		return
 
 	def pop(self, ntopop):

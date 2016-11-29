@@ -63,43 +63,59 @@ class Optimizer:
 		print "Net Angular Momentum:",n_L
 		return velocs
 
-	def OptForce(self,m):
+	def OptGoForce(self,m):
 		# Sweeps one at a time
 		err=10.0
 		lasterr=10.0
 		step=0
 		mol_hist = []
-		new_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", new_m.coords
-		old_veloc=np.zeros(new_m.coords.shape)
+		prev_m = Mol(m.atoms, m.coords)
+		print "Orig Coords", m.coords
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
-			coords=np.array(new_m.coords,copy=True)
-			tmp_m = Mol(new_m.atoms, coords)
 			for i in range(m.NAtoms()):
-				if (self.probtype==0):
-					new_m.coords[i] = self.tfm.evaluate(new_m, i)
-				#Update with momentum.
-			veloc = new_m.coords - tmp_m.coords
-			# Remove average torque
-			#veloc = self.RemoveAverageTorque(new_m.coords,veloc)
-			#TODO remove rotation. 
+				veloc[i] = m.GoForce(i)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
-			new_m.coords = tmp_m.coords + c_veloc
+			prev_m = Mol(m.atoms, m.coords)
+			m.coords = m.coords + c_veloc
 			old_veloc = self.momentum_decay*c_veloc
-			err = new_m.rms(tmp_m)
-			mol_hist.append(tmp_m)
-			tmp_m.WriteXYZfile("./datasets/", "OptLog")
-			if (0): # Prints density along the optimization.
-				xs,ps = self.tfm.EvalAllAtoms(tmp_m)
-				grids = tmp_m.MolDots()
-				grids = tmp_m.AddPointstoMolDots(grids, xs, ps)
-				GridstoRaw(grids,250,str(step))
+			err = m.rms(prev_m)
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./datasets/", "OptLog")
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
+			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
+	def OptForce(self,m,IfDebug=True):
+		# Sweeps one at a time
+		err=10.0
+		lasterr=10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		print "Orig Coords", m.coords
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
+		while(err>self.thresh and step < self.max_opt_step):
+			for i in range(m.NAtoms()):
+				veloc[i] = self.tfm.evaluate(new_m, i)
+				if (IfDebug):
+					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::", m.GoForce(i)
+			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
+			# Remove translation.
+			c_veloc = c_veloc - np.average(c_veloc,axis=0)
+			prev_m = Mol(m.atoms, m.coords)
+			m.coords = m.coords + c_veloc
+			old_veloc = self.momentum_decay*c_veloc
+			err = m.rms(prev_m)
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			step+=1
+			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+		return
 
 	def OptProb(self,m):
 		''' This version tests if the Go-opt converges when atoms are moved to 
