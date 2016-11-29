@@ -415,6 +415,7 @@ class TensorMolData_BP(TensorMolData):
 
                 self.NTest = int(self.TestRatio * ti.shape[0])
 		self.NTrain = int(ti.shape[0]-self.NTest) 
+		print "NTrain in TensorMolData:", self.NTrain
 
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest] 
 		tmp_inputs = ti[:ti.shape[0]-self.NTest]
@@ -477,9 +478,10 @@ class TensorMolData_BP(TensorMolData):
                         raise Exception("Training Data is less than the batchsize... :( ")
 
 		reset = False
-                if ( self.ScratchPointer+num_mol >= self.NTrain):
+                if ( self.ScratchPointer+num_mol > self.NTrain):
 			reset = True
 		for ele in self.eles:
+			#print "self.num_train_atoms[ele]", self.num_train_atoms[ele]
 			if (self.Ele_ScratchPointer[ele] >= self.num_train_atoms[ele]):
 				reset = True
 		if reset==True:
@@ -493,13 +495,14 @@ class TensorMolData_BP(TensorMolData):
 		input_index=0
 		for ele in self.eles:
 			tmp = 0
+			#print  "start: ele:",ele, "self.Ele_ScratchPointer[ele]", self.Ele_ScratchPointer[ele], "self.ScratchPointer ", self.ScratchPointer
 			for i in range (self.ScratchPointer, self.ScratchPointer + num_mol):
 				inputs[input_index:input_index+self.train_mol_len[ele][i]]=self.scratch_inputs[ele][self.Ele_ScratchPointer[ele]:self.Ele_ScratchPointer[ele]+self.train_mol_len[ele][i]]
 				self.Ele_ScratchPointer[ele] += self.train_mol_len[ele][i]
 				tmp += self.train_mol_len[ele][i]
 				input_index += self.train_mol_len[ele][i]
 			number_atom_per_ele[ele]=tmp
-			#print "ele:",ele, "number_atom_per_ele[ele]", number_atom_per_ele[ele],"self.Ele_ScratchPointer[ele]", self.Ele_ScratchPointer[ele], "self.ScratchPointer ", self.ScratchPointer 
+			#print "end: ele:",ele, "number_atom_per_ele[ele]", number_atom_per_ele[ele],"self.Ele_ScratchPointer[ele]", self.Ele_ScratchPointer[ele], "self.ScratchPointer ", self.ScratchPointer 
 		# make the index matrix
 		index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol) # one needs to know the number of molcule that contained in the ncase atom
                 #tmp=(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+ncases], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+num_mol])

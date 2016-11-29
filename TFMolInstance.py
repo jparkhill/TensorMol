@@ -40,7 +40,7 @@ class Instance:
 		#self.learning_rate = 0.000001 # 1st sgd
 		#self.learning_rate = 0.0000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
 		self.momentum = 0.9
-		self.max_steps = 100000
+		self.max_steps = 10000
 		self.batch_size = 100 # This is just the train batch size.
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
@@ -48,7 +48,7 @@ class Instance:
 		self.TData.LoadDataToScratch( True)
 		self.TData.PrintStatus()
 
-		self.normalize=True
+		self.normalize= True
 	
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 
@@ -288,7 +288,7 @@ class Instance:
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 1000
+		test_freq = 100000
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -674,7 +674,6 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 	def inference(self, images, index_mat, H_length, O_length,  hidden1_units, hidden2_units):
 		# convert the index matrix from bool to float
 		index_mat = tf.cast(index_mat,tf.float32)
-		test_inputs = tf.cast(images,tf.float16) # debug,, just for printing stuff out
 		# define the Hydrogen network
 		with tf.name_scope('H_hidden1'):
 				H_inputs = tf.slice(images, [0,0], [H_length, self.inshape]) # debug the indexing.  The tf.slice is kind of weired 
@@ -730,7 +729,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 		with tf.name_scope('sum_up'):
 				output = tf.add(H_output, O_output)
 
-		return output, H_output, O_output, H_inputs, O_inputs, test_inputs
+		return output, H_output, O_output, H_inputs, O_inputs
 
 
 
@@ -784,7 +783,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 """Train for a number of steps."""
                 with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
                         self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.O_length = self.placeholder_inputs(self.batch_size)
-                        self.output, self.H_output, self.O_output, self.H_input, self.O_input, self.images_input = self.inference(self.images_placeholder, self.index_matrix, self.H_length, self.O_length, self.hidden1, self.hidden2)
+                        self.output, self.H_output, self.O_output, self.H_input, self.O_input = self.inference(self.images_placeholder, self.index_matrix, self.H_length, self.O_length, self.hidden1, self.hidden2)
                         self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
                         self.summary_op = tf.merge_all_summaries()
@@ -806,6 +805,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 
 	def train_step(self, step):
 		Ncase_train = self.TData.NTrain
+		print ("NTraing:", Ncase_train)
 		start_time = time.time()
                 train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
@@ -814,11 +814,13 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
 			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.O_length)
 			#print ("feed_dict", feed_dict)
-			_, total_loss_value, loss_value, tmp_H_output, tmp_O_output, tmp_H_input, tmp_O_input, tmp_input  = self.sess.run([self.train_op, self.total_loss, self.loss, self.H_output, self.O_output, self.H_input, self.O_input, self.images_input], feed_dict=feed_dict)
+			_, total_loss_value, loss_value, tmp_H2O_output, tmp_H_output, tmp_O_output, tmp_H_input, tmp_O_input  = self.sess.run([self.train_op, self.total_loss, self.loss, self.output, self.H_output, self.O_output, self.H_input, self.O_input], feed_dict=feed_dict)
                         train_loss = train_loss + loss_value
                 duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
-		#print ("accu:", batch_data[1],  "H:", tmp_H_output, "O:", tmp_O_output, "H_input:", tmp_H_input, "O_input:", tmp_O_input, "inputs:", tmp_input)
+		print ("ministep:", ministep)
+		print ("accu:", batch_data[1],  "H2O:", tmp_H2O_output,"H:", tmp_H_output, "O:", tmp_O_output, "H_input:", tmp_H_input, "O_input:", tmp_O_input)
+		#print ("input:", raw_data[0], "output:", raw_data[1])
                 self.print_training(step, train_loss, Ncase_train, duration)
                 return
 
