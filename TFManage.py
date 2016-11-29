@@ -98,11 +98,11 @@ class TFManage:
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData
 		for i  in range (0, len(self.TrainedAtoms)):
 			if (self.NetType == "fc_classify"):
-				self.Instances[self.TrainedAtoms[i]] = Instance_fc_classify(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
+				self.Instances[self.TrainedAtoms[i]] = Instance_fc_classify(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			elif (self.NetType == "fc_sqdiff"):
-				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
+				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			elif (self.NetType == "3conv_sqdiff"):
-				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i], None)
+				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			else:
 				raise Exception("Unknown Network Type!")	
 		# Raise TF instances for each atom which have already been trained.

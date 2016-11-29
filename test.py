@@ -75,7 +75,7 @@ if (1):
 		tset1.MergeWith(tset2)
 
 	# This Trains the networks.
-	if (1):
+	if (0):
 		tset = TensorData(None,None,"gdb9_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 
@@ -87,7 +87,7 @@ if (1):
 		test_mol.Distort(0,0.5)
 		if (0):
 			optimizer  = Optimizer(None)
-			optimizer.GoOptProb(test_mol) # This works perfectly.
+			optimizer.GoOptForce(test_mol) # This works perfectly.
 		print test_mol.coords
 		print test_mol.atoms
 		manager=TFManage("gdb9_NEQ_GauSH_fc_sqdiff",None,False)
