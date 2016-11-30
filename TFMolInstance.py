@@ -34,14 +34,14 @@ class Instance:
 			os.mkdir(self.path)
 		#	self.checkpoint_file_mini =self.path+self.name
 		self.chk_file = ''
-		self.learning_rate = 0.01
+		self.learning_rate = 0.001
 		#self.learning_rate = 0.0001 # for adam
 		#self.learning_rate = 0.00001 # for adadelta 
 		#self.learning_rate = 0.000001 # 1st sgd
 		#self.learning_rate = 0.0000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
 		self.momentum = 0.9
 		self.max_steps = 10000
-		self.batch_size = 100 # This is just the train batch size.
+		self.batch_size = 1000 # This is just the train batch size.
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
@@ -657,8 +657,8 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 		self.inshape =  self.TData.dig.eshape[1]
 		self.aver_atom_per_mol = aver_atom_per_mol_
 		self.input_case = self.batch_size * self.aver_atom_per_mol 
-                self.hidden1 = 500
-                self.hidden2 = 500
+                self.hidden1 = 100
+                self.hidden2 = 100
                 self.hidden3 = 500
 		self.H_length = None  # start with a  random int for inference
 		self.O_length = None  # start with a  random int for inference
@@ -819,7 +819,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
 		print ("ministep:", ministep)
-		print ("accu:", batch_data[1],  "H2O:", tmp_H2O_output,"H:", tmp_H_output, "O:", tmp_O_output, "H_input:", tmp_H_input, "O_input:", tmp_O_input)
+		print ("accu:", batch_data[1],  "H2O:", tmp_H2O_output,"H:", tmp_H_output, "O:", tmp_O_output)
 		#print ("input:", raw_data[0], "output:", raw_data[1])
                 self.print_training(step, train_loss, Ncase_train, duration)
                 return

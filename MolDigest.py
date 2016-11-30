@@ -23,6 +23,10 @@ class MolDigester:
 			return self.make_cm
 		elif (self.name == "SymFunc"):
 			return self.make_sym
+		elif (self.name == "Coulomb_BP"):
+                        return self.make_cm_bp
+		elif (self.name == "GauInv"):
+			return self.make_gauinv
 		else:
 			raise Exception("Unknown Embedding Function")
 		return 	
@@ -53,6 +57,31 @@ class MolDigester:
                 return SYM, SYM_deri
 
 
+	def make_cm_bp(self, mol):
+                CM_BP = []
+		ngrids = 2
+		for i in range (0, mol.NAtoms()):
+			cm_bp = MolEmb.Make_CM(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, i,  0.0 )
+			#print "before: ", cm_bp, len(cm_bp)
+			cm_bp = np.asarray(cm_bp[0], dtype=np.float32)
+			cm_bp = cm_bp.reshape(-1)
+			CM_BP.append(cm_bp)
+			#print "CM_BP:", CM_BP
+		CM_BP = np.asarray(CM_BP)
+		CM_BP_deri = np.zeros((CM_BP.shape[0], CM_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func. 
+		return 	CM_BP, CM_BP_deri
+		
+
+	def make_gauinv(self, mol):
+		GauInv = []
+		for i in range (0, mol.NAtoms()):
+			gauinv = MolEmb.Make_Inv(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8),self.SensRadius, i)
+			gauinv = np.asarray(gauinv[0], dtype = np.float32 )
+			gauinv = gauinv.reshape(-1)
+			GauInv.append(gauinv)
+		GauInv = np.asarray(GauInv)
+		GauInv_deri = np.zeros((GauInv.shape[0], GauInv.shape[1]))
+		return GauInv, GauInv_deri
 
 
 	def make_cm(self, mol_):
@@ -135,6 +164,20 @@ class MolDigester:
 				self.lshape = 1
 				self.eshape = [SYM.shape[0], SYM.shape[1]]
 			return SYM, out
+		elif (self.name == "Coulomb_BP"):
+			CM_BP, deri_CM_BP =  (self.EmbF(mol_))(mol_)
+			out = mol_.frag_energy   # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
+			if self.lshape ==None or self.eshape==None:
+                                self.lshape = 1
+                                self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]
+                        return CM_BP, out
+		elif (self.name == "GauInv"):
+			GauInv, deri_GauInv =  (self.EmbF(mol_))(mol_)
+			out = mol_.frag_energy # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
+			if self.lshape ==None or self.eshape==None:
+                                self.lshape = 1
+                                self.eshape = [GauInv.shape[0], GauInv.shape[1]]
+                        return GauInv, out
 		else:
                         raise Exception("Unknown Embedding Function")
                 return

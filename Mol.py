@@ -955,6 +955,7 @@ class Frag(Mol):
 		target.FragOrder = self.FragOrder
 		target.frag_mbe_energies=self.frag_mbe_energies
 		target.frag_mbe_energy = self.frag_mbe_energy
+		target.frag_energy = self.frag_energy
 		target.permute_index = self.permute_index
 
 	def Permute_Frag_by_Index(self, index, indis=[0]):
