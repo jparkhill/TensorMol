@@ -6,11 +6,19 @@ from Opt import *
 
 # John's tests
 if (1):
+	if (1):
+		a=MSet("h2o")
+		a.ReadXYZ("h2o")
+		#b=a.DistortedClone(200)
+		b=a.DistortAlongNormals()
+		b.WriteXYZ()
+
 	# Whole sequence just for morphine to debug.
 	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
-		b=a.DistortedClone(200)
+		#b=a.DistortedClone(200)
+		b=a.DistortAlongNormals()
 		print len(b.mols)
 		b.Save()
 		b.WriteXYZ()
@@ -20,11 +28,11 @@ if (1):
 		# 4 - Generate training set samples.
 		tset = TensorData(b,d)
 		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-	if (1):
+	if (0):
 		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
-	if (1):
+	if (0):
 		a=MSet("OptMols_NEQ")
 		a.Load()
 		test_mol = a.mols[0]
@@ -38,15 +46,15 @@ if (1):
 
 	# To read gdb9 xyz files and populate an Mset.
 	# Because we use pickle to save. if you write new routines on Mol you need to re-execute this.
-	if (0):
+	if (1):
 		a=MSet("gdb9")
 		#a.ReadGDB9Unpacked()
 		#a.Save()
 		a.Load()
-		c=a.DistortedClone(5)
+		c=a.DistortedClone(1)
 		c.Save()
 	# To generate training data for all the atoms in the GDB 9
-	if (0):
+	if (1):
 		# 1 - Get molecules into memory
 		a=MSet("gdb9_NEQ")
 		a.Load()
@@ -57,22 +65,6 @@ if (1):
 		# 4 - Generate training set samples.
 		tset = TensorData(a,d)
 		tset.BuildTrain("gdb9_NEQ",TreatedAtoms,True) #fourth arg. generates debug data.
-	# To generate training debugs.
-	if (0):
-		b=MSet("OptMols")
-		b.Load()
-		a = b.DistortedClone(1,False)
-		a.Save()
-		# 1 - Get molecules into memory
-		a=MSet("OptMols_NEQ")
-		a.Load()
-		# Choose allowed atoms.
-		TreatedAtoms = a.AtomTypes()
-		# 2 - Choose Digester
-		d = Digester(TreatedAtoms, name_="GauInv",OType_ ="Disp")
-		# 4 - Generate training set samples.
-		tset = TensorData(a,d)
-		tset.BuildTrain("OptMols_NEQ",TreatedAtoms,False,True) #fourth arg. generates debug data
 	#Merges two training datas...
 	if (0):
 		tset1 = TensorData(None,None,"gdb9_NEQ_SensoryBasis")
@@ -80,7 +72,7 @@ if (1):
 		tset2.name="gdb92_NEQ"
 		tset1.MergeWith(tset2)
 	# This Trains the networks.
-	if (0):
+	if (1):
 		tset = TensorData(None,None,"gdb9_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
@@ -90,24 +82,9 @@ if (1):
 		test_mol = a.mols[0]
 		print "Orig Coords", test_mol.coords
 		test_mol.Distort()
-		if (1):
-			optimizer  = Optimizer(None)
-			optimizer.OptGoForce(test_mol) # This works perfectly.
-		print test_mol.coords
-		print test_mol.atoms
-		manager=TFManage("gdb9_NEQ_GauSH_fc_sqdiff",None,False)
-		optimizer  = Optimizer(manager)
-		optimizer.Opt(test_mol)
-
-	# This Tests the optimizer.
-	if (1):
-		a=MSet("OptMols")
-		a.Load()
-		test_mol = a.mols[0]
-		test_mol.Distort(0,0.5)
 		if (0):
 			optimizer  = Optimizer(None)
-			optimizer.GoOptForce(test_mol) # This works perfectly.
+			optimizer.OptGoForce(test_mol) # This works perfectly.
 		print test_mol.coords
 		print test_mol.atoms
 		manager=TFManage("gdb9_NEQ_GauSH_fc_sqdiff",None,False)

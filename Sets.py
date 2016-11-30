@@ -33,7 +33,7 @@ class MSet:
 		print self.AtomTypes(), " Types "
 		return
 
-	def DistortedClone(self, NDistorts=1, random=True):
+	def DistortAlongNormals(self, npts=10, random=True):
 		''' Create a distorted copy of a set'''
 		print "Making distorted clone of:", self.name
 		s = MSet(self.name+"_NEQ")
@@ -42,10 +42,26 @@ class MSet:
 			np.random.seed(int(time.time()))
 			ord=np.random.permutation(len(self.mols))
 		for j in ord: 
-			for i in range (0, NDistorts):
-				s.mols.append(copy.deepcopy(self.mols[j]))
-				s.mols[-1].Distort()
+			newcoords = self.mols[j].ScanNormalModes(npts)
+			for i in range(newcoords.shape[0]): # Loop modes
+				for k in range(newcoords.shape[1]): # loop points
+					s.mols.append(Mol(self.mols[j].atoms,newcoords[i,k,:,:]))
+					s.mols[-1].DistMatrix = self.mols[j].DistMatrix
 		return s
+	
+	def DistortedClone(self, NDistorts=1, random=True):
+			''' Create a distorted copy of a set'''
+			print "Making distorted clone of:", self.name
+			s = MSet(self.name+"_NEQ")
+			ord = range(len(self.mols))
+			if(random):
+				np.random.seed(int(time.time()))
+				ord=np.random.permutation(len(self.mols))
+			for j in ord: 
+				for i in range (0, NDistorts):
+					s.mols.append(copy.deepcopy(self.mols[j]))
+					s.mols[-1].Distort()
+			return s
 	
 	def TransformedClone(self, transf_num):
 		''' make a linearly transformed copy of a set. '''

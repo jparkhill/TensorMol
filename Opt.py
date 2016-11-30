@@ -75,7 +75,7 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			for i in range(m.NAtoms()):
-				veloc[i] = m.GoForce(i)
+				veloc[i] = -1.0*m.GoForce(i)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
@@ -101,9 +101,9 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			for i in range(m.NAtoms()):
-				veloc[i] = self.tfm.evaluate(new_m, i)
+				veloc[i] = -1.0*self.tfm.evaluate(new_m, i)
 				if (IfDebug):
-					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::", m.GoForce(i)
+					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::", -1.0*m.GoForce(i)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
