@@ -328,10 +328,8 @@ class Mol:
 		"These modes are normal"
 		self.BuildDistanceMatrix()
 		hess = self.GoHessian()
-		print "HESS", hess
 		w,v = np.linalg.eig(hess)
 		thresh = pow(10.0,-6.0)
-		print "W,V:",w,v
 		numincl = np.sum([1 if abs(w[i])>thresh else 0 for i in range(len(w))])
 		disp=0.06
 		tore = np.zeros((numincl,npts,self.NAtoms(),3))
@@ -344,7 +342,6 @@ class Mol:
 				eigv = np.reshape(tmp,(self.NAtoms(),3))
 				for d in range(npts):
 					tmp = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
-					print d, self.GoEnergy(tmp)
 					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
 				nout = nout+1
 		return tore
