@@ -6,18 +6,11 @@ from Opt import *
 
 # John's tests
 if (1):
-	if (1):
-		a=MSet("h2o")
-		a.ReadXYZ("h2o")
-		#b=a.DistortedClone(200)
-		b=a.DistortAlongNormals()
-		b.WriteXYZ()
-
 	# Whole sequence just for morphine to debug.
 	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
-		#b=a.DistortedClone(200)
+		c=a.DistortedClone(200)
 		b=a.DistortAlongNormals()
 		print len(b.mols)
 		b.Save()
@@ -28,11 +21,13 @@ if (1):
 		# 4 - Generate training set samples.
 		tset = TensorData(b,d)
 		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-	if (0):
+		tset2 = TensorData(c,d)
+		tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
+	if (1):
 		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
-	if (0):
+	if (1):
 		a=MSet("OptMols_NEQ")
 		a.Load()
 		test_mol = a.mols[0]
