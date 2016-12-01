@@ -164,7 +164,7 @@ class TensorData():
 				inf.close()
 				ouf.close()
 				cases = np.concatenate((cases[:casep],ti))
-				labels = np.concatenate((labels[:casep],t0))
+				labels = np.concatenate((labels[:casep],to))
 				inf = open(insname,"wb")
 				ouf = open(outsname,"wb")
 				np.save(inf,cases)
