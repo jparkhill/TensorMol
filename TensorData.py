@@ -25,7 +25,7 @@ class TensorData():
 		self.NTest = 0  # assgin this value when the data is loaded
 		self.TestRatio = 0.2 # number of cases withheld for testing.
 		self.MxTimePerElement=MxTimePerElement_
-		self.MxMemPerElement=8000 # Max Array for an element in MB
+		self.MxMemPerElement=16000 # Max Array for an element in MB
 		self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
 		self.ScratchNCase = 0
 		self.ScratchState=None
@@ -133,7 +133,7 @@ class TensorData():
 				if (GotOut!=ins.shape[0]):
 					raise Exception("Insane Digest")
 				if (truncto[element]<casep+GotOut):
-					print "Truncating at ", casep, "Samples"
+					print "Truncating at ", casep, "Samples because ",truncto[element], " is less than ",casep," plus ",GotOut
 					break
 				else:
 					cases[casep:casep+outs.shape[0]] += ins

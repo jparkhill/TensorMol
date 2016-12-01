@@ -28,7 +28,7 @@ class Digester:
 		if (SamplingType_ != ""):
 			self.SamplingType = SamplingType_
 
-		self.NTrainSamples=15 # Samples per atom. Should be made a parameter.
+		self.NTrainSamples=1 # Samples per atom. Should be made a parameter.
 		if (self.OType == "SmoothP" or self.OType == "Disp"):
 			self.NTrainSamples=1 #Smoothprobability only needs one sample because it fits the go-probability and pgaussians-center.
 
