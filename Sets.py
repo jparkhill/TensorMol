@@ -33,7 +33,7 @@ class MSet:
 		print self.AtomTypes(), " Types "
 		return
 
-	def DistortAlongNormals(self, npts=10, random=True):
+	def DistortAlongNormals(self, npts=9, random=True):
 		''' Create a distorted copy of a set'''
 		print "Making distorted clone of:", self.name
 		s = MSet(self.name+"_NEQ")
@@ -146,7 +146,6 @@ class MSet:
 		for mol in self.mols:
 			mol.PySCF_Energy()
 		return 	
-	
 
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
 		for mol in self.mols:
@@ -158,7 +157,6 @@ class MSet:
 			mol.Calculate_All_Frag_Energy(method)
                # 	mol.Set_MBE_Energy()
 		return
-
 
 	def Get_All_Qchem_Frag_Energy(self):
 		for mol in self.mols:

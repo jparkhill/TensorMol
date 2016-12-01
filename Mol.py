@@ -237,6 +237,21 @@ class Mol:
 				self.DistMatrix[i,j] = np.linalg.norm(self.coords[i]-self.coords[j])
 		self.DistMatrix += self.DistMatrix.T
 
+	def GoEnergy(self,x):
+		''' The GO potential enforces equilibrium bond lengths. '''
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		xmat = np.array(x).reshape(self.NAtoms(),3)
+		newd = np.zeros((self.NAtoms(),self.NAtoms()))
+		for i in range(len(self.coords)):
+			for j in range(i+1,len(self.coords)):
+				newd[j,i] = np.linalg.norm(xmat[i]-xmat[j])
+				newd[i,j] = newd[j,i]
+		newd -= self.DistMatrix
+		newd = newd*newd
+		return self.GoK*np.sum(newd)
+
 	def GoEnergyAfterAtomMove(self,s,ii):
 		''' The GO potential enforces equilibrium bond lengths. '''
 		if (self.DistMatrix==None):
@@ -283,38 +298,55 @@ class Mol:
 		if (self.DistMatrix==None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
-		c0=np.copy(self.coords)
 		disp=0.001
 		hess=np.zeros((self.NAtoms()*3,self.NAtoms()*3))
-		grads0=np.array([self.GoForce(i)[0] for i in range(self.NAtoms())])
-		print grads0
 		for i in range(self.NAtoms()):
 			for j in range(self.NAtoms()):
 				for ip in range(3):
 					for jp in range(3):
-						self.coords[j,jp] += disp
-						f1 = self.GoForce(i)[0,ip]
-						self.coords = c0
-						self.coords[i,ip] += disp
-						f3 = self.GoForce(j)[0,jp]
-						hess[i*3+ip,j*3+jp] = 0.5*(f1+f3)/disp
-		return hess+hess.T
+						if (j*3+jp >= i*3+ip):
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] += disp
+							f1 = self.GoEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] -= disp
+							f2 = self.GoEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] += disp
+							f3 = self.GoEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] -= disp
+							f4 = self.GoEnergy(tmp)
+							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
+		return (hess+hess.T-np.diag(np.diag(hess)))
 
-	def ScanNormalModes(self,npts=20):
+	def ScanNormalModes(self,npts=9):
 		"These modes are normal"
 		self.BuildDistanceMatrix()
 		hess = self.GoHessian()
 		print "HESS", hess
 		w,v = np.linalg.eig(hess)
-		print w,v
-		disp=0.05
-		tore = np.zeros((3*self.NAtoms(),npts,self.NAtoms(),3))
+		thresh = pow(10.0,-6.0)
+		print "W,V:",w,v
+		numincl = np.sum([1 if abs(w[i])>thresh else 0 for i in range(len(w))])
+		disp=0.06
+		tore = np.zeros((numincl,npts,self.NAtoms(),3))
+		nout = 0
 		for a in range(self.NAtoms()):
 			for ap in range(3):
+				if (abs(w[a*3+ap])<thresh):
+					continue
 				tmp = v[:,a*3+ap]/np.linalg.norm(v[:,a*3+ap])
 				eigv = np.reshape(tmp,(self.NAtoms(),3))
 				for d in range(npts):
-					tore[a*3+ap,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
+					tmp = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
+					print d, self.GoEnergy(tmp)
+					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
+				nout = nout+1
 		return tore
 
 	def SoftCutGoForce(self, cutdist=6):
