@@ -19,7 +19,7 @@ class Mol:
 		self.PESSamples = [] # a list of tuples (atom, new coordinates, energy) for storage.
 		self.ecoords = None # equilibrium coordinates.
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
-		
+		self.GoK = 0.05
 		self.mbe_order = MBE_ORDER
 		self.frag_list = [] 
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
@@ -85,13 +85,16 @@ class Mol:
 				if (random.uniform(0, 1)<movechance):
 					#only accept collisionless moves.
 					accepted = False
-					while (not accepted):
+					maxiter = 100
+					while (not accepted and maxiter>0):
 						tmp = self.coords
 						tmp[i,j] += np.random.normal(0.0, disp)
 						mindist = np.min([ np.linalg.norm(tmp[i,:]-tmp[k,:]) if i!=k else 1.0 for k in range(self.NAtoms()) ])
 						if (mindist>0.35):
 							accepted = True
 							self.coords = tmp
+						else:
+							maxiter=maxiter-1
 
 
 	def AtomTypes(self):
@@ -240,6 +243,21 @@ class Mol:
 				self.DistMatrix[i,j] = np.linalg.norm(self.coords[i]-self.coords[j])
 		self.DistMatrix += self.DistMatrix.T
 
+	def GoEnergy(self,x):
+		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		xmat = np.array(x).reshape(self.NAtoms(),3)
+		newd = np.zeros((self.NAtoms(),self.NAtoms()))
+		for i in range(len(self.coords)):
+			for j in range(i+1,len(self.coords)):
+				newd[j,i] = np.linalg.norm(xmat[i]-xmat[j])
+				newd[i,j] = newd[j,i]
+		newd -= self.DistMatrix
+		newd = newd*newd
+		return self.GoK*np.sum(newd)
+
 	def GoEnergyAfterAtomMove(self,s,ii):
 		''' The GO potential enforces equilibrium bond lengths. '''
 		if (self.DistMatrix==None):
@@ -251,7 +269,7 @@ class Mol:
 			newd[i,ii] = newd[ii,i]
 		newd -= self.DistMatrix
 		newd = newd*newd
-		return 0.0625*np.sum(newd)
+		return self.GoK*np.sum(newd)
 
 	def GoForce(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
@@ -268,7 +286,7 @@ class Mol:
 				dij = np.linalg.norm(u)
 				if (dij != 0.0):
 					u = u/np.linalg.norm(u)
-				forces[0] += 0.5*(dij-self.DistMatrix[at_,j])*u
+				forces[0] += 2*self.GoK*(dij-self.DistMatrix[at_,j])*u
 			return forces
 		else:
 			forces = np.zeros((self.NAtoms(),3))
@@ -279,8 +297,60 @@ class Mol:
 					dij = np.linalg.norm(u)
 					if (dij != 0.0):
 						u = u/np.linalg.norm(u)
-					forces[i] += 0.5*(dij-self.DistMatrix[i,j])*u
+					forces[i] += -2*self.GoK*(dij-self.DistMatrix[i,j])*u
 			return forces
+
+	def GoHessian(self):
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		disp=0.001
+		hess=np.zeros((self.NAtoms()*3,self.NAtoms()*3))
+		for i in range(self.NAtoms()):
+			for j in range(self.NAtoms()):
+				for ip in range(3):
+					for jp in range(3):
+						if (j*3+jp >= i*3+ip):
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] += disp
+							f1 = self.GoEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] -= disp
+							f2 = self.GoEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] += disp
+							f3 = self.GoEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] -= disp
+							f4 = self.GoEnergy(tmp)
+							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
+		return (hess+hess.T-np.diag(np.diag(hess)))
+
+	def ScanNormalModes(self,npts=10):
+		"These modes are normal"
+		self.BuildDistanceMatrix()
+		hess = self.GoHessian()
+		w,v = np.linalg.eig(hess)
+		thresh = pow(10.0,-6.0)
+		numincl = np.sum([1 if abs(w[i])>thresh else 0 for i in range(len(w))])
+		disp=0.08
+		tore = np.zeros((numincl,npts,self.NAtoms(),3))
+		nout = 0
+		for a in range(self.NAtoms()):
+			for ap in range(3):
+				if (abs(w[a*3+ap])<thresh):
+					continue
+				tmp = v[:,a*3+ap]/np.linalg.norm(v[:,a*3+ap])
+				eigv = np.reshape(tmp,(self.NAtoms(),3))
+				for d in range(npts):
+					tmp = self.coords+disp*(self.NAtoms()*(d-npts/2.0+0.5)/npts)*eigv
+					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
+				nout = nout+1
+		return tore
 
 	def SoftCutGoForce(self, cutdist=6):
 		if (self.DistMatrix==None):
