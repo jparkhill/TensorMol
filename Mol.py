@@ -238,7 +238,7 @@ class Mol:
 		self.DistMatrix += self.DistMatrix.T
 
 	def GoEnergy(self,x):
-		''' The GO potential enforces equilibrium bond lengths. '''
+		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
 		if (self.DistMatrix==None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
