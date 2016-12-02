@@ -34,7 +34,7 @@ class Instance:
 			os.mkdir(self.path)
 		#	self.checkpoint_file_mini =self.path+self.name
 		self.chk_file = ''
-		self.learning_rate = 0.001
+		self.learning_rate = 0.0001
 		#self.learning_rate = 0.0001 # for adam
 		#self.learning_rate = 0.00001 # for adadelta 
 		#self.learning_rate = 0.000001 # 1st sgd

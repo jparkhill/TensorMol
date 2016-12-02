@@ -13,12 +13,13 @@ class TensorMolData():
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1):
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):  # type can be mol or frag
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
 		self.dig = Dig_
 		self.order = order_
+		self.type = type_
 		self.num_indis = num_indis_
 		self.AvailableDataFiles = []
 		self.NTest = 0  # assgin this value when the data is loaded
@@ -70,7 +71,12 @@ class TensorMolData():
 
 	def CheckShapes(self):
 		# Establish case and label shapes.
-		tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_permute_frags[self.order][0])
+		if self.type=="frag":
+			tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_permute_frags[self.order][0])
+		elif self.type=="mol":
+			tins,touts = self.dig.TrainDigest(self.set.mols[0])
+		else:
+			raise Exception("Unkown Type")
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape
 		if (self.dig.eshape == None or self.dig.lshape ==None):
@@ -273,7 +279,7 @@ class TensorMolData_BP(TensorMolData):
                 The sampler chooses points in the molecular volume.
                 The embedding turns that into inputs and labels for a network to regress.
         """
-        def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1):
+        def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):
 		self.atom_index = None
 		self.test_atom_index = None
 		self.train_atom_index = None
@@ -284,7 +290,7 @@ class TensorMolData_BP(TensorMolData):
 		self.train_mol_len = None
 		self.scratch_outputs = None
 		self.scratch_test_outputs = None
-		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_)
+		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
 		self.eles = list(self.set.AtomTypes()) 
 		self.eles.sort()
 		print "self.eles", self.eles
@@ -305,13 +311,20 @@ class TensorMolData_BP(TensorMolData):
 
 
 	def BuildTrain(self, name_="gdb9",  append=False):
-                self.CheckShapes()
+                #self.CheckShapes()
                 self.name=name_
                 total_case = 0
-                for mi in range(len(self.set.mols)):
-                        total_case += len(self.set.mols[mi].mbe_frags[self.order])  # debug
+		print "self.type:", self.type
+		if self.type=="frag":
+                	for mi in range(len(self.set.mols)):
+                        	total_case += len(self.set.mols[mi].mbe_frags[self.order])  # debug
+		elif self.type=="mol":
+			total_case  = len(self.set.mols)
+		else:
+			raise Exception("Unknow Type")
                 cases = []
-                labels = np.zeros((total_case, self.dig.lshape))
+		#print " self.dig.lshape",  self.dig.lshape
+                #labels = np.zeros((total_case, self.dig.lshape))
                 casep=0
 		self.atom_index = self.Generate_Atom_Index()
                 for mi in range(len(self.set.mols)):
@@ -362,18 +375,32 @@ class TensorMolData_BP(TensorMolData):
 		atom_index = dict()
 
 		total_case = 0
-                for mi in range(len(self.set.mols)):
-                        total_case += len(self.set.mols[mi].mbe_frags[self.order])
+		if self.type=="frag":
+                	for mi in range(len(self.set.mols)):
+                        	total_case += len(self.set.mols[mi].mbe_frags[self.order])
+		elif self.type=="mol":
+			total_case = len(self.set.mols)
+		else:
+			raise Exception ("Unknow Type")
 
 		for ele in self.eles:
 			atom_index[ele]=[[] for i in range(total_case)]
 
 		loop_index = 0
-		for i in range (0, len(self.set.mols)):
-			for  j, frag in enumerate(self.set.mols[i].mbe_frags[self.order]):
-				for k in range (0, frag.NAtoms()):
-					(atom_index[int(frag.atoms[k])][loop_index]).append(k)
-				loop_index += 1
+		if self.type=="frag":
+			for i in range (0, len(self.set.mols)):
+				for  j, frag in enumerate(self.set.mols[i].mbe_frags[self.order]):
+					for k in range (0, frag.NAtoms()):
+						(atom_index[int(frag.atoms[k])][loop_index]).append(k)
+					loop_index += 1
+		elif self.type=="mol":
+			for i in range (0, len(self.set.mols)):
+                        	for k in range (0, self.set.mols[i].NAtoms()):
+                               		(atom_index[int(self.set.mols[i].atoms[k])][loop_index]).append(k)
+                              	loop_index += 1
+		else:
+			raise Exception ("Unknow Type")
+
 
 		for ele in self.eles:
                         atom_index[ele] = np.asarray(atom_index[ele])

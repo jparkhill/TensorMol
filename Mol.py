@@ -21,6 +21,7 @@ class Mol:
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
 		self.GoK = 0.05
 		self.mbe_order = MBE_ORDER
+		self.frag_list = [] 
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
 		self.mbe_frags_deri=dict()
 		self.mbe_permute_frags=dict() # list of all the permuted frags
@@ -29,6 +30,7 @@ class Mol:
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
 		self.mbe_deri =None
 		self.nn_energy=None
+		self.ngroup=None
 		self.qchem_data_path = None
 		return
 
@@ -105,6 +107,10 @@ class Mol:
 			natoms=int(lines[0])
 			self.atoms.resize((natoms))
 			self.coords.resize((natoms,3))
+			try:
+				self.energy = float((lines[1].split())[12])
+			except:
+				pass
 			for i in range(natoms):
 				line = lines[i+2].split()
 				self.atoms[i]=AtomicNumber(line[0])
@@ -238,7 +244,7 @@ class Mol:
 		self.DistMatrix += self.DistMatrix.T
 
 	def GoEnergy(self,x):
-		''' The GO potential enforces equilibrium bond lengths. '''
+		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
 		if (self.DistMatrix==None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
@@ -348,16 +354,14 @@ class Mol:
 							hess[i*3+ip,j*3+jp] = 2*(-u[ip]*u[jp] + (dij-self.DistMatrix[i,j])*u[ip]*u[jp]/dij)				
 		return hess
 
-	def ScanNormalModes(self,npts=9):
+	def ScanNormalModes(self,npts=10):
 		"These modes are normal"
 		self.BuildDistanceMatrix()
 		hess = self.GoHessian()
-		print "HESS", hess
 		w,v = np.linalg.eig(hess)
 		thresh = pow(10.0,-6.0)
-		print "W,V:",w,v
 		numincl = np.sum([1 if abs(w[i])>thresh else 0 for i in range(len(w))])
-		disp=0.06
+		disp=0.08
 		tore = np.zeros((numincl,npts,self.NAtoms(),3))
 		nout = 0
 		for a in range(self.NAtoms()):
@@ -367,8 +371,7 @@ class Mol:
 				tmp = v[:,a*3+ap]/np.linalg.norm(v[:,a*3+ap])
 				eigv = np.reshape(tmp,(self.NAtoms(),3))
 				for d in range(npts):
-					tmp = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
-					print d, self.GoEnergy(tmp)
+					tmp = self.coords+disp*(self.NAtoms()*(d-npts/2.0+0.5)/npts)*eigv
 					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
 				nout = nout+1
 		return tore
@@ -574,6 +577,35 @@ class Mol:
 		for i in range (0, self.atoms.shape[0]):
 			names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
 		return names
+
+	def Sort_frag_list(self):
+		a=[] 
+		for dic in self.frag_list:
+			a.append(len(dic["atom"]))
+		self.frag_list = [x for (y,x) in sorted(zip(a,self.frag_list))]
+		self.frag_list.reverse()
+		return self.frag_list
+
+	def Generate_All_MBE_term_General(self, frag_list_=[], cutoff=10, center_atom=0):
+		self.frag_list =frag_list_
+		self.Sort_frag_list()
+                for i in range (1, self.mbe_order+1):
+                        self.Generate_MBE_term_General(i, cutoff, center_atom)
+                return  
+
+
+#	def Generate_MBE_term_General(self, order,  cutoff=10, center_atom=0):
+#                if order in self.mbe_frags.keys():
+#                        print ("MBE order", order, "already generated..skipping..")
+#                        return
+#		if order==1:
+#			for i, dic in enumerate(frag_list):
+#				frag_atoms = dic["atom"]
+#				n_atoms = len(frag_atoms)
+#				j = 0
+#				while ( j<  ):	
+			
+		
 
 
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
