@@ -47,6 +47,7 @@ class MSet:
 				for k in range(newcoords.shape[1]): # loop points
 					s.mols.append(Mol(self.mols[j].atoms,newcoords[i,k,:,:]))
 					s.mols[-1].DistMatrix = self.mols[j].DistMatrix
+					s.mols[-1].LJE = self.mols[j].LJE
 		return s
 	
 	def DistortedClone(self, NDistorts=1, random=True):

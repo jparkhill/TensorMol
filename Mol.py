@@ -19,6 +19,7 @@ class Mol:
 		self.PESSamples = [] # a list of tuples (atom, new coordinates, energy) for storage.
 		self.ecoords = None # equilibrium coordinates.
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
+		self.LJE = None #Lennard-Jones Well-Depths.
 		self.GoK = 0.05
 		self.mbe_order = MBE_ORDER
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
@@ -230,40 +231,63 @@ class Mol:
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):
-		self.ecoords = np.copy(self.coords)
-		self.DistMatrix = np.zeros(shape=(len(self.coords),len(self.coords)),dtype=np.float)
+		import MolEmb
+		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
+		self.LJEFromDist()
+
+	def LJEFromDist(self):
+		" Assigns lennard jones depth matrix "
+		self.LJE = np.zeros((len(self.coords),len(self.coords)))
 		for i in range(len(self.coords)):
 			for j in range(i+1,len(self.coords)):
-				self.DistMatrix[i,j] = np.linalg.norm(self.coords[i]-self.coords[j])
-		self.DistMatrix += self.DistMatrix.T
+				if (self.DistMatrix[i,j] < 2.8): # is covalent
+					if (self.atoms[i]==6 and self.atoms[j]==6):
+						if ( self.DistMatrix[i,j] <1.3):
+							self.LJE[i,j] = 0.319558 # Bond energies in hartree
+						elif ( self.DistMatrix[i,j]<1.44):
+							self.LJE[i,j] = 0.23386
+						else:
+							self.LJE[i,j] = 0.132546
+					elif ((self.atoms[i]==1 and self.atoms[j]==6) or (self.atoms[i]==6 and self.atoms[j]==1)):
+						self.LJE[i,j] = 0.157
+					elif ((self.atoms[i]==1 and self.atoms[j]==7) or (self.atoms[i]==7 and self.atoms[j]==1)):
+						self.LJE[i,j] = 0.148924
+					elif ((self.atoms[i]==1 and self.atoms[j]==8) or (self.atoms[i]==8 and self.atoms[j]==1)):
+						self.LJE[i,j] = 0.139402
+					elif ((self.atoms[i]==6 and self.atoms[j]==7) or (self.atoms[i]==7 and self.atoms[j]==6)):
+						self.LJE[i,j] = 0.0559894
+					elif ((self.atoms[i]==6 and self.atoms[j]==8) or (self.atoms[i]==8 and self.atoms[j]==6)):
+						self.LJE[i,j] = 0.0544658
+					elif (self.atoms[i]==8 and self.atoms[j]==8):
+						if( self.DistMatrix[i,j]<1.40):
+							self.LJE[i,j] = 0.189678
+						else:
+							self.LJE[i,j] = 0.0552276
+					elif (self.atoms[i]==7 and self.atoms[j]==7):
+						if ( self.DistMatrix[i,j] <1.2):
+							self.LJE[i,j] = 0.359932 # Bond energies in hartree
+						elif ( self.DistMatrix[i,j]<1.4):
+							self.LJE[i,j] = 0.23386
+						else:
+							self.LJE[i,j] = 0.0552276
+					else:
+						self.LJE[i,j] = 0.1
+				else:
+					self.LJE[i,j] = 0.005 # Non covalent interactions
+		self.LJE += self.LJE.T
 
 	def GoEnergy(self,x):
-		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
-		if (self.DistMatrix==None):
-			print "Build DistMatrix"
-			raise Exception("dmat")
+		''' The GO potential enforces equilibrium bond lengths with Lennard Jones Forces.'''
 		xmat = np.array(x).reshape(self.NAtoms(),3)
-		newd = np.zeros((self.NAtoms(),self.NAtoms()))
-		for i in range(len(self.coords)):
-			for j in range(i+1,len(self.coords)):
-				newd[j,i] = np.linalg.norm(xmat[i]-xmat[j])
-				newd[i,j] = newd[j,i]
-		newd -= self.DistMatrix
-		newd = newd*newd
-		return self.GoK*np.sum(newd)
+		dmat = MolEmb.Make_DistMat(xmat)
+		np.fill_diagonal(dmat,1.0)
+		term2 = np.power(1.122462048309373*self.DistMatrix/dmat,6.0)
+		term1 = np.power(term2,2.0)
+		return np.sum(self.LJE*(term1-2.0*term2))
 
 	def GoEnergyAfterAtomMove(self,s,ii):
 		''' The GO potential enforces equilibrium bond lengths. '''
-		if (self.DistMatrix==None):
-			print "Build DistMatrix"
-			raise Exception("dmat")
-		newd = np.copy(self.DistMatrix)
-		for i in range(len(self.coords)):
-			newd[ii,i] = np.linalg.norm(self.coords[i]-s)
-			newd[i,ii] = newd[ii,i]
-		newd -= self.DistMatrix
-		newd = newd*newd
-		return self.GoK*np.sum(newd)
+		raise Exception("Depreciated.")
 
 	def GoForce(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
@@ -272,26 +296,20 @@ class Mol:
 		if (self.DistMatrix==None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
+		disp=0.001
+		forces=np.zeros((self.NAtoms(),3))
+		for i in range(self.NAtoms()):
+			for ip in range(3):
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] += disp
+				f1 = self.GoEnergy(tmp)
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] -= disp
+				f2 = self.GoEnergy(tmp)
+				forces[i,ip] = (f1-f2)/(2.0*disp)
 		if (at_!=-1):
-			forces = np.zeros((1,3))
-			for j in range(len(self.coords)):
-				# compute force on i due to all j's
-				u = self.coords[j]-self.coords[at_]
-				dij = np.linalg.norm(u)
-				if (dij != 0.0):
-					u = u/np.linalg.norm(u)
-				forces[0] += 2*self.GoK*(dij-self.DistMatrix[at_,j])*u
-			return forces
+			return forces[at_]
 		else:
-			forces = np.zeros((self.NAtoms(),3))
-			for i in range(len(self.coords)):
-				for j in range(len(self.coords)):
-					# compute force on i due to all j's
-					u = self.coords[j]-self.coords[i]
-					dij = np.linalg.norm(u)
-					if (dij != 0.0):
-						u = u/np.linalg.norm(u)
-					forces[i] += -2*self.GoK*(dij-self.DistMatrix[i,j])*u
 			return forces
 
 	def GoHessian(self):

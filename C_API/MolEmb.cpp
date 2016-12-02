@@ -592,6 +592,29 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 }
 
 //
+// Gives the projection of a delta function at xyz
+//
+static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nat,nat};
+	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *SH_data,*xyz_data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	for (int i=0; i < nat; ++i)
+		for (int j=i+1; j < nat; ++j)
+		{
+			SH_data[i*nat+j] = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
+			SH_data[j*nat+i] = SH_data[i*nat+j];
+			}
+	return SH;
+}
+
+//
 // returns a [Nrad X Nang] x [npts] array which contains rasterized versions of the
 // non-orthogonal basis functions.
 //
@@ -899,6 +922,8 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 
 static PyMethodDef EmbMethods[] =
 {
+	{"Make_DistMat", Make_DistMat, METH_VARARGS,
+		"Make_DistMat method"},
 	{"Make_CM", Make_CM, METH_VARARGS,
 		"Make_CM method"},
 	{"Make_RDF", Make_RDF, METH_VARARGS,
