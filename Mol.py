@@ -370,7 +370,7 @@ class Mol:
 						if ip != jp:
 							hess[i*3+ip,i*3+jp] += 2*(u[ip]*u[jp] - (dij-self.DistMatrix[i,j])*u[ip]*u[jp]/dij)
 							hess[i*3+ip,j*3+jp] = 2*(-u[ip]*u[jp] + (dij-self.DistMatrix[i,j])*u[ip]*u[jp]/dij)				
-		return hess
+		return hess*self.GoK
 
 	def ScanNormalModes(self,npts=10):
 		"These modes are normal"
