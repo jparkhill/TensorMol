@@ -10,7 +10,8 @@ if (1):
 	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
-		c=a.DistortedClone(200)
+		print "nmols:",len(a.mols)
+		c=a.DistortedClone(50)
 		b=a.DistortAlongNormals()
 		print len(b.mols)
 		b.Save()
@@ -38,7 +39,7 @@ if (1):
 		manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
 		optimizer  = Optimizer(manager)
 		optimizer.Opt(test_mol)
-
+	exit(0) 
 	if (1):
 		# To read gdb9 xyz files and populate an Mset.
 		# Because we use pickle to save. if you write new routines on Mol you need to re-execute this.

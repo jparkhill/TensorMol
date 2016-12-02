@@ -324,14 +324,14 @@ class Mol:
 							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
 		return (hess+hess.T-np.diag(np.diag(hess)))
 
-	def ScanNormalModes(self,npts=9):
+	def ScanNormalModes(self,npts=10):
 		"These modes are normal"
 		self.BuildDistanceMatrix()
 		hess = self.GoHessian()
 		w,v = np.linalg.eig(hess)
 		thresh = pow(10.0,-6.0)
 		numincl = np.sum([1 if abs(w[i])>thresh else 0 for i in range(len(w))])
-		disp=0.06
+		disp=0.08
 		tore = np.zeros((numincl,npts,self.NAtoms(),3))
 		nout = 0
 		for a in range(self.NAtoms()):
@@ -341,7 +341,7 @@ class Mol:
 				tmp = v[:,a*3+ap]/np.linalg.norm(v[:,a*3+ap])
 				eigv = np.reshape(tmp,(self.NAtoms(),3))
 				for d in range(npts):
-					tmp = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
+					tmp = self.coords+disp*(self.NAtoms()*(d-npts/2.0+0.5)/npts)*eigv
 					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0)/npts)*eigv
 				nout = nout+1
 		return tore
