@@ -312,7 +312,7 @@ class Mol:
 					forces[i] += -2*self.GoK*(dij-self.DistMatrix[i,j])*u
 			return forces
 
-	def GoHessian(self):
+	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
@@ -341,6 +341,30 @@ class Mol:
 							f4 = self.GoEnergy(tmp)
 							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
 		return (hess+hess.T-np.diag(np.diag(hess)))
+
+	def GoHessian(self):
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		c0=np.copy(self.coords)
+		hess=np.zeros((self.NAtoms()*3,self.NAtoms()*3))
+		for i in range(self.NAtoms()):
+			for j in range(self.NAtoms()):
+				if (i == j):
+					continue
+				u = (self.coords[j]-self.coords[i])
+				dij = np.linalg.norm(u)
+				u = u/np.linalg.norm(u)
+				for ip in range(3):
+					for jp in range(3):
+						#Tridiagonal terms
+						if ip == jp:
+							hess[i*3+ip,i*3+ip] += 2*(u[ip]**2 - (dij-self.DistMatrix[i,j])*(u[ip]**2)/dij + (dij-self.DistMatrix[i,j])/dij)
+							hess[i*3+ip,j*3+jp] = 2*(-u[ip]**2 + (dij-self.DistMatrix[i,j])*(u[ip]**2)/dij - (dij-self.DistMatrix[i,j])/dij)
+						if ip != jp:
+							hess[i*3+ip,i*3+jp] += 2*(u[ip]*u[jp] - (dij-self.DistMatrix[i,j])*u[ip]*u[jp]/dij)
+							hess[i*3+ip,j*3+jp] = 2*(-u[ip]*u[jp] + (dij-self.DistMatrix[i,j])*u[ip]*u[jp]/dij)				
+		return hess
 
 	def ScanNormalModes(self,npts=10):
 		"These modes are normal"
