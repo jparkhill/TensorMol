@@ -48,7 +48,7 @@ class Instance:
 		self.TData.LoadDataToScratch( True)
 		self.TData.PrintStatus()
 
-		self.normalize= True
+		self.normalize= False
 	
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 
@@ -662,6 +662,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 self.hidden3 = 500
 		self.H_length = None  # start with a  random int for inference
 		self.O_length = None  # start with a  random int for inference
+		self.C_length = None  # start with a  random int for inference
 		self.index_matrix = None
                 self.NetType = "fc_sqdiff_BP"
 #               self.inshape = self.TData.scratch_inputs.shape[1] 
@@ -671,7 +672,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 
 
 
-	def inference(self, images, index_mat, H_length, O_length,  hidden1_units, hidden2_units):
+	def inference(self, images, index_mat, H_length, C_length, O_length, hidden1_units, hidden2_units):
 		# convert the index matrix from bool to float
 		index_mat = tf.cast(index_mat,tf.float32)
 		# define the Hydrogen network
@@ -700,9 +701,36 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 				H_output = tf.matmul(H_output, H_index_mat) 
 				H_output = tf.reshape(H_output, [self.batch_size, 1]) # this needs to be replaced by the nmol	
 	
+		# define the Carbon newtork
+                with tf.name_scope('C_hidden1'):
+                                C_inputs = tf.slice(images, [H_length,0], [C_length, self.inshape])
+                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
+                                biases = tf.Variable(tf.zeros([hidden1_units]),
+                                name='biases')
+                                C_hidden1 = tf.nn.relu(tf.matmul(C_inputs, weights) + biases)
+
+                with tf.name_scope('C_hidden2'):
+                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+                                biases = tf.Variable(tf.zeros([hidden2_units]),
+                                name='biases')
+                                C_hidden2 = tf.nn.relu(tf.matmul(C_hidden1, weights) + biases)
+
+                with tf.name_scope('C_regression_linear'):
+                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+                                biases = tf.Variable(tf.zeros([self.outshape]),
+                                name='biases')
+                                C_output = tf.matmul(C_hidden2, weights) + biases
+                                C_output = tf.reshape(C_output, [1, C_length])  # this needs to be replace by the natom
+
+                                C_index_mat = tf.slice(index_mat, [H_length,0],[C_length, self.batch_size])
+
+                                C_output = tf.matmul(C_output, C_index_mat)
+                                C_output = tf.reshape(C_output, [self.batch_size, 1])
+
+
 		# define the Oxygen newtork
 		with tf.name_scope('O_hidden1'):
-				O_inputs = tf.slice(images, [H_length,0], [O_length, self.inshape])
+				O_inputs = tf.slice(images, [H_length+C_length, 0], [O_length, self.inshape])
                                 weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
                                 biases = tf.Variable(tf.zeros([hidden1_units]),
                                 name='biases')
@@ -721,38 +749,43 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                                 O_output = tf.matmul(O_hidden2, weights) + biases
 				O_output = tf.reshape(O_output, [1, O_length])  # this needs to be replace by the natom
 
-				O_index_mat = tf.slice(index_mat, [H_length,0],[O_length, self.batch_size])	
+				O_index_mat = tf.slice(index_mat, [H_length+C_length, 0],[O_length, self.batch_size])	
 
                                 O_output = tf.matmul(O_output, O_index_mat)
                                 O_output = tf.reshape(O_output, [self.batch_size, 1])
 			
 		with tf.name_scope('sum_up'):
-				output = tf.add(H_output, O_output)
+				H_C_output = tf.add(H_output, C_output)
+				output = tf.add(H_C_output, O_output)
 
-		return output, H_output, O_output, H_inputs, O_inputs
+		return output, H_output, C_output, O_output, H_inputs, C_inputs, O_inputs
 
 
 
 	def PrepareData(self, raw_data): # for debug purpose, this only works for system with two kinds of element: H and O
-		H_index_matrix = raw_data[3][1]
+		H_index_matrix = raw_data[3][1]  # 
+		C_index_matrix = raw_data[3][6]  # 
 		O_index_matrix = raw_data[3][8]
 		
-		H_length = raw_data[2][1]
+		H_length = raw_data[2][1]  
+		C_length = raw_data[2][6]
 		O_length = raw_data[2][8]
 
 		index_matrix = np.zeros((self.input_case, self.batch_size),dtype=bool)
 		index_matrix[0:H_length, :] = H_index_matrix
-		index_matrix[H_length:H_length + O_length, :] = O_index_matrix
+		index_matrix[H_length:H_length + C_length,  :] = C_index_matrix
+		index_matrix[H_length + C_length:H_length + C_length + O_length, :] = O_index_matrix
 	
-		return [raw_data[0], raw_data[1]], [H_length, O_length], index_matrix
+		return [raw_data[0], raw_data[1]], [H_length, C_length, O_length], index_matrix
 		
-	def fill_feed_dict(self, batch_data, atom_length, index_matrix, images_pl, labels_pl, index_mat_pl, H_length_pl, O_length_pl):
+	def fill_feed_dict(self, batch_data, atom_length, index_matrix, images_pl, labels_pl, index_mat_pl, H_length_pl, C_length_pl, O_length_pl):
                 # Create the feed_dict for the placeholders filled with the next
                 # `batch size` examples.
                 images_feed = batch_data[0]
                 labels_feed = batch_data[1]
 		H_length_feed = atom_length[0] # debug, shitty way to write it.
-		O_length_feed = atom_length[1]  # debug, shitty way to write it.
+		C_length_feed = atom_length[1]
+		O_length_feed = atom_length[2]  # debug, shitty way to write it.
 		index_feed = index_matrix
                 # Don't eat shit. 
                 if (not np.all(np.isfinite(images_feed),axis=(0,1))):
@@ -766,6 +799,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 labels_pl: labels_feed,
                 index_mat_pl: index_feed,
 	 	H_length_pl: H_length_feed,
+		C_length_pl: C_length_feed,
                 O_length_pl: O_length_feed,
                 }
                 return feed_dict
@@ -776,14 +810,15 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 outputs_pl = tf.placeholder(tf.float32, shape=(batch_size, self.outshape))
 		index_mat_pl = tf.placeholder(tf.bool, shape=((self.input_case, batch_size)))
 		H_pl = tf.placeholder("int32")
+		C_pl = tf.placeholder("int32")
                 O_pl = tf.placeholder("int32")
-                return inputs_pl, outputs_pl, index_mat_pl, H_pl, O_pl 
+                return inputs_pl, outputs_pl, index_mat_pl, H_pl, C_pl, O_pl 
 
 	def train_prepare(self,  continue_training =False):
                 """Train for a number of steps."""
                 with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-                        self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.O_length = self.placeholder_inputs(self.batch_size)
-                        self.output, self.H_output, self.O_output, self.H_input, self.O_input = self.inference(self.images_placeholder, self.index_matrix, self.H_length, self.O_length, self.hidden1, self.hidden2)
+                        self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length = self.placeholder_inputs(self.batch_size)
+                        self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input = self.inference(self.images_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length, self.hidden1, self.hidden2)
                         self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
                         self.summary_op = tf.merge_all_summaries()
@@ -812,14 +847,14 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 			raw_data=self.TData.GetTrainBatch(self.input_case, self.batch_size) # batch_data strucutre: inputs (self.input_case*self.eshape), outputs (self.batch_size*self.lshape), number_atom_per_ele (dic[1(H)]=2000, dic[8(0)]=1000), index_matrix(dic[1(H)]: number_atom_per_ele[1(H)]*self.batch_size)
 			#print ("raw_data:", raw_data)
 			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
-			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.O_length)
+			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
 			#print ("feed_dict", feed_dict)
-			_, total_loss_value, loss_value, tmp_H2O_output, tmp_H_output, tmp_O_output, tmp_H_input, tmp_O_input  = self.sess.run([self.train_op, self.total_loss, self.loss, self.output, self.H_output, self.O_output, self.H_input, self.O_input], feed_dict=feed_dict)
+			_, total_loss_value, loss_value, tmp_H2O_output, tmp_H_output, tmp_C_output, tmp_O_output, tmp_H_input, tmp_C_input, tmp_O_input  = self.sess.run([self.train_op, self.total_loss, self.loss, self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input], feed_dict=feed_dict)
                         train_loss = train_loss + loss_value
                 duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
 		print ("ministep:", ministep)
-		print ("accu:", batch_data[1],  "H2O:", tmp_H2O_output,"H:", tmp_H_output, "O:", tmp_O_output)
+		print ("accu:", batch_data[1],  "H2O:", tmp_H2O_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
 		#print ("input:", raw_data[0], "output:", raw_data[1])
                 self.print_training(step, train_loss, Ncase_train, duration)
                 return

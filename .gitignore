@@ -9,6 +9,7 @@ datasets
 *checkpoint*
 *.tfevents.*
 *events.out*
+datasets/*.pdb
 *.pdb
 *_NEQ.pdb* # don't save random distortions. 
 *.raw

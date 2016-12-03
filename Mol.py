@@ -28,6 +28,8 @@ class Mol:
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
 		self.energy=None
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
+		self.roomT_H = None
+		self.atomization = None
 		self.mbe_deri =None
 		self.nn_energy=None
 		self.ngroup=None
@@ -39,6 +41,13 @@ class Mol:
 			
 	def NAtoms(self):
 		return self.atoms.shape[0]
+
+
+	def Calculate_Atomization(self):
+		self.atomization = self.roomT_H
+		for i in range (0, self.atoms.shape[0]):
+			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
+		return  
 
 	def AtomsWithin(self,rad, pt):
 		# Returns indices of atoms within radius of point.
@@ -109,6 +118,7 @@ class Mol:
 			self.coords.resize((natoms,3))
 			try:
 				self.energy = float((lines[1].split())[12])
+				self.roomT_H = float((lines[1].split())[14]) 
 			except:
 				pass
 			for i in range(natoms):
@@ -130,6 +140,8 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
+		if (self.energy!=None and self.roomT_H!=None):
+			self.Calculate_Atomization()
 		return
 
 	def FromXYZString(self,string):

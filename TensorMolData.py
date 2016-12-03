@@ -91,15 +91,26 @@ class TensorMolData():
 		cases = np.zeros((total_case, self.dig.eshape))
 		labels = np.zeros((total_case, self.dig.lshape))
 		casep=0
-		for mi in range(len(self.set.mols)):
-			for frag in self.set.mols[mi].mbe_permute_frags[self.order]:
-				#print  frag.dist[0], frag.frag_mbe_energy
-				ins,outs = self.dig.TrainDigest(frag)
-				cases[casep:casep+1] += ins
-				labels[casep:casep+1] += outs
-				casep += 1
-		insname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
-		outsname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+		if self.type=="frag":
+			for mi in range(len(self.set.mols)):
+				for frag in self.set.mols[mi].mbe_permute_frags[self.order]:
+					#print  frag.dist[0], frag.frag_mbe_energy
+					ins,outs = self.dig.TrainDigest(frag)
+					cases[casep:casep+1] += ins
+					labels[casep:casep+1] += outs
+					casep += 1
+			insname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
+			outsname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+		elif self.type=="mol":
+			for mi in range(len(self.set.mols)):
+                        	ins,outs = self.dig.TrainDigest(mi)
+                        	cases[casep:casep+1] += ins
+                        	labels[casep:casep+1] += outs
+                        	casep += 1
+                        insname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
+                        outsname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+		else:
+			raise Exception("Unknown Type")
 		if (not append):
 			inf = open(insname,"wb")
 			ouf = open(outsname,"wb")
@@ -311,7 +322,7 @@ class TensorMolData_BP(TensorMolData):
 
 
 	def BuildTrain(self, name_="gdb9",  append=False):
-                #self.CheckShapes()
+                self.CheckShapes()
                 self.name=name_
                 total_case = 0
 		print "self.type:", self.type
@@ -323,21 +334,37 @@ class TensorMolData_BP(TensorMolData):
 		else:
 			raise Exception("Unknow Type")
                 cases = []
-		#print " self.dig.lshape",  self.dig.lshape
-                #labels = np.zeros((total_case, self.dig.lshape))
+                labels = np.zeros((total_case, self.dig.lshape))
                 casep=0
 		self.atom_index = self.Generate_Atom_Index()
-                for mi in range(len(self.set.mols)):
-                        for frag in self.set.mols[mi].mbe_frags[self.order]:  # debug
-                                #print  frag.dist[0], frag.frag_mbe_energy
-                                ins,outs = self.dig.TrainDigest(frag)
-                                cases.append(ins)
-                                labels[casep:casep+1] += outs
-                                casep += 1
-				#print cases, labels, cases.shape, labels.shape
-		cases = np.asarray(cases)
-                insname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
-                outsname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+		if self.type=="frag":
+          	      	for mi in range(len(self.set.mols)):
+          	        	for frag in self.set.mols[mi].mbe_frags[self.order]:  # debug
+          	                      #print  frag.dist[0], frag.frag_mbe_energy
+          	                      ins,outs = self.dig.TrainDigest(frag)
+          	                      cases.append(ins)
+          	                      labels[casep:casep+1] += outs
+          	                      casep += 1
+	  	      		#print cases, labels, cases.shape, labels.shape
+	  	      	cases = np.asarray(cases)
+          	      	insname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
+          	      	outsname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+		elif self.type=="mol":
+			for mi in range(len(self.set.mols)):
+				print "casep:", casep
+                           	ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+                           	cases.append(ins)
+                           	labels[casep:casep+1] += outs
+                           	casep += 1
+                           	#print cases, labels, cases.shape, labels.shape
+                        cases = np.asarray(cases)
+                        insname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
+                        outsname = self.path+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"		
+		else:
+			raise Exception("Unknown Type")
+
+
+	
                 if (not append):
                         inf = open(insname,"wb")
                         ouf = open(outsname,"wb")
