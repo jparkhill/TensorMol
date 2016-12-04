@@ -47,7 +47,6 @@ class MSet:
 				for k in range(newcoords.shape[1]): # loop points
 					s.mols.append(Mol(self.mols[j].atoms,newcoords[i,k,:,:]))
 					s.mols[-1].DistMatrix = self.mols[j].DistMatrix
-					s.mols[-1].LJE = self.mols[j].LJE
 		return s
 	
 	def DistortedClone(self, NDistorts=1, random=True):
@@ -132,23 +131,40 @@ class MSet:
 		self.mols=mols
 		return
 
-
-        def CutSet(self, allowed_eles):
-                mols=[]
-                for mol in self.mols:
-                        if set(list(mol.atoms)).issubset(allowed_eles):
-                                mols.append(mol)
-                for i in allowed_eles:
-                        self.name += "_"+str(i)
-                self.mols=mols
-                return
+	def CutSet(self, allowed_eles):
+		mols=[]
+		for mol in self.mols:
+				if set(list(mol.atoms)).issubset(allowed_eles):
+						mols.append(mol)
+		for i in allowed_eles:
+				self.name += "_"+str(i)
+		self.mols=mols
+		return
 
 	def CombineSet(self, b, name_=None):
 		if name_ == None:
 			self.name = self.name + b.name
 		self.mols.append(b.mols) 
 		return
-		
+
+	def Statistics(self):
+		""" Return some energy information about the samples we have... """
+		sampfrac = 0.01;
+		np.random.seed(int(time.time()))
+		ord=np.random.permutation(int(len(self.mols)*sampfrac))
+		ens = np.zeros(len(ord))
+		rmsd = np.zeros(len(ord))
+		n=0
+		for j in ord: 
+			ens[n] = self.mols[j].GoEnergy(self.mols[j].coords.flatten())
+			tmp = MolEmb.Make_DistMat(self.mols[j].coords) - self.mols[j].DistMatrix
+			rmsd[n] = np.sum(tmp*tmp)/len(self.mols[j].coords)
+			n=n+1
+		print "Mean and Std. Energy", np.average(ens), np.std(ens)
+		print "Energy Histogram", np.histogram(ens, 100)
+		print "RMSD Histogram", np.histogram(rmsd, 100)
+		return
+
 	def MBE(self,  atom_group=1, cutoff=10, center_atom=0):
 		for mol in self.mols:
 			mol.MBE(atom_group, cutoff, center_atom)		

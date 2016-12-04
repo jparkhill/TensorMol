@@ -18,6 +18,8 @@ if (1):
 		print "nmols:",len(a.mols)
 		c=a.DistortedClone(50)
 		b=a.DistortAlongNormals()
+		c.Statistics()
+		b.Statistics()
 		print len(b.mols)
 		b.Save()
 		b.WriteXYZ()
