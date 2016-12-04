@@ -282,7 +282,7 @@ class Mol:
 					self.LJE[i,j] = 0.005 # Non covalent interactions
 		self.LJE += self.LJE.T
 
-	def GoEnergy(self,x):
+	def LJEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths with Lennard Jones Forces.'''
 		xmat = np.array(x).reshape(self.NAtoms(),3)
 		dmat = MolEmb.Make_DistMat(xmat)
@@ -290,6 +290,17 @@ class Mol:
 		term2 = np.power(1.122462048309373*self.DistMatrix/dmat,6.0)
 		term1 = np.power(term2,2.0)
 		return np.sum(self.LJE*(term1-2.0*term2))
+
+	def GoEnergy(self,x):
+		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		xmat = np.array(x).reshape(self.NAtoms(),3)
+		newd = MolEmb.Make_DistMat(xmat)
+		newd -= self.DistMatrix
+		newd = newd*newd
+		return self.GoK*np.sum(newd)
 
 	def GoEnergyAfterAtomMove(self,s,ii):
 		''' The GO potential enforces equilibrium bond lengths. '''
@@ -299,24 +310,7 @@ class Mol:
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
-		if (self.DistMatrix==None):
-			print "Build DistMatrix"
-			raise Exception("dmat")
-		disp=0.001
-		forces=np.zeros((self.NAtoms(),3))
-		for i in range(self.NAtoms()):
-			for ip in range(3):
-				tmp = self.coords.flatten()
-				tmp[i*3+ip] += disp
-				f1 = self.GoEnergy(tmp)
-				tmp = self.coords.flatten()
-				tmp[i*3+ip] -= disp
-				f2 = self.GoEnergy(tmp)
-				forces[i,ip] = (f1-f2)/(2.0*disp)
-		if (at_!=-1):
-			return forces[at_]
-		else:
-			return forces
+		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
@@ -349,28 +343,7 @@ class Mol:
 		return (hess+hess.T-np.diag(np.diag(hess)))
 
 	def GoHessian(self):
-		if (self.DistMatrix==None):
-			print "Build DistMatrix"
-			raise Exception("dmat")
-		c0=np.copy(self.coords)
-		hess=np.zeros((self.NAtoms()*3,self.NAtoms()*3))
-		for i in range(self.NAtoms()):
-			for j in range(self.NAtoms()):
-				if (i == j):
-					continue
-				u = (self.coords[j]-self.coords[i])
-				dij = np.linalg.norm(u)
-				u = u/np.linalg.norm(u)
-				for ip in range(3):
-					for jp in range(3):
-						#Tridiagonal terms
-						if ip == jp:
-							hess[i*3+ip,i*3+ip] += 2*(u[ip]**2 - (dij-self.DistMatrix[i,j])*(u[ip]**2)/dij + (dij-self.DistMatrix[i,j])/dij)
-							hess[i*3+ip,j*3+jp] = 2*(-u[ip]**2 + (dij-self.DistMatrix[i,j])*(u[ip]**2)/dij - (dij-self.DistMatrix[i,j])/dij)
-						if ip != jp:
-							hess[i*3+ip,i*3+jp] += 2*(u[ip]*u[jp] - (dij-self.DistMatrix[i,j])*u[ip]*u[jp]/dij)
-							hess[i*3+ip,j*3+jp] = 2*(-u[ip]*u[jp] + (dij-self.DistMatrix[i,j])*u[ip]*u[jp]/dij)				
-		return hess*self.GoK
+		return self.GoK*MolEmb.Make_GoHess(self.coords,self.DistMatrix)
 
 	def ScanNormalModes(self,npts=10):
 		"These modes are normal"

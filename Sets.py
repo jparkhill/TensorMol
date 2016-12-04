@@ -33,7 +33,7 @@ class MSet:
 		print self.AtomTypes(), " Types "
 		return
 
-	def DistortAlongNormals(self, npts=9, random=True):
+	def DistortAlongNormals(self, npts=8, random=True):
 		''' Create a distorted copy of a set'''
 		print "Making distorted clone of:", self.name
 		s = MSet(self.name+"_NEQ")
