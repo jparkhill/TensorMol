@@ -53,13 +53,14 @@ class MolDigester:
 			#print "sym", sym
 			SYM.append(sym)
 		SYM =  np.asarray(SYM)
+		print "mol.atoms", mol.atoms, "SYM", SYM
 		SYM_deri = np.zeros((SYM.shape[0], SYM.shape[1])) # debug, it will take some work to implement to derivative of sym func. 
                 return SYM, SYM_deri
 
 
 	def make_cm_bp(self, mol):
                 CM_BP = []
-		ngrids = 2
+		ngrids = 10
 		for i in range (0, mol.NAtoms()):
 			cm_bp = MolEmb.Make_CM(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, i,  0.0 )
 			#print "before: ", cm_bp, len(cm_bp)
@@ -152,21 +153,26 @@ class MolDigester:
 		if (self.name =="Coulomb"):
 			CM, deri_CM = (self.EmbF(mol_))(mol_)
 			UpTri = self.GetUpTri(CM)
-			out = mol_.frag_mbe_energy
+			#out = mol_.frag_mbe_energy # debug
+			out = mol_.energy # debug
+			#print CM, deri_CM, out
 			if self.lshape ==None or self.eshape==None:
 				self.lshape=1
 				self.eshape=UpTri.shape[0] 
 			return UpTri, out
 		elif (self.name == "SymFunc"):
 			SYM, SYM_deri = (self.EmbF(mol_))(mol_)
-			out = mol_.frag_energy   # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
+			#out = mol_.frag_energy   # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
+			out = mol_.energy # debug
 			if self.lshape ==None or self.eshape==None:
 				self.lshape = 1
 				self.eshape = [SYM.shape[0], SYM.shape[1]]
 			return SYM, out
 		elif (self.name == "Coulomb_BP"):
 			CM_BP, deri_CM_BP =  (self.EmbF(mol_))(mol_)
-			out = mol_.frag_energy   # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
+			#out = mol_.frag_energy   # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
+			#out = mol_.energy # debug
+			out = mol_.atomization  # debug
 			if self.lshape ==None or self.eshape==None:
                                 self.lshape = 1
                                 self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]

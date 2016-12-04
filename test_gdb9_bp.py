@@ -13,6 +13,8 @@ if (1):
 	if (0):
 		a=MSet("gdb9")
 		a.ReadGDB9Unpacked("/home/kyao/TensorMol/gdb9/")
+		allowed_eles=[1, 6, 8]
+                a.CutSet(allowed_eles)
 		a.Save()
 		#a.Load()
 		#b=MSet("OptMols")
@@ -24,18 +26,22 @@ if (1):
 		#d.Save()
 
 	# To generate training data for all the atoms in the GDB 9
-	if (1):
+	if (0):
 		# 1 - Get molecules into memory
-		a=MSet("gdb9")
+		a=MSet("gdb9_1_6_8")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
                 print "TreatedAtoms ", TreatedAtoms
-                d = MolDigester(TreatedAtoms, name_="Coulomb")  # Initialize a digester that apply descriptor for the fragments.
+                d = MolDigester(TreatedAtoms, name_="Coulomb_BP")  # Initialize a digester that apply descriptor for the fragments.
                 #tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
                 #tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
                 tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-                tset.BuildTrain("gdb9")
+                tset.BuildTrain("gdb9_1_6_8")
 
+	if (1):
+         	tset = TensorMolData_BP(MSet(),MolDigester([]),"gdb9_1_6_8_Coulomb_BP_1")
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+                manager.Train(maxstep=20000)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 
 	# This Trains the networks.
 	if (0):
