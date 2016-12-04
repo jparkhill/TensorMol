@@ -20,8 +20,10 @@ class Mol:
 		self.ecoords = None # equilibrium coordinates.
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
 		self.GoK = 0.05
-		self.mbe_order = MBE_ORDER
-		self.frag_list = [] 
+		self.mbe_order = MBE_ORDER 
+		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
+		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
+		self.atoms_of_frags = [] # store the index of atoms of each frag
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
 		self.mbe_frags_deri=dict()
 		self.mbe_permute_frags=dict() # list of all the permuted frags
@@ -598,24 +600,112 @@ class Mol:
 		self.frag_list.reverse()
 		return self.frag_list
 
-	def Generate_All_MBE_term_General(self, frag_list_=[], cutoff=10, center_atom=0):
-		self.frag_list =frag_list_
-		self.Sort_frag_list()
+	def Generate_All_MBE_term_General(self, frag_list=[], cutoff=10, center_atom=[]):
+		self.frag_list = frag_list
+		#self.Sort_frag_list()  # debug, not sure it is necessary
+		if center_atom == []:
+			center_atom = [0]*len(frag_list)
                 for i in range (1, self.mbe_order+1):
                         self.Generate_MBE_term_General(i, cutoff, center_atom)
                 return  
 
 
-#	def Generate_MBE_term_General(self, order,  cutoff=10, center_atom=0):
-#                if order in self.mbe_frags.keys():
-#                        print ("MBE order", order, "already generated..skipping..")
-#                        return
-#		if order==1:
-#			for i, dic in enumerate(frag_list):
-#				frag_atoms = dic["atom"]
-#				n_atoms = len(frag_atoms)
-#				j = 0
-#				while ( j<  ):	
+	def Generate_MBE_term_General(self, order,  cutoff=10, center_atom=[]):
+                if order in self.mbe_frags.keys():
+                        print ("MBE order", order, "already generated..skipping..")
+                        return
+		if order==1:
+			self.mbe_frags[order] = []
+			masked=[]
+			frag_index = 0
+			for i, dic in enumerate(self.frag_list):
+				frag_atoms = String_To_Atoms(dic["atom"])
+				frag_atoms = [atoi[atom] for atom in frag_atoms]
+				num_frag_atoms = len(frag_atoms)
+				j = 0
+				while (j < self.NAtoms()):
+					if j in masked:
+						j += 1
+					else:
+						tmp_list = list(self.atoms[j:j+num_frag_atoms])
+						if tmp_list == frag_atoms:
+							self.atoms_of_frags.append([])
+							masked += range (j, j+num_frag_atoms)
+						 	self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
+							self.type_of_frags.append(i)
+
+							tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
+							tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
+							mbe_terms = [frag_index]
+							mbe_dist = None
+							atom_group = [num_frag_atoms]
+							frag_type = [dic]
+							tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms, mbe_dist, atom_group, frag_type, FragOrder_=order)
+							self.mbe_frags[order].append(tmp_mol)
+
+							j += num_frag_atoms
+							frag_index += 1
+							print self.atoms_of_frags, tmp_list, self.type_of_frags
+							print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
+						else:
+							j += 1	
+		else:
+			self.mbe_frags[order] = []
+			mbe_terms=[]
+               	 	mbe_terms_num=0
+                	mbe_dist=[]
+			ngroup = len(self.mbe_frags[1])	#
+			atomlist=list(range(0,ngroup)) 
+			time_log = time.time()
+
+                        print ("generating the combinations for order: ", order)
+                        combinations=list(itertools.combinations(atomlist,order))
+                        print ("finished..takes", time_log-time.time(),"second")
+
+			time_now=time.time()
+                        max_case = 10000000   #  set max cases for debug 
+
+			for i in range (0, len(combinations)):
+                        	term = list(combinations[i])
+                        	pairs=list(itertools.combinations(term, 2))
+                        	saveindex=[]
+                        	dist = [10000000]*len(pairs)
+                        	flag=1
+                        	npairs=len(pairs)
+				for j in range (0, npairs):
+					center_1 = self.mbe_frags[1][pairs[j][0]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
+					center_2 = self.mbe_frags[1][pairs[j][1]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
+					dist[j] = np.linalg.norm(center_1- center_2)
+					if dist[j] > cutoff:
+						flag = 0
+						break
+				if flag == 1:   # we find a frag
+					mbe_terms_num += 1  
+         	                       	mbe_terms.append(term)
+	                                mbe_dist.append(dist)
+                	                if mbe_terms_num >=  max_case:   # just for generating training case
+                        	        	break;
+
+			mbe_frags = []
+			for i in range (0, mbe_terms_num):
+				frag_type = []
+				atom_group = []
+				for index in mbe_terms[i]:
+					frag_type.append(self.frag_list[self.type_of_frags[index]])
+					atom_group.append(self.mbe_frags[1][index].atoms.shape[0])
+				tmp_coord = np.zeros((sum(atom_group), 3))	
+				tmp_atom = np.zeros(sum(atom_group), dtype=np.uint8)
+				pointer = 0
+				for j, index in enumerate(mbe_terms[i]):
+					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
+					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
+					pointer += atom_group[j]
+				print tmp_atom, tmp_coord,  mbe_terms[i], mbe_dist[i], atom_group, frag_type, order
+				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, FragOrder_=order)
+                                self.mbe_frags[order].append(tmp_mol)
+	
+		return 
+				
 			
 		
 
@@ -865,10 +955,13 @@ class Mol:
 	
 class Frag(Mol):
         """ Provides a MBE frag of  general purpose molecule"""
-        def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1):
+        def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, FragOrder_=None):
 		Mol.__init__(self, atoms_, coords_)
 		self.atom_group = atom_group_
-		self.FragOrder = self.coords.shape[0]/self.atom_group
+		if FragOrder_==None:
+			self.FragOrder = self.coords.shape[0]/self.atom_group
+		else:
+			self.FragOrder = FragOrder_
 		if (index_!=None):
 			self.index = index_
 		else:
@@ -877,6 +970,10 @@ class Frag(Mol):
 			self.dist = dist_
 		else:
 			self.dist = None
+		if (frag_type_!=None):
+			self.frag_type = frag_type_
+		else:
+			self.frag_type = None
 		self.frag_mbe_energies=dict()
 		self.frag_mbe_energy = None
 		self.frag_energy = None

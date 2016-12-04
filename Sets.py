@@ -162,6 +162,12 @@ class MSet:
 		for mol in self.mols:
                 	mol.Generate_All_MBE_term(atom_group, cutoff, center_atom)
                 return 
+
+	def Generate_All_MBE_term_General(self, frag_list=[], cutoff=10, center_atom=0):
+		for mol in self.mols:
+			mol.Generate_All_MBE_term_General(frag_list, cutoff, center_atom)
+		return 
+
 	
 	def Calculate_All_Frag_Energy(self, method="pyscf"):
 		for mol in self.mols:
