@@ -7,12 +7,19 @@ from Opt import *
 # John's tests
 if (1):
 	# Whole sequence just for morphine to debug.
+	if (0):
+		a=MSet("h2o")
+		a.ReadXYZ("h2o")
+		print "nmols:",len(a.mols)
+		b=a.DistortAlongNormals()
 	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		print "nmols:",len(a.mols)
 		c=a.DistortedClone(50)
 		b=a.DistortAlongNormals()
+		c.Statistics()
+		b.Statistics()
 		print len(b.mols)
 		b.Save()
 		b.WriteXYZ()

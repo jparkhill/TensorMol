@@ -591,6 +591,123 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nat,nat};
+	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *SH_data,*xyz_data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	for (int i=0; i < nat; ++i)
+		for (int j=i+1; j < nat; ++j)
+		{
+			SH_data[i*nat+j] = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
+			SH_data[j*nat+i] = SH_data[i*nat+j];
+			}
+	return SH;
+}
+
+static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz, *EqDistMat;
+	int at;
+	if (!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nat,3};
+	if (at>=0)
+		outdim[0] = 1;
+	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *frc_data,*xyz_data,*d_data;
+	xyz_data = (double*) ((PyArrayObject*)xyz)->data;
+	frc_data = (double*) ((PyArrayObject*)hess)->data;
+	d_data = (double*) ((PyArrayObject*)EqDistMat)->data;
+	double u[3]={0.0,0.0,0.0};
+	if (at<0)
+	{
+		for (int i=0; i < nat; ++i)
+		{
+			for (int j=0; j < nat; ++j)
+			{
+				if (i==j)
+					continue;
+				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+				frc_data[i*3+0] += -2*(dij-d_data[i*nat+j])*u[0];
+				frc_data[i*3+1] += -2*(dij-d_data[i*nat+j])*u[1];
+				frc_data[i*3+2] += -2*(dij-d_data[i*nat+j])*u[2];
+			}
+		}
+	}
+	else
+	{
+		int i=at;
+			for (int j=0; j < nat; ++j)
+			{
+				if (i==j)
+					continue;
+				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+				frc_data[0] += -2*(dij-d_data[i*nat+j])*u[0];
+				frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
+				frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
+			}
+	}
+	return hess;
+}
+
+static PyObject* Make_GoHess(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz, *EqDistMat;
+	if (!PyArg_ParseTuple(args, "O!O!", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {3*nat,3*nat};
+	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *hess_data,*xyz_data,*d_data;
+	xyz_data = (double*) ((PyArrayObject*)xyz)->data;
+	hess_data = (double*) ((PyArrayObject*)hess)->data;
+	d_data = (double*) ((PyArrayObject*)EqDistMat)->data;
+	double u[3]={0.0,0.0,0.0};
+	for (int i=0; i < nat; ++i)
+	{
+		for (int j=0; j < nat; ++j)
+		{
+			if (i==j)
+				continue;
+			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+			u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+			u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+			u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+			for (int ip=0; ip < 3; ++ip)
+			{
+				for (int jp=0; jp < 3; ++jp)
+				{
+					if (ip==jp)
+					{
+						hess_data[(i*3+ip)*3*nat+i*3+ip] += 2.0*(u[ip]*u[ip]- (dij-d_data[i*nat+j])*(u[ip]*u[ip])/dij + (dij-d_data[i*nat+j])/dij);
+						hess_data[(i*3+ip)*3*nat+j*3+jp] = 2.0*(-u[ip]*u[ip] + (dij-d_data[i*nat+j])*(u[ip]*u[ip])/dij - (dij-d_data[i*nat+j])/dij);
+					}
+					else
+					{
+						hess_data[(i*3+ip)*3*nat+i*3+jp] += 2.0*(u[ip]*u[jp] - (dij-d_data[i*nat+j])*u[ip]*u[jp]/dij);
+						hess_data[(i*3+ip)*3*nat+j*3+jp] = 2.0*(-u[ip]*u[jp] + (dij-d_data[i*nat+j])*u[ip]*u[jp]/dij);
+					}
+				}
+			}
+		}
+	}
+	return hess;
+}
+
 //
 // returns a [Nrad X Nang] x [npts] array which contains rasterized versions of the
 // non-orthogonal basis functions.
@@ -899,12 +1016,18 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 
 static PyMethodDef EmbMethods[] =
 {
+	{"Make_DistMat", Make_DistMat, METH_VARARGS,
+		"Make_DistMat method"},
 	{"Make_CM", Make_CM, METH_VARARGS,
 		"Make_CM method"},
 	{"Make_RDF", Make_RDF, METH_VARARGS,
 		"Make_RDF method"},
 	{"Make_Go", Make_Go, METH_VARARGS,
 		"Make_Go method"},
+	{"Make_GoForce", Make_GoForce, METH_VARARGS,
+		"Make_GoForce method"},
+	{"Make_GoHess", Make_GoHess, METH_VARARGS,
+		"Make_GoHess method"},
 	{"Make_SH", Make_SH, METH_VARARGS,
 		"Make_SH method"},
 	{"Make_Inv", Make_Inv, METH_VARARGS,

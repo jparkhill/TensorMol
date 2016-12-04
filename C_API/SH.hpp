@@ -6,7 +6,7 @@
 using namespace std;
 #define PI 3.14159265358979
 
-#define SH_NRAD 11
+#define SH_NRAD 10
 #define SH_LMAX 6
 // r0, sigma
 // if you want to sense beyond 15A, you need to fix this grid.

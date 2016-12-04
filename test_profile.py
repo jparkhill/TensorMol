@@ -7,10 +7,10 @@ import cProfile, pstats, StringIO
 pr = cProfile.Profile()
 
 # 1 - Get molecules into memory
-#a=MSet("gdb9")
-#a.Load()
-#b=a.DistortedClone()
-#b.Save()
+a=MSet("gdb9")
+a.Load()
+b=a.DistortedClone()
+b.Save()
 
 b=MSet("gdb9_NEQ")
 b.Load()
