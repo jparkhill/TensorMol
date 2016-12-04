@@ -288,7 +288,7 @@ class Instance:
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 100000
+		test_freq = 10
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -322,9 +322,12 @@ class Instance:
 	def test(self,step):
 		return 
 
-	def print_training(self, step, loss, Ncase, duration):
+	def print_training(self, step, loss, Ncase, duration, Train=True):
 		denom = max((int(Ncase/self.batch_size)),1)
-		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
+		if Train:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
+		else:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
 		return 
 
 class Instance_fc_classify(Instance):
@@ -845,17 +848,32 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			raw_data=self.TData.GetTrainBatch(self.input_case, self.batch_size) # batch_data strucutre: inputs (self.input_case*self.eshape), outputs (self.batch_size*self.lshape), number_atom_per_ele (dic[1(H)]=2000, dic[8(0)]=1000), index_matrix(dic[1(H)]: number_atom_per_ele[1(H)]*self.batch_size)
-			#print ("raw_data:", raw_data)
 			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
 			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
-			#print ("feed_dict", feed_dict)
-			_, total_loss_value, loss_value, tmp_H2O_output, tmp_H_output, tmp_C_output, tmp_O_output, tmp_H_input, tmp_C_input, tmp_O_input  = self.sess.run([self.train_op, self.total_loss, self.loss, self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input], feed_dict=feed_dict)
+			_, total_loss_value, loss_value, tmp_mol_output, tmp_H_output, tmp_C_output, tmp_O_output, tmp_H_input, tmp_C_input, tmp_O_input  = self.sess.run([self.train_op, self.total_loss, self.loss, self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input], feed_dict=feed_dict)
                         train_loss = train_loss + loss_value
                 duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
 		print ("ministep:", ministep)
-		print ("accu:", batch_data[1],  "H2O:", tmp_H2O_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
+		print ("accu:", batch_data[1],  "Mol:", tmp_mol_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
 		#print ("input:", raw_data[0], "output:", raw_data[1])
                 self.print_training(step, train_loss, Ncase_train, duration)
                 return
+
+
+	def test(self, step):
+                Ncase_test = self.TData.NTest
+                test_loss =  0.0
+                test_correct = 0.
+                test_start_time = time.time()
+                for  ministep in range (0, int(Ncase_test/self.batch_size)):
+                        raw_data=self.TData.GetTestBatch( self.input_case, self.batch_size)
+			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
+			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
+                        total_loss_value, loss_value, output_value  = self.sess.run([self.total_loss,  self.loss, self.output],  feed_dict=feed_dict)
+                        test_loss = test_loss + loss_value
+                        duration = time.time() - test_start_time
+                print("testing...")
+                self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
+		return test_loss, feed_dict
 

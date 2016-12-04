@@ -301,6 +301,8 @@ class TensorMolData_BP(TensorMolData):
 		self.train_mol_len = None
 		self.scratch_outputs = None
 		self.scratch_test_outputs = None
+		self.test_ScratchPointer = None
+		self.test_Ele_ScratchPointer = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
 		self.eles = list(self.set.AtomTypes()) 
 		self.eles.sort()
@@ -312,6 +314,8 @@ class TensorMolData_BP(TensorMolData):
                 self.test_atom_index = None
                 self.train_atom_index = None
                 self.Ele_ScratchPointer = None
+		self.test_Ele_ScratchPointer = None
+		self.test_ScratchPointer = None
                 self.num_test_atoms = None
                 self.test_mol_len = None
                 self.num_train_atoms = None
@@ -383,19 +387,20 @@ class TensorMolData_BP(TensorMolData):
                 self.Save() #write a convenience pickle.
                 return
 
-	def Sort_SymFunc_By_Ele(self, inputs, atom_index):
-                sym_funcs = dict()
+	def Sort_BPinput_By_Ele(self, inputs, atom_index):
+                BPinput = dict()
 		for ele in self.eles:
-			sym_funcs[ele]=[]
+			BPinput[ele]=[]
 		
 		for i in range (0, inputs.shape[0]):
 			for ele in self.eles:
 				for j  in range (0, len(atom_index[ele][i])):
-					sym_funcs[ele].append(inputs[i][atom_index[ele][i][j]])
+					BPinput[ele].append(inputs[i][atom_index[ele][i][j]])
 		#print "sym_funcs: ", len(sym_funcs[1]), len(sym_funcs[8])
 		for ele in self.eles:
-                        sym_funcs[ele]=np.asarray(sym_funcs[ele])
-		return sym_funcs
+                        BPinput[ele]=np.asarray(BPinput[ele])
+		return BPinput
+
 
 
 	def Generate_Atom_Index(self):
@@ -506,7 +511,7 @@ class TensorMolData_BP(TensorMolData):
 			self.train_mol_len[ele]=[]
 			for i in range (0, train_atom_index[ele].shape[0]):
 				self.train_mol_len[ele].append(len(train_atom_index[ele][i]))
-		self.scratch_inputs = self.Sort_SymFunc_By_Ele(tmp_inputs, train_atom_index)
+		self.scratch_inputs = self.Sort_BPinput_By_Ele(tmp_inputs, train_atom_index)
 
 		self.num_train_atoms = dict()
 		for ele in self.eles:
@@ -521,7 +526,7 @@ class TensorMolData_BP(TensorMolData):
 			self.test_mol_len[ele]=[]
                         for i in range (0, test_atom_index[ele].shape[0]):
                                 self.test_mol_len[ele].append(len(test_atom_index[ele][i]))
-                self.scratch_test_inputs = self.Sort_SymFunc_By_Ele(tmp_test_inputs, test_atom_index)
+                self.scratch_test_inputs = self.Sort_BPinput_By_Ele(tmp_test_inputs, test_atom_index)
 
 		self.num_test_atoms = dict()
                 for ele in self.eles:
@@ -530,21 +535,34 @@ class TensorMolData_BP(TensorMolData):
                 self.ScratchState = self.order
                 self.ScratchPointer=0
 		self.Ele_ScratchPointer=dict()
+		self.test_ScratchPointer=0
+                self.test_Ele_ScratchPointer=dict()
 		for ele in self.eles:
 			self.Ele_ScratchPointer[ele]=0
+			self.test_Ele_ScratchPointer[ele] = 0
 		#print self.test_mol_len, self.train_mol_len
 		return
 
-	def Make_Index_Matrix(self, number_atom_per_ele, num_mol):
+	def Make_Index_Matrix(self, number_atom_per_ele, num_mol, Train=True):
 		index_matrix = dict()
-		for ele in self.eles:
-			index_matrix[ele] = np.zeros((number_atom_per_ele[ele], num_mol),dtype=np.bool)
-			atom_index = 0
-			for i in range (self.ScratchPointer, self.ScratchPointer + num_mol):
-				for j in range (atom_index, atom_index + self.train_mol_len[ele][i]):
-					#print "index of mol:", i, "index of atom:", j
-					index_matrix[ele][j][i-self.ScratchPointer]=True
-				atom_index += self.train_mol_len[ele][i]	
+		if Train==True:
+			for ele in self.eles:
+				index_matrix[ele] = np.zeros((number_atom_per_ele[ele], num_mol),dtype=np.bool)
+				atom_index = 0
+				for i in range (self.ScratchPointer, self.ScratchPointer + num_mol):
+					for j in range (atom_index, atom_index + self.train_mol_len[ele][i]):
+						#print "index of mol:", i, "index of atom:", j
+						index_matrix[ele][j][i-self.ScratchPointer]=True
+					atom_index += self.train_mol_len[ele][i]
+		else:
+			for ele in self.eles:
+                                index_matrix[ele] = np.zeros((number_atom_per_ele[ele], num_mol),dtype=np.bool)
+                                atom_index = 0
+                                for i in range (self.test_ScratchPointer, self.test_ScratchPointer + num_mol):
+                                        for j in range (atom_index, atom_index + self.test_mol_len[ele][i]):
+                                                #print "index of mol:", i, "index of atom:", j
+                                                index_matrix[ele][j][i-self.test_ScratchPointer]=True
+                                        atom_index += self.test_mol_len[ele][i]	
 		#print "index_matrix", index_matrix
 		return index_matrix
 		
@@ -553,7 +571,6 @@ class TensorMolData_BP(TensorMolData):
 		start_time = time.time()
                 if (self.ScratchState != self.order):
                         self.LoadDataToScratch()
-		#print "NTrain:", self.NTrain, "num_mol:", num_mol
                 if (num_mol> self.NTrain):
                         raise Exception("Training Data is less than the batchsize... :( ")
 
@@ -561,7 +578,6 @@ class TensorMolData_BP(TensorMolData):
                 if ( self.ScratchPointer+num_mol > self.NTrain):
 			reset = True
 		for ele in self.eles:
-			#print "self.num_train_atoms[ele]", self.num_train_atoms[ele]
 			if (self.Ele_ScratchPointer[ele] >= self.num_train_atoms[ele]):
 				reset = True
 		if reset==True:
@@ -575,31 +591,55 @@ class TensorMolData_BP(TensorMolData):
 		input_index=0
 		for ele in self.eles:
 			tmp = 0
-			#print  "start: ele:",ele, "self.Ele_ScratchPointer[ele]", self.Ele_ScratchPointer[ele], "self.ScratchPointer ", self.ScratchPointer
 			for i in range (self.ScratchPointer, self.ScratchPointer + num_mol):
 				inputs[input_index:input_index+self.train_mol_len[ele][i]]=self.scratch_inputs[ele][self.Ele_ScratchPointer[ele]:self.Ele_ScratchPointer[ele]+self.train_mol_len[ele][i]]
 				self.Ele_ScratchPointer[ele] += self.train_mol_len[ele][i]
 				tmp += self.train_mol_len[ele][i]
 				input_index += self.train_mol_len[ele][i]
 			number_atom_per_ele[ele]=tmp
-			#print "end: ele:",ele, "number_atom_per_ele[ele]", number_atom_per_ele[ele],"self.Ele_ScratchPointer[ele]", self.Ele_ScratchPointer[ele], "self.ScratchPointer ", self.ScratchPointer 
 		# make the index matrix
 		index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol) # one needs to know the number of molcule that contained in the ncase atom
-                #tmp=(self.scratch_inputs[self.ScratchPointer:self.ScratchPointer+ncases], self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+num_mol])
                 self.ScratchPointer += num_mol
-		#print inputs[1], inputs[-1], outputs[1], outputs[-1],  number_atom_per_ele, index_matrix
-		#print "time cost of get batch:", time.time() - start_time
                 return inputs, outputs, number_atom_per_ele, index_matrix
 
-        def GetTestBatch(self,ncases=1280, ministep = 0):
-                if (ncases>self.NTest):
+	def GetTestBatch(self,ncases=1200, num_mol = 1200/6):
+                start_time = time.time()
+                if (num_mol> self.NTest):
                         raise Exception("Test Data is less than the batchsize... :( ")
-                return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)]) 
+
+                reset = False
+                if ( self.test_ScratchPointer+num_mol > self.NTest):
+                        reset = True
+                for ele in self.eles:
+                        if (self.test_Ele_ScratchPointer[ele] >= self.num_test_atoms[ele]):
+                                reset = True
+                if reset==True:
+                        self.test_ScratchPointer = 0
+                        for ele in self.eles:
+                                self.test_Ele_ScratchPointer[ele] = 0
+
+                inputs = np.zeros((ncases, self.dig.eshape[1]))
+                outputs = self.scratch_test_outputs[self.test_ScratchPointer:self.test_ScratchPointer+num_mol]
+                number_atom_per_ele = dict()
+                input_index=0
+                for ele in self.eles:
+                        tmp = 0
+                        for i in range (self.test_ScratchPointer, self.test_ScratchPointer + num_mol):
+                                inputs[input_index:input_index+self.test_mol_len[ele][i]]=self.scratch_test_inputs[ele][self.test_Ele_ScratchPointer[ele]:self.test_Ele_ScratchPointer[ele]+self.test_mol_len[ele][i]]
+                                self.test_Ele_ScratchPointer[ele] += self.test_mol_len[ele][i]
+                                tmp += self.test_mol_len[ele][i]
+                                input_index += self.test_mol_len[ele][i]
+                        number_atom_per_ele[ele]=tmp
+                # make the index matrix
+                index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol, Train=False) # one needs to know the number of molcule that contained in the ncase atom
+                self.test_ScratchPointer += num_mol
+                return inputs, outputs, number_atom_per_ele, index_matrix
 
 
         def PrintStatus(self):
                 print "self.ScratchState",self.ScratchState
                 print "self.ScratchPointer",self.ScratchPointer
+                print "self.test_ScratchPointer",self.test_ScratchPointer
                 if (self.scratch_outputs != None):
 			print "number of training molecules:",self.NTrain, " number of training molecules:", self.NTest 
 			for ele in self.eles:
