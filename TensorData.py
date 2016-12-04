@@ -259,7 +259,12 @@ class TensorData():
 		if (self.ScratchState != ele):
 			self.LoadElementToScratch(ele,False)
 		if (ncases>self.scratch_test_inputs.shape[0]):
-			raise Exception("Test Data is less than the batchsize... :( ")
+			print "Test Data is less than the batchsize... :( "
+			tmpinputs=np.zeros(shape=tuple([ncases]+list(self.dig.eshape)), dtype=np.float32)
+			tmpoutputs=np.zeros(shape=tuple([ncases]+list(self.dig.eshape)), dtype=np.float32)
+			tmpinputs[0:self.scratch_test_inputs.shape[0]] += self.scratch_test_inputs
+			tmpoutputs[0:self.scratch_test_outputs.shape[0]] += self.scratch_test_outputs
+			return (tmpinputs[ncases*(ministep):ncases*(ministep+1)], tmpoutputs[ncases*(ministep):ncases*(ministep+1)])
 		return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)])
 
 	def EvaluateTestBatch(self,desired,preds):
