@@ -618,7 +618,7 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 	if (!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at))
 		return NULL;
 	const int nat = (xyz->dimensions)[0];
-	npy_intp outdim[2] = {3*nat,3};
+	npy_intp outdim[2] = {nat,3};
 	if (at>=0)
 		outdim[0] = 1;
 	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
