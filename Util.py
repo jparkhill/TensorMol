@@ -27,7 +27,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #  TODO: have some type of param file. 
 MAX_ATOMIC_NUMBER = 10
 GRIDS = None
-MBE_ORDER = 2
+MBE_ORDER = 5
 HAS_GRIDS=True
 
 # Derived Quantities and useful things. 
@@ -174,7 +174,23 @@ def Binominal_Combination(indis=[0,1,2], group=3):
 			for sub_index in index:
 				new_index.append(list(sub_list)+list(sub_index))
 		return new_index		
-	
+
+def String_To_Atoms(s=""):
+	l = list(s)
+	atom_l = []
+	tmp = ""
+	for i, c in enumerate(l):
+		if  ord('A') <= ord(c) <= ord('Z'):
+			tmp=c	
+		else:
+			tmp += c
+		if i==len(l)-1:
+			atom_l.append(tmp)
+		elif ord('A') <= ord(l[i+1]) <= ord('Z'):	
+			atom_l.append(tmp)
+		else:
+			continue
+	return atom_l
 
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)
