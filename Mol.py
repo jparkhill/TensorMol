@@ -926,6 +926,11 @@ class Mol:
 					lines = Submit_Script_Lines(order=str(i), sub_order =str(j), index=str(k), mincase = str(1), maxcase = str(num_frag), name = "MBE_"+str(i)+"_"+str(j)+"_"+str(index), ncore = str(4), queue="long")
 					submit_file.write(lines) 
 					submit_file.close()
+		
+		python_submit = open("submit_all.py","w+")
+		line = 'import os,sys\n\nfor file in os.listdir("."):\n        if file.endswith(".sub"):\n                cmd = "qsub "+file\n                os.system(cmd)\n'
+		python_submit.write(line)
+		python_submit.close()
 		os.chdir("../../../")
 		return 
 
@@ -1222,10 +1227,11 @@ class Frag(Mol):
 	def Set_Frag_MBE_Energy(self):
 		self.frag_mbe_energy =  self.Frag_MBE_Energy()
 		self.frag_energy = self.frag_mbe_energies[LtoS(self.permute_index)]
-		print " self.frag_energy : ",  self.frag_energy
-		prod = 1
-		for i in self.dist:
-			prod = i*prod
+		print "self.frag_type: ", self.frag_type
+		print "self.frag_mbe_energy: ", self.frag_mbe_energy
+		#prod = 1
+		#for i in self.dist:
+		#	prod = i*prod
 		#print "self.frag_mbe_energy", self.frag_mbe_energy
 		return 0
 
