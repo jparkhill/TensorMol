@@ -1105,7 +1105,7 @@ class Frag(Mol):
 					rimp2 = float(line.split()[4])
 					continue
 				if "fatal error" in line:
-					print "fata error!"
+					print "fata error! file:", path+"/"+outfile_name 
 			if nonB_single != 0.0:
 				print "Warning: non-Brillouin singles do not equal to zero, non-Brillouin singles=",nonB_single,path,outfile_name
 			if key!=None and rimp2!=None:
