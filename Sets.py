@@ -91,11 +91,11 @@ class MSet:
 		from os.path import isfile, join
 		onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
 		for file in onlyfiles:
-			if ( file[-4:]!='.xyz' ):
-				continue
-			self.mols.append(Mol())
-			self.mols[-1].ReadGDB9(path+file)
-		return
+                        if ( file[-4:]!='.xyz' ):
+                                continue
+                        self.mols.append(Mol())
+                        self.mols[-1].ReadGDB9(path+file, file, self.name)
+                return
 
 	def ReadXYZ(self,filename):
 		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """
@@ -191,6 +191,12 @@ class MSet:
 			mol.Calculate_All_Frag_Energy(method)
                # 	mol.Set_MBE_Energy()
 		return
+
+	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
+                for mol in self.mols:
+                        mol.Calculate_All_Frag_Energy_General(method)
+               #        mol.Set_MBE_Energy()
+                return
 
 	def Get_All_Qchem_Frag_Energy(self):
 		for mol in self.mols:
