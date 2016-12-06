@@ -126,7 +126,7 @@ class TFManage:
 		return p
 
 	def evaluate(self, mol, atom):
-		input = self.TData.dig.Emb(mol, atom, mol.coords[atom])
+		input = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		p = self.Instances[mol.atoms[atom]].evaluate(input)
 		return p[0]
 
