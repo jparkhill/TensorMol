@@ -208,6 +208,11 @@ class MSet:
                         mol.Get_All_Qchem_Frag_Energy_General()
                 return	
 
+	def Generate_All_Pairs(self, pair_list=[]):
+		for mol in self.mols:
+			mol.Generate_All_Pairs(pair_list)
+		return
+
 
 	def Get_Permute_Frags(self, indis=[0]):
 		for mol in self.mols:

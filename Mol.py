@@ -595,6 +595,138 @@ class Mol:
 		self.frag_list.reverse()
 		return self.frag_list
 
+
+	def Generate_All_Pairs(self, pair_list=[]):
+		mono = []
+		for pair in pair_list:
+			for frag in pair['mono']:
+				mono.append([atoi[atom] for atom in  String_To_Atoms(frag)])
+		tmp = []
+		for frag in mono:
+			if frag not in tmp:
+				tmp.append(frag)
+		mono = tmp
+		(mono.sort(key=lambda x:len(x)))
+		mono.reverse()
+		
+		dic_mono = {}
+		dic_mono_index = {}
+		masked = []
+		for frag_atoms in mono:
+			frag_name = LtoS(frag_atoms)
+			dic_mono[frag_name] = []
+			dic_mono_index[frag_name] = []
+			num_frag_atoms = len(frag_atoms)
+			j = 0
+			while (j < self.NAtoms()):
+				if j in masked:
+					j += 1
+				else:
+					tmp_list = list(self.atoms[j:j+num_frag_atoms])
+					if tmp_list == frag_atoms:
+						dic_mono[frag_name].append(self.coords[j:j+num_frag_atoms,:].copy())
+						dic_mono_index[frag_name].append(range (j, j+num_frag_atoms))
+						masked += range (j, j+num_frag_atoms)
+						j += num_frag_atoms
+					else:
+						j += 1
+		happy_atoms = []
+		for pair in pair_list:
+			happy_atoms = self.PairUp(dic_mono, dic_mono_index, pair, happy_atoms)  #it is amazing that the dictionary is passed by pointer...
+		left_atoms = list(set(range (0, self.NAtoms())) - set(happy_atoms))
+		sorted_atoms = happy_atoms + left_atoms
+		self.atoms = self.atoms[sorted_atoms]
+		self.coords = self.coords[sorted_atoms]
+		return 
+
+			
+
+	
+	def PairUp(self, dic_mono, dic_mono_index, pair, happy_atoms):  # stable marriage pairing  Ref: https://en.wikipedia.org/wiki/Stable_marriage_problem
+		mono_1 = LtoS([atoi[atom] for atom in  String_To_Atoms(pair["mono"][0])])
+		mono_2 = LtoS([atoi[atom] for atom in  String_To_Atoms(pair["mono"][1])])
+		
+		center_1 = pair["center"][0]
+		center_2 = pair["center"][1]
+
+		switched = False
+		if len(dic_mono[mono_1]) > len(dic_mono[mono_2]):
+			mono_1, mono_2 = mono_2, mono_1
+                        center_1, center_2  = center_2, center_1
+			switched = True
+
+		mono_1_pair = [-1]*len(dic_mono[mono_1])
+		dist_matrix = np.zeros((len(dic_mono[mono_1]), len(dic_mono[mono_2])))
+		for i in range (0, len(dic_mono[mono_1])):
+			for j in range (0, len(dic_mono[mono_2])):
+				dist_matrix[i][j] = np.linalg.norm(dic_mono[mono_1][i][center_1] - dic_mono[mono_2][j][center_2])
+
+		mono_1_prefer = []
+		mono_2_prefer = []
+		for i in range (0, len(dic_mono[mono_1])):
+			s = list(dist_matrix[i])
+			mono_1_prefer.append(sorted(range(len(s)), key=lambda k: s[k]))
+		for i in range (0, len(dic_mono[mono_2])):
+                        s = list(dist_matrix[:,i])
+                        mono_2_prefer.append(sorted(range(len(s)), key=lambda k: s[k]))
+
+
+		mono_1_info = [-1]*len(dic_mono[mono_1]) # -1 means they are not paired, and the number means the Nth most prefered are chosen
+		mono_2_info = [-1]*len(dic_mono[mono_2])
+
+		mono_1_history = [0]*len(dic_mono[mono_1]) # history of the man's proposed
+
+		# first round  mono_1 is the man, mono_2 is woman,  num of man > num of woman
+		for i in range (0, len(dic_mono[mono_1])):
+			target = mono_1_prefer[i][0]
+			if i == mono_2_prefer[target][0]:  # Congs! find true lovers
+				mono_1_info[i] = 0   
+				mono_2_info[target] = 0
+			mono_1_history[i] += 1
+			
+		while (-1 in mono_1_info):
+			for i in range (0, len(dic_mono[mono_1])):
+				if mono_1_info[i] == -1:
+					target = mono_1_prefer[i][mono_1_history[i]] # propose
+					if mono_2_info[target] == -1: # met a single woman
+						mono_1_info[i] = mono_1_history[i]
+						mono_2_info[target] = mono_2_prefer[target].index(i)
+					elif mono_2_info[target] > mono_2_prefer[target].index(i):   # this man is the better choice than the previous one
+						poorguy = mono_2_prefer[mono_2_info[target]]  
+						mono_1_info[poorguy] = -1   # this poor guy is abandoned...
+						mono_1_info[i] = mono_1_history[i]
+						mono_2_info[target] = mono_2_prefer[target].index(i)
+					else:
+						continue
+					mono_1_history[i] += 1
+				else:
+					continue
+
+		final_pairs = []
+		for i in range (0, len(dic_mono[mono_1])):
+			final_pairs.append([i, mono_1_prefer[i][mono_1_info[i]]])
+		
+			
+		for i in range (0, len(final_pairs)):
+			if switched == False:
+				#print dic_mono_index[mono_1][final_pairs[i][0]], dic_mono_index[mono_2][final_pairs[i][1]]	
+				happy_atoms += dic_mono_index[mono_1][final_pairs[i][0]]
+				happy_atoms += dic_mono_index[mono_2][final_pairs[i][1]]
+			else:
+				happy_atoms += dic_mono_index[mono_2][final_pairs[i][1]]
+                                happy_atoms += dic_mono_index[mono_1][final_pairs[i][0]]
+
+		indices_1 = [item[0] for item in final_pairs]
+		indices_2 = [item[1] for item in final_pairs] 
+
+		dic_mono_index[mono_1] = [i for j, i in enumerate(dic_mono_index[mono_1]) if j not in indices_1]
+		dic_mono_index[mono_2] = [i for j, i in enumerate(dic_mono_index[mono_2]) if j not in indices_2]
+		dic_mono[mono_1] = [i for j, i in enumerate(dic_mono[mono_1]) if j not in indices_1]
+                dic_mono[mono_2] = [i for j, i in enumerate(dic_mono[mono_2]) if j not in indices_2]
+		#print dic_mono_index[mono_1], dic_mono_index[mono_2], happy_atoms
+		return happy_atoms
+
+
 	def Generate_All_MBE_term_General(self, frag_list=[], cutoff=10, center_atom=[]):
 		self.frag_list = frag_list
 		#self.Sort_frag_list()  # debug, not sure it is necessary

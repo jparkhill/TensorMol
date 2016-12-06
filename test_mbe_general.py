@@ -10,10 +10,12 @@ from NN_Opt import *
 # steps to train a NN-MBE model
 if (1):
 	#Load .xyz files.
-	if (0):
-		a=MSet("NaCl_H2O_order5_cut10") # Define our set.
-		a.ReadGDB9Unpacked("./NaCl_H2O_order5_cut10/") # Load .xyz file into set and set maxinum many-body expansion order.
-		a.Generate_All_MBE_term_General([{"atom":"OHH", "charge":0}, {"atom":"Na", "charge":1}, {"atom":"Cl", "charge":-1}], cutoff=10, center_atom=[0,0,0]) # Generate all the many-body terms with  certain radius cutoff.
+	if (1):
+		a=MSet("NaCl_H2O_NaH2Ogroup") # Define our set.
+		a.ReadGDB9Unpacked("./NaCl_H2O_NaH2Ogroup/") # Load .xyz file into set and set maxinum many-body expansion order.
+		a.Generate_All_Pairs(pair_list=[{"pair":"OHHNa", "mono":["OHH","Na"], "center":[0,0]},{"pair":"OHHCl", "mono":["OHH","Cl"], "center":[0,0]}])
+		a.Generate_All_MBE_term_General([{"atom":"OHHNa", "charge":1}, {"atom":"OHHCl", "charge":-1},{"atom":"OHH", "charge":0}], cutoff=10, center_atom=[0,0,0]) # Generate all the many-body terms with  certain radius cutoff.
+		#a.Generate_All_MBE_term_General([{"atom":"OHH", "charge":0}, {"atom":"NaCl", "charge":0}], cutoff=10, center_atom=[0,0,0]) # Generate all the many-body terms with  certain radius cutoff.
 
 		# One can also load another set and combine with orginal one.
 		#b=MSet("He2")   
@@ -25,10 +27,10 @@ if (1):
 
 	#Calculate the MP2 many-body energies.
 	if (1):
-		a=MSet("NaCl_H2O_order5_cut10")  
+		a=MSet("NaCl_H2O_NaH2Ogroup")  
 		a.Load() # Load generated training set (.pdb file).
-		#a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
-		a.Get_All_Qchem_Frag_Energy_General()
+		a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
+		#a.Get_All_Qchem_Frag_Energy_General()
 		a.Save() 
 
 	# Do the permutation if it is necessary.
