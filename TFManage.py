@@ -79,7 +79,7 @@ class TFManage:
 		#for step in range (0, 10):
 			#self.Instances[ele].train_step(step)
 		#tself.Instances[ele].test(step)
-		self.Instances[ele].train(1500) # Just for the sake of debugging.
+		self.Instances[ele].train(2000) # Just for the sake of debugging.
 		nm = self.Instances[ele].name
 		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:
@@ -126,7 +126,7 @@ class TFManage:
 		return p
 
 	def evaluate(self, mol, atom):
-		input = self.TData.dig.Emb(mol, atom, mol.coords[atom])
+		input = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		p = self.Instances[mol.atoms[atom]].evaluate(input)
 		return p[0]
 

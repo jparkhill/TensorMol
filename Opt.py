@@ -8,10 +8,10 @@ import random
 
 class Optimizer:
 	def __init__(self,tfm_):
-		self.thresh = 0.01
+		self.thresh = 0.005
 		self.maxstep = 0.1
 		self.momentum = 0.9
-		self.momentum_decay = 0.8
+		self.momentum_decay = 0.2
 		self.max_opt_step = 100
 		self.step = self.maxstep
 		self.ngrid = 10 # Begin with 500 pts sampled 0.2A in each direction.
@@ -101,7 +101,7 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			for i in range(m.NAtoms()):
-				veloc[i] = -1.0*self.tfm.evaluate(new_m, i)
+				veloc[i] = -1.0*self.tfm.evaluate(m, i)
 				if (IfDebug):
 					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::", -1.0*m.GoForce(i)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
