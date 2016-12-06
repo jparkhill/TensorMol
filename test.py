@@ -12,7 +12,7 @@ if (1):
 		a.ReadXYZ("h2o")
 		print "nmols:",len(a.mols)
 		b=a.DistortAlongNormals()
-	if (0):
+	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		print "nmols:",len(a.mols)

@@ -91,11 +91,11 @@ class MSet:
 		from os.path import isfile, join
 		onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
 		for file in onlyfiles:
-                        if ( file[-4:]!='.xyz' ):
-                                continue
-                        self.mols.append(Mol())
-                        self.mols[-1].ReadGDB9(path+file, file, self.name)
-                return
+			if ( file[-4:]!='.xyz' ):
+					continue
+			self.mols.append(Mol())
+			self.mols[-1].ReadGDB9(path+file, file, self.name)
+		return
 
 	def ReadXYZ(self,filename):
 		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """

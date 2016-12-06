@@ -8,7 +8,8 @@ pr = cProfile.Profile()
 
 # 1 - Get molecules into memory
 a=MSet("gdb9")
-a.Load()
+a.ReadGDB9Unpacked()
+a.Save()
 b=a.DistortedClone()
 b.Save()
 
