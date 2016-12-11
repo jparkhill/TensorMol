@@ -24,6 +24,7 @@ class Mol:
 		self.mbe_order = MBE_ORDER 
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
+		self.type_of_frags_dict = {}
 		self.atoms_of_frags = [] # store the index of atoms of each frag
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
 		self.mbe_frags_deri=dict()
@@ -748,6 +749,7 @@ class Mol:
 			masked=[]
 			frag_index = 0
 			for i, dic in enumerate(self.frag_list):
+				self.type_of_frags_dict[str(i)] = []
 				frag_atoms = String_To_Atoms(dic["atom"])
 				frag_atoms = [atoi[atom] for atom in frag_atoms]
 				num_frag_atoms = len(frag_atoms)
@@ -762,7 +764,8 @@ class Mol:
 							masked += range (j, j+num_frag_atoms)
 						 	self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
 							self.type_of_frags.append(i)
-
+							self.type_of_frags_dict[str(i)].append(frag_index)
+							
 							tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
 							tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
 							mbe_terms = [frag_index]
@@ -779,7 +782,23 @@ class Mol:
 							#print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
 						else:
 							j += 1
+				print self.type_of_frags_dict[str(i)]
 		else:
+			num_of_each_frag = {}
+			frag_list_length = len(self.frag_list)
+			frag_list_index = range (0, frag_list_length)
+			print "frag_list_index ", frag_list_index 
+			frag_list_index_list = list(itertools.product(frag_list_index, repeat=2))
+			tmp_index_list = []
+			for i in range (0, len(frag_list_index_list)):
+				tmp_index = list(frag_list_index_list[i])
+				if tmp_index.sort() not in tmp_index_list:
+					tmp_index_list.append(tmp_index)
+					num_of_each_frag[LtoS(tmp_index)]=0
+			print  num_of_each_frag
+				
+
+
 			self.mbe_frags[order] = []
 			mbe_terms=[]
                	 	mbe_terms_num=0
@@ -803,7 +822,7 @@ class Mol:
                         	flag=1
                         	npairs=len(pairs)
 				for j in range (0, npairs):
-					print self.type_of_frags[pairs[j][0]], self.type_of_frags[pairs[j][1]], pairs[j][0], pairs[j][1]
+					#print self.type_of_frags[pairs[j][0]], self.type_of_frags[pairs[j][1]], pairs[j][0], pairs[j][1]
 					if self.type_of_frags[pairs[j][0]] == -1 :
 						center_1 = self.Center() 
 					else:
