@@ -749,7 +749,7 @@ class Mol:
 			masked=[]
 			frag_index = 0
 			for i, dic in enumerate(self.frag_list):
-				self.type_of_frags_dict[str(i)] = []
+				self.type_of_frags_dict[i] = []
 				frag_atoms = String_To_Atoms(dic["atom"])
 				frag_atoms = [atoi[atom] for atom in frag_atoms]
 				num_frag_atoms = len(frag_atoms)
@@ -764,7 +764,7 @@ class Mol:
 							masked += range (j, j+num_frag_atoms)
 						 	self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
 							self.type_of_frags.append(i)
-							self.type_of_frags_dict[str(i)].append(frag_index)
+							self.type_of_frags_dict[i].append(frag_index)
 							
 							tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
 							tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
@@ -782,76 +782,74 @@ class Mol:
 							#print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
 						else:
 							j += 1
-				print self.type_of_frags_dict[str(i)]
 		else:
 			num_of_each_frag = {}
 			frag_list_length = len(self.frag_list)
 			frag_list_index = range (0, frag_list_length)
-			print "frag_list_index ", frag_list_index 
 			frag_list_index_list = list(itertools.product(frag_list_index, repeat=2))
 			tmp_index_list = []
 			for i in range (0, len(frag_list_index_list)):
 				tmp_index = list(frag_list_index_list[i])
-				if tmp_index.sort() not in tmp_index_list:
+				tmp_index.sort()
+				if tmp_index not in tmp_index_list:
 					tmp_index_list.append(tmp_index)
 					num_of_each_frag[LtoS(tmp_index)]=0
-			print  num_of_each_frag
-				
 
-
+	
 			self.mbe_frags[order] = []
 			mbe_terms=[]
-               	 	mbe_terms_num=0
                 	mbe_dist=[]
 			ngroup = len(self.mbe_frags[1])	#
 			atomlist=list(range(0,ngroup)) 
 			time_log = time.time()
 
                         print ("generating the combinations for order: ", order)
-                        combinations=list(itertools.combinations(atomlist,order))
+			max_case = 20000 
+			
+			time_now=time.time()
+			for index_list in tmp_index_list:
+				frag_case = 0
+				sample_index = []
+				for i in index_list:
+					sample_index.append(self.type_of_frags_dict[i])
+				sub_combinations = list(iter_product(sample_index))
+				for i in range (0, len(sub_combinations)):
+                        	        term = list(sub_combinations[i])
+					if len(list(set(term))) < len(term):
+						continue
+                        	        pairs=list(itertools.combinations(term, 2))
+                        	        saveindex=[]
+                        	        dist = [10000000]*len(pairs)
+                        	        flag=1
+                        	        npairs=len(pairs)
+                        	        for j in range (0, npairs):
+                        	                #print self.type_of_frags[pairs[j][0]], self.type_of_frags[pairs[j][1]], pairs[j][0], pairs[j][1]
+                        	                if self.type_of_frags[pairs[j][0]] == -1 :
+                        	                        center_1 = self.Center()
+                        	                else:
+                        	                        center_1 = self.mbe_frags[1][pairs[j][0]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
+
+                        	                if self.type_of_frags[pairs[j][1]] == -1 :
+                        	                        center_2 = self.Center()
+                        	                else:
+                        	                        center_2 = self.mbe_frags[1][pairs[j][1]].coords[center_atom[self.type_of_frags[pairs[j][1]]]]
+                        	                dist[j] = np.linalg.norm(center_1- center_2)
+                        	                if dist[j] > cutoff:
+                        	                        flag = 0
+                        	                        break
+                        	        if flag == 1:   # we find a frag
+						if frag_case%100==0:
+							print "working on frag:", frag_case
+						frag_case  += 1
+                        	                if  frag_case >=  max_case:   # just for generating training case
+                        	                        break;
+                        	                mbe_terms.append(term)
+                        	                mbe_dist.append(dist)
+				
                         print ("finished..takes", time_log-time.time(),"second")
 
-			time_now=time.time()
-                        max_case = 10   #  set max cases for debug 
-			case_per_kind = dict()  # recode the number of generate each pairs, such as: xy, xx, yy
-			for i in range (0, len(combinations)):
-                        	term = list(combinations[i])
-                        	pairs=list(itertools.combinations(term, 2))
-                        	saveindex=[]
-                        	dist = [10000000]*len(pairs)
-                        	flag=1
-                        	npairs=len(pairs)
-				for j in range (0, npairs):
-					#print self.type_of_frags[pairs[j][0]], self.type_of_frags[pairs[j][1]], pairs[j][0], pairs[j][1]
-					if self.type_of_frags[pairs[j][0]] == -1 :
-						center_1 = self.Center() 
-					else:
-						center_1 = self.mbe_frags[1][pairs[j][0]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
-
-					if self.type_of_frags[pairs[j][1]] == -1 :
-						center_2 = self.Center()
-					else:
-						center_2 = self.mbe_frags[1][pairs[j][1]].coords[center_atom[self.type_of_frags[pairs[j][1]]]]
-					dist[j] = np.linalg.norm(center_1- center_2)
-					if dist[j] > cutoff:
-						flag = 0
-						break
-				if flag == 1:   # we find a frag
-					frag_type_index = []
-					for index in term:
-						frag_type_index.append(self.type_of_frags[index])
-					frag_type_index.sort()
-					if LtoS(frag_type_index) in case_per_kind.keys():
-						case_per_kind[LtoS(frag_type_index)] += 1
-					else:
-						case_per_kind[LtoS(frag_type_index)] = 1
-                	                if case_per_kind[LtoS(frag_type_index)] >=  max_case:   # just for generating training case
-                        	        	break;
-					mbe_terms.append(term)
-                                        mbe_dist.append(dist)
-
 			mbe_frags = []
-			for i in range (0, mbe_terms_num):
+			for i in range (0, len(mbe_terms)):
 				frag_type = []
 				atom_group = []
 				for index in mbe_terms[i]:
@@ -864,10 +862,9 @@ class Mol:
 					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
 					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
 					pointer += atom_group[j]
-				#print tmp_atom, tmp_coord,  mbe_terms[i], mbe_dist[i], atom_group, frag_type, order
 				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, FragOrder_=order)
                                 self.mbe_frags[order].append(tmp_mol)
-			del combinations	
+			del sub_combinations	
 		return 
 				
 			
