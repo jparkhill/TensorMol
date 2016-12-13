@@ -816,7 +816,7 @@ class Mol:
 
 				print("begin the most time consuming step: ")
 				tmp_time  = time.time()
-				sub_combinations = list(iter_product(sample_index))
+				sub_combinations = list(itertools.product(*sample_index))
 				print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
 				for i in range (0, len(sub_combinations)):
                         	        term = list(sub_combinations[i])
@@ -974,9 +974,13 @@ class Mol:
                         if not os.path.isdir(order_path):
                                 os.mkdir(order_path)
                         os.chdir(order_path)
+			time0 =time.time()
                         for frag in self.mbe_frags[order]:  # just for generating the training set..
                                 fragnum += 1
-                                print "working on frag:", fragnum
+				if fragnum%100 == 0:
+                               		print "working on frag:", fragnum
+					print  "total time:", time.time() - time0
+					time0 = time.time()
                                 frag.Write_Qchem_Frag_MBE_Input_All_General(fragnum)
                         os.chdir("../../../../")
                 elif method == "pyscf":
@@ -1293,7 +1297,7 @@ class Frag(Mol):
 		return 
 
 
-	def Write_Qchem_Frag_MBE_Input_General(self,order):   # calculate the MBE of order N of each frag 
+	def Write_Qchem_Frag_MBE_Input_General(self,order):   # calculate the MBE of order N of each frag
                 inner_index = range(0, self.FragOrder)
                 real_frag_index=list(itertools.combinations(inner_index,order))
                 ghost_frag_index=[]
@@ -1329,7 +1333,7 @@ class Frag(Mol):
                         qchem_input.write(qchemstring)
                         qchem_input.close()
                         i = i+1
-                gc.collect()
+                #gc.collect()  # speed up the function by 1000 times just deleting this single line! 
                 return
 
 

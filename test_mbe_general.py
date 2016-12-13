@@ -28,12 +28,12 @@ if (1):
 		a.Save() # Save the training set, by default it is saved in ./datasets.
 
 	#Calculate the MP2 many-body energies.
-	if (0):
+	if (1):
 		#a=MSet("NaCl_H2O_NaH2Ogroup") 
-		a=MSet("NaCl_H2O_NaClgroup")  
+		a=MSet("H2O_936_NaCl_88")  
 		a.Load() # Load generated training set (.pdb file).
-		#a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
-		a.Get_All_Qchem_Frag_Energy_General()
+		a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
+		#a.Get_All_Qchem_Frag_Energy_General()
 		a.Save() 
 
 	# Do the permutation if it is necessary.
