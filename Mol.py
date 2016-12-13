@@ -818,6 +818,11 @@ class Mol:
 				tmp_time  = time.time()
 				sub_combinations = list(itertools.product(*sample_index))
 				print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
+				shuffle_time = time.time()
+				new_begin = random.randint(1,len(sub_combinations)-2)
+				sub_combinations = sub_combinations[new_begin:]+sub_combinations[:new_begin] # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
+				#random.shuffle(sub_combinations)  # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
+				print  "time to shuffle it", time.time()-shuffle_time
 				for i in range (0, len(sub_combinations)):
                         	        term = list(sub_combinations[i])
 					if len(list(set(term))) < len(term):
@@ -844,7 +849,7 @@ class Mol:
                         	                        break
                         	        if flag == 1:   # we find a frag
 						if frag_case%100==0:
-							print "working on frag:", frag_case, "frag_type:", index_list
+							print "working on frag:", frag_case, "frag_type:", index_list, " i:", i
 						frag_case  += 1
                         	                if  frag_case >=  max_case:   # just for generating training case
                         	                        break;
