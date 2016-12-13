@@ -773,7 +773,8 @@ class Mol:
 							atom_group = [num_frag_atoms]
 							dic['num_electron'] = sum(list(tmp_atom))-dic['charge']
 							frag_type = [dic]
-							tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms, mbe_dist, atom_group, frag_type, FragOrder_=order)
+							frag_type_index = [i]
+							tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms, mbe_dist, atom_group, frag_type, frag_type_index, FragOrder_=order)
 							self.mbe_frags[order].append(tmp_mol)
 
 							j += num_frag_atoms
@@ -786,7 +787,7 @@ class Mol:
 			num_of_each_frag = {}
 			frag_list_length = len(self.frag_list)
 			frag_list_index = range (0, frag_list_length)
-			frag_list_index_list = list(itertools.product(frag_list_index, repeat=2))
+			frag_list_index_list = list(itertools.product(frag_list_index, repeat=order))
 			tmp_index_list = []
 			for i in range (0, len(frag_list_index_list)):
 				tmp_index = list(frag_list_index_list[i])
@@ -804,7 +805,7 @@ class Mol:
 			time_log = time.time()
 
                         print ("generating the combinations for order: ", order)
-			max_case = 20000 
+			max_case = 5000 
 			
 			time_now=time.time()
 			for index_list in tmp_index_list:
@@ -812,7 +813,11 @@ class Mol:
 				sample_index = []
 				for i in index_list:
 					sample_index.append(self.type_of_frags_dict[i])
+
+				print("begin the most time consuming step: ")
+				tmp_time  = time.time()
 				sub_combinations = list(iter_product(sample_index))
+				print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
 				for i in range (0, len(sub_combinations)):
                         	        term = list(sub_combinations[i])
 					if len(list(set(term))) < len(term):
@@ -839,7 +844,7 @@ class Mol:
                         	                        break
                         	        if flag == 1:   # we find a frag
 						if frag_case%100==0:
-							print "working on frag:", frag_case
+							print "working on frag:", frag_case, "frag_type:", index_list
 						frag_case  += 1
                         	                if  frag_case >=  max_case:   # just for generating training case
                         	                        break;
@@ -851,9 +856,11 @@ class Mol:
 			mbe_frags = []
 			for i in range (0, len(mbe_terms)):
 				frag_type = []
+				frag_type_index = []
 				atom_group = []
 				for index in mbe_terms[i]:
 					frag_type.append(self.frag_list[self.type_of_frags[index]])
+					frag_type_index.append(self.type_of_frags[index])
 					atom_group.append(self.mbe_frags[1][index].atoms.shape[0])
 				tmp_coord = np.zeros((sum(atom_group), 3))	
 				tmp_atom = np.zeros(sum(atom_group), dtype=np.uint8)
@@ -862,7 +869,7 @@ class Mol:
 					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
 					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
 					pointer += atom_group[j]
-				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, FragOrder_=order)
+				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, frag_type_index, FragOrder_=order)
                                 self.mbe_frags[order].append(tmp_mol)
 			del sub_combinations	
 		return 
@@ -1010,7 +1017,7 @@ class Mol:
 			self.mbe_frags_energy[order] = mbe_frags_energy
 		else:
 			raise Exception("unknow ab-initio software!")		
-		return 0
+		return 
 
 	def Get_Qchem_Frag_Energy(self, order):
 		fragnum = 0
@@ -1169,7 +1176,7 @@ class Mol:
 	
 class Frag(Mol):
         """ Provides a MBE frag of  general purpose molecule"""
-        def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, FragOrder_=None):
+        def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, frag_type_index_=None, FragOrder_=None):
 		Mol.__init__(self, atoms_, coords_)
 		self.atom_group = atom_group_
 		if FragOrder_==None:
@@ -1188,6 +1195,10 @@ class Frag(Mol):
 			self.frag_type = frag_type_
 		else:
 			self.frag_type = None
+		if (frag_type_!=None):
+                        self.frag_type_index = frag_type_index_
+                else:
+                        self.frag_type_index = None
 		self.frag_mbe_energies=dict()
 		self.frag_mbe_energy = None
 		self.frag_energy = None
