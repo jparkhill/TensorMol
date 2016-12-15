@@ -7,7 +7,7 @@ class Mol:
 	def __init__(self, atoms_ =  None, coords_ = None):
 		if (atoms_!=None):
 			self.atoms = atoms_
-		else: 
+		else:
 			self.atoms = np.zeros(1,dtype=np.uint8)
 		if (coords_!=None):
 			self.coords = coords_
@@ -21,7 +21,7 @@ class Mol:
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
 		self.LJE = None #Lennard-Jones Well-Depths.
 		self.GoK = 0.05
-		self.mbe_order = MBE_ORDER 
+		self.mbe_order = MBE_ORDER
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
 		self.atoms_of_frags = [] # store the index of atoms of each frag
@@ -41,24 +41,23 @@ class Mol:
 
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
-			
+
 	def NAtoms(self):
 		return self.atoms.shape[0]
-
 
 	def Calculate_Atomization(self):
 		self.atomization = self.roomT_H
 		for i in range (0, self.atoms.shape[0]):
 			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
-		return  
+		return
 
 	def AtomsWithin(self,rad, pt):
 		# Returns indices of atoms within radius of point.
 		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
 		return [i for i in range(self.NAtoms()) if dists[i]<rad]
 
-	def NumOfAtomsE(self, at):
-		return sum( [1 if e==at else 0 for e in self.atoms ] )
+	def NumOfAtomsE(self, e):
+		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Rotate(self,axis,ang):
 		rm=RotationMatrix(axis,ang)
@@ -108,10 +107,8 @@ class Mol:
 						else:
 							maxiter=maxiter-1
 
-
 	def AtomTypes(self):
 		return np.unique(self.atoms)
-
 
 	def ReadGDB9(self,path,filename, set_name):
                 try:
@@ -124,7 +121,7 @@ class Mol:
                         self.coords.resize((natoms,3))
 			try:
 				self.energy = float((lines[1].split())[12])
-				self.roomT_H = float((lines[1].split())[14]) 
+				self.roomT_H = float((lines[1].split())[14])
 			except:
 				pass
 			for i in range(natoms):
@@ -196,14 +193,14 @@ class Mol:
 		x_index = math.floor((xyz[0]-Min)/binsize)
 		y_index = math.floor((xyz[1]-Min)/binsize)
 		z_index = math.floor((xyz[2]-Min)/binsize)
-#		index=int(x_index+y_index*ngrids+z_index*ngrids*ngrids)
+		#index=int(x_index+y_index*ngrids+z_index*ngrids*ngrids)
 		return x_index, y_index, z_index
 
 	def MolDots(self, ngrids = 250 , padding =2.0, width = 2):
 		grids = self.MolGrids()
 		for i in range (0, self.atoms.shape[0]):
 			x_index, y_index, z_index = self.XYZtoGridIndex(self.coords[i])
-			for m in range (-width, width):	
+			for m in range (-width, width):
 				for n in range (-width, width):
 					for k in range (-width, width):
 						index = (x_index)+m + (y_index+n)*ngrids + (z_index+k)*ngrids*ngrids
@@ -248,6 +245,57 @@ class Mol:
 			if grids[index] <  int(value[i]*250):
 				grids[index] = int(value[i]*250)
 		return grids
+
+	def MakeStoichDict(self):
+		dict = {}
+		for i in self.AtomTypes():
+			dict[i] = self.NumOfAtomsE(i)
+		self.stoich = dict
+		return
+
+	def SortAtoms(self):
+		new_atoms = np.zeros((1))
+		new_coords = np.zeros((1,3))
+		for i in self.AtomTypes():
+			for j in range(len(self.atoms)):
+				if self.atoms[j] == i:
+					new_atoms = np.insert(new_atoms, 0, self.atoms[j])
+					new_coords = np.insert(new_coords, 0, self.coords[j], axis=0)
+		new_atoms = np.delete(new_atoms, new_atoms.shape[0]-1)
+		new_coords = np.delete(new_coords, new_coords.shape[0]-1, axis=0)
+		self.atoms = new_atoms
+		self.coords = new_coords
+		return
+
+	def Assign(self, m):
+		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
+		self.SortAtoms()
+		m.SortAtoms()
+		if (self.Center()-m.Center()).all() != 0:
+			m.coords += self.Center() - m.Center()
+		m.MakeStoichDict()
+		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
+		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
+		diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+		k = 0
+		while k < 2:
+			sorted_atoms = 0
+			for i in m.AtomTypes():
+				for j in range(m.stoich[i]):
+					p_idx = np.random.randint(0,high=m.stoich[i])
+					tmp_m = Mol(m.atoms.copy(), m.coords.copy())
+					tmp_m.coords[m.NAtoms()-1-sorted_atoms-j,:], tmp_m.coords[m.NAtoms()-1-sorted_atoms-p_idx,:] = \
+							m.coords[m.NAtoms()-1-sorted_atoms-p_idx,:], m.coords[m.NAtoms()-1-sorted_atoms-j,:]
+					tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
+					if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
+						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
+						m.atoms = tmp_m.atoms.copy()
+						m.coords = tmp_m.coords.copy()
+						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
+						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+						k = 0
+				sorted_atoms += m.stoich[i]
+			k += 1
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
@@ -427,7 +475,7 @@ class Mol:
 		#scan near by regime and return the samllest force
 		forces = np.zeros((self.NAtoms(),3))
 		TmpForce = np.zeros((self.NAtoms(), ngrid*ngrid*ngrid,3),dtype=np.float)
-		for i in range (0, self.NAtoms()): 
+		for i in range (0, self.NAtoms()):
 			print "Atom: ", i
 			save_i = self.coords[i].copy()
 			samps=MakeUniform(self.coords[i],maxstep,ngrid)
@@ -485,7 +533,7 @@ class Mol:
 			return 10.0
 			#raise Ex
 		return 0.0
-	
+
 	#Most parameters are unneccesary.
 	def OverlapEmbeddings(self, d1, coords, d2 , d3 ,  d4 , d5, i, d6):#(self,coord,i):
 		return np.array([GRIDS.EmbedAtom(self,j,i) for j in coords])
@@ -500,16 +548,16 @@ class Mol:
 		return forces
 
 	def GoDisp(self,ii,Print=False):
-		''' 
+		'''
 			Generates a Go-potential for atom i on a uniform grid of 4A with 50 pts/direction
 			And fits that go potential with the H@0 basis centered at the same point
 			In practice 9 (1A) gaussians separated on a 1A grid around the sensory point appears to work for moderate distortions.
 		'''
 		Ps = self.POfAtomMoves(GRIDS.MyGrid(),ii)
 		return np.array([np.dot(GRIDS.MyGrid().T,Ps)])
-	
+
 	def FitGoProb(self,ii,Print=False):
-		''' 
+		'''
 			Generates a Go-potential for atom i on a uniform grid of 4A with 50 pts/direction
 			And fits that go potential with the H@0 basis centered at the same point
 			In practice 9 (1A) gaussians separated on a 1A grid around the sensory point appears to work for moderate distortions.
@@ -525,7 +573,7 @@ class Mol:
 		return out
 
 	def UseGoProb(self,ii,inputs):
-		''' 
+		'''
 			The opposite of the routine above. It takes the digested probability vectors and uses it to calculate desired new positions.
 		'''
 		#print "Inputs", inputs
@@ -543,8 +591,8 @@ class Mol:
 	def RunPySCFWithCoords(self,samps,i):
 		# The samps are new xyz coords for atom i
 		# do some fast model chemistry... gah they aren't fast enough.
-		if (len(samps)>40): 
-			print "sampling ",len(samps)," points about atom ",i,"..." 
+		if (len(samps)>40):
+			print "sampling ",len(samps)," points about atom ",i,"..."
 		return np.array([self.PySCFEnergyAfterAtomMove(s,i) for s in samps])
 
 	def EnergiesOfAtomMoves(self,samps,i):
@@ -588,13 +636,12 @@ class Mol:
 		return names
 
 	def Sort_frag_list(self):
-		a=[] 
+		a=[]
 		for dic in self.frag_list:
 			a.append(len(dic["atom"]))
 		self.frag_list = [x for (y,x) in sorted(zip(a,self.frag_list))]
 		self.frag_list.reverse()
 		return self.frag_list
-
 
 	def Generate_All_Pairs(self, pair_list=[]):
 		mono = []
@@ -608,7 +655,7 @@ class Mol:
 		mono = tmp
 		(mono.sort(key=lambda x:len(x)))
 		mono.reverse()
-		
+
 		dic_mono = {}
 		dic_mono_index = {}
 		masked = []
@@ -637,15 +684,12 @@ class Mol:
 		sorted_atoms = happy_atoms + left_atoms
 		self.atoms = self.atoms[sorted_atoms]
 		self.coords = self.coords[sorted_atoms]
-		return 
+		return
 
-			
-
-	
 	def PairUp(self, dic_mono, dic_mono_index, pair, happy_atoms):  # stable marriage pairing  Ref: https://en.wikipedia.org/wiki/Stable_marriage_problem
 		mono_1 = LtoS([atoi[atom] for atom in  String_To_Atoms(pair["mono"][0])])
 		mono_2 = LtoS([atoi[atom] for atom in  String_To_Atoms(pair["mono"][1])])
-		
+
 		center_1 = pair["center"][0]
 		center_2 = pair["center"][1]
 
@@ -680,10 +724,10 @@ class Mol:
 		for i in range (0, len(dic_mono[mono_1])):
 			target = mono_1_prefer[i][0]
 			if i == mono_2_prefer[target][0]:  # Congs! find true lovers
-				mono_1_info[i] = 0   
+				mono_1_info[i] = 0
 				mono_2_info[target] = 0
 			mono_1_history[i] += 1
-			
+
 		while (-1 in mono_1_info):
 			for i in range (0, len(dic_mono[mono_1])):
 				if mono_1_info[i] == -1:
@@ -692,7 +736,7 @@ class Mol:
 						mono_1_info[i] = mono_1_history[i]
 						mono_2_info[target] = mono_2_prefer[target].index(i)
 					elif mono_2_info[target] > mono_2_prefer[target].index(i):   # this man is the better choice than the previous one
-						poorguy = mono_2_prefer[mono_2_info[target]]  
+						poorguy = mono_2_prefer[mono_2_info[target]]
 						mono_1_info[poorguy] = -1   # this poor guy is abandoned...
 						mono_1_info[i] = mono_1_history[i]
 						mono_2_info[target] = mono_2_prefer[target].index(i)
@@ -705,11 +749,11 @@ class Mol:
 		final_pairs = []
 		for i in range (0, len(dic_mono[mono_1])):
 			final_pairs.append([i, mono_1_prefer[i][mono_1_info[i]]])
-		
-			
+
+
 		for i in range (0, len(final_pairs)):
 			if switched == False:
-				#print dic_mono_index[mono_1][final_pairs[i][0]], dic_mono_index[mono_2][final_pairs[i][1]]	
+				#print dic_mono_index[mono_1][final_pairs[i][0]], dic_mono_index[mono_2][final_pairs[i][1]]
 				happy_atoms += dic_mono_index[mono_1][final_pairs[i][0]]
 				happy_atoms += dic_mono_index[mono_2][final_pairs[i][1]]
 			else:
@@ -717,7 +761,7 @@ class Mol:
                                 happy_atoms += dic_mono_index[mono_1][final_pairs[i][0]]
 
 		indices_1 = [item[0] for item in final_pairs]
-		indices_2 = [item[1] for item in final_pairs] 
+		indices_2 = [item[1] for item in final_pairs]
 
 		dic_mono_index[mono_1] = [i for j, i in enumerate(dic_mono_index[mono_1]) if j not in indices_1]
 		dic_mono_index[mono_2] = [i for j, i in enumerate(dic_mono_index[mono_2]) if j not in indices_2]
@@ -726,7 +770,6 @@ class Mol:
 		#print dic_mono_index[mono_1], dic_mono_index[mono_2], happy_atoms
 		return happy_atoms
 
-
 	def Generate_All_MBE_term_General(self, frag_list=[], cutoff=10, center_atom=[]):
 		self.frag_list = frag_list
 		#self.Sort_frag_list()  # debug, not sure it is necessary
@@ -734,8 +777,7 @@ class Mol:
 			center_atom = [0]*len(frag_list)
                 for i in range (1, self.mbe_order+1):
                         self.Generate_MBE_term_General(i, cutoff, center_atom)
-                return  
-
+                return
 
 	def Generate_MBE_term_General(self, order,  cutoff=10, center_atom=[]):
                 if order in self.mbe_frags.keys():
@@ -776,14 +818,14 @@ class Mol:
 							print self.atoms_of_frags, tmp_list, self.type_of_frags
 							print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
 						else:
-							j += 1	
+							j += 1
 		else:
 			self.mbe_frags[order] = []
 			mbe_terms=[]
                	 	mbe_terms_num=0
                 	mbe_dist=[]
 			ngroup = len(self.mbe_frags[1])	#
-			atomlist=list(range(0,ngroup)) 
+			atomlist=list(range(0,ngroup))
 			time_log = time.time()
 
                         print ("generating the combinations for order: ", order)
@@ -791,7 +833,7 @@ class Mol:
                         print ("finished..takes", time_log-time.time(),"second")
 
 			time_now=time.time()
-                        max_case = 10000000   #  set max cases for debug 
+                        max_case = 10000000   #  set max cases for debug
 
 			for i in range (0, len(combinations)):
                         	term = list(combinations[i])
@@ -808,7 +850,7 @@ class Mol:
 						flag = 0
 						break
 				if flag == 1:   # we find a frag
-					mbe_terms_num += 1  
+					mbe_terms_num += 1
          	                       	mbe_terms.append(term)
 	                                mbe_dist.append(dist)
                 	                if mbe_terms_num >=  max_case:   # just for generating training case
@@ -821,7 +863,7 @@ class Mol:
 				for index in mbe_terms[i]:
 					frag_type.append(self.frag_list[self.type_of_frags[index]])
 					atom_group.append(self.mbe_frags[1][index].atoms.shape[0])
-				tmp_coord = np.zeros((sum(atom_group), 3))	
+				tmp_coord = np.zeros((sum(atom_group), 3))
 				tmp_atom = np.zeros(sum(atom_group), dtype=np.uint8)
 				pointer = 0
 				for j, index in enumerate(mbe_terms[i]):
@@ -831,12 +873,8 @@ class Mol:
 				print tmp_atom, tmp_coord,  mbe_terms[i], mbe_dist[i], atom_group, frag_type, order
 				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, FragOrder_=order)
                                 self.mbe_frags[order].append(tmp_mol)
-			del combinations	
-		return 
-				
-			
-		
-
+			del combinations
+		return
 
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
 		for i in range (1, self.mbe_order+1):
@@ -859,29 +897,29 @@ class Mol:
 		atomlist=list(range(0,ngroup))
 		if order < 1 :
 			raise Exception("MBE Order Should be Positive")
-		else:	
+		else:
 			time_log = time.time()
 			print ("generating the combinations for order: ", order)
 			combinations=list(itertools.combinations(atomlist,order))
 			print ("finished..takes", time_log-time.time(),"second")
 		time_now=time.time()
 		flag = np.zeros(1)
-		max_case = 10000000   #  set max cases for debug  
+		max_case = 10000000   #  set max cases for debug
 		for i in range (0, len(combinations)):
 			term = list(combinations[i])
-			pairs=list(itertools.combinations(term, 2))	
+			pairs=list(itertools.combinations(term, 2))
 			saveindex=[]
 			dist = [10000000]*len(pairs)
-#			flag = 1
-#			for j in range (0, len(pairs)):
-#				m=pairs[j][0]
-#				n=pairs[j][1]
-#				#dist[j] = np.linalg.norm(xyz[m]-xyz[n])
-#				dist[j]=((xyz[m][center_atom][0]-xyz[n][center_atom][0])**2+(xyz[m][center_atom][1]-xyz[n][center_atom][1])**2+(xyz[m][center_atom][2]-xyz[n][center_atom][2])**2)**0.5
-#				if dist[j] > cutoff:
-#					flag = 0
-#					break
-#			if flag == 1:
+			#flag = 1
+			#for j in range (0, len(pairs)):
+			#	m=pairs[j][0]
+			#	n=pairs[j][1]
+			#	#dist[j] = np.linalg.norm(xyz[m]-xyz[n])
+			#	dist[j]=((xyz[m][center_atom][0]-xyz[n][center_atom][0])**2+(xyz[m][center_atom][1]-xyz[n][center_atom][1])**2+(xyz[m][center_atom][2]-xyz[n][center_atom][2])**2)**0.5
+			#	if dist[j] > cutoff:
+			#		flag = 0
+			#		break
+			#if flag == 1:
 			flag[0]=1
 			npairs=len(pairs)
 			code="""
@@ -894,7 +932,7 @@ class Mol:
 					break;
 				}
 			}
-			
+
 			"""
 			res = inline(code, ['pairs','npairs','center_atom','dist','xyz','flag','cutoff','atom_group'],headers=['<math.h>','<iostream>'], compiler='gcc')
 			if flag[0]==1:  # end of weave
@@ -908,8 +946,8 @@ class Mol:
 					break;
 		mbe_frags = []
 		for i in range (0, mbe_terms_num):
-			tmp_atom = np.zeros(order*atom_group) 
-			tmp_coord = np.zeros((order*atom_group, 3))  
+			tmp_atom = np.zeros(order*atom_group)
+			tmp_coord = np.zeros((order*atom_group, 3))
 			for j in range (0, order):
 				tmp_atom[atom_group*j:atom_group*(j+1)] = ele[mbe_terms[i][j]]
 				tmp_coord[atom_group*j:atom_group*(j+1)] = xyz[mbe_terms[i][j]]
@@ -943,9 +981,7 @@ class Mol:
 			raise Exception("PyScf for MBE General has not implemented yet, please use qchem")
                 else:
                         raise Exception("unknow ab-initio software!")
-                return 
-
-
+                return
 
 	def Calculate_Frag_Energy(self, order, method="pyscf"):
 		if order in self.mbe_frags_energy.keys():
@@ -976,7 +1012,7 @@ class Mol:
 				time_log = time.time()
 			self.mbe_frags_energy[order] = mbe_frags_energy
 		else:
-			raise Exception("unknow ab-initio software!")		
+			raise Exception("unknow ab-initio software!")
 		return 0
 
 	def Get_Qchem_Frag_Energy(self, order):
@@ -998,15 +1034,14 @@ class Mol:
 		self.Get_All_Qchem_Frag_Energy()
                 return
 
- 
 	def Get_All_Qchem_Frag_Energy(self):
 		#for i in range (1, 3):  # set to up to 2nd order for debug sake
-		for i in range (1, self.mbe_order+1): 
+		for i in range (1, self.mbe_order+1):
 			#print "getting the qchem energy for MBE order", i
 			self.Get_Qchem_Frag_Energy(i)
-		return 
+		return
 
-	def Calculate_All_Frag_Energy_General(self, method="pyscf"): 
+	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
                 if method == "qchem":
                         if not os.path.isdir("./qchem"):
                                 os.mkdir("./qchem")
@@ -1022,7 +1057,7 @@ class Mol:
                         self.Write_Qchem_Submit_Script()
                 #print "mbe_frags_energy", self.mbe_frags_energy
                 return
-	
+
 	def Calculate_All_Frag_Energy(self, method="pyscf"):  # we ignore the 1st order for He here
 		if method == "qchem":
 			if not os.path.isdir("./qchem"):
@@ -1038,7 +1073,7 @@ class Mol:
 		if method == "qchem":
 			self.Write_Qchem_Submit_Script()
 		#print "mbe_frags_energy", self.mbe_frags_energy
-		return 
+		return
 
 	def Write_Qchem_Submit_Script(self):     # this is for submitting the jobs on notre dame crc
 		if not os.path.isdir("./qchem"):
@@ -1056,18 +1091,18 @@ class Mol:
 				for k in range (1, index+1):
 					submit_file = open("qchem_order_"+str(i)+"_suborder_"+str(j)+"_index_"+str(k)+".sub","w+")
 					lines = Submit_Script_Lines(order=str(i), sub_order =str(j), index=str(k), mincase = str(1), maxcase = str(num_frag), name = "MBE_"+str(i)+"_"+str(j)+"_"+str(index), ncore = str(4), queue="long")
-					submit_file.write(lines) 
+					submit_file.write(lines)
 					submit_file.close()
-		
+
 		python_submit = open("submit_all.py","w+")
 		line = 'import os,sys\n\nfor file in os.listdir("."):\n        if file.endswith(".sub"):\n                cmd = "qsub "+file\n                os.system(cmd)\n'
 		python_submit.write(line)
 		python_submit.close()
 		os.chdir("../../../")
-		return 
+		return
 
 	def Set_MBE_Energy(self):
-		for i in range (1, self.mbe_order+1): 
+		for i in range (1, self.mbe_order+1):
 			self.mbe_energy[i] = 0.0
 			for j in range (1, i+1):
 				self.mbe_energy[i] += self.mbe_frags_energy[j]
@@ -1125,7 +1160,7 @@ class Mol:
 			index_list = self.mbe_frags[order][i].index
 			for j in range (0,  len(index_list)):
 				self.mbe_frags_deri[order][index_list[j]*atom_group:(index_list[j]+1)*atom_group] += deri[j]
-		return 
+		return
 
 	def Set_MBE_Force(self):
 		self.mbe_deri = np.zeros((self.NAtoms(), 3))
@@ -1133,10 +1168,10 @@ class Mol:
 			if order in self.mbe_frags_deri.keys():
 				self.mbe_deri += self.mbe_frags_deri[order]
 		return self.mbe_deri
-	
+
 class Frag(Mol):
-        """ Provides a MBE frag of  general purpose molecule"""
-        def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, FragOrder_=None):
+    	""" Provides a MBE frag of  general purpose molecule"""
+    	def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, FragOrder_=None):
 		Mol.__init__(self, atoms_, coords_)
 		self.atom_group = atom_group_
 		if FragOrder_==None:
@@ -1159,32 +1194,32 @@ class Frag(Mol):
 		self.frag_mbe_energy = None
 		self.frag_energy = None
 		self.permute_index = range (0, self.FragOrder)
-		self.permute_sub_index = None	
+		self.permute_sub_index = None
 		return
-		
-	def PySCF_Frag_MBE_Energy(self,order):   # calculate the MBE of order N of each frag 
-		inner_index = range(0, self.FragOrder) 
+
+	def PySCF_Frag_MBE_Energy(self,order):   # calculate the MBE of order N of each frag
+		inner_index = range(0, self.FragOrder)
 		real_frag_index=list(itertools.combinations(inner_index,order))
 		ghost_frag_index=[]
 		for i in range (0, len(real_frag_index)):
 			ghost_frag_index.append(list(set(inner_index)-set(real_frag_index[i])))
 
-		i =0	
+		i =0
 		while(i< len(real_frag_index)):
-	#	for i in range (0, len(real_frag_index)):
+			#for i in range (0, len(real_frag_index)):
 			pyscfatomstring=""
 			mol = gto.Mole()
 			for j in range (0, order):
 				for k in range (0, self.atom_group):
 					s = self.coords[real_frag_index[i][j]*self.atom_group+k]
-					pyscfatomstring=pyscfatomstring+str(self.AtomName(real_frag_index[i][j]*self.atom_group+k))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+";"	
+					pyscfatomstring=pyscfatomstring+str(self.AtomName(real_frag_index[i][j]*self.atom_group+k))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+";"
 			for j in range (0, self.FragOrder - order):
 				for k in range (0, self.atom_group):
 					s = self.coords[ghost_frag_index[i][j]*self.atom_group+k]
-					pyscfatomstring=pyscfatomstring+"GHOST"+str(j*self.atom_group+k)+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+";" 
+					pyscfatomstring=pyscfatomstring+"GHOST"+str(j*self.atom_group+k)+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+";"
 			pyscfatomstring=pyscfatomstring[:-1]+"  "
-			mol.atom =pyscfatomstring			
-		
+			mol.atom =pyscfatomstring
+
 			mol.basis ={}
 			ele_set = list(set(self.AllAtomNames()))
 			for ele in ele_set:
@@ -1196,7 +1231,7 @@ class Frag(Mol):
 					mol.basis['GHOST'+str(j*self.atom_group+k)]=gto.basis.load('cc-pvqz',str(atom_type))
 			mol.verbose=0
 			try:
-				print "doing case ", i 
+				print "doing case ", i
 				time_log = time.time()
 				mol.build()
 				mf=scf.RHF(mol)
@@ -1204,7 +1239,7 @@ class Frag(Mol):
 				mp2 = mp.MP2(mf)
 				mp2_en = mp2.kernel()
 				en = hf_en + mp2_en[0]
-				#print "hf_en", hf_en, "mp2_en", mp2_en[0], " en", en	
+				#print "hf_en", hf_en, "mp2_en", mp2_en[0], " en", en
 				self.frag_mbe_energies[LtoS(real_frag_index[i])]=en
 				print ("pyscf time..", time.time()-time_log)
 				i = i+1
@@ -1237,7 +1272,7 @@ class Frag(Mol):
 					rimp2 = float(line.split()[4])
 					continue
 				if "fatal error" in line:
-					print "fata error! file:", path+"/"+outfile_name 
+					print "fata error! file:", path+"/"+outfile_name
 			if nonB_single != 0.0:
 				print "Warning: non-Brillouin singles do not equal to zero, non-Brillouin singles=",nonB_single,path,outfile_name
 			if key!=None and rimp2!=None:
@@ -1246,10 +1281,10 @@ class Frag(Mol):
 			else:
 				print "Qchem Calculation error on ",path,outfile_name
 				raise Exception("Qchem Error")
-		return 
+		return
 
 
-	def Write_Qchem_Frag_MBE_Input_General(self,order):   # calculate the MBE of order N of each frag 
+	def Write_Qchem_Frag_MBE_Input_General(self,order):   # calculate the MBE of order N of each frag
                 inner_index = range(0, self.FragOrder)
                 real_frag_index=list(itertools.combinations(inner_index,order))
                 ghost_frag_index=[]
@@ -1262,7 +1297,7 @@ class Frag(Mol):
 			for j in range (0, order):
 				charge += self.frag_type[real_frag_index[i][j]]["charge"]
 				num_ele += self.frag_type[real_frag_index[i][j]]["num_electron"]
-			if num_ele%2 == 0:   # here we always prefer the low spin state	
+			if num_ele%2 == 0:   # here we always prefer the low spin state
 				spin = 1
 			else:
 				spin = 2
@@ -1289,7 +1324,7 @@ class Frag(Mol):
                 return
 
 
-	def Write_Qchem_Frag_MBE_Input(self,order):   # calculate the MBE of order N of each frag 
+	def Write_Qchem_Frag_MBE_Input(self,order):   # calculate the MBE of order N of each frag
 		inner_index = range(0, self.FragOrder)
 		real_frag_index=list(itertools.combinations(inner_index,order))
 		ghost_frag_index=[]
@@ -1340,7 +1375,7 @@ class Frag(Mol):
 			self.Write_Qchem_Frag_MBE_Input(i+1)
 			os.chdir("..")
 		os.chdir("..")
-		return 
+		return
 
 	def Get_Qchem_Frag_MBE_Energy_All(self, fragnum, path):
 		if not os.path.isdir(path+"/"+str(fragnum)):
@@ -1367,13 +1402,13 @@ class Frag(Mol):
 		#print "self.frag_mbe_energy", self.frag_mbe_energy
 		return 0
 
-	def Frag_MBE_Energy(self,  index=None):     # Get MBE energy recursively 
+	def Frag_MBE_Energy(self,  index=None):     # Get MBE energy recursively
 		if index==None:
 			index=range(0, self.FragOrder)
 		order = len(index)
 		if order==0:
 			return 0
-		energy = self.frag_mbe_energies[LtoS(index)] 
+		energy = self.frag_mbe_energies[LtoS(index)]
 		for i in range (0, order):
 			sub_index = list(itertools.combinations(index, i))
 			for j in range (0, len(sub_index)):
@@ -1391,13 +1426,13 @@ class Frag(Mol):
 		target.permute_index = self.permute_index
 
 	def Permute_Frag_by_Index(self, index, indis=[0]):
-		new_frags=list()		
+		new_frags=list()
 		inner_index = Binominal_Combination(indis, self.FragOrder)
 		#print "inner_index",inner_index
-		for sub_index in inner_index: 
+		for sub_index in inner_index:
 			new_frag = Frag( atoms_ =  self.atoms, coords_ = self.coords, index_= self.index, dist_=self.dist, atom_group_=self.atom_group)
 			self.CopyTo(new_frag)
-			new_frag.permute_index = index	
+			new_frag.permute_index = index
 			new_frag.permute_sub_index = sub_index
 			new_frag.coords=new_frag.coords.reshape((new_frag.FragOrder, new_frag.atom_group,  -1))
 			new_frag.coords = new_frag.coords[new_frag.permute_index]
@@ -1405,7 +1440,7 @@ class Frag(Mol):
 			new_frag.atoms = new_frag.atoms[new_frag.permute_index]
 			for group in range (0, new_frag.FragOrder):
 				new_frag.coords[group][sorted(sub_index[group*len(indis):(group+1)*len(indis)])] = new_frag.coords[group][sub_index[group*len(indis):(group+1)*len(indis)]]
-				new_frag.atoms[group][sorted(sub_index[group*len(indis):(group+1)*len(indis)])] = new_frag.atoms[group][sub_index[group*len(indis):(group+1)*len(indis)]] 	
+				new_frag.atoms[group][sorted(sub_index[group*len(indis):(group+1)*len(indis)])] = new_frag.atoms[group][sub_index[group*len(indis):(group+1)*len(indis)]]
 			new_frag.coords = new_frag.coords.reshape((new_frag.FragOrder*new_frag.atom_group, -1))
 			new_frag.atoms = new_frag.atoms.reshape(new_frag.FragOrder*new_frag.atom_group)
 			#print "coords:", new_frag.coords, "atom:",new_frag.atoms
@@ -1419,10 +1454,10 @@ class Frag(Mol):
 		for index in indexs:
 			permuted_frags += self.Permute_Frag_by_Index(list(index), indis)
 			#print permuted_frags[-1].atoms, permuted_frags[-1].coords
-		return permuted_frags 
+		return permuted_frags
 
 	def Frag_Force(self, cm_deri, nn_deri):
-		return self.Combine_CM_NN_Deri(cm_deri, nn_deri)	
+		return self.Combine_CM_NN_Deri(cm_deri, nn_deri)
 
 	def Combine_CM_NN_Deri(self, cm_deri, nn_deri):
 		natom = self.NAtoms()
@@ -1432,7 +1467,7 @@ class Frag(Mol):
 				if j >= i:
 					cm_dx = cm_deri[i][j][0]
 					cm_dy = cm_deri[i][j][1]
-					cm_dz = cm_deri[i][j][2] 
+					cm_dz = cm_deri[i][j][2]
 					nn_deri_index = i*(natom+natom-i-1)/2 + (j-i-1) # debug, this is for not including the diagnol
 					#nn_deri_index = i*(natom+natom-i+1)/2 + (j-i)  # debug, this is for including the diagnol in the CM
 					nn_dcm = nn_deri[nn_deri_index]

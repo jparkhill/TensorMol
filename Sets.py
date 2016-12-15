@@ -5,10 +5,10 @@
 from Mol import *
 from Util import *
 import numpy as np
-import os,sys,pickle,re,copy,time 
+import os,sys,pickle,re,copy,time
 
 class MSet:
-	""" A molecular database which 
+	""" A molecular database which
 		provides structures """
 	def __init__(self, name_ ="gdb9", path_="./datasets/"):
 		self.mols=[]
@@ -41,14 +41,14 @@ class MSet:
 		if(random):
 			np.random.seed(int(time.time()))
 			ord=np.random.permutation(len(self.mols))
-		for j in ord: 
+		for j in ord:
 			newcoords = self.mols[j].ScanNormalModes(npts)
 			for i in range(newcoords.shape[0]): # Loop modes
 				for k in range(newcoords.shape[1]): # loop points
 					s.mols.append(Mol(self.mols[j].atoms,newcoords[i,k,:,:]))
 					s.mols[-1].DistMatrix = self.mols[j].DistMatrix
 		return s
-	
+
 	def DistortedClone(self, NDistorts=1, random=True):
 			''' Create a distorted copy of a set'''
 			print "Making distorted clone of:", self.name
@@ -57,12 +57,12 @@ class MSet:
 			if(random):
 				np.random.seed(int(time.time()))
 				ord=np.random.permutation(len(self.mols))
-			for j in ord: 
+			for j in ord:
 				for i in range (0, NDistorts):
 					s.mols.append(copy.deepcopy(self.mols[j]))
 					s.mols[-1].Distort()
 			return s
-	
+
 	def TransformedClone(self, transf_num):
 		''' make a linearly transformed copy of a set. '''
 		print "Making distorted clone of:", self.name
@@ -89,6 +89,7 @@ class MSet:
 		""" Reads the GDB9 dataset as a pickled list of molecules"""
 		from os import listdir
 		from os.path import isfile, join
+		#onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
 		onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
 		for file in onlyfiles:
                         if ( file[-4:]!='.xyz' ):
@@ -144,7 +145,7 @@ class MSet:
 	def CombineSet(self, b, name_=None):
 		if name_ == None:
 			self.name = self.name + b.name
-		self.mols.append(b.mols) 
+		self.mols.append(b.mols)
 		return
 
 	def Statistics(self):
@@ -155,7 +156,7 @@ class MSet:
 		ens = np.zeros(len(ord))
 		rmsd = np.zeros(len(ord))
 		n=0
-		for j in ord: 
+		for j in ord:
 			ens[n] = self.mols[j].GoEnergy(self.mols[j].coords.flatten())
 			tmp = MolEmb.Make_DistMat(self.mols[j].coords) - self.mols[j].DistMatrix
 			rmsd[n] = np.sum(tmp*tmp)/len(self.mols[j].coords)
@@ -167,25 +168,24 @@ class MSet:
 
 	def MBE(self,  atom_group=1, cutoff=10, center_atom=0):
 		for mol in self.mols:
-			mol.MBE(atom_group, cutoff, center_atom)		
-		return  
+			mol.MBE(atom_group, cutoff, center_atom)
+		return
 
 	def PySCF_Energy(self):
 		for mol in self.mols:
 			mol.PySCF_Energy()
-		return 	
+		return
 
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
 		for mol in self.mols:
                 	mol.Generate_All_MBE_term(atom_group, cutoff, center_atom)
-                return 
+                return
 
 	def Generate_All_MBE_term_General(self, frag_list=[], cutoff=10, center_atom=0):
 		for mol in self.mols:
 			mol.Generate_All_MBE_term_General(frag_list, cutoff, center_atom)
-		return 
+		return
 
-	
 	def Calculate_All_Frag_Energy(self, method="pyscf"):
 		for mol in self.mols:
 			mol.Calculate_All_Frag_Energy(method)
@@ -201,20 +201,19 @@ class MSet:
 	def Get_All_Qchem_Frag_Energy(self):
 		for mol in self.mols:
 			mol.Get_All_Qchem_Frag_Energy()
-		return 
-	
+		return
+
 	def Get_All_Qchem_Frag_Energy_General(self):
                 for mol in self.mols:
                         mol.Get_All_Qchem_Frag_Energy_General()
-                return	
+                return
 
 	def Generate_All_Pairs(self, pair_list=[]):
 		for mol in self.mols:
 			mol.Generate_All_Pairs(pair_list)
 		return
 
-
 	def Get_Permute_Frags(self, indis=[0]):
 		for mol in self.mols:
 			mol.Get_Permute_Frags(indis)
-		return  
+		return
