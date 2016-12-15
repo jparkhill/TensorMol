@@ -5,7 +5,7 @@ from TFManage import *
 from Opt import *
 
 # John's tests
-if (1):
+if (0):
 	# Whole sequence just for morphine to debug.
 	if (1):
 		a=MSet("OptMols")
@@ -41,16 +41,17 @@ if (1):
 		manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
 		optimizer  = Optimizer(manager)
 		optimizer.Opt(test_mol)
-	exit(0) 
+		exit(0)
 	if (1):
 		# To read gdb9 xyz files and populate an Mset.
 		# Because we use pickle to save. if you write new routines on Mol you need to re-execute this.
-		if (1):
+		if (0):
 			a=MSet("gdb9")
-			#a.ReadGDB9Unpacked()
+			#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/gdb9/')
 			#a.Save()
 			a.Load()
-			c=a.DistortedClone(1)
+			a.pop(len(self.mols)-100)
+			c=a.DistortedAlongNormals(10)
 			c.Save()
 		# To generate training data for all the atoms in the GDB 9
 		if (1):
@@ -110,8 +111,8 @@ if (0):
 		#a=MSet("CxHy_test")
 		#a.Load()
 		a=MSet("gdb9_1_6")
-	  	a=a.DistortedClone(1)	
-		a.Load()	
+	  	a=a.DistortedClone(1)
+		a.Load()
 		# Choose allowed atoms.
 		TreatedAtoms = a.AtomTypes()
 		#for mol in a.mols:
@@ -130,7 +131,7 @@ if (0):
 
 	if (0):
 		tset = TensorData(MSet(),Digester([]),"gdb9_1_6_NEQ_SymFunc")
-		tset_test = TensorData(MSet(),Digester([]),"CxHy_test_SymFunc") 
+		tset_test = TensorData(MSet(),Digester([]),"CxHy_test_SymFunc")
 		manager=TFManage("",tset,False,"fc_sqdiff", tset_test) # True indicates train all atoms.
 		manager.TrainElement(1)
 		tset = TensorData(MSet(),Digester([]),"gdb9_1_6_NEQ_SymFunc")
@@ -177,7 +178,7 @@ if (0):
 
 # This tests the optimizer.
 if (0):
-#	a=MSet()
+	#a=MSet()
 	a=MSet("OptMols")
 	a.Load()
 	test_mol = a.mols[0]
@@ -195,14 +196,14 @@ if (0):
 	atoms = np.array(atoms, dtype=np.uint8)
 	coords = c2h6[:, 1:4].copy()
 	test_mol =Mol(atoms, coords)
-#        print  test_mol.coords, test_mol.atoms
+	#print  test_mol.coords, test_mol.atoms
 	manager=TFManage("gdb9SymFunc",None,False)
 	optimizer  = Optimizer(manager)
 	optimizer.Opt(test_mol)
 
 # This tests the GO-Model potential.
 if (0):
-#	a=MSet()
+	#a=MSet()
 	a=MSet("OptMols")
 	a.Load()
 	test_mol = (a.mols)[1]
@@ -212,9 +213,9 @@ if (0):
 	print test_mol.atoms
 	optimizer  = Optimizer(None)
 	optimizer.GoOpt(test_mol)
-#	optimizer.GoOpt_ScanForce(test_mol)
+	#optimizer.GoOpt_ScanForce(test_mol)
 
-# this generates uniform samples of morphine for me. 
+# this generates uniform samples of morphine for me.
 if (0):
 	a=MSet("OptMols")
 	a.Load()
@@ -222,3 +223,24 @@ if (0):
 	d = Digester(TreatedAtoms)
 	tset = TensorData(a,d,None)
 	tset.BuildSamples("Test",[],True)
+
+#jeherr tests
+if (0):
+	a=MSet('cspbbr3_mixed')
+	#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
+	#a.Save()
+	#a.WriteXYZ('cspbbr3_mixed')
+	a.Load()
+	mol1 = a.mols[1]
+	mol2 = a.mols[0]
+	optimizer = Optimizer(None)
+	optimizer.Interpolate_OptForce(mol1, mol2)
+
+if (1):
+	a=MSet('cspbbr3_mixed')
+	a.Load()
+	mol1 = a.mols[0]
+	mol2 = a.mols[1]
+	mol1.Assign(mol2)
+	mol1.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new')
+	mol2.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new')
