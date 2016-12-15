@@ -524,39 +524,41 @@ class TensorMolData_BP(TensorMolData):
 	def GetTestBatch(self,ncases=1200, num_mol = 1200/6):
 		start_time = time.time()
 		if (num_mol> self.NTest):
-			raise Exception("Test Data is less than the batchsize... :( ")
+				raise Exception("Test Data is less than the batchsize... :( ")
+
 		reset = False
 		if ( self.test_ScratchPointer+num_mol > self.NTest):
-			reset = True
+				reset = True
 		for ele in self.eles:
-			if (self.test_Ele_ScratchPointer[ele] >= self.num_test_atoms[ele]):
-			reset = True
+				if (self.test_Ele_ScratchPointer[ele] >= self.num_test_atoms[ele]):
+						reset = True
 		if reset==True:
-			self.test_ScratchPointer = 0
-			for ele in self.eles:
-					self.test_Ele_ScratchPointer[ele] = 0
+				self.test_ScratchPointer = 0
+				for ele in self.eles:
+						self.test_Ele_ScratchPointer[ele] = 0
+
 		inputs = np.zeros((ncases, self.dig.eshape[1]))
 		outputs = self.scratch_test_outputs[self.test_ScratchPointer:self.test_ScratchPointer+num_mol]
 		number_atom_per_ele = dict()
 		input_index=0
 		for ele in self.eles:
-			tmp = 0
-			for i in range (self.test_ScratchPointer, self.test_ScratchPointer + num_mol):
-				inputs[input_index:input_index+self.test_mol_len[ele][i]]=self.scratch_test_inputs[ele][self.test_Ele_ScratchPointer[ele]:self.test_Ele_ScratchPointer[ele]+self.test_mol_len[ele][i]]
-				self.test_Ele_ScratchPointer[ele] += self.test_mol_len[ele][i]
-				tmp += self.test_mol_len[ele][i]
-				input_index += self.test_mol_len[ele][i]
-			number_atom_per_ele[ele]=tmp
+				tmp = 0
+				for i in range (self.test_ScratchPointer, self.test_ScratchPointer + num_mol):
+						inputs[input_index:input_index+self.test_mol_len[ele][i]]=self.scratch_test_inputs[ele][self.test_Ele_ScratchPointer[ele]:self.test_Ele_ScratchPointer[ele]+self.test_mol_len[ele][i]]
+						self.test_Ele_ScratchPointer[ele] += self.test_mol_len[ele][i]
+						tmp += self.test_mol_len[ele][i]
+						input_index += self.test_mol_len[ele][i]
+				number_atom_per_ele[ele]=tmp
 		# make the index matrix
 		index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol, Train=False) # one needs to know the number of molcule that contained in the ncase atom
 		self.test_ScratchPointer += num_mol
 		return inputs, outputs, number_atom_per_ele, index_matrix
+
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
 		print "self.ScratchPointer",self.ScratchPointer
 		print "self.test_ScratchPointer",self.test_ScratchPointer
 		if (self.scratch_outputs != None):
-		print "number of training molecules:",self.NTrain, " number of training molecules:", self.NTest 
-		for ele in self.eles:
-			print "element: ",AtomicSymbol(ele),  " Input Shape:", self.scratch_inputs[ele].shape
+		print "number of training molecules:",self.NTrain, " number of testing molecules:", self.NTest 
+

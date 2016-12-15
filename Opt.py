@@ -12,7 +12,7 @@ class Optimizer:
 		self.maxstep = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
-		self.max_opt_step = 100
+		self.max_opt_step = 1000
 		self.step = self.maxstep
 		self.ngrid = 10 # Begin with 500 pts sampled 0.2A in each direction.
 		self.probtype = 0 # 0 = one atom probability, 1 = product of all probabilities for each sample.
@@ -23,7 +23,7 @@ class Optimizer:
 		return
 
 	def CenterOfMass(self, xyz, probs):
-		#Check for garbage... 
+		#Check for garbage...
 		isn=np.all(np.isfinite(probs))
 		if (not isn):
 			print "Infinite Probability predicted."
@@ -32,7 +32,7 @@ class Optimizer:
 		nprobs=probs/np.sum(probs)
 		pxyz=(xyz.T*nprobs).T
 		return np.sum(pxyz,axis=0)
-	
+
 	def LargestP(self, xyz, probs):
 		return xyz[np.argmax(probs)]
 
@@ -118,7 +118,7 @@ class Optimizer:
 		return
 
 	def OptProb(self,m):
-		''' This version tests if the Go-opt converges when atoms are moved to 
+		''' This version tests if the Go-opt converges when atoms are moved to
 			the points of mean-probability. CF POfAtomMoves() '''
 		err=10.0
 		lasterr=10.0
@@ -135,11 +135,11 @@ class Optimizer:
 			veloc = new_m.GoMeanProbForce() # Tries to update atom positions to average of Go-Probability.
 			# Remove average torque
 			#veloc = self.RemoveAverageTorque(new_m.coords,veloc)
-			#TODO remove rotation. 
+			#TODO remove rotation.
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
-			
+
 			new_m.coords = tmp_m.coords + c_veloc
 			old_veloc = self.momentum_decay*c_veloc
 
@@ -154,7 +154,7 @@ class Optimizer:
 			step+=1
 			Energy = new_m.EnergyAfterAtomMove(new_m.coords[0],0)
                         print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
-#			print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
+			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
 	def Opt(self,m):
@@ -178,15 +178,15 @@ class Optimizer:
 					xyz,probs = self.tfm.EvalOneAtom(new_m, i, self.step, self.ngrid)
 				else:
 					xyz,probs = self.tfm.EvalOneAtomMB(new_m, i, self.step,self.ngrid)
-#				print "xyz:", xyz
-#				print "probs:", probs
+				#print "xyz:", xyz
+				#print "probs:", probs
 				new_m.coords[i] = self.ChooseBest(xyz, probs)
 
 				#Update with momentum.
 			veloc = new_m.coords - tmp_m.coords
 			# Remove average torque
 			#veloc = self.RemoveAverageTorque(new_m.coords,veloc)
-			#TODO remove rotation. 
+			#TODO remove rotation.
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
@@ -221,7 +221,7 @@ class Optimizer:
 			veloc = new_m.coords - tmp_m.coords
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
-			
+
 			new_m.coords = tmp_m.coords + c_veloc
 			old_veloc = self.momentum_decay*c_veloc
 
@@ -238,7 +238,7 @@ class Optimizer:
 		return
 
 	def GoOptProb(self,m):
-		''' This version tests if the Go-opt converges when atoms are moved to 
+		''' This version tests if the Go-opt converges when atoms are moved to
 			the points of mean-probability. CF POfAtomMoves() '''
 		err=10.0
 		lasterr=10.0
@@ -251,15 +251,15 @@ class Optimizer:
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
 			tmp_m = Mol(new_m.atoms, coords)
-			
+
 			veloc = new_m.GoMeanProbForce() # Tries to update atom positions to average of Go-Probability.
 			# Remove average torque
 			#veloc = self.RemoveAverageTorque(new_m.coords,veloc)
-			#TODO remove rotation. 
+			#TODO remove rotation.
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
-			
+
 			new_m.coords = tmp_m.coords + c_veloc
 			old_veloc = self.momentum_decay*c_veloc
 
@@ -274,7 +274,7 @@ class Optimizer:
 			step+=1
 			Energy = new_m.EnergyAfterAtomMove(new_m.coords[0],0)
                         print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
-#			print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
+			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
 	def GoOpt(self,m):
@@ -290,15 +290,15 @@ class Optimizer:
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
 			tmp_m = Mol(new_m.atoms, coords)
-			
+
 			veloc = new_m.SoftCutGoForce()
 			# Remove average torque
 			#veloc = self.RemoveAverageTorque(new_m.coords,veloc)
-			#TODO remove rotation. 
+			#TODO remove rotation.
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
-			
+
 			new_m.coords = tmp_m.coords + c_veloc
 			old_veloc = self.momentum_decay*c_veloc
 
@@ -313,9 +313,8 @@ class Optimizer:
 			step+=1
 			Energy = new_m.GoPotential()
                         print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
-#			print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
+			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
-
 
 	def GoOpt_ScanForce(self,m):
                 # Sweeps one at a time
@@ -335,7 +334,7 @@ class Optimizer:
 			veloc = new_coords - tmp_m.coords
                         # Remove average torque
                         #veloc = self.RemoveAverageTorque(new_m.coords,veloc)
-                        #TODO remove rotation. 
+                        #TODO remove rotation.
                         c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
                         # Remove translation.
                         c_veloc = c_veloc - np.average(c_veloc,axis=0)
@@ -355,3 +354,44 @@ class Optimizer:
 			Energy = new_m.GoPotential()
                         print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
                 return
+
+	def Interpolate_OptForce(self,m1,m2):
+		# Interpolates between lattices of two stoichiometric molecules from the center outwards
+		err=10.0
+		lasterr=10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m1.atoms, m1.coords)
+		#print "Orig Coords", m1.coords
+		m3 = Mol(m1.atoms, m1.coords)
+		m1.center = np.sum(m1.coords, axis=0)/m1.NAtoms()
+		m2.center = np.sum(m2.coords, axis=0)/m2.NAtoms()
+		if (m1.center-m2.center).all() != 0:
+			m2.coords += m1.center - m2.center
+			m2.center = np.sum(m2.coords, axis=0)/m2.NAtoms()
+		center_dist = np.array(np.linalg.norm(m2.coords - m2.center, axis=1))
+		veloc=np.zeros(m1.coords.shape)
+		old_veloc=np.zeros(m1.coords.shape)
+		m1.BuildDistanceMatrix()
+		m2.BuildDistanceMatrix()
+		m1.GoK = 1.0e6
+		m2.GoK = 1.0e6
+		while step < self.max_opt_step:
+			for i in range(m1.NAtoms()):
+				#print 'm1.GoForce:', m1.GoForce(i)
+				#print 'm2.GoForce:', m2.GoForce(i)
+				#veloc[i] = -1.0*m1.GoForce(i)
+				veloc[i] = -1.0*(m1.GoForce(i)*(1-np.linalg.norm(m3.coords[i]-m1.center)/np.amax(center_dist)) + m2.GoForce(i)*(np.linalg.norm(m3.coords[i]-m1.center)/np.amax(center_dist)))
+			print 'Veloc max values:', np.amax(veloc[:,0]), np.amax(veloc[:,1]), np.amax(veloc[:,2])
+			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
+			# Remove translation.
+			c_veloc = c_veloc - np.average(c_veloc,axis=0)
+			prev_m = Mol(m3.atoms, m3.coords)
+			m3.coords = m3.coords + c_veloc
+			old_veloc = self.momentum_decay*c_veloc
+			#err = m2.rms(prev_m)
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			step+=1
+			print "Step:", step, #"Coords:", m1.coords[1000]
+		return
