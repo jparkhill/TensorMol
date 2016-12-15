@@ -27,7 +27,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #  TODO: have some type of param file. 
 MAX_ATOMIC_NUMBER = 10
 GRIDS = None
-MBE_ORDER = 5
+MBE_ORDER = 3
 HAS_GRIDS=True
 
 # Derived Quantities and useful things. 
@@ -191,6 +191,16 @@ def String_To_Atoms(s=""):
 		else:
 			continue
 	return atom_l
+
+def iter_product(args, repeat=1):
+    # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
+    # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
+    pools = [tuple(pool) for pool in args] * repeat
+    result = [[]]
+    for pool in pools:
+        result = [x+[y] for x in result for y in pool]
+    for prod in result:
+        yield list(prod)
 
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

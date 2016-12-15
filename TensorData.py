@@ -146,7 +146,7 @@ class TensorData():
 					print "Average label: ", np.average(labels[:casep])
 					if  (not np.isfinite(np.average(labels[:casep]))):
 						raise Exception("Bad Labels")
-				if (mi%300):
+				if (mi%1000):
 					gc.collect()
 				if (mi%1000==0):
 					print mi

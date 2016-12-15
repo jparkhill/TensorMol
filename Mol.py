@@ -24,6 +24,7 @@ class Mol:
 		self.mbe_order = MBE_ORDER
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
+		self.type_of_frags_dict = {}
 		self.atoms_of_frags = [] # store the index of atoms of each frag
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
 		self.mbe_frags_deri=dict()
@@ -735,14 +736,16 @@ class Mol:
 					if mono_2_info[target] == -1: # met a single woman
 						mono_1_info[i] = mono_1_history[i]
 						mono_2_info[target] = mono_2_prefer[target].index(i)
+						mono_1_history[i] += 1
 					elif mono_2_info[target] > mono_2_prefer[target].index(i):   # this man is the better choice than the previous one
-						poorguy = mono_2_prefer[mono_2_info[target]]
+						poorguy = mono_2_prefer[target][mono_2_info[target]] 
 						mono_1_info[poorguy] = -1   # this poor guy is abandoned...
 						mono_1_info[i] = mono_1_history[i]
 						mono_2_info[target] = mono_2_prefer[target].index(i)
+						mono_1_history[i] += 1
 					else:
+						mono_1_history[i] += 1
 						continue
-					mono_1_history[i] += 1
 				else:
 					continue
 
@@ -788,6 +791,7 @@ class Mol:
 			masked=[]
 			frag_index = 0
 			for i, dic in enumerate(self.frag_list):
+				self.type_of_frags_dict[i] = []
 				frag_atoms = String_To_Atoms(dic["atom"])
 				frag_atoms = [atoi[atom] for atom in frag_atoms]
 				num_frag_atoms = len(frag_atoms)
@@ -802,7 +806,8 @@ class Mol:
 							masked += range (j, j+num_frag_atoms)
 						 	self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
 							self.type_of_frags.append(i)
-
+							self.type_of_frags_dict[i].append(frag_index)
+							
 							tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
 							tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
 							mbe_terms = [frag_index]
@@ -810,58 +815,99 @@ class Mol:
 							atom_group = [num_frag_atoms]
 							dic['num_electron'] = sum(list(tmp_atom))-dic['charge']
 							frag_type = [dic]
-							tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms, mbe_dist, atom_group, frag_type, FragOrder_=order)
+							frag_type_index = [i]
+							tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms, mbe_dist, atom_group, frag_type, frag_type_index, FragOrder_=order)
 							self.mbe_frags[order].append(tmp_mol)
 
 							j += num_frag_atoms
 							frag_index += 1
-							print self.atoms_of_frags, tmp_list, self.type_of_frags
-							print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
+							#print self.atoms_of_frags, tmp_list, self.type_of_frags
+							#print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
 						else:
 							j += 1
 		else:
+			num_of_each_frag = {}
+			frag_list_length = len(self.frag_list)
+			frag_list_index = range (0, frag_list_length)
+			frag_list_index_list = list(itertools.product(frag_list_index, repeat=order))
+			tmp_index_list = []
+			for i in range (0, len(frag_list_index_list)):
+				tmp_index = list(frag_list_index_list[i])
+				tmp_index.sort()
+				if tmp_index not in tmp_index_list:
+					tmp_index_list.append(tmp_index)
+					num_of_each_frag[LtoS(tmp_index)]=0
+
+	
 			self.mbe_frags[order] = []
 			mbe_terms=[]
-               	 	mbe_terms_num=0
                 	mbe_dist=[]
 			ngroup = len(self.mbe_frags[1])	#
 			atomlist=list(range(0,ngroup))
 			time_log = time.time()
 
                         print ("generating the combinations for order: ", order)
-                        combinations=list(itertools.combinations(atomlist,order))
+			max_case = 5000 
+			
+			time_now=time.time()
+			for index_list in tmp_index_list:
+				frag_case = 0
+				sample_index = []
+				for i in index_list:
+					sample_index.append(self.type_of_frags_dict[i])
+
+				print("begin the most time consuming step: ")
+				tmp_time  = time.time()
+				sub_combinations = list(itertools.product(*sample_index))
+				print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
+				shuffle_time = time.time()
+				new_begin = random.randint(1,len(sub_combinations)-2)
+				sub_combinations = sub_combinations[new_begin:]+sub_combinations[:new_begin] # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
+				#random.shuffle(sub_combinations)  # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
+				print  "time to shuffle it", time.time()-shuffle_time
+				for i in range (0, len(sub_combinations)):
+                        	        term = list(sub_combinations[i])
+					if len(list(set(term))) < len(term):
+						continue
+                        	        pairs=list(itertools.combinations(term, 2))
+                        	        saveindex=[]
+                        	        dist = [10000000]*len(pairs)
+                        	        flag=1
+                        	        npairs=len(pairs)
+                        	        for j in range (0, npairs):
+                        	                #print self.type_of_frags[pairs[j][0]], self.type_of_frags[pairs[j][1]], pairs[j][0], pairs[j][1]
+                        	                if self.type_of_frags[pairs[j][0]] == -1 :
+                        	                        center_1 = self.Center()
+                        	                else:
+                        	                        center_1 = self.mbe_frags[1][pairs[j][0]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
+
+                        	                if self.type_of_frags[pairs[j][1]] == -1 :
+                        	                        center_2 = self.Center()
+                        	                else:
+                        	                        center_2 = self.mbe_frags[1][pairs[j][1]].coords[center_atom[self.type_of_frags[pairs[j][1]]]]
+                        	                dist[j] = np.linalg.norm(center_1- center_2)
+                        	                if dist[j] > cutoff:
+                        	                        flag = 0
+                        	                        break
+                        	        if flag == 1:   # we find a frag
+						if frag_case%100==0:
+							print "working on frag:", frag_case, "frag_type:", index_list, " i:", i
+						frag_case  += 1
+                        	                if  frag_case >=  max_case:   # just for generating training case
+                        	                        break;
+                        	                mbe_terms.append(term)
+                        	                mbe_dist.append(dist)
+				
                         print ("finished..takes", time_log-time.time(),"second")
 
-			time_now=time.time()
-                        max_case = 10000000   #  set max cases for debug
-
-			for i in range (0, len(combinations)):
-                        	term = list(combinations[i])
-                        	pairs=list(itertools.combinations(term, 2))
-                        	saveindex=[]
-                        	dist = [10000000]*len(pairs)
-                        	flag=1
-                        	npairs=len(pairs)
-				for j in range (0, npairs):
-					center_1 = self.mbe_frags[1][pairs[j][0]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
-					center_2 = self.mbe_frags[1][pairs[j][1]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
-					dist[j] = np.linalg.norm(center_1- center_2)
-					if dist[j] > cutoff:
-						flag = 0
-						break
-				if flag == 1:   # we find a frag
-					mbe_terms_num += 1
-         	                       	mbe_terms.append(term)
-	                                mbe_dist.append(dist)
-                	                if mbe_terms_num >=  max_case:   # just for generating training case
-                        	        	break;
-
 			mbe_frags = []
-			for i in range (0, mbe_terms_num):
+			for i in range (0, len(mbe_terms)):
 				frag_type = []
+				frag_type_index = []
 				atom_group = []
 				for index in mbe_terms[i]:
 					frag_type.append(self.frag_list[self.type_of_frags[index]])
+					frag_type_index.append(self.type_of_frags[index])
 					atom_group.append(self.mbe_frags[1][index].atoms.shape[0])
 				tmp_coord = np.zeros((sum(atom_group), 3))
 				tmp_atom = np.zeros(sum(atom_group), dtype=np.uint8)
@@ -870,12 +916,11 @@ class Mol:
 					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
 					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
 					pointer += atom_group[j]
-				print tmp_atom, tmp_coord,  mbe_terms[i], mbe_dist[i], atom_group, frag_type, order
-				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, FragOrder_=order)
+				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, frag_type_index, FragOrder_=order)
                                 self.mbe_frags[order].append(tmp_mol)
-			del combinations
-		return
-
+			del sub_combinations	
+		return 
+				
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
 		for i in range (1, self.mbe_order+1):
 			self.Generate_MBE_term(i, atom_group, cutoff, center_atom)
@@ -972,9 +1017,13 @@ class Mol:
                         if not os.path.isdir(order_path):
                                 os.mkdir(order_path)
                         os.chdir(order_path)
+			time0 =time.time()
                         for frag in self.mbe_frags[order]:  # just for generating the training set..
                                 fragnum += 1
-                                print "working on frag:", fragnum
+				if fragnum%100 == 0:
+                               		print "working on frag:", fragnum
+					print  "total time:", time.time() - time0
+					time0 = time.time()
                                 frag.Write_Qchem_Frag_MBE_Input_All_General(fragnum)
                         os.chdir("../../../../")
                 elif method == "pyscf":
@@ -1012,8 +1061,8 @@ class Mol:
 				time_log = time.time()
 			self.mbe_frags_energy[order] = mbe_frags_energy
 		else:
-			raise Exception("unknow ab-initio software!")
-		return 0
+			raise Exception("unknow ab-initio software!")		
+		return 
 
 	def Get_Qchem_Frag_Energy(self, order):
 		fragnum = 0
@@ -1170,8 +1219,8 @@ class Mol:
 		return self.mbe_deri
 
 class Frag(Mol):
-    	""" Provides a MBE frag of  general purpose molecule"""
-    	def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, FragOrder_=None):
+        """ Provides a MBE frag of  general purpose molecule"""
+        def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, frag_type_index_=None, FragOrder_=None):
 		Mol.__init__(self, atoms_, coords_)
 		self.atom_group = atom_group_
 		if FragOrder_==None:
@@ -1190,6 +1239,10 @@ class Frag(Mol):
 			self.frag_type = frag_type_
 		else:
 			self.frag_type = None
+		if (frag_type_!=None):
+                        self.frag_type_index = frag_type_index_
+                else:
+                        self.frag_type_index = None
 		self.frag_mbe_energies=dict()
 		self.frag_mbe_energy = None
 		self.frag_energy = None
@@ -1320,7 +1373,7 @@ class Frag(Mol):
                         qchem_input.write(qchemstring)
                         qchem_input.close()
                         i = i+1
-                gc.collect()
+                #gc.collect()  # speed up the function by 1000 times just deleting this single line! 
                 return
 
 

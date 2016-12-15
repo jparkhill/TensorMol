@@ -8,7 +8,7 @@ import random
 
 class Optimizer:
 	def __init__(self,tfm_):
-		self.thresh = 0.005
+		self.thresh = 0.001
 		self.maxstep = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
