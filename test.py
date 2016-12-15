@@ -225,22 +225,45 @@ if (0):
 	tset.BuildSamples("Test",[],True)
 
 #jeherr tests
-if (0):
-	a=MSet('cspbbr3_mixed')
-	#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
-	#a.Save()
-	#a.WriteXYZ('cspbbr3_mixed')
-	a.Load()
-	mol1 = a.mols[1]
-	mol2 = a.mols[0]
-	optimizer = Optimizer(None)
-	optimizer.Interpolate_OptForce(mol1, mol2)
-
 if (1):
-	a=MSet('cspbbr3_mixed')
-	a.Load()
-	mol1 = a.mols[0]
-	mol2 = a.mols[1]
-	mol1.Assign(mol2)
-	mol1.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new')
-	mol2.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new')
+	if (0):
+		a=MSet('cspbbr3_mixed')
+		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
+		#a.Save()
+		#a.WriteXYZ('cspbbr3_mixed')
+		a.Load()
+		mol1 = a.mols[1]
+		mol2 = a.mols[0]
+		optimizer = Optimizer(None)
+		optimizer.Interpolate_OptForce(mol1, mol2)
+
+	if (0):
+		a=MSet('cspbbr3_mixed')
+		a.Load()
+		mol1 = a.mols[0]
+		mol2 = a.mols[1]
+		mol1.Assign(mol2)
+		#mol1.SortAtoms()
+		#mol2.SortAtoms()
+		mol1.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new')
+		mol2.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new')
+
+	if (0):
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		mol = a.mols[1]
+		mol.BuildDistanceMatrix()
+		print mol.LJForce()
+
+	if (1):
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		test_mol = a.mols[0]
+		print "Orig Coords", test_mol.coords
+		test_mol.Distort()
+		print test_mol.GoForce()
+		print test_mol.LJForce()
+		#optimizer = Optimizer(None)
+		#optimizer.OptLJForce(test_mol) # This works perfectly.
+		#print test_mol.coords
+		#print test_mol.atoms

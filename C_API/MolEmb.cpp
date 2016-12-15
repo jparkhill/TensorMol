@@ -44,10 +44,10 @@ void rdf(double *,  const int ,  const array<std::vector<int>, 100> ,  const int
 struct MyComparator
 {
 	const std::vector<double> & value_vector;
-	
+
 	MyComparator(const std::vector<double> & val_vec):
 	value_vector(val_vec) {}
-	
+
 	bool operator()(int i1, int i2)
 	{
 		return value_vector[i1] < value_vector[i2];
@@ -108,9 +108,9 @@ double dist(double x0,double y0,double z0,double x1,double y1,double z1)
 }
 
 void  G2(double *data, const double *zeta, const double *eta, int dim_zeta, int dim_eta,  int lambda, const array<std::vector<int>, 100>  ele_index, const int v1_index, const int v2_index, const double *center, const double *xyz, const double dist_cut) {
-	
+
 	double dist1,dist2,dist3,fc1,fc2,fc3,theta,A,B,C,distsum;
-	
+
 	for (int i = 0; i < ele_index[v1_index].size(); i++) {
 		dist1 = sqrt(pow(xyz[ele_index[v1_index][i]*3+0] - center[0],2)+pow(xyz[ele_index[v1_index][i]*3+1] - center[1],2)+pow(xyz[ele_index[v1_index][i]*3+2] - center[2],2));
 		if (dist1 > dist_cut)
@@ -132,7 +132,7 @@ void  G2(double *data, const double *zeta, const double *eta, int dim_zeta, int 
 						data[dim_eta*n+m]=data[dim_eta*n+m]+A*B*C;
 					}
 				}
-				
+
 			}
 		}
 	}
@@ -142,11 +142,11 @@ void  G2(double *data, const double *zeta, const double *eta, int dim_zeta, int 
 // This isn't an embedding; it's fast code to make a go-model potential for a molecule.
 //
 static PyObject* Make_Go(PyObject *self, PyObject  *args) {
-	
+
 	PyArrayObject   *xyz, *DistMat, *Coords, *OutMat;
 	int  theatom; // omit the training atom from the RDF
 	if (!PyArg_ParseTuple(args, "O!O!O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &DistMat,&PyArray_Type, &OutMat,&PyArray_Type, &Coords, &theatom)) return 0;
-	
+
 	double *xyz_data=(double*) xyz->data;
 	double *distmat=(double*) DistMat->data;
 	double *outmat=(double*) OutMat->data;
@@ -154,10 +154,10 @@ static PyObject* Make_Go(PyObject *self, PyObject  *args) {
 	const int natom = (DistMat->dimensions)[0];
 	const int nxyz = (xyz->dimensions)[0];
 	const int noutmat = (OutMat->dimensions)[0];
-	
+
 	if (nxyz != noutmat)
 	std::cout << "Bad input arrays :( " << std::endl;
-	
+
 	for (int s=0; s<nxyz; s++)
 	{
 		//std::cout << xyz_data[3*s] << " " << xyz_data[3*s+1] << " " << xyz_data[3*s+2] << std::endl;
@@ -176,25 +176,25 @@ static PyObject* Make_Go(PyObject *self, PyObject  *args) {
 			}
 		}
 	}
-	
+
 	PyObject* nlist = PyList_New(0);
 	return nlist;
 }
 
 static PyObject*  Make_RDF(PyObject *self, PyObject  *args) {
-	
+
 	PyArrayObject   *xyz, *grids, *atoms_, *elements;
 	double   dist_cut,  width;
 	int  ngrids, theatom; // omit the training atom from the RDF
 	if (!PyArg_ParseTuple(args, "O!O!O!O!diid",
 						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &theatom, &width))  return NULL;
 	PyObject* RDF_all = PyList_New(0);
-	
+
 	//npy_intp* nelep = elements->dimensions;
 	const int nele = (elements->dimensions)[0];
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
-	
+
 	npy_intp  RDFdim[2] = {nele, ngrids};
 	PyObject* RDF;
 	double *RDF_data, *xyz_data, *grids_data;
@@ -202,17 +202,17 @@ static PyObject*  Make_RDF(PyObject *self, PyObject  *args) {
 	int natom, num_RDF;
 	array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
 	array<std::vector<double>, 100> ele_dist;  //  hold max 100 elements most
-	
+
 	// for (int i = 0; i < nele; i++)
 	//	ele[i] = PyFloat_AsDouble(PyList_GetItem(elements, i));
-	
+
 	npy_intp* Nxyz = xyz->dimensions;
 	natom = Nxyz[0];
 	npy_intp* Ngrids = grids->dimensions;
 	num_RDF = Ngrids[0];
 	xyz_data = (double*) xyz->data;
 	grids_data = (double*) grids -> data;
-	
+
 	for (int j = 0; j < natom; j++) {
 		if (j==theatom)
 		continue;
@@ -221,7 +221,7 @@ static PyObject*  Make_RDF(PyObject *self, PyObject  *args) {
 			ele_index[k].push_back(j);
 		}
 	}
- 
+
 	for  (int i= 0; i < num_RDF; i++) {
 		center[0] = grids_data[i*Ngrids[1]+0];
 		center[1] = grids_data[i*Ngrids[1]+1];
@@ -234,18 +234,18 @@ static PyObject*  Make_RDF(PyObject *self, PyObject  *args) {
 			if (ele_index[m].size() > 0 )
 			rdf(RDF_data,  ngrids,  ele_index,  m, center, xyz_data,  dist_cut, width);
 		}
-		
+
 		PyList_Append(RDF_all, RDF);
-		
+
 	}
-	
+
 	for (int j = 0; j < nele; j++)
 	ele_index[j].clear(); // It should scope out anyways.
-	
+
 	PyObject* nlist = PyList_New(0);
 	PyList_Append(nlist, RDF_all);
 	//         PyList_Append(nlist, AM_all);
-	
+
 	return  nlist;
 }
 
@@ -254,7 +254,7 @@ int  Make_AM (const double *center_m, const array<std::vector<int>, 100>  ele_in
 	int angel_index = 0;
 	array<std::vector<double>, 100> ele_angel;  //  hold max 100 elements most
 	array<std::vector<double>, 100> ele_angel_dist;  //  hold max 100 elements most
-	
+
 	for (int i = 0; i < nele; i++)
 	for (int j = i; j < nele; j++) {
 		for (int m = 0; m < ele_index[i].size(); m++)  {
@@ -270,23 +270,23 @@ int  Make_AM (const double *center_m, const array<std::vector<int>, 100>  ele_in
 				dist = dist1*dist1+dist2*dist2;
 				ele_angel_dist[angel_index].push_back(dist);
 				ele_angel[angel_index].push_back(angel+2.0) ;  // is an angel do not exist set to 0, this make the range of angel [3, 1]
-				
+
 			}
-			
+
 		}
-		
-		
+
+
 		std::sort(ele_angel[angel_index].begin(), ele_angel[angel_index].end(), MyComparator(ele_angel_dist[angel_index]));
 		std::reverse(ele_angel[angel_index].begin(), ele_angel[angel_index].end());
 		for (int k = 0; k < ele_angel[angel_index].size() && k < max_near; k++ ) {
 			AM_data[angel_index*max_near+k] = ele_angel[angel_index][k];
-			
+
 		}
 		angel_index++;
 	}
 	return 1;
-	
-	
+
+
 }
 
 static PyObject*  Make_CM (PyObject *self, PyObject  *args)
@@ -299,28 +299,28 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &theatom, &mask))
 	return NULL;
 	PyObject* CM_all = PyList_New(0);
-	
+
 	const int nele = (elements->dimensions)[0];
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
-	
+
 	npy_intp  CMdim[2] = {nele, ngrids};
 	PyObject* CM;
 	double *CM_data, *xyz_data, *grids_data;
 	double center[3]; // x y z of the center
 	int natom, num_CM;
-	
+
 	array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
 	array<std::vector<int>, 100> ele_index_mask;
 	array<std::vector<double>, 100> ele_dist;
-	
+
 	npy_intp* Nxyz = xyz->dimensions;
 	natom = Nxyz[0];
 	npy_intp* Ngrids = grids->dimensions;
 	num_CM = Ngrids[0];
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	grids_data = (double*) grids -> data;
-	
+
 	for (int j = 0; j < natom; j++) {
 		if (j==theatom)
 		continue;
@@ -332,17 +332,17 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 	//    for (int j = 0; j < nele; j++)
 	//       for (auto k = ele_index[j].begin(); k != ele_index[j].end(); ++k)
 	//         std::cout << i << "  "<< j <<  "  " <<  *k << std::endl;
-	
+
 	for (int i = 0; i < num_CM;  i++) {  //loop over different atoms of the same type
 		center[0] = grids_data[i*Ngrids[1]+0];
 		center[1] = grids_data[i*Ngrids[1]+1];
 		center[2] = grids_data[i*Ngrids[1]+2];
-		
+
 		CM = PyArray_SimpleNew(2, CMdim, NPY_DOUBLE);
 		CM_data = (double*) ((PyArrayObject*) CM)->data;
 		for (int n = 0 ; n < CMdim[0]*CMdim[1]; n++)
 		CM_data[n] = 0.0;
-		
+
 		for (int j = 0; j < nele; j++) {
 			ele_index_mask[j].clear();
 		}
@@ -354,7 +354,7 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 				}
 			}
 		}
-		
+
 		for (int m = 0; m < nele; m++) {
 			for (int k = 0; k < ele_index_mask[m].size(); k++) {
 				dist=sqrt(pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+0]-center[0], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+1]-center[1], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+2]-center[2], 2.0));
@@ -366,23 +366,23 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 				ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
 			}
 		}
-		
+
 		for (int m = 0; m < nele; m++) {
 			std::sort(ele_dist[m].begin(), ele_dist[m].end());
 			std::reverse(ele_dist[m].begin(), ele_dist[m].end());
 		}
-		
+
 		for (int m = 0;  m < nele; m++)
 		for (int n= 0; n < ele_dist[m].size() && n < ngrids; n++)
 		CM_data[m*CMdim[1]+n] = ele_dist[m][n];
-		
+
 		for (int m = 0; m < nele; m++)
 		ele_dist[m].clear();
-		
+
 		PyList_Append(CM_all, CM);
-		
+
 	}
-	
+
 	for (int j = 0; j < nele; j++) {
 		ele_index[j].clear();
 		ele_index_mask[j].clear();
@@ -422,12 +422,12 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-	
+
 	int ai=0;
 //	for (int i = 0; i < natom; i++)
 //	{
 	int i = theatom;
-	
+
 		double xc = xyz_data[i*Nxyz[1]+0];
 		double yc = xyz_data[i*Nxyz[1]+1];
 		double zc = xyz_data[i*Nxyz[1]+2];
@@ -472,11 +472,11 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-	
+
 //	for (int i = 0; i < natom; i++)
 //	{
 	int i = theatom;
-	
+
 		double xc = xyz_data[i*Nxyz[1]+0];
 		double yc = xyz_data[i*Nxyz[1]+1];
 		double zc = xyz_data[i*Nxyz[1]+2];
@@ -502,7 +502,7 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 	int  ngrids,  theatom;
 	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
 		return NULL;
-	
+
 	const int npts = (xyz->dimensions)[0];
 	int nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
 	npy_intp outdim[2] = {nbas,npts};
@@ -512,13 +512,13 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 	double center[3]; // x y z of the center
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-	
+
 	for (int pt=0; pt<npts; ++pt)
 	{
 		double r = sqrt(xyz_data[pt*3+0]*xyz_data[pt*3+0]+xyz_data[pt*3+1]*xyz_data[pt*3+1]+xyz_data[pt*3+2]*xyz_data[pt*3+2]);
 		double theta = acos(xyz_data[pt*3+2]/r);
 		double phi = atan2(xyz_data[pt*3+1],xyz_data[pt*3+0]);
-		
+
 //		cout << "r" << r << endl;
 //		cout << "r" << theta << endl;
 //		cout << "r" << phi << endl;
@@ -551,12 +551,12 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz;
 	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
 		return NULL;
-	
+
 	int nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
 	npy_intp outdim[2] = {1,nbas};
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *SH_data,*xyz_data;
-	
+
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	x=xyz_data[0];
 	y=xyz_data[1];
@@ -708,6 +708,59 @@ static PyObject* Make_GoHess(PyObject *self, PyObject  *args)
 	return hess;
 }
 
+static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz, *EqDistMat;
+	int at;
+	if (!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nat,3};
+	if (at>=0)
+		outdim[0] = 1;
+	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *frc_data,*xyz_data,*d_data;
+	xyz_data = (double*) ((PyArrayObject*)xyz)->data;
+	frc_data = (double*) ((PyArrayObject*)hess)->data;
+	d_data = (double*) ((PyArrayObject*)EqDistMat)->data;
+	double u[3]={0.0,0.0,0.0};
+	if (at<0)
+	{
+		for (int i=0; i < nat; ++i)
+		{
+			for (int j=0; j < nat; ++j)
+			{
+				if (i==j)
+					continue;
+				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+				frc_data[i*3+0] += -2*((48*pow(d_data[i*nat+j],12)/pow(dij,14.0))*u[0]-(24*pow(d_data[i*nat+j],6)/pow(dij,8.0))*u[0]);
+				frc_data[i*3+1] += -2*((48*pow(d_data[i*nat+j],12)/pow(dij,14.0))*u[1]-(24*pow(d_data[i*nat+j],6)/pow(dij,8.0))*u[1]);
+				frc_data[i*3+2] += -2*((48*pow(d_data[i*nat+j],12)/pow(dij,14.0))*u[2]-(24*pow(d_data[i*nat+j],6)/pow(dij,8.0))*u[2]);
+			}
+		}
+	}
+	else
+	{
+		int i=at;
+			for (int j=0; j < nat; ++j)
+			{
+				if (i==j)
+					continue;
+				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+				frc_data[i*3+0] += -2*((48*pow(d_data[i*nat+j],12)/pow(dij,14))*u[0]-(24*pow(d_data[i*nat+j],6)/pow(dij,8))*u[0]);
+				frc_data[i*3+1] += -2*((48*pow(d_data[i*nat+j],12)/pow(dij,14))*u[1]-(24*pow(d_data[i*nat+j],6)/pow(dij,8))*u[1]);
+				frc_data[i*3+2] += -2*((48*pow(d_data[i*nat+j],12)/pow(dij,14))*u[2]-(24*pow(d_data[i*nat+j],6)/pow(dij,8))*u[2]);
+			}
+	}
+	return hess;
+}
+
 //
 // returns a [Nrad X Nang] x [npts] array which contains rasterized versions of the
 // non-orthogonal basis functions.
@@ -747,29 +800,29 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 	if (!PyArg_ParseTuple(args, "O!O!O!O!diii", &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &varyatom, &theatom))
 	return NULL;
 	PyObject* CM_all = PyList_New(0);
-	
+
 	const int nele = (elements->dimensions)[0];
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
-	
+
 	npy_intp  CMdim[2] = {nele, ngrids};
 	PyObject* CM;
 	double *CM_data, *xyz_data, *grids_data;
 	double center[3]; // x y z of the center
 	int natom, num_CM;
-	
+
 	array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
 	array<std::vector<double>, 100> ele_dist;
-	
+
 	npy_intp* Nxyz = xyz->dimensions;
 	natom = Nxyz[0];
 	npy_intp* Ngrids = grids->dimensions;
 	num_CM = Ngrids[0];
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	double *xyz_data_tmp = new double[Nxyz[0]*Nxyz[1]];
-	
+
 	grids_data = (double*) grids -> data;
-	
+
 	for (int j = 0; j < natom; j++) {
 		if (j==theatom)
 		continue;
@@ -778,23 +831,23 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 			ele_index[k].push_back(j);
 		}
 	}
-	
+
 	for (int i = 0; i < num_CM;  i++) {
 		for (int j = 0 ; j < Nxyz[0]*Nxyz[1]; j++)
 		xyz_data_tmp[j] = xyz_data[j];
 		xyz_data_tmp[varyatom*Nxyz[1]+0] = grids_data[i*Ngrids[1]+0];
 		xyz_data_tmp[varyatom*Nxyz[1]+1] = grids_data[i*Ngrids[1]+1];
 		xyz_data_tmp[varyatom*Nxyz[1]+2] = grids_data[i*Ngrids[1]+2];
-		
+
 		center[0] = xyz_data_tmp[theatom*Nxyz[1]+0];
 		center[1] = xyz_data_tmp[theatom*Nxyz[1]+1];
 		center[2] = xyz_data_tmp[theatom*Nxyz[1]+2];
-		
+
 		CM = PyArray_SimpleNew(2, CMdim, NPY_DOUBLE);
 		CM_data = (double*) ((PyArrayObject*) CM)->data;
 		for (int n = 0 ; n < CMdim[0]*CMdim[1]; n++)
 		CM_data[n] = 0.0;
-		
+
 		for (int m = 0; m < nele; m++) {
 			for (int k = 0; k < ele_index[m].size(); k++) {
 				dist=sqrt(pow(xyz_data_tmp[ele_index[m][k]*Nxyz[1]+0]-center[0], 2.0) + pow(xyz_data_tmp[ele_index[m][k]*Nxyz[1]+1]-center[1], 2.0) + pow(xyz_data_tmp[ele_index[m][k]*Nxyz[1]+2]-center[2], 2.0));
@@ -806,24 +859,24 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 				ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
 			}
 		}
-		
+
 		for (int m = 0; m < nele; m++) {
 			std::sort(ele_dist[m].begin(), ele_dist[m].end());
 			std::reverse(ele_dist[m].begin(), ele_dist[m].end());
 		}
-		
+
 		for (int m = 0;  m < nele; m++)
 		for (int n= 0; n < ele_dist[m].size() && n < ngrids; n++)
 		CM_data[m*CMdim[1]+n] = ele_dist[m][n];
-		
+
 		for (int m = 0; m < nele; m++)
 		ele_dist[m].clear();
-		
+
 		PyList_Append(CM_all, CM);
-		
+
 	}
-	
-	
+
+
 	for (int j = 0; j < nele; j++) {
 		ele_index[j].clear();
 	}
@@ -835,7 +888,7 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 
 
 static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
-	
+
 	PyArrayObject   *xyz, *grids, *atoms_, *elements;
 	PyObject    *eta_py;
 	double   dist_cut;
@@ -855,19 +908,19 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 	int natom, num_PGaussian;
 	std::array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
 	std::array<std::vector<double>, 100> ele_dist;  //  hold max 100 elements most
-	
-	
+
+
 	npy_intp* Nxyz = xyz->dimensions;
 	natom = Nxyz[0];
 	npy_intp* Ngrids = grids->dimensions;
 	num_PGaussian = Ngrids[0];
 	xyz_data = (double*) xyz->data;
 	grids_data = (double*) grids -> data;
-	
-	
+
+
 	for (int i = 0; i < dim_eta; i++)
 	eta[i] = PyFloat_AsDouble(PyList_GetItem(eta_py, i));
-	
+
 	for (int j = 0; j < natom; j++) {
 		if (j==theatom)
 		continue;
@@ -876,7 +929,7 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 			ele_index[k].push_back(j);
 		}
 	}
-	
+
 	for  (int i= 0; i < num_PGaussian; i++) {
 		center[0] = grids_data[i*Ngrids[1]+0];
 		center[1] = grids_data[i*Ngrids[1]+1];
@@ -892,19 +945,19 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 			PyList_Append(PGaussian_all, g);
 		}
 	}
-	
+
 	for (int j = 0; j < nele; j++)
 	ele_index[j].clear();
-	
+
 	PyObject* nlist = PyList_New(0);
 	PyList_Append(nlist, PGaussian_all);
 	//         PyList_Append(nlist, AM_all);
-	
+
 	return  nlist;
 }
 
 static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
-	
+
 	PyArrayObject   *xyz, *grids, *atoms_, *elements;
 	PyObject    *zeta_py, *eta1_py, *eta2_py, *Rs_py;
 	double   dist_cut;
@@ -930,17 +983,17 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 	int natom, lambda, num_SYM;
 	array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
 	array<std::vector<double>, 100> ele_dist;  //  hold max 100 elements most
-	
+
 	npy_intp* Nxyz = xyz->dimensions;
 	natom = Nxyz[0];
 	npy_intp* Ngrids = grids->dimensions;
 	num_SYM = Ngrids[0];
 	xyz_data = (double*) xyz->data;
 	grids_data = (double*) grids -> data;
-	
+
 	//for (int i=0; i < natom; i++)
 	//    std::cout<<"atoms[i]:"<<static_cast<int16_t>(atoms[i])<<std::endl;   // tricky way to print uint8, uint8 can not printed by cout directly.
-	
+
 	for (int i = 0; i < dim_zeta; i++) {
 		zeta[i] = PyFloat_AsDouble(PyList_GetItem(zeta_py, i));
 	}
@@ -950,10 +1003,10 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 	eta2[i] = PyFloat_AsDouble(PyList_GetItem(eta2_py, i));
 	for (int i = 0; i < dim_Rs; i++)
 	Rs[i] = PyFloat_AsDouble(PyList_GetItem(Rs_py, i));
-	
+
 	//for (int j = 0; j < 10; j++)
 	//	std::cout<<xyz_data[j]<<std::endl;
-	
+
 	for (int j = 0; j < natom; j++) {
 		if (j==theatom)
 		continue;
@@ -977,7 +1030,7 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 			}
 			PyList_Append(SYM_all, g1);
 		}
-		
+
 		for (int m = 0; m < nele; m++)
 		for (int n =m; n < nele; n++) {
 			g2 = PyArray_SimpleNew(2, g2dim, NPY_DOUBLE);
@@ -988,9 +1041,9 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 			if (ele_index[m].size() > 0 && ele_index[n].size() > 0)
 			G2(g2_data, zeta, eta2,  dim_zeta,  dim_eta2,  lambda,  ele_index, m, n, center, xyz_data,  dist_cut);
 			PyList_Append(SYM_all, g2);
-			
-			
-			
+
+
+
 			g2 = PyArray_SimpleNew(2, g2dim, NPY_DOUBLE);
 			g2_data = (double*) ((PyArrayObject*) g2)->data;
 			for (int k = 0; k < g2dim[0]*g2dim[1]; k++)
@@ -998,19 +1051,19 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 			lambda = -1;
 			if (ele_index[m].size() > 0 && ele_index[n].size() > 0)
 			G2(g2_data, zeta, eta2,  dim_zeta,  dim_eta2,  lambda,  ele_index, m, n, center, xyz_data,  dist_cut);
-			
+
 			PyList_Append(SYM_all, g2);
 		}
 	}
-	
-	
+
+
 	for (int j = 0; j < nele; j++)
 	ele_index[j].clear();
-	
+
 	PyObject* nlist = PyList_New(0);
 	PyList_Append(nlist, SYM_all);
 	//         PyList_Append(nlist, AM_all);
-	
+
 	return  nlist;
 }
 
@@ -1028,6 +1081,8 @@ static PyMethodDef EmbMethods[] =
 		"Make_GoForce method"},
 	{"Make_GoHess", Make_GoHess, METH_VARARGS,
 		"Make_GoHess method"},
+	{"Make_LJForce", Make_LJForce, METH_VARARGS,
+		"Make_LJForce method"},
 	{"Make_SH", Make_SH, METH_VARARGS,
 		"Make_SH method"},
 	{"Make_Inv", Make_Inv, METH_VARARGS,

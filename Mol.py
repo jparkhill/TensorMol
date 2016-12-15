@@ -258,14 +258,21 @@ class Mol:
 		new_atoms = np.zeros((1))
 		new_coords = np.zeros((1,3))
 		for i in self.AtomTypes():
+			new_atoms_tmp = np.zeros((1))
+			new_coords_tmp = np.zeros((1,3))
 			for j in range(len(self.atoms)):
 				if self.atoms[j] == i:
-					new_atoms = np.insert(new_atoms, 0, self.atoms[j])
-					new_coords = np.insert(new_coords, 0, self.coords[j], axis=0)
-		new_atoms = np.delete(new_atoms, new_atoms.shape[0]-1)
-		new_coords = np.delete(new_coords, new_coords.shape[0]-1, axis=0)
-		self.atoms = new_atoms
-		self.coords = new_coords
+					new_atoms_tmp = np.insert(new_atoms_tmp, 0, self.atoms[j])
+					new_coords_tmp = np.insert(new_coords_tmp, 0, self.coords[j], axis=0)
+			new_atoms_tmp = np.delete(new_atoms_tmp, new_atoms_tmp.shape[0]-1)
+			new_coords_tmp = np.delete(new_coords_tmp, new_coords_tmp.shape[0]-1, axis=0)
+			#print new_coords_tmp
+			new_coords_tmp = new_coords_tmp[np.argsort(new_coords_tmp[:,0], axis=0)]
+			new_atoms = np.insert(new_atoms, 0, new_atoms_tmp)
+			new_coords = np.insert(new_coords, 0, new_coords_tmp, axis=0)
+			#print new_atoms
+		self.atoms = np.delete(new_atoms, new_atoms.shape[0]-1)
+		self.coords = np.delete(new_coords, new_coords.shape[0]-1, axis=0)
 		return
 
 	def Assign(self, m):
@@ -283,18 +290,21 @@ class Mol:
 			sorted_atoms = 0
 			for i in m.AtomTypes():
 				for j in range(m.stoich[i]):
-					p_idx = np.random.randint(0,high=m.stoich[i])
-					tmp_m = Mol(m.atoms.copy(), m.coords.copy())
-					tmp_m.coords[m.NAtoms()-1-sorted_atoms-j,:], tmp_m.coords[m.NAtoms()-1-sorted_atoms-p_idx,:] = \
-							m.coords[m.NAtoms()-1-sorted_atoms-p_idx,:], m.coords[m.NAtoms()-1-sorted_atoms-j,:]
-					tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
-					if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
-						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
-						m.atoms = tmp_m.atoms.copy()
-						m.coords = tmp_m.coords.copy()
-						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
-						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
-						k = 0
+					for l in range(m.stoich[i]):
+						if j != l:
+							tmp_m = Mol(m.atoms.copy(), m.coords.copy())
+							tmp_m.coords[m.NAtoms()-1-sorted_atoms-j,:], tmp_m.coords[m.NAtoms()-1-sorted_atoms-l,:] = \
+									m.coords[m.NAtoms()-1-sorted_atoms-l,:], m.coords[m.NAtoms()-1-sorted_atoms-j,:]
+							tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
+						else:
+							continue
+						if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
+							print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
+							m.atoms = tmp_m.atoms.copy()
+							m.coords = tmp_m.coords.copy()
+							m.DistMatrix = MolEmb.Make_DistMat(m.coords)
+							diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+							k = 0
 				sorted_atoms += m.stoich[i]
 			k += 1
 
@@ -377,6 +387,12 @@ class Mol:
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
 		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
+
+	def LJForce(self, at_=-1):
+		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
+			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
+		'''
+		return self.GoK*MolEmb.Make_LJForce(self.coords,self.DistMatrix,at_)
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
@@ -738,7 +754,7 @@ class Mol:
 						mono_2_info[target] = mono_2_prefer[target].index(i)
 						mono_1_history[i] += 1
 					elif mono_2_info[target] > mono_2_prefer[target].index(i):   # this man is the better choice than the previous one
-						poorguy = mono_2_prefer[target][mono_2_info[target]] 
+						poorguy = mono_2_prefer[target][mono_2_info[target]]
 						mono_1_info[poorguy] = -1   # this poor guy is abandoned...
 						mono_1_info[i] = mono_1_history[i]
 						mono_2_info[target] = mono_2_prefer[target].index(i)
@@ -807,7 +823,7 @@ class Mol:
 						 	self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
 							self.type_of_frags.append(i)
 							self.type_of_frags_dict[i].append(frag_index)
-							
+
 							tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
 							tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
 							mbe_terms = [frag_index]
@@ -838,7 +854,7 @@ class Mol:
 					tmp_index_list.append(tmp_index)
 					num_of_each_frag[LtoS(tmp_index)]=0
 
-	
+
 			self.mbe_frags[order] = []
 			mbe_terms=[]
                 	mbe_dist=[]
@@ -847,8 +863,8 @@ class Mol:
 			time_log = time.time()
 
                         print ("generating the combinations for order: ", order)
-			max_case = 5000 
-			
+			max_case = 5000
+
 			time_now=time.time()
 			for index_list in tmp_index_list:
 				frag_case = 0
@@ -897,7 +913,7 @@ class Mol:
                         	                        break;
                         	                mbe_terms.append(term)
                         	                mbe_dist.append(dist)
-				
+
                         print ("finished..takes", time_log-time.time(),"second")
 
 			mbe_frags = []
@@ -918,9 +934,9 @@ class Mol:
 					pointer += atom_group[j]
 				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, frag_type_index, FragOrder_=order)
                                 self.mbe_frags[order].append(tmp_mol)
-			del sub_combinations	
-		return 
-				
+			del sub_combinations
+		return
+
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
 		for i in range (1, self.mbe_order+1):
 			self.Generate_MBE_term(i, atom_group, cutoff, center_atom)
@@ -1061,8 +1077,8 @@ class Mol:
 				time_log = time.time()
 			self.mbe_frags_energy[order] = mbe_frags_energy
 		else:
-			raise Exception("unknow ab-initio software!")		
-		return 
+			raise Exception("unknow ab-initio software!")
+		return
 
 	def Get_Qchem_Frag_Energy(self, order):
 		fragnum = 0
@@ -1373,7 +1389,7 @@ class Frag(Mol):
                         qchem_input.write(qchemstring)
                         qchem_input.close()
                         i = i+1
-                #gc.collect()  # speed up the function by 1000 times just deleting this single line! 
+                #gc.collect()  # speed up the function by 1000 times just deleting this single line!
                 return
 
 

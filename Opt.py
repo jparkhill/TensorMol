@@ -89,6 +89,32 @@ class Optimizer:
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
+	def OptLJForce(self,m):
+		# Sweeps one at a time
+		err=10.0
+		lasterr=10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		print "Orig Coords", m.coords
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
+		while(err>self.thresh and step < self.max_opt_step):
+			for i in range(m.NAtoms()):
+				veloc[i] = -1.0*m.LJForce(i)
+			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
+			# Remove translation.
+			c_veloc = c_veloc - np.average(c_veloc,axis=0)
+			prev_m = Mol(m.atoms, m.coords)
+			m.coords = m.coords + c_veloc
+			old_veloc = self.momentum_decay*c_veloc
+			err = m.rms(prev_m)
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			step+=1
+			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+		return
+
 	def OptForce(self,m,IfDebug=True):
 		# Sweeps one at a time
 		err=10.0
