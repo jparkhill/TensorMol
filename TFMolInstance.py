@@ -843,7 +843,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 
 	def train_step(self, step):
 		Ncase_train = self.TData.NTrain
-		print ("NTraing:", Ncase_train)
+		#print ("NTraing:", Ncase_train)
 		start_time = time.time()
                 train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
@@ -854,8 +854,8 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                         train_loss = train_loss + loss_value
                 duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
-		print ("ministep:", ministep)
-		print ("accu:", batch_data[1],  "Mol:", tmp_mol_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
+		#print ("ministep:", ministep)
+		#print ("accu:", batch_data[1],  "Mol:", tmp_mol_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
 		#print ("input:", raw_data[0], "output:", raw_data[1])
                 self.print_training(step, train_loss, Ncase_train, duration)
                 return

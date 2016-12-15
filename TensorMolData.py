@@ -641,6 +641,6 @@ class TensorMolData_BP(TensorMolData):
                 print "self.ScratchPointer",self.ScratchPointer
                 print "self.test_ScratchPointer",self.test_ScratchPointer
                 if (self.scratch_outputs != None):
-			print "number of training molecules:",self.NTrain, " number of training molecules:", self.NTest 
+			print "number of training molecules:",self.NTrain, " number of testing molecules:", self.NTest 
 			for ele in self.eles:
                         	print "element: ",AtomicSymbol(ele),  " Input Shape:", self.scratch_inputs[ele].shape
