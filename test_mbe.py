@@ -4,7 +4,7 @@ from TensorMolData import *
 from TFMolManage import *
 from MolDigest import *
 from NN_MBE import *
-from NN_Opt import *
+from MBE_Opt import *
 
 
 # steps to train a NN-MBE model
@@ -13,16 +13,8 @@ if (1):
 	if (0):
 		a=MSet("H2O_tinker_amoeba") # Define our set.
 		a.ReadGDB9Unpacked("./H2O_tinker_amoeba/") # Load .xyz file into set and set maxinum many-body expansion order.
-		a.Generate_All_MBE_term(atom_group=3, cutoff=6, center_atom=0) # Generate all the many-body terms with  certain radius cutoff.
-
-		# One can also load another set and combine with orginal one.
-		#b=MSet("He2")   
-                #b.ReadGDB9Unpacked("./He2/", mbe_order=2)
-		#b.Generate_All_MBE_term(atom_group=1, cutoff=4, center_atom=0)
-                #a.CombineSet(b) 
-
-		#a.Save() # Save the training set, by default it is saved in ./datasets.
-
+		a.Generate_All_MBE_term(atom_group=3, cutoff=6, center_atom=0) # Generate all the many-
+	
 	#Calculate the MP2 many-body energies.
 	if (0):
 		a=MSet("H2O_tinker_amoeba")  
@@ -57,7 +49,7 @@ if (1):
 	
 	# testing the BP TensorMolData
 	if (0):
-                tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_1")
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_1")
 		#tset.LoadDataToScratch(True)
 
 	# Train the neural network.
@@ -96,9 +88,9 @@ if (0):
         # launch NN-MBE model 
         nn_mbe = NN_MBE(tfm)
 	# launch Optimizer
-        opt=NN_Optimizer(nn_mbe)
+        opt=MBE_Optimizer(nn_mbe)
 	# Optimize
         for mol in a.mols:
 		#mol.Generate_All_MBE_term(atom_group=3, cutoff=5, center_atom=0)
 		#opt.NN_Opt(mol)
-        	opt.NN_LBFGS_Opt(mol)
+        	opt.MBE_LBFGS_Opt(mol)

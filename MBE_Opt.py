@@ -1,6 +1,8 @@
+
+
 from NN_MBE import *
 
-class NN_Optimizer:
+class MBE_Optimizer:
         def __init__(self,nn_mbe_):
                 self.energy_thresh = 1e-9
 		self.force_thresh = 0.001
@@ -12,7 +14,7 @@ class NN_Optimizer:
 		self.m_max = 7
                 return
 
-	def NN_Opt(self, m):
+	def MBE_Opt(self, m):
 		coords_hist = []
 		step = 0
 		energy_err = 100
@@ -45,7 +47,7 @@ class NN_Optimizer:
                 return
 
 
-	def NN_LBFGS_Opt(self, m):
+	def MBE_LBFGS_Opt(self, m):
                 step = 0
                 energy_err = 100
                 force_err = 100

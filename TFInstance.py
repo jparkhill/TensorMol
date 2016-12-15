@@ -41,13 +41,16 @@ class Instance:
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.TData.LoadElementToScratch(ele_)
-		self.TData.PrintStatus()
-		if (self.TData.dig.name=="SymFunc"):
-			self.TData.NormalizeInputs(ele_)  # let me just normolize it here for sym functions...needs a flag in future
-			self.normalize=True
-		self.inshape = self.TData.dig.eshape
-		self.outshape = self.TData.dig.lshape
+		self.inshape = None
+		self.outshape = None
+		if (ele_ != 0):
+			self.TData.LoadElementToScratch(ele_)
+			self.TData.PrintStatus()
+			if (self.TData.dig.name=="SymFunc"):
+				self.TData.NormalizeInputs(ele_)  # let me just normolize it here for sym functions...needs a flag in future
+				self.normalize=True
+			self.inshape = self.TData.dig.eshape
+			self.outshape = self.TData.dig.lshape
 		# The parameters below belong to tensorflow and its graph
 		# all tensorflow variables cannot be pickled they are populated by Prepare
 		self.PreparedFor=0
@@ -59,6 +62,7 @@ class Instance:
 		self.embeds_placeholder = None
 		self.labels_placeholder = None
 		self.saver = None
+		self.gradient =None
 		return
 
 	def __del__(self):
@@ -283,10 +287,13 @@ class Instance:
 		raise Exception("Base Test")
 		return 
 
-	def print_training(self, step, loss, Ncase, duration):
+	def print_training(self, step, loss, Ncase, duration, Train=True):
 		denom = max((int(Ncase/self.batch_size)),1)
-		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/denom))
-		return 
+		if Train:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
+		else:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
+		return
 
 class Instance_fc_classify(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):

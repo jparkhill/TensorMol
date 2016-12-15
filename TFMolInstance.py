@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
+from TFInstance import *
 from TensorMolData import *
 import numpy as np
 import math,pickle
@@ -14,26 +14,13 @@ import os
 import sys
 
 #
-# Manages a persistent training network instance
-# To evaluate a property over many molecules or many points in a large molecule. 
+# These work Moleculewise the versions without the mol prefix work atomwise.
+# but otherwise the behavior of these is the same as TFInstance etc.
 #
 
-class Instance:
-	def __init__(self, TData_,  Name_=None, Test_TData_=None):
-		self.path='./networks/'
-		if (Name_ !=  None):
-			self.name = Name_
-			#self.QueryAvailable() # Should be a sanity check on the data files.
-			self.Load() # Network still cannot be used until it is prepared.
-			print("raised network: ", self.train_dir, "  path:",  self.chk_file)
-			return
-		
-		self.TData = TData_
-		self.Test_TData = Test_TData_
-		if (not os.path.isdir(self.path)):
-			os.mkdir(self.path)
-		#	self.checkpoint_file_mini =self.path+self.name
-		self.chk_file = ''
+class MolInstance(Instance):
+	def __init__(self, TData_,  Name_=None):
+		Instance.__init__(TData_, 0, Name)
 		self.learning_rate = 0.0001
 		#self.learning_rate = 0.0001 # for adam
 		#self.learning_rate = 0.00001 # for adadelta 
@@ -42,179 +29,16 @@ class Instance:
 		self.momentum = 0.9
 		self.max_steps = 10000
 		self.batch_size = 1000 # This is just the train batch size.
-		self.NetType = "None"
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.TData.LoadDataToScratch( True)
+		self.TData.LoadDataToScratch(True)
 		self.TData.PrintStatus()
-
 		self.normalize= False
-	
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
-
 		self.outshape = self.TData.dig.lshape    # use the flatted version
-  
 		print ("inshape", self.inshape, "outshape", self.outshape)
-#		self.inshape = self.TData.scratch_inputs.shape[1]  # For now assume the inputs are flat... Change this in the future.
-
-		if (self.normalize):
-			self.TData.NormalizeOutputs()
-
-		#dist_out = np.zeros((self.TData.scratch_outputs.shape[0],2))
-                #dist_out[:,0] = 1/(self.TData.scratch_inputs[:,2])
-                #dist_out[:,1] = self.TData.scratch_outputs.reshape(self.TData.scratch_outputs.shape[0])
-		#np.savetxt("dist_out.dat", dist_out)
 		print ("std of the output", (self.TData.scratch_outputs.reshape(self.TData.scratch_outputs.shape[0])).std())
-
-		# The parameters below belong to tensorflow and its graph
-		# all tensorflow variables cannot be pickled they are populated by Prepare
-		self.PreparedFor=0
-		self.sess = None
-		self.loss = None
-		self.output = None
-		self.train_op = None
-		self.total_loss = None
-		self.images_placeholder = None
-		self.labels_placeholder = None
-		self.saver = None
-		self.gradient =None
 		return
-
-	def __del__(self):
-		if (self.sess != None):
-			self.sess.close()
-
-	def evaluate(self, eval_input):
-		# Check sanity of input
-		if (not np.all(np.isfinite(eval_input),axis=(0,1))): 
-			print("WTF, you trying to feed me garbage?") 
-			raise Exception("bad digest.")
-		if (self.PreparedFor<eval_input.shape[0]):
-			self.Prepare(eval_input,eval_input.shape[0])
-		return 
-
-# This should really be called prepare for evaluation...
-# Since we do training once we don't really need the same thing.
-	def Prepare(self):
-		self.Clean()
-		return
-
-	def Clean(self):
-		self.sess = None
-		self.loss = None
-		self.output = None
-		self.total_loss = None
-		self.train_op = None
-		self.images_placeholder = None
-		self.labels_placeholder = None
-		self.saver = None
-		self.PreparedFor = 0
-		return
-
-	def Save(self):
-		print("Saving TFInstance...")
-		if (self.TData!=None):
-			self.TData.CleanScratch()
-		if (self.Test_TData!=None):
-			self.Test_TData.CleanScratch()
-		self.Clean()
-		f=open(self.path+self.name+".tfn","wb")
-		pickle.dump(self.__dict__, f, protocol=1)
-		f.close()
-		return
-
-	# one of these two routines need to be removed I think.
-	def save_chk(self,  step, test_loss, feed_dict=None):  # this can be included in the Instance
-		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
-		os.system(cmd)
-		checkpoint_file_mini = os.path.join(self.train_dir, self.name+'-chk-'+str(step)+"-"+str(float(test_loss)))
-		self.saver.save(self.sess, checkpoint_file_mini)
-		self.chk_file = checkpoint_file_mini
-		if (self.summary_op!=None and self.summary_writer!=None and feed_dict!=None):
-			self.summary_str = self.sess.run(self.summary_op, feed_dict=feed_dict)
-			self.summary_writer.add_summary(self.summary_str, step)
-			self.summary_writer.flush()
-		return
-
-#this isn't really the correct way to load()
-# only the local class members (not any TF objects should be unpickled.)
-	def Load(self):
-		print ("Unpickling Instance...")
-		f = open(self.path+self.name+".tfn","rb")
-		tmp=pickle.load(f)
-		# This is just to use an updated version of evaluate and should be removed after I re-train...
-		tmp.pop('evaluate',None)
-		self.Clean()
-		# All this shit should be deleteable after re-training.
-		self.__dict__.update(tmp)
-		f.close()
-		return
-
-	def _variable_with_weight_decay(self, var_name, var_shape, var_stddev, var_wd):
-		"""Helper to create an initialized Variable with weight decay.
-
-		Note that the Variable is initialized with a truncated normal distribution.
-		A weight decay is added only if one is specified.
-
-		Args:
-		name: name of the variable
-		shape: list of ints
-		stddev: standard deviation of a truncated Gaussian
-		wd: add L2Loss weight decay multiplied by this float. If None, weight
-		decay is not added for this Variable.
-
-		Returns:
-		Variable Tensor
-		"""
-		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev), name=var_name)
-		if var_wd is not None:
-			weight_decay = tf.mul(tf.nn.l2_loss(var), var_wd, name='weight_loss')
-			tf.add_to_collection('losses', weight_decay)
-		return var
-
-	def placeholder_inputs(self, batch_size):
-		"""Generate placeholder variables to represent the input tensors.
-		These placeholders are used as inputs by the rest of the model building
-		code and will be fed from the downloaded data in the .run() loop, below.
-		Args:
-		batch_size: The batch size will be baked into both placeholders.
-		Returns:
-		images_placeholder: Images placeholder.
-		labels_placeholder: Labels placeholder.
-		"""
-		return
-
-	def fill_feed_dict(self, batch_data, images_pl, labels_pl):
-		"""Fills the feed_dict for training the given step.
-		A feed_dict takes the form of:
-		feed_dict = {
-		<placeholder>: <tensor of values to be passed for placeholder>,
-		....
-		}
-		Args:
-		data_set: The set of images and labels, from input_data.read_data_sets()
-		images_pl: The images placeholder, from placeholder_inputs().
-		labels_pl: The labels placeholder, from placeholder_inputs().
-		Returns:
-		feed_dict: The feed dictionary mapping from placeholders to values.
-		"""
-		# Create the feed_dict for the placeholders filled with the next
-		# `batch size` examples.
-		images_feed = batch_data[0]
-		labels_feed = batch_data[1]
-		# Don't eat shit. 
-		if (not np.all(np.isfinite(images_feed),axis=(0,1))): 
-			print("I was fed shit") 
-			raise Exception("DontEatShit")
-		if (not np.all(np.isfinite(labels_feed))): 
-			print("I was fed shit") 
-			raise Exception("DontEatShit")
-		feed_dict = {
-		images_pl: images_feed,
-		labels_pl: labels_feed,
-		}
-		return feed_dict
-
 
 	def inference(self, images, hidden1_units, hidden2_units, hidden3_units):
 		"""Build the MNIST model up to where it may be used for inference.
@@ -227,25 +51,18 @@ class Instance:
 		"""
 		# Hidden 1
 		with tf.name_scope('hidden1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden1_units]),
-				name='biases')
-				hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
-				tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
-				tf.histogram_summary(weights.name, weights)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden1_units]),
+			name='biases')
+			hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
+			tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
+			tf.histogram_summary(weights.name, weights)
 		# Hidden 2
 		with tf.name_scope('hidden2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden2_units]),
-				name='biases')
-				hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
-
-		# Hidden 3
-#		with tf.name_scope('hidden3'):
-#				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.5 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-#				biases = tf.Variable(tf.zeros([hidden3_units]),
-#				name='biases')
-#				hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden2_units]),
+			name='biases')
+			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
 
 		# Linear
 		with tf.name_scope('regression_linear'):
@@ -254,37 +71,6 @@ class Instance:
 				name='biases')
 				output = tf.matmul(hidden2, weights) + biases
 		return output
-
-	def loss_op(self, output, labels):
-		"""
-		Calculates the loss from the logits and the labels.
-		Args:
-		logits: Logits tensor, float - [batch_size, NUM_CLASSES].
-		labels: Labels tensor, int32 - [batch_size].
-		Returns:
-		loss: Loss tensor of type float.
-		"""
-		return
-
-	def training(self, loss, learning_rate, momentum):
-		"""Sets up the training Ops.
-		Creates a summarizer to track the loss over time in TensorBoard.
-		Creates an optimizer and applies the gradients to all trainable variables.
-		The Op returned by this function is what must be passed to the
-		`sess.run()` call to cause the model to train.
-		Args:
-		loss: Loss tensor, from loss().
-		learning_rate: The learning rate to use for gradient descent.
-		Returns:
-		train_op: The Op for training.
-		"""
-		tf.scalar_summary(loss.op.name, loss)
-		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
-		#optimizer = tf.train.AdadeltaOptimizer(learning_rate)
-		optimizer = tf.train.AdamOptimizer(learning_rate)
-		global_step = tf.Variable(0, name='global_step', trainable=False)
-		train_op = optimizer.minimize(loss, global_step=global_step)
-		return train_op
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
@@ -302,37 +88,25 @@ class Instance:
 		return
 	
 	def train_step(self,step):
+		""" I don't think the base class should be
+			train-able. Remove? JAP """
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
 		train_loss =  0.0
 		total_correct = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data=self.TData.GetTrainBatch( self.batch_size) #advances the case pointer in TData...
-			feed_dict = self.fill_feed_dict(batch_data, self.images_placeholder, self.labels_placeholder)
+			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 			_, total_loss_value, loss_value, prob_value, correct_num  = self.sess.run([self.train_op, self.total_loss, self.loss, self.prob, self.correct], feed_dict=feed_dict)
 			train_loss = train_loss + loss_value
 			total_correct = total_correct + correct_num
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, total_correct, Ncase_train, duration)
 		return
-	
-	def train_prepare(self, continue_training=False):
-		return
 
-	def test(self,step):
-		return 
-
-	def print_training(self, step, loss, Ncase, duration, Train=True):
-		denom = max((int(Ncase/self.batch_size)),1)
-		if Train:
-			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
-		else:
-			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
-		return 
-
-class Instance_fc_classify(Instance):
-	def __init__(self, TData_,  Name_=None, Test_TData_=None):
-		Instance.__init__(self, TData_,  Name_, Test_TData_)
+class MolInstance_fc_classify(MolInstance):
+	def __init__(self, TData_,  Name_=None):
+		MolInstance.__init__(self, TData_,  Name_)
 		self.hidden1 = 200
 		self.hidden2 = 200
 		self.hidden3 = 200
@@ -342,7 +116,7 @@ class Instance_fc_classify(Instance):
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 
 	def evaluation(self, output, labels):
 		# For a classifier model, we can use the in_top_k Op.
@@ -356,7 +130,7 @@ class Instance_fc_classify(Instance):
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
-		Instance.evaluate(self, eval_input)
+		MolInstance.evaluate(self, eval_input)
 		eval_input_ = eval_input
 		if (self.PreparedFor>eval_input.shape[0]):
 			eval_input_ =np.copy(eval_input)
@@ -365,7 +139,7 @@ class Instance_fc_classify(Instance):
 		eval_labels = np.zeros(self.PreparedFor)  # dummy labels
 		batch_data = [eval_input_, eval_labels]
 		#images_placeholder, labels_placeholder = self.placeholder_inputs(Ncase) Made by Prepare()
-		feed_dict = self.fill_feed_dict(batch_data,self.images_placeholder,self.labels_placeholder)
+		feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder,self.labels_placeholder)
 		tmp = (np.array(self.sess.run([self.prob], feed_dict=feed_dict))[0,:eval_input.shape[0],1])
 		if (not np.all(np.isfinite(tmp))):
 			print("TFsession returned garbage")
@@ -376,14 +150,14 @@ class Instance_fc_classify(Instance):
 		
 	def Prepare(self, eval_input, Ncase=125000):
 		super().Prepare(self)
-		print("Preparing a ",self.NetType,"Instance")
+		print("Preparing a ",self.NetType,"MolInstance")
 		self.prob = None
 		self.correct = None
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
-			self.images_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
-			self.output = self.inference(self.images_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
+			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.correct = self.evaluation(self.output, self.labels_placeholder)
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -397,7 +171,7 @@ class Instance_fc_classify(Instance):
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-		Instance.Save(self)
+		MolInstance.Save(self)
 		return
 
 	
@@ -452,8 +226,8 @@ class Instance_fc_classify(Instance):
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			self.images_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.images_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss, self.prob = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.merge_all_summaries()
@@ -482,7 +256,7 @@ class Instance_fc_classify(Instance):
 		feed_dict = None
 		for  ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(  self.batch_size, ministep)
-			feed_dict = self.fill_feed_dict(batch_data, self.images_placeholder, self.labels_placeholder)
+			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 			loss_value, prob_value, test_correct_num = self.sess.run([ self.loss, self.prob, self.correct],  feed_dict=feed_dict)
 			test_loss = test_loss + loss_value
 			test_correct = test_correct + test_correct_num
@@ -497,9 +271,9 @@ class Instance_fc_classify(Instance):
 		return test_loss, feed_dict
 
 
-class Instance_fc_sqdiff(Instance):
-	def __init__(self, TData_,  Name_=None, Test_TData_=None):
-		Instance.__init__(self, TData_,  Name_, Test_TData_)
+class MolInstance_fc_sqdiff(MolInstance):
+	def __init__(self, TData_,  Name_=None):
+		MolInstance.__init__(self, TData_,  Name_)
 		self.hidden1 = 500
 		self.hidden2 = 500
 		self.hidden3 = 500
@@ -507,11 +281,11 @@ class Instance_fc_sqdiff(Instance):
 #		self.inshape = self.TData.scratch_inputs.shape[1] 
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
-		Instance.evaluate(self, eval_input)
+		MolInstance.evaluate(self, eval_input)
 		eval_input_ = eval_input
 		if (self.PreparedFor>eval_input.shape[0]):
 			eval_input_ =np.copy(eval_input)
@@ -520,7 +294,7 @@ class Instance_fc_sqdiff(Instance):
 		eval_labels = np.zeros((self.PreparedFor,1))  # dummy labels
 		batch_data = [eval_input_, eval_labels]
 		#images_placeholder, labels_placeholder = self.placeholder_inputs(Ncase) Made by Prepare()
-		feed_dict = self.fill_feed_dict(batch_data,self.images_placeholder,self.labels_placeholder)
+		feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder,self.labels_placeholder)
 		tmp, gradient =  (self.sess.run([self.output, self.gradient], feed_dict=feed_dict))
 		if (not np.all(np.isfinite(tmp))):
 			print("TFsession returned garbage")
@@ -530,14 +304,14 @@ class Instance_fc_sqdiff(Instance):
 		return tmp, gradient
 	
 	def Prepare(self, eval_input, Ncase=125000):
-		Instance.Prepare(self)
+		MolInstance.Prepare(self)
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
-				self.images_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
-				self.output = self.inference(self.images_placeholder, self.hidden1, self.hidden2, self.hidden3)
-				print ("type of self.images_placeholder:", type(self.images_placeholder))
-				self.gradient = tf.gradients(self.output, self.images_placeholder)[0]
+				self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
+				self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
+				print ("type of self.embeds_placeholder:", type(self.embeds_placeholder))
+				self.gradient = tf.gradients(self.output, self.embeds_placeholder)[0]
 				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 				self.saver = tf.train.Saver()
 				self.saver.restore(self.sess, self.chk_file)
@@ -547,7 +321,7 @@ class Instance_fc_sqdiff(Instance):
 	def Save(self):
 		self.summary_op =None
 		self.summary_writer=None
-		Instance.Save(self)
+		MolInstance.Save(self)
 		return
 
 	def placeholder_inputs(self, batch_size):
@@ -581,7 +355,7 @@ class Instance_fc_sqdiff(Instance):
 		for  ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch( self.batch_size, ministep)
 			batch_data=self.PrepareData(batch_data)
-			feed_dict = self.fill_feed_dict(batch_data, self.images_placeholder, self.labels_placeholder)
+			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 			total_loss_value, loss_value, output_value  = self.sess.run([self.total_loss,  self.loss, self.output],  feed_dict=feed_dict)
 			test_loss = test_loss + loss_value
 			duration = time.time() - test_start_time
@@ -594,7 +368,7 @@ class Instance_fc_sqdiff(Instance):
 			batch_data = [batch_data[0] , norm_output]
 			actual_size = batch_data[0].shape[0]
 			batch_data = self.PrepareData(batch_data)
-			feed_dict = self.fill_feed_dict(batch_data, self.images_placeholder, self.labels_placeholder)
+			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 			predicts  = self.sess.run([self.output],  feed_dict=feed_dict)
 			print("another testing ...")
 			for i in range (0, actual_size):
@@ -605,8 +379,8 @@ class Instance_fc_sqdiff(Instance):
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			self.images_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.images_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.merge_all_summaries()
@@ -642,121 +416,121 @@ class Instance_fc_sqdiff(Instance):
 	def train_step(self,step):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
-           	train_loss =  0.0
-           	for ministep in range (0, int(Ncase_train/self.batch_size)):
-            		batch_data=self.TData.GetTrainBatch( self.batch_size) #advances the case pointer in TData...
+		train_loss =  0.0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			batch_data=self.TData.GetTrainBatch( self.batch_size) #advances the case pointer in TData...
 			batch_data=self.PrepareData(batch_data)
-            		feed_dict = self.fill_feed_dict(batch_data, self.images_placeholder, self.labels_placeholder)
-            		_, total_loss_value, loss_value  = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-             		train_loss = train_loss + loss_value
-            	duration = time.time() - start_time
-             	self.print_training(step, train_loss, Ncase_train, duration)
+			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+				_, total_loss_value, loss_value  = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
+				train_loss = train_loss + loss_value
+			duration = time.time() - start_time
+			self.print_training(step, train_loss, Ncase_train, duration)
 		return
 
 
-class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
-	def __init__(self, TData_, aver_atom_per_mol_ = 6,  Name_=None, Test_TData_=None):
-                Instance.__init__(self, TData_,  Name_, Test_TData_)
+class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
+	def __init__(self, TData_, Name_=None):
+		MolInstance.__init__(self, TData_,  Name_)
 		self.inshape =  self.TData.dig.eshape[1]
-		self.aver_atom_per_mol = aver_atom_per_mol_
-		self.input_case = self.batch_size * self.aver_atom_per_mol 
-                self.hidden1 = 100
-                self.hidden2 = 100
-                self.hidden3 = 500
-		self.H_length = None  # start with a  random int for inference
-		self.O_length = None  # start with a  random int for inference
-		self.C_length = None  # start with a  random int for inference
+		
+		self.eletypes = self.TData.ElementTypes()
+		self.MeanStoich = self.TData.MeanStoich() # Average stoichiometry of a molecule.
+		self.MeanNumAtoms = np.sum(self.MeanStoich)
+		#Here we should check if the number of max number of atoms in a mol exceeds input case but we will be lazy.
+		self.input_case = self.batch_size * self.aver_atom_per_mol
+		
+		self.hidden1 = 100
+		self.hidden2 = 100
+		self.hidden3 = 500
+		self.H_length = None  # start with a random int for inference
+		self.O_length = None  # start with a random int for inference
+		self.C_length = None  # start with a random int for inference
 		self.index_matrix = None
-                self.NetType = "fc_sqdiff_BP"
-#               self.inshape = self.TData.scratch_inputs.shape[1] 
-                self.summary_op =None
-                self.summary_writer=None
-                self.name = self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
-
-
+		self.NetType = "fc_sqdiff_BP"
+		self.summary_op =None
+		self.summary_writer=None
+		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def inference(self, images, index_mat, H_length, C_length, O_length, hidden1_units, hidden2_units):
 		# convert the index matrix from bool to float
 		index_mat = tf.cast(index_mat,tf.float32)
 		# define the Hydrogen network
 		with tf.name_scope('H_hidden1'):
-				H_inputs = tf.slice(images, [0,0], [H_length, self.inshape]) # debug the indexing.  The tf.slice is kind of weired 
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden1_units]),
-				name='biases')
-				H_hidden1 = tf.nn.relu(tf.matmul(H_inputs, weights) + biases)
+			H_inputs = tf.slice(images, [0,0], [H_length, self.inshape]) # debug the indexing.  The tf.slice is kind of weired
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden1_units]),
+			name='biases')
+			H_hidden1 = tf.nn.relu(tf.matmul(H_inputs, weights) + biases)
 
 		with tf.name_scope('H_hidden2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden2_units]),
-				name='biases')
-				H_hidden2 = tf.nn.relu(tf.matmul(H_hidden1, weights) + biases)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden2_units]),
+			name='biases')
+			H_hidden2 = tf.nn.relu(tf.matmul(H_hidden1, weights) + biases)
 
 		with tf.name_scope('H_regression_linear'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([self.outshape]),
-				name='biases')
-				H_output = tf.matmul(H_hidden2, weights) + biases
-				H_output = tf.reshape(H_output, [1, H_length])  # this needs to be replaced by the natom
-			
-				H_index_mat = tf.slice(index_mat, [0,0], [H_length, self.batch_size])
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([self.outshape]),
+			name='biases')
+			H_output = tf.matmul(H_hidden2, weights) + biases
+			H_output = tf.reshape(H_output, [1, H_length])  # this needs to be replaced by the natom
+		
+			H_index_mat = tf.slice(index_mat, [0,0], [H_length, self.batch_size])
 
-				H_output = tf.matmul(H_output, H_index_mat) 
-				H_output = tf.reshape(H_output, [self.batch_size, 1]) # this needs to be replaced by the nmol	
+			H_output = tf.matmul(H_output, H_index_mat) 
+			H_output = tf.reshape(H_output, [self.batch_size, 1]) # this needs to be replaced by the nmol	
 	
 		# define the Carbon newtork
-                with tf.name_scope('C_hidden1'):
-                                C_inputs = tf.slice(images, [H_length,0], [C_length, self.inshape])
-                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-                                biases = tf.Variable(tf.zeros([hidden1_units]),
-                                name='biases')
-                                C_hidden1 = tf.nn.relu(tf.matmul(C_inputs, weights) + biases)
+		with tf.name_scope('C_hidden1'):
+			C_inputs = tf.slice(images, [H_length,0], [C_length, self.inshape])
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden1_units]),
+			name='biases')
+			C_hidden1 = tf.nn.relu(tf.matmul(C_inputs, weights) + biases)
 
-                with tf.name_scope('C_hidden2'):
-                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-                                biases = tf.Variable(tf.zeros([hidden2_units]),
-                                name='biases')
-                                C_hidden2 = tf.nn.relu(tf.matmul(C_hidden1, weights) + biases)
+		with tf.name_scope('C_hidden2'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden2_units]),
+			name='biases')
+			C_hidden2 = tf.nn.relu(tf.matmul(C_hidden1, weights) + biases)
 
-                with tf.name_scope('C_regression_linear'):
-                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-                                biases = tf.Variable(tf.zeros([self.outshape]),
-                                name='biases')
-                                C_output = tf.matmul(C_hidden2, weights) + biases
-                                C_output = tf.reshape(C_output, [1, C_length])  # this needs to be replace by the natom
+		with tf.name_scope('C_regression_linear'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([self.outshape]),
+			name='biases')
+			C_output = tf.matmul(C_hidden2, weights) + biases
+			C_output = tf.reshape(C_output, [1, C_length])  # this needs to be replace by the natom
 
-                                C_index_mat = tf.slice(index_mat, [H_length,0],[C_length, self.batch_size])
+			C_index_mat = tf.slice(index_mat, [H_length,0],[C_length, self.batch_size])
 
-                                C_output = tf.matmul(C_output, C_index_mat)
-                                C_output = tf.reshape(C_output, [self.batch_size, 1])
+			C_output = tf.matmul(C_output, C_index_mat)
+			C_output = tf.reshape(C_output, [self.batch_size, 1])
 
 
 		# define the Oxygen newtork
 		with tf.name_scope('O_hidden1'):
-				O_inputs = tf.slice(images, [H_length+C_length, 0], [O_length, self.inshape])
-                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-                                biases = tf.Variable(tf.zeros([hidden1_units]),
-                                name='biases')
-                                O_hidden1 = tf.nn.relu(tf.matmul(O_inputs, weights) + biases)
+			O_inputs = tf.slice(images, [H_length+C_length, 0], [O_length, self.inshape])
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden1_units]),
+			name='biases')
+			O_hidden1 = tf.nn.relu(tf.matmul(O_inputs, weights) + biases)
 
-                with tf.name_scope('O_hidden2'):
-                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-                                biases = tf.Variable(tf.zeros([hidden2_units]),
-                                name='biases')
-                                O_hidden2 = tf.nn.relu(tf.matmul(O_hidden1, weights) + biases)
+		with tf.name_scope('O_hidden2'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden2_units]),
+			name='biases')
+			O_hidden2 = tf.nn.relu(tf.matmul(O_hidden1, weights) + biases)
 
-                with tf.name_scope('O_regression_linear'):
-                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-                                biases = tf.Variable(tf.zeros([self.outshape]),
-                                name='biases')
-                                O_output = tf.matmul(O_hidden2, weights) + biases
-				O_output = tf.reshape(O_output, [1, O_length])  # this needs to be replace by the natom
+		with tf.name_scope('O_regression_linear'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([self.outshape]),
+			name='biases')
+			O_output = tf.matmul(O_hidden2, weights) + biases
+			O_output = tf.reshape(O_output, [1, O_length])  # this needs to be replace by the natom
+			O_index_mat = tf.slice(index_mat, [H_length+C_length, 0],[O_length, self.batch_size])
+			O_output = tf.matmul(O_output, O_index_mat)
+			O_output = tf.reshape(O_output, [self.batch_size, 1])
 
-				O_index_mat = tf.slice(index_mat, [H_length+C_length, 0],[O_length, self.batch_size])	
-
-                                O_output = tf.matmul(O_output, O_index_mat)
-                                O_output = tf.reshape(O_output, [self.batch_size, 1])
-			
 		with tf.name_scope('sum_up'):
 				H_C_output = tf.add(H_output, C_output)
 				output = tf.add(H_C_output, O_output)
@@ -820,8 +594,8 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 	def train_prepare(self,  continue_training =False):
                 """Train for a number of steps."""
                 with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-                        self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length = self.placeholder_inputs(self.batch_size)
-                        self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input = self.inference(self.images_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length, self.hidden1, self.hidden2)
+                        self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length = self.placeholder_inputs(self.batch_size)
+                        self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input = self.inference(self.embeds_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length, self.hidden1, self.hidden2)
                         self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
                         self.summary_op = tf.merge_all_summaries()
@@ -843,19 +617,19 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
 
 	def train_step(self, step):
 		Ncase_train = self.TData.NTrain
-		print ("NTraing:", Ncase_train)
+		#print ("NTraing:", Ncase_train)
 		start_time = time.time()
                 train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			raw_data=self.TData.GetTrainBatch(self.input_case, self.batch_size) # batch_data strucutre: inputs (self.input_case*self.eshape), outputs (self.batch_size*self.lshape), number_atom_per_ele (dic[1(H)]=2000, dic[8(0)]=1000), index_matrix(dic[1(H)]: number_atom_per_ele[1(H)]*self.batch_size)
 			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
-			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
+			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
 			_, total_loss_value, loss_value, tmp_mol_output, tmp_H_output, tmp_C_output, tmp_O_output, tmp_H_input, tmp_C_input, tmp_O_input  = self.sess.run([self.train_op, self.total_loss, self.loss, self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input], feed_dict=feed_dict)
                         train_loss = train_loss + loss_value
                 duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
-		print ("ministep:", ministep)
-		print ("accu:", batch_data[1],  "Mol:", tmp_mol_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
+		#print ("ministep:", ministep)
+		#print ("accu:", batch_data[1],  "Mol:", tmp_mol_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
 		#print ("input:", raw_data[0], "output:", raw_data[1])
                 self.print_training(step, train_loss, Ncase_train, duration)
                 return
@@ -869,7 +643,7 @@ class Instance_fc_sqdiff_BP(Instance_fc_sqdiff):
                 for  ministep in range (0, int(Ncase_test/self.batch_size)):
                         raw_data=self.TData.GetTestBatch( self.input_case, self.batch_size)
 			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
-			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.images_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
+			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
                         total_loss_value, loss_value, output_value  = self.sess.run([self.total_loss,  self.loss, self.output],  feed_dict=feed_dict)
                         test_loss = test_loss + loss_value
                         duration = time.time() - test_start_time

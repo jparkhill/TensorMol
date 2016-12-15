@@ -1,27 +1,18 @@
 #
-# Either trains, tests, evaluates or provides an interface for optimization.
+# These work Moleculewise the versions without the mol prefix work atomwise.
+# but otherwise the behavior of these is the same as TFManage etc.
 #
+from TFManage import *
 from TensorMolData import *
 from TFMolInstance import *
 import numpy as np
 import gc
 
-
-class TFMolManage:
-	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", Test_TData_=None):  #Test_TData_ is some other randon independent test data
-	        self.path = "./networks/"	
-		if (Name_ != ""):
-			# This will unpickle and instantiate TData...
-			self.name = Name_
-			self.Prepare()
-			return
-		self.TData = TData_
-		self.Test_TData = Test_TData_
-		self.NetType = NetType_ 
-		print self.TData.AvailableDataFiles
-		self.name = self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
+class TFMolManage(TFManage):
+	def __init__(self, Name_="", TData_=None, Train_=False, NetType_="fc_sqdiff", RandomTData_=True):  #Test_TData_ is some other randon independent test data
+		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_)
+		self.name = "Mol_"self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		print "--- TF will be fed by ---",self.TData.name
-
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=None # In order of the elements in TData
@@ -30,44 +21,18 @@ class TFMolManage:
 			return
 		return
 
-	def Print(self):
-		print "-- TensorMol, Tensorflow Manager Status--"
-		return
-	
-
-	def Save(self):
-		print "Saving TFManager."
-		self.TData.CleanScratch()
-		f=open(self.path+self.name+".tfm","wb")
-		pickle.dump(self.__dict__, f, protocol=1)
-		f.close()
-		return
-
-	def Load(self):
-		print "Unpickling TFManager..."
-		f = open(self.path+self.name+".tfm","rb")
-		tmp=pickle.load(f)
-		self.__dict__.update(tmp)
-		f.close()
-		print "TFManager Metadata Loaded, Reviving Networks."
-		self.Print()
-		return
-
 	def Train(self, maxstep=10000):
 		if (self.TData.dig.eshape==None):
 			raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.
 		if (self.NetType == "fc_classify"):
-			self.Instances = Instance_fc_classify(self.TData, None, self.Test_TData)
+			self.Instances = MolInstance_fc_classify(self.TData, None, self.Test_TData)
 		elif (self.NetType == "fc_sqdiff"):
-			self.Instances = Instance_fc_sqdiff(self.TData, None, self.Test_TData)
+			self.Instances = MolInstance_fc_sqdiff(self.TData, None, self.Test_TData)
 		elif (self.NetType == "fc_sqdiff_BP"):
-			NAtom_in_mol = 29  # debug ..this needs to be a member in TensorMolData or Mol
-			self.Instances = Instance_fc_sqdiff_BP(self.TData, NAtom_in_mol, None, self.Test_TData)
-
+			self.Instances = MolInstance_fc_sqdiff_BP(self.TData, NAtom_in_mol, None, self.Test_TData)
 		else:
 			raise Exception("Unknown Network Type!")
-
 		self.Instances.train(maxstep) # Just for the sake of debugging.
 		nm = self.Instances.name
 		# Here we should print some summary of the pupil's progress as well, maybe.
@@ -77,20 +42,8 @@ class TFMolManage:
 		gc.collect()
 		return
 
-	def Eval(self,  test_input):
+	def Eval(self, test_input):
 		return self.Instances.evaluate(test_input)   
-
-	def Prepare(self):
-		self.Load()
-		self.Instances= None # In order of the elements in TData
-		if (self.NetType == "fc_classify"):
-			self.Instances = Instance_fc_classify(None,  self.TrainedNetworks[0], None)
-		elif (self.NetType == "fc_sqdiff"):
-			self.Instances = Instance_fc_sqdiff(None, self.TrainedNetworks[0], None)
-		else:
-			raise Exception("Unknown Network Type!")	
-		# Raise TF instances for each atom which have already been trained.
-		return
 
 	def Eval_Mol(self, mol):
 		total_case = len(mol.mbe_frags[self.TData.order])
@@ -114,7 +67,20 @@ class TFMolManage:
 		mol.Set_Frag_Force_with_Order(cases_deri, nn_deri, self.TData.order)
 		return nn.sum()
 
+	def Prepare(self):
+		self.Load()
+		self.Instances= None # In order of the elements in TData
+		if (self.NetType == "fc_classify"):
+			self.Instances = MolInstance_fc_classify(None,  self.TrainedNetworks[0], None)
+		elif (self.NetType == "fc_sqdiff"):
+			self.Instances = MolInstance_fc_sqdiff(None, self.TrainedNetworks[0], None)
+		else:
+			raise Exception("Unknown Network Type!")	
+		# Raise TF instances for each atom which have already been trained.
+		return
 
+# This has to be totally re-written to be more like the
+# testing in TFInstance.
 
 	def Test(self, save_file="mbe_test.dat"):
 		ti, to = self.TData.LoadData( True)

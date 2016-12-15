@@ -4,7 +4,7 @@ from TensorMolData import *
 from TFMolManage import *
 from MolDigest import *
 from NN_MBE import *
-from NN_Opt import *
+from MBE_Opt import *
 
 
 # steps to train a NN-MBE model
@@ -13,24 +13,17 @@ if (1):
 	if (1):
 		#a=MSet("NaCl_H2O_NaH2Ogroup") # Define our set.
 		a=MSet("H2O_936_NaCl_88") # Define our set.
-		#a.ReadGDB9Unpacked("./NaCl_H2O_NaH2Ogroup/") # Load .xyz file into set and set maxinum many-body expansion order.
 		a.ReadGDB9Unpacked("./H2O_936_NaCl_88/") # Load .xyz file into set and set maxinum many-body expansion order.
 		a.Generate_All_Pairs(pair_list=[{"pair":"NaCl", "mono":["Na","Cl"], "center":[0,0]}])
 		#a.Generate_All_MBE_term_General([{"atom":"OHHNa", "charge":1}, {"atom":"OHHCl", "charge":-1},{"atom":"OHH", "charge":0}], cutoff=10, center_atom=[0,0,0]) # Generate all the many-body terms with  certain radius cutoff.
 		a.Generate_All_MBE_term_General([{"atom":"OHH", "charge":0}, {"atom":"NaCl", "charge":0}], cutoff=12, center_atom=[0, -1]) # Generate all the many-body terms with  certain radius cutoff.  # -1 means center of mass
-
-		# One can also load another set and combine with orginal one.
-		#b=MSet("He2")   
-                #b.ReadGDB9Unpacked("./He2/", mbe_order=2)
-		#b.Generate_All_MBE_term(atom_group=1, cutoff=4, center_atom=0)
-                #a.CombineSet(b) 
 
 		a.Save() # Save the training set, by default it is saved in ./datasets.
 
 	#Calculate the MP2 many-body energies.
 	if (1):
 		#a=MSet("NaCl_H2O_NaH2Ogroup") 
-		a=MSet("H2O_936_NaCl_88")  
+		a=MSet("H2O_936_NaCl_88_part1")  
 		a.Load() # Load generated training set (.pdb file).
 		a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
 		#a.Get_All_Qchem_Frag_Energy_General()
@@ -101,9 +94,9 @@ if (0):
         # launch NN-MBE model 
         nn_mbe = NN_MBE(tfm)
 	# launch Optimizer
-        opt=NN_Optimizer(nn_mbe)
+        opt=MBE_Optimizer(nn_mbe)
 	# Optimize
         for mol in a.mols:
 		#mol.Generate_All_MBE_term(atom_group=3, cutoff=5, center_atom=0)
 		#opt.NN_Opt(mol)
-        	opt.NN_LBFGS_Opt(mol)
+        	opt.MBE_LBFGS_Opt(mol)
