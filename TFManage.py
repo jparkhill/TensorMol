@@ -8,7 +8,7 @@ import gc
 
 
 class TFManage:
-	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_classify", RandomTData_=True):  #Test_TData_ is some other randon independent test data
+	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True):  #Test_TData_ is some other randon independent test data
 	        self.path = "./networks/"	
 		if (Name_ != ""):
 			# This will unpickle and instantiate TData...
@@ -29,7 +29,7 @@ class TFManage:
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData
 		if (Train_):
-			self.TrainAllAtoms()
+			self.Train()
 			return
 		return
 
@@ -37,7 +37,7 @@ class TFManage:
 		print "-- TensorMol, Tensorflow Manager Status--"
 		return
 	
-	def TrainAllAtoms(self):
+	def Train(self):
 		print "Will train a NNetwork for each element in: ", self.TData.name
 		for i in range(len(self.TData.AvailableElements)):
 			self.TrainElement(self.TData.AvailableElements[i])
@@ -201,16 +201,16 @@ class TFManage:
 		return xyz, p
 
 	def EvalAllAtomsMB(self, mol, maxstep = 0.2, ngrid = 50):
-                XYZ=[]
-                P=[]
-                for i in range (0, mol.atoms.shape[0]):
-                        print ("Evaluating atom: ", mol.atoms[i])
-                        xyz, p = self.EvalOneAtomMB(mol, i, maxstep, ngrid)
-                        XYZ.append(xyz)
-                        P.append(p)
-                XYZ = np.asarray(XYZ)
-                P = np.asarray(P)
-                return XYZ, P
+		XYZ=[]
+		P=[]
+		for i in range (0, mol.atoms.shape[0]):
+				print ("Evaluating atom: ", mol.atoms[i])
+				xyz, p = self.EvalOneAtomMB(mol, i, maxstep, ngrid)
+				XYZ.append(xyz)
+				P.append(p)
+		XYZ = np.asarray(XYZ)
+		P = np.asarray(P)
+		return XYZ, P
 
 	def EvalMol(self, mol):
 		P=1.0

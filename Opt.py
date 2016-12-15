@@ -37,7 +37,7 @@ class Optimizer:
 		return xyz[np.argmax(probs)]
 
 	def SmallestP(self, xyz, probs):
-                return xyz[np.argmin(probs)]
+		return xyz[np.argmin(probs)]
 
 	def GaussianConv(self, xyz, probs, width = 0.05):
 		return best_xyz
