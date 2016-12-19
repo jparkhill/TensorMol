@@ -97,8 +97,10 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		print "Orig Coords", m.coords
+		print m.atoms
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
+		m.LJEFromDist()
 		while(err>self.thresh and step < self.max_opt_step):
 			for i in range(m.NAtoms()):
 				veloc[i] = -1.0*m.LJForce(i)

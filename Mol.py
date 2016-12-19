@@ -1,6 +1,6 @@
 from Util import *
 import numpy as np
-import random
+import random, math
 
 class Mol:
 	""" Provides a general purpose molecule"""
@@ -255,58 +255,72 @@ class Mol:
 		return
 
 	def SortAtoms(self):
-		new_atoms = np.zeros((1))
-		new_coords = np.zeros((1,3))
-		for i in self.AtomTypes():
-			new_atoms_tmp = np.zeros((1))
-			new_coords_tmp = np.zeros((1,3))
-			for j in range(len(self.atoms)):
-				if self.atoms[j] == i:
-					new_atoms_tmp = np.insert(new_atoms_tmp, 0, self.atoms[j])
-					new_coords_tmp = np.insert(new_coords_tmp, 0, self.coords[j], axis=0)
-			new_atoms_tmp = np.delete(new_atoms_tmp, new_atoms_tmp.shape[0]-1)
-			new_coords_tmp = np.delete(new_coords_tmp, new_coords_tmp.shape[0]-1, axis=0)
-			#print new_coords_tmp
-			new_coords_tmp = new_coords_tmp[np.argsort(new_coords_tmp[:,0], axis=0)]
-			new_atoms = np.insert(new_atoms, 0, new_atoms_tmp)
-			new_coords = np.insert(new_coords, 0, new_coords_tmp, axis=0)
-			#print new_atoms
-		self.atoms = np.delete(new_atoms, new_atoms.shape[0]-1)
-		self.coords = np.delete(new_coords, new_coords.shape[0]-1, axis=0)
+		order = np.argsort(self.atoms)
+		self.atoms = self.atoms[order]
+		self.coords = self.coords[order,:]
 		return
 
-	def Assign(self, m):
+	def AlignNumbers(self, m):
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
 		self.SortAtoms()
 		m.SortAtoms()
 		if (self.Center()-m.Center()).all() != 0:
 			m.coords += self.Center() - m.Center()
+		self.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new')
 		m.MakeStoichDict()
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
 		diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+		best_m = Mol(m.atoms.copy(), m.coords.copy())
+		best_m.DistMatrix = MolEmb.Make_DistMat(best_m.coords)
 		k = 0
+		beta = 1/(1.38064852e-2*1000000)
+		print beta
 		while k < 2:
-			sorted_atoms = 0
-			for i in m.AtomTypes():
-				for j in range(m.stoich[i]):
-					for l in range(m.stoich[i]):
-						if j != l:
-							tmp_m = Mol(m.atoms.copy(), m.coords.copy())
-							tmp_m.coords[m.NAtoms()-1-sorted_atoms-j,:], tmp_m.coords[m.NAtoms()-1-sorted_atoms-l,:] = \
-									m.coords[m.NAtoms()-1-sorted_atoms-l,:], m.coords[m.NAtoms()-1-sorted_atoms-j,:]
-							tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
-						else:
-							continue
-						if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
-							print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
-							m.atoms = tmp_m.atoms.copy()
-							m.coords = tmp_m.coords.copy()
-							m.DistMatrix = MolEmb.Make_DistMat(m.coords)
-							diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
-							k = 0
-				sorted_atoms += m.stoich[i]
+			for i in range(m.NAtoms()):
+				for j in range(m.NAtoms()):
+					if m.atoms[i] != m.atoms[j]:
+						continue
+					tmp_m = Mol(m.atoms.copy(), m.coords.copy())
+					tmp_m.coords[i,:], tmp_m.coords[j,:] = m.coords[j,:], m.coords[i,:]
+					tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
+					if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
+						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
+						m.atoms = tmp_m.atoms.copy()
+						m.coords = tmp_m.coords.copy()
+						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
+						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+						k = 0
+			k+=1
+		while k < 2:
+			for i in range(m.NAtoms()):
+				for j in range(m.NAtoms()):
+					if m.atoms[i] != m.atoms[j]:
+						continue
+					tmp_m = Mol(m.atoms.copy(), m.coords.copy())
+					tmp_m.coords[i,:], tmp_m.coords[j,:] = m.coords[j,:], m.coords[i,:]
+					tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
+					if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
+						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
+						m.atoms = tmp_m.atoms.copy()
+						m.coords = tmp_m.coords.copy()
+						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
+						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+						k = 0
+					elif math.exp(-beta*(np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)-diff)) < np.random.ranf():
+						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
+						#print math.exp(-beta*(np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)-diff))
+						m.atoms = tmp_m.atoms.copy()
+						m.coords = tmp_m.coords.copy()
+						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
+						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+						k = 0
+					if diff < np.linalg.norm(self.DistMatrix - best_m.DistMatrix):
+						best_m.atoms = m.atoms.copy()
+						best_m.coords = m.coords.copy()
+						best_m.DistMatrix = MolEmb.Make_DistMat(best_m.coords)
 			k += 1
+			m.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new')
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
@@ -392,7 +406,7 @@ class Mol:
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
-		return self.GoK*MolEmb.Make_LJForce(self.coords,self.DistMatrix,at_)
+		return self.GoK*MolEmb.Make_LJForce(self.coords,self.DistMatrix,self.LJE,at_)
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
