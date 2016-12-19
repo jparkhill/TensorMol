@@ -377,7 +377,7 @@ class Mol:
 		xmat = np.array(x).reshape(self.NAtoms(),3)
 		dmat = MolEmb.Make_DistMat(xmat)
 		np.fill_diagonal(dmat,1.0)
-		term2 = np.power(1.122462048309373*self.DistMatrix/dmat,6.0)
+		term2 = np.power(self.DistMatrix/dmat,6.0)
 		term1 = np.power(term2,2.0)
 		return np.sum(self.LJE*(term1-2.0*term2))
 
@@ -407,6 +407,20 @@ class Mol:
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
 		return self.GoK*MolEmb.Make_LJForce(self.coords,self.DistMatrix,self.LJE,at_)
+
+	def NumericLJForce(self):
+		disp = 0.000000001
+		frc = np.zeros((self.NAtoms(),3))
+		for i in range(self.NAtoms()):
+			for ip in range(3):
+				tmp = self.coords
+				tmp[i,ip] += disp
+				e1 = self.LJEnergy(tmp)
+				tmp = self.coords
+				tmp[i,ip] -= disp
+				e2 = self.LJEnergy(tmp)
+				frc[i,ip] = (e1-e2)/(2.0*disp)
+		return frc
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
