@@ -242,7 +242,7 @@ if (1):
 		a.Load()
 		mol1 = a.mols[0]
 		mol2 = a.mols[1]
-		mol1.AlignNumbers(mol2)
+		mol1.AlignAtoms(mol2)
 		#mol1.SortAtoms_3()
 		#mol2.SortAtoms_3()
 		#mol1.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new')
@@ -258,13 +258,16 @@ if (1):
 	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
-		test_mol = a.mols[1]
+		test_mol = a.mols[0]
 		#print "Orig Coords", test_mol.coords
 		test_mol.BuildDistanceMatrix()
 		test_mol.LJEFromDist()
 		test_mol.Distort()
-		print test_mol.coords
+		#print test_mol.coords
+		#print test_mol.LJEnergy(test_mol.coords)
 		print test_mol.GoForce()
 		print test_mol.LJForce()
+		print test_mol.NumericLJForce()
 		#optimizer = Optimizer(None)
-		#optimizer.OptLJForce(test_mol) # This works perfectly.
+		#optimizer.OptGoForce(test_mol)
+		#optimizer.OptLJForce(test_mol)

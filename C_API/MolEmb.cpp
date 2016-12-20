@@ -747,18 +747,19 @@ static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
 	else
 	{
 		int i=at;
-			for (int j=0; j < nat; ++j)
-			{
-				if (i==j)
-					continue;
-				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
-				u[0] = (xyz_data[j*3]-xyz_data[i*3]);
-				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1]);
-				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2]);
-				frc_data[i*3+0] += -2*eps_data[i*nat+j]*((12.*pow(d_data[i*nat+j],12.0)/pow(dij,14.0))*u[0]-(12.*pow(d_data[i*nat+j],6.0)/pow(dij,8.0))*u[0]);
-				frc_data[i*3+1] += -2*eps_data[i*nat+j]*((12.*pow(d_data[i*nat+j],12.0)/pow(dij,14.0))*u[1]-(12.*pow(d_data[i*nat+j],6.0)/pow(dij,8.0))*u[1]);
-				frc_data[i*3+2] += -2*eps_data[i*nat+j]*((12.*pow(d_data[i*nat+j],12.0)/pow(dij,14.0))*u[2]-(12.*pow(d_data[i*nat+j],6.0)/pow(dij,8.0))*u[2]);
-			}
+
+		for (int j=0; j < nat; ++j)
+		{
+			if (i==j)
+				continue;
+			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+			u[0] = (xyz_data[j*3]-xyz_data[i*3]);
+			u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1]);
+			u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2]);
+			frc_data[0] += -2*eps_data[i*nat+j]*((12.*pow(d_data[i*nat+j],12.0)/pow(dij,14.0))*u[0]-(12.*pow(d_data[i*nat+j],6.0)/pow(dij,8.0))*u[0]);
+			frc_data[1] += -2*eps_data[i*nat+j]*((12.*pow(d_data[i*nat+j],12.0)/pow(dij,14.0))*u[1]-(12.*pow(d_data[i*nat+j],6.0)/pow(dij,8.0))*u[1]);
+			frc_data[2] += -2*eps_data[i*nat+j]*((12.*pow(d_data[i*nat+j],12.0)/pow(dij,14.0))*u[2]-(12.*pow(d_data[i*nat+j],6.0)/pow(dij,8.0))*u[2]);
+		}
 	}
 	return hess;
 }

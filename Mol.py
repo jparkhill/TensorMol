@@ -260,7 +260,7 @@ class Mol:
 		self.coords = self.coords[order,:]
 		return
 
-	def AlignNumbers(self, m):
+	def AlignAtoms(self, m):
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
 		self.SortAtoms()
 		m.SortAtoms()
@@ -409,7 +409,7 @@ class Mol:
 		return self.GoK*MolEmb.Make_LJForce(self.coords,self.DistMatrix,self.LJE,at_)
 
 	def NumericLJForce(self):
-		disp = 0.000000001
+		disp = 0.00000001
 		frc = np.zeros((self.NAtoms(),3))
 		for i in range(self.NAtoms()):
 			for ip in range(3):

@@ -24,13 +24,13 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 
 # PARAMETERS
-#  TODO: have some type of param file. 
+#  TODO: have some type of param file.
 MAX_ATOMIC_NUMBER = 10
 GRIDS = None
 MBE_ORDER = 3
 HAS_GRIDS=True
 
-# Derived Quantities and useful things. 
+# Derived Quantities and useful things.
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
@@ -55,7 +55,7 @@ print("      \\______/\\__________\n")
 print("--------------------------")
 print("By using this software you accept the terms of the GNU public license in ")
 print("COPYING, and agree to attribute the use of this software in publications as: \n")
-print("K.Yao, J. Herr, J. Parkhill. TensorMol0.0 (2016)")
+print("K.Yao, J. E. Herr, J. Parkhill. TensorMol0.0 (2016)")
 print("Depending on Usage, please also acknowledge, TensorFlow, PySCF, or your training sets.")
 print("--------------------------")
 print("Searching for Installed Optional Packages...")
@@ -79,7 +79,7 @@ except:
 	pass
 
 try:
-	import tensorflow as tf 
+	import tensorflow as tf
 	HAS_TF = True
 	print("Tensorflow has been found")
 except:
@@ -140,7 +140,7 @@ def LtoS(l):
 	return s
 
 def ErfSoftCut(dist, width, x):
-	return (1-scipy.special.erf(1.0/width*(x-dist)))/2.0	
+	return (1-scipy.special.erf(1.0/width*(x-dist)))/2.0
 
 def CosSoftCut(dist, x):
 	if x > dist:
@@ -152,7 +152,7 @@ def CosSoftCut(dist, x):
 
 def nCr(n, r):
 	f = math.factorial
-	return int(f(n)/f(r)/f(n-r)) 
+	return int(f(n)/f(r)/f(n-r))
 
 def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase = str(0), maxcase = str(1000), name = "MBE", ncore = str(4), queue="long"):
 	lines = "#!/bin/csh\n"+"# Submit a job for 8  processors\n"+"#$ -N "+name+"\n#$ -t "+mincase+"-"+maxcase+":1\n"+"#$ -pe smp "+ncore+"\n"+"#$ -r n\n"+"#$ -q "+queue+"\n\n\n"
@@ -173,7 +173,7 @@ def Binominal_Combination(indis=[0,1,2], group=3):
 		for sub_list in Binominal_Combination(indis, group-1):
 			for sub_index in index:
 				new_index.append(list(sub_list)+list(sub_index))
-		return new_index		
+		return new_index
 
 def String_To_Atoms(s=""):
 	l = list(s)
@@ -181,12 +181,12 @@ def String_To_Atoms(s=""):
 	tmp = ""
 	for i, c in enumerate(l):
 		if  ord('A') <= ord(c) <= ord('Z'):
-			tmp=c	
+			tmp=c
 		else:
 			tmp += c
 		if i==len(l)-1:
 			atom_l.append(tmp)
-		elif ord('A') <= ord(l[i+1]) <= ord('Z'):	
+		elif ord('A') <= ord(l[i+1]) <= ord('Z'):
 			atom_l.append(tmp)
 		else:
 			continue
