@@ -611,6 +611,25 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
+{
+	PyArrayObject *dmat1, *dmat2;
+	if (!PyArg_ParseTuple(args, "O!O!", &PyArray_Type, &dmat1, &PyArray_Type, &dmat2))
+		return NULL;
+	double norm = 0;
+	const int dim1 = (dmat1->dimensions)[0];
+	const int dim2 = (dmat1->dimensions)[1];
+	double *dmat1_data, *dmat2_data;
+	dmat1_data = (double*) ((PyArrayObject*)dmat1)->data;
+	dmat2_data = (double*) ((PyArrayObject*)dmat2)->data;
+	for (int i=0; i < dim1; ++i)
+		for (int j=0; j < dim2; ++j)
+		{
+			norm += pow((dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]),2.0);
+		}
+	return PyFloat_FromDouble(sqrt(norm));
+}
+
 static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *EqDistMat;
@@ -1074,6 +1093,8 @@ static PyMethodDef EmbMethods[] =
 {
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
 		"Make_DistMat method"},
+	{"Norm_Matrices", Norm_Matrices, METH_VARARGS,
+ 		"Norm_Matrices method"},
 	{"Make_CM", Make_CM, METH_VARARGS,
 		"Make_CM method"},
 	{"Make_RDF", Make_RDF, METH_VARARGS,

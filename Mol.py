@@ -184,6 +184,15 @@ class Mol:
 			f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
 		f.close()
 
+	def BetterWriteXYZfile(self, fpath=".", fname="mol", mode="a"):
+		f = open(fpath+"/"+fname+".xyz", mode)
+		natom = self.atoms.shape[0]
+		f.write(str(natom)+"\nComment:\n")
+		for i in range (0, natom):
+			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
+			f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+		f.close()
+
 	def NEle(self):
 		return np.sum(self.atoms)
 
@@ -266,61 +275,108 @@ class Mol:
 		m.SortAtoms()
 		if (self.Center()-m.Center()).all() != 0:
 			m.coords += self.Center() - m.Center()
-		self.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new')
-		m.MakeStoichDict()
+		self.BetterWriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new', mode='w')
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
 		diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
-		best_m = Mol(m.atoms.copy(), m.coords.copy())
-		best_m.DistMatrix = MolEmb.Make_DistMat(best_m.coords)
+		tmp_coords=m.coords.copy()
+		tmp_dm = MolEmb.Make_DistMat(tmp_coords)
 		k = 0
-		beta = 1/(1.38064852e-2*1000000)
-		print beta
+		beta = 1/10000.
 		while k < 2:
 			for i in range(m.NAtoms()):
 				for j in range(m.NAtoms()):
 					if m.atoms[i] != m.atoms[j]:
 						continue
-					tmp_m = Mol(m.atoms.copy(), m.coords.copy())
-					tmp_m.coords[i,:], tmp_m.coords[j,:] = m.coords[j,:], m.coords[i,:]
-					tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
-					if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
-						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
-						m.atoms = tmp_m.atoms.copy()
-						m.coords = tmp_m.coords.copy()
-						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
-						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+
+					ir = tmp_dm[i].copy()
+					irti = np.sqrt(ir*ir) > 15.0
+					ir -= self.DistMatrix[i]
+					ir[irti] *= 0.0
+
+					jr = tmp_dm[j].copy()
+					jrti = np.sqrt(jr*jr) > 15.0
+					jr -= self.DistMatrix[j]
+					jr[jrti] *= 0.0
+
+					irp = tmp_dm[j].copy()
+					irp[i], irp[j] = irp[j], irp[i]
+					jrp = tmp_dm[i].copy()
+					jrp[i], jrp[j] = jrp[j], jrp[i]
+
+					irpti = np.sqrt(irp*irp) > 15.0
+					jrpti = np.sqrt(jrp*jrp) > 15.0
+					irp -= self.DistMatrix[i]
+					jrp -= self.DistMatrix[j]
+					irp[irpti] *=0.0
+					jrp[jrpti] *= 0.0
+
+					if (np.linalg.norm(irp)+np.linalg.norm(jrp) < np.linalg.norm(ir)+np.linalg.norm(jr)):
 						k = 0
+						perm=range(m.NAtoms())
+						perm[i] = j
+						perm[j] = i
+						tmp_coords=tmp_coords[perm]
+						print "Moved"
+						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
+						#print np.linalg.norm(self.DistMatrix - tmp_dm)
+				print i
 			k+=1
+		best_coords = tmp_coords.copy()
+		print "best",best_coords
+		print "self",self.coords
+		best_dm = tmp_dm.copy()
+		print np.linalg.norm(self.DistMatrix - best_dm)
+		m.coords = best_coords.copy()
+		m.BetterWriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new', mode='w')
+		print "WROTE FILE SLKJFDSGJFHSLGHLHGS"
+		k = 0
 		while k < 2:
 			for i in range(m.NAtoms()):
 				for j in range(m.NAtoms()):
 					if m.atoms[i] != m.atoms[j]:
 						continue
-					tmp_m = Mol(m.atoms.copy(), m.coords.copy())
-					tmp_m.coords[i,:], tmp_m.coords[j,:] = m.coords[j,:], m.coords[i,:]
-					tmp_m.DistMatrix = MolEmb.Make_DistMat(tmp_m.coords)
-					if np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix) < diff:
-						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
-						m.atoms = tmp_m.atoms.copy()
-						m.coords = tmp_m.coords.copy()
-						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
-						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+					ir = tmp_dm[i] - self.DistMatrix[i]
+					jr = tmp_dm[j] - self.DistMatrix[j]
+					irp = tmp_dm[j].copy()
+					irp[i], irp[j] = irp[j], irp[i]
+					jrp = tmp_dm[i].copy()
+					jrp[i], jrp[j] = jrp[j], jrp[i]
+					irp -= self.DistMatrix[i]
+					jrp -= self.DistMatrix[j]
+					#print math.exp(-beta*(np.linalg.norm(irp)+np.linalg.norm(jrp)-(np.linalg.norm(ir)+np.linalg.norm(jr))))
+					if (np.linalg.norm(irp)+np.linalg.norm(jrp) < np.linalg.norm(ir)+np.linalg.norm(jr)):
+						print "move"
+						#print 'downhill move'
 						k = 0
-					elif math.exp(-beta*(np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)-diff)) < np.random.ranf():
-						print np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)
-						#print math.exp(-beta*(np.linalg.norm(self.DistMatrix - tmp_m.DistMatrix)-diff))
-						m.atoms = tmp_m.atoms.copy()
-						m.coords = tmp_m.coords.copy()
-						m.DistMatrix = MolEmb.Make_DistMat(m.coords)
-						diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
+						perm=range(m.NAtoms())
+						perm[i] = j
+						perm[j] = i
+						tmp_coords=tmp_coords[perm]
+						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
+						print np.linalg.norm(tmp_dm - self.DistMatrix)
+						if np.linalg.norm(self.DistMatrix - tmp_dm) < np.linalg.norm(self.DistMatrix - best_dm):
+						#if self.NormMatrices(self.DistMatrix, tmp_dm) < self.NormMatrices(self.DistMatrix, best_dm):
+							print 'new best'
+							best_coords = tmp_coords.copy()
+							best_dm = tmp_dm.copy()
+					elif math.exp(-beta*(np.linalg.norm(irp)+np.linalg.norm(jrp)-(np.linalg.norm(ir)+np.linalg.norm(jr)))) < np.random.ranf():
+						#print 'uphill move'
+						print "move"
 						k = 0
-					if diff < np.linalg.norm(self.DistMatrix - best_m.DistMatrix):
-						best_m.atoms = m.atoms.copy()
-						best_m.coords = m.coords.copy()
-						best_m.DistMatrix = MolEmb.Make_DistMat(best_m.coords)
+						perm=range(m.NAtoms())
+						perm[i] = j
+						perm[j] = i
+						tmp_coords=tmp_coords[perm]
+						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
+						#print np.linalg.norm(tmp_dm - self.DistMatrix)
+					else:
+						print "no move"
+
+				print i
 			k += 1
-			m.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new')
+			m.coords = best_coords
+			m.BetterWriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new', mode='w')
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
@@ -330,6 +386,10 @@ class Mol:
 		import MolEmb
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		self.LJEFromDist()
+
+	def NormMatrices(self, mat1, mat2):
+		assert mat1.shape == mat2.shape, "Shape of matrices must match to calculate the norm"
+		return MolEmb.Norm_Matrices(mat1, mat2)
 
 	def LJEFromDist(self):
 		" Assigns lennard jones depth matrix "
