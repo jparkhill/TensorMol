@@ -5,9 +5,21 @@ from TFManage import *
 from Opt import *
 
 # John's tests
-if (0):
+if (1):
 	# Whole sequence just for morphine to debug.
-	if (1):
+	if (1): # align two structures for maximum similarity.
+		crds = MakeUniform([0.,0.,0.],1.5,5)
+		a = Mol(np.array([1 for i in range(len(crds))]),crds)
+		b = copy.deepcopy(a)
+		b.Distort()
+		b.coords = b.coords[np.random.permutation(len(crds))]
+		b.AlignAtoms(a)
+		for i in range(10): # Check the interpolation.
+			m=Mol(a.atoms,a.coords*((i-9.)/9.)+b.coords*((i)/9.))
+			m.WriteXYZfile("./datasets/", "Interp")
+		exit(0)
+	
+	if (0):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		print "nmols:",len(a.mols)
@@ -26,7 +38,7 @@ if (0):
 		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
 		tset2 = TensorData(c,d)
 		tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
-	if (1):
+	if (0):
 		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.

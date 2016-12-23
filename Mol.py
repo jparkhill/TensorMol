@@ -45,6 +45,15 @@ class Mol:
 
 	def NAtoms(self):
 		return self.atoms.shape[0]
+	
+	def AtomTypes(self):
+		return np.unique(self.atoms)
+	
+	def NEles(self):
+		return len(self.AtomTypes())
+
+	def NumOfAtomsE(self, e):
+		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Calculate_Atomization(self):
 		self.atomization = self.roomT_H
@@ -56,9 +65,6 @@ class Mol:
 		# Returns indices of atoms within radius of point.
 		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
 		return [i for i in range(self.NAtoms()) if dists[i]<rad]
-
-	def NumOfAtomsE(self, e):
-		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Rotate(self,axis,ang):
 		rm=RotationMatrix(axis,ang)
@@ -107,9 +113,6 @@ class Mol:
 							self.coords = tmp
 						else:
 							maxiter=maxiter-1
-
-	def AtomTypes(self):
-		return np.unique(self.atoms)
 
 	def ReadGDB9(self,path,filename, set_name):
                 try:
@@ -172,19 +175,11 @@ class Mol:
 				self.coords[i,2]=scitodeci(line[3])
 		return
 
-	def WriteXYZfile(self, fpath=".", fname="mol"):
-		if (os.path.isfile(fpath+"/"+fname+".xyz")):
-			f = open(fpath+"/"+fname+".xyz","a")
-		else:
-			f = open(fpath+"/"+fname+".xyz","w")
-		natom = self.atoms.shape[0]
-		f.write(str(natom)+"\nComment:\n")
-		for i in range (0, natom):
-			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
-			f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
-		f.close()
-
-	def BetterWriteXYZfile(self, fpath=".", fname="mol", mode="a"):
+#
+# Deleting code which has been improved is a good thing
+# incases like this where the functionality was compatible, you should have just deleted the old routine.
+#
+	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):
 		f = open(fpath+"/"+fname+".xyz", mode)
 		natom = self.atoms.shape[0]
 		f.write(str(natom)+"\nComment:\n")
@@ -264,40 +259,94 @@ class Mol:
 		return
 
 	def SortAtoms(self):
+		""" First sorts by element, then sorts by distance to the center of the molecule 
+			This improves alignment. """
 		order = np.argsort(self.atoms)
 		self.atoms = self.atoms[order]
 		self.coords = self.coords[order,:]
+		self.coords = self.coords - self.Center()
+		self.ElementBounds = [[0,0] for i in range(self.NEles())]
+		ele = self.atoms[0]
+		for e in range(self.NEles()):
+			inblock=False
+			for i in range(0, self.NAtoms()):
+				if (not inblock and self.atoms[i]==ele):
+					self.ElementBounds[e][0] = i
+					inblock=True
+				elif (inblock and (self.atoms[i]!=ele or i==self.NAtoms()-1)):
+					self.ElementBounds[e][1] = i+1
+					inblock=False
+					break
+		for e in range(self.NEles()):
+			blk = self.coords[self.ElementBounds[e][0]:self.ElementBounds[e][1],:].copy()
+			dists = np.sqrt(np.sum(blk*blk,axis=1))
+			inds = np.argsort(dists)
+			self.coords[self.ElementBounds[e][0]:self.ElementBounds[e][1],:] = blk[inds]
 		return
 
+	def WriteInterpolation(self,b,n=0):
+		for i in range(10): # Check the interpolation.
+			m=Mol(self.atoms,self.coords*((9.-i)/9.)+b.coords*((i)/9.))
+			m.WriteXYZfile("./results/", "Interp"+str(n))
+
 	def AlignAtoms(self, m):
+		""" So looking at some interpolations I figured out why this wasn't working The problem was the outside can get permuted and then it can't be fixed
+			by pairwise permutations because it takes all-atom moves to drag the system through itself.
+			
+			The solution is to force the crystal to have roughly the right orientation by minimizing position differences in a greedy way, then fixing the local structure once they are all roughly in the right place.
+			
+			This now MOVES BOTH THE MOLECULES assignments, but works.
+			"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
+		self.WriteInterpolation(m,-1)
 		self.SortAtoms()
 		m.SortAtoms()
-		if (self.Center()-m.Center()).all() != 0:
-			m.coords += self.Center() - m.Center()
-		self.BetterWriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new', mode='w')
+		
+#		print "self coords before: ", self.coords
+#		print "m coords before: ", m.coords
+		# Greedy assignment
+		for e in range(self.NEles()):
+			ass = range(self.ElementBounds[e][0],self.ElementBounds[e][1])
+			b0s = range(self.ElementBounds[e][0],self.ElementBounds[e][1])
+			assignedas=[]
+			assignedbs=[]
+			for b in b0s:
+				acs = self.coords[ass]
+				tmp = acs - m.coords[b]
+				best = np.argsort(np.sqrt(np.sum(tmp*tmp,axis=1)))[0]
+#				print "Matching ", m.coords[b]," to ", self.coords[ass[best]]
+#				print "Matching ", b," to ", ass[best]
+				assignedbs.append(b)
+				assignedas.append(ass[best])
+				ass = complement(ass,assignedas)
+				# Choose the a which is closest to b then eliminate both.
+			#Finally perform the permutation.
+			self.coords[b0s] = self.coords[assignedas]
+			m.coords[b0s] = m.coords[assignedbs]
+
+		self.WriteInterpolation(m,0)
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
 		diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
 		tmp_coords=m.coords.copy()
 		tmp_dm = MolEmb.Make_DistMat(tmp_coords)
 		k = 0
-		beta = 1/10000.
-		while k < 2:
+		steps = 1
+		while (k < 2):
 			for i in range(m.NAtoms()):
-				for j in range(m.NAtoms()):
+				for j in range(i+1,m.NAtoms()):
 					if m.atoms[i] != m.atoms[j]:
 						continue
 
 					ir = tmp_dm[i].copy()
 					irti = np.sqrt(ir*ir) > 15.0
 					ir -= self.DistMatrix[i]
-					ir[irti] *= 0.0
+					#ir[irti] *= 0.0
 
 					jr = tmp_dm[j].copy()
 					jrti = np.sqrt(jr*jr) > 15.0
 					jr -= self.DistMatrix[j]
-					jr[jrti] *= 0.0
+					#jr[jrti] *= 0.0
 
 					irp = tmp_dm[j].copy()
 					irp[i], irp[j] = irp[j], irp[i]
@@ -308,8 +357,8 @@ class Mol:
 					jrpti = np.sqrt(jrp*jrp) > 15.0
 					irp -= self.DistMatrix[i]
 					jrp -= self.DistMatrix[j]
-					irp[irpti] *=0.0
-					jrp[jrpti] *= 0.0
+					#irp[irpti] *= 0.0
+					#jrp[jrpti] *= 0.0
 
 					if (np.linalg.norm(irp)+np.linalg.norm(jrp) < np.linalg.norm(ir)+np.linalg.norm(jr)):
 						k = 0
@@ -319,64 +368,18 @@ class Mol:
 						tmp_coords=tmp_coords[perm]
 						print "Moved"
 						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
-						#print np.linalg.norm(self.DistMatrix - tmp_dm)
+						print np.linalg.norm(self.DistMatrix - tmp_dm)
+						steps = steps+1
+						if (steps%400==0):
+							self.WriteInterpolation(Mol(self.atoms,tmp_coords),steps)
 				print i
 			k+=1
 		best_coords = tmp_coords.copy()
 		print "best",best_coords
 		print "self",self.coords
-		best_dm = tmp_dm.copy()
-		print np.linalg.norm(self.DistMatrix - best_dm)
-		m.coords = best_coords.copy()
-		m.BetterWriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new', mode='w')
-		print "WROTE FILE SLKJFDSGJFHSLGHLHGS"
-		k = 0
-		while k < 2:
-			for i in range(m.NAtoms()):
-				for j in range(m.NAtoms()):
-					if m.atoms[i] != m.atoms[j]:
-						continue
-					ir = tmp_dm[i] - self.DistMatrix[i]
-					jr = tmp_dm[j] - self.DistMatrix[j]
-					irp = tmp_dm[j].copy()
-					irp[i], irp[j] = irp[j], irp[i]
-					jrp = tmp_dm[i].copy()
-					jrp[i], jrp[j] = jrp[j], jrp[i]
-					irp -= self.DistMatrix[i]
-					jrp -= self.DistMatrix[j]
-					#print math.exp(-beta*(np.linalg.norm(irp)+np.linalg.norm(jrp)-(np.linalg.norm(ir)+np.linalg.norm(jr))))
-					if (np.linalg.norm(irp)+np.linalg.norm(jrp) < np.linalg.norm(ir)+np.linalg.norm(jr)):
-						print "move"
-						#print 'downhill move'
-						k = 0
-						perm=range(m.NAtoms())
-						perm[i] = j
-						perm[j] = i
-						tmp_coords=tmp_coords[perm]
-						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
-						print np.linalg.norm(tmp_dm - self.DistMatrix)
-						if np.linalg.norm(self.DistMatrix - tmp_dm) < np.linalg.norm(self.DistMatrix - best_dm):
-						#if self.NormMatrices(self.DistMatrix, tmp_dm) < self.NormMatrices(self.DistMatrix, best_dm):
-							print 'new best'
-							best_coords = tmp_coords.copy()
-							best_dm = tmp_dm.copy()
-					elif math.exp(-beta*(np.linalg.norm(irp)+np.linalg.norm(jrp)-(np.linalg.norm(ir)+np.linalg.norm(jr)))) < np.random.ranf():
-						#print 'uphill move'
-						print "move"
-						k = 0
-						perm=range(m.NAtoms())
-						perm[i] = j
-						perm[j] = i
-						tmp_coords=tmp_coords[perm]
-						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
-						#print np.linalg.norm(tmp_dm - self.DistMatrix)
-					else:
-						print "no move"
+		self.WriteInterpolation(Mol(self.atoms,tmp_coords),9999)
+		return
 
-				print i
-			k += 1
-			m.coords = best_coords
-			m.BetterWriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new', mode='w')
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.

@@ -57,7 +57,7 @@ class TFMolManage(TFManage):
 			ins, embed_deri =  self.TData.dig.EvalDigest(frag)
 			cases[casep:casep+1] += ins
 			cases_deri[casep:casep+1]=embed_deri
-                        casep += 1
+			casep += 1
 		print "evaluating order:", self.TData.order
 		nn, nn_deri=self.Eval(cases)
 		mean, std = self.TData.Get_Mean_Std()
@@ -85,8 +85,8 @@ class TFMolManage(TFManage):
 	def Test(self, save_file="mbe_test.dat"):
 		ti, to = self.TData.LoadData( True)
 		NTest = int(self.TData.TestRatio * ti.shape[0])
-                ti= ti[ti.shape[0]-NTest:]
-                to = to[to.shape[0]-NTest:]
+		ti= ti[ti.shape[0]-NTest:]
+		to = to[to.shape[0]-NTest:]
 		acc_nn = np.zeros((to.shape[0],2))
 		acc=self.TData.ApplyNormalize(to)
 		nn, gradient=self.Eval(ti)

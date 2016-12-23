@@ -16,14 +16,14 @@ if (HAS_EMB):
 	import MolEmb
 
 class Digester:
-	def __init__(self, eles_, name_="GauSH", OType_="", SamplingType_="", BlurRadius_ = 0.05 ):
+	def __init__(self, eles_, name_="GauSH", OType_="Disp", SamplingType_="", BlurRadius_ = 0.05 ):
 		
 		 # In Atomic units at 300K
 		# These are the key variables which determine the type of digestion.
 		self.name = name_ # Embedding type.
-		self.OType = "Disp" # Output Type: HardP, SmoothP, StoP, Disp, Force, Energy etc. See Emb() for options.
-		if (OType_ != ""):
-			self.OType=OType_
+		self.eshape=None  #shape of an embedded case
+		self.lshape=None  #shape of the labels of an embedded case.
+		self.OType = OType_ # Output Type: HardP, SmoothP, StoP, Disp, Force, Energy etc. See Emb() for options.
 		self.SamplingType = "Smooth" # No hard cutoff of sampled points, random probabilites of distortion too.
 		if (SamplingType_ != ""):
 			self.SamplingType = SamplingType_
@@ -45,9 +45,7 @@ class Digester:
 		self.BlurRadius = BlurRadius_ # Stdev of gaussian used as prob of atom
 		self.SensRadius=6.0 # Distance which is used for input.
 
-		self.eshape=None  #shape of an embedded case
-		self.lshape=None  #shape of the labels of an embedded case.
-		
+
 		self.embtime=0.0
 		self.outtime=0.0
 		

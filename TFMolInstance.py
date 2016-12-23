@@ -431,17 +431,26 @@ class MolInstance_fc_sqdiff(MolInstance):
 class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 	def __init__(self, TData_, Name_=None):
 		MolInstance.__init__(self, TData_,  Name_)
+		self.TData.LoadDataToScratch()
 		self.inshape =  self.TData.dig.eshape[1]
-		
-		self.eletypes = self.TData.ElementTypes()
-		self.MeanStoich = self.TData.MeanStoich() # Average stoichiometry of a molecule.
+		self.eles = self.TData.eles
+		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
-		#Here we should check if the number of max number of atoms in a mol exceeds input case but we will be lazy.
-		self.input_case = self.batch_size * self.aver_atom_per_mol
+		self.AtomBranchNames=[] # a list of the layers named in each atom branch
+		
+		# self.batch_size is still the number of inputs in a batch.
+		self.batch_output_size = int(1.1 * self.batch_size / self.MeanNumAtoms)
+		# More outputs than neccesary are allowed for in case they are needed.
+
+		
+		self.BPMatrices=None #Per-batch matrices which linearly combine atom information to outputs.
+		self.AtomBounds=None #Per-batch boundaries of each atom in the input [[first H, last H], ...]
 		
 		self.hidden1 = 100
 		self.hidden2 = 100
 		self.hidden3 = 500
+
+		#Here we should check if the number of max number of atoms in a mol exceeds input case but we will be lazy.
 		self.H_length = None  # start with a random int for inference
 		self.O_length = None  # start with a random int for inference
 		self.C_length = None  # start with a random int for inference
@@ -451,175 +460,116 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.summary_writer=None
 		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
-	def inference(self, images, index_mat, H_length, C_length, O_length, hidden1_units, hidden2_units):
+	def inference(self, inp_pl, bnds_pl, mats_pl):
+	#def inference(self, images, index_mat, H_length, C_length, O_length, hidden1_units, hidden2_units):
 		# convert the index matrix from bool to float
-		index_mat = tf.cast(index_mat,tf.float32)
-		# define the Hydrogen network
-		with tf.name_scope('H_hidden1'):
-			H_inputs = tf.slice(images, [0,0], [H_length, self.inshape]) # debug the indexing.  The tf.slice is kind of weired
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden1_units]),
-			name='biases')
-			H_hidden1 = tf.nn.relu(tf.matmul(H_inputs, weights) + biases)
-
-		with tf.name_scope('H_hidden2'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden2_units]),
-			name='biases')
-			H_hidden2 = tf.nn.relu(tf.matmul(H_hidden1, weights) + biases)
-
-		with tf.name_scope('H_regression_linear'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([self.outshape]),
-			name='biases')
-			H_output = tf.matmul(H_hidden2, weights) + biases
-			H_output = tf.reshape(H_output, [1, H_length])  # this needs to be replaced by the natom
-		
-			H_index_mat = tf.slice(index_mat, [0,0], [H_length, self.batch_size])
-
-			H_output = tf.matmul(H_output, H_index_mat) 
-			H_output = tf.reshape(H_output, [self.batch_size, 1]) # this needs to be replaced by the nmol	
-	
-		# define the Carbon newtork
-		with tf.name_scope('C_hidden1'):
-			C_inputs = tf.slice(images, [H_length,0], [C_length, self.inshape])
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden1_units]),
-			name='biases')
-			C_hidden1 = tf.nn.relu(tf.matmul(C_inputs, weights) + biases)
-
-		with tf.name_scope('C_hidden2'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden2_units]),
-			name='biases')
-			C_hidden2 = tf.nn.relu(tf.matmul(C_hidden1, weights) + biases)
-
-		with tf.name_scope('C_regression_linear'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([self.outshape]),
-			name='biases')
-			C_output = tf.matmul(C_hidden2, weights) + biases
-			C_output = tf.reshape(C_output, [1, C_length])  # this needs to be replace by the natom
-
-			C_index_mat = tf.slice(index_mat, [H_length,0],[C_length, self.batch_size])
-
-			C_output = tf.matmul(C_output, C_index_mat)
-			C_output = tf.reshape(C_output, [self.batch_size, 1])
-
-
-		# define the Oxygen newtork
-		with tf.name_scope('O_hidden1'):
-			O_inputs = tf.slice(images, [H_length+C_length, 0], [O_length, self.inshape])
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden1_units]),
-			name='biases')
-			O_hidden1 = tf.nn.relu(tf.matmul(O_inputs, weights) + biases)
-
-		with tf.name_scope('O_hidden2'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden2_units]),
-			name='biases')
-			O_hidden2 = tf.nn.relu(tf.matmul(O_hidden1, weights) + biases)
-
-		with tf.name_scope('O_regression_linear'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([self.outshape]),
-			name='biases')
-			O_output = tf.matmul(O_hidden2, weights) + biases
-			O_output = tf.reshape(O_output, [1, O_length])  # this needs to be replace by the natom
-			O_index_mat = tf.slice(index_mat, [H_length+C_length, 0],[O_length, self.batch_size])
-			O_output = tf.matmul(O_output, O_index_mat)
-			O_output = tf.reshape(O_output, [self.batch_size, 1])
-
+		branches=[]
+		outputs=[]
+		hidden1_units=self.hidden1
+		hidden2_units=self.hidden2
+		output = tf.zeros([self.batch_size,1])
+		for e in range(len(self.eles)):
+			branches.append([])
+			with tf.name_scope(str(self.eles[e])+'_hidden1'):
+				inputs = tf.slice(inp_pl, [bnds_pl[e][0],0], [bnds_pl[e][1], self.inshape]) # debug the indexing.  The tf.slice is kind of weired
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
+				biases = tf.Variable(tf.zeros([hidden1_units]),
+				name='biases')
+				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
+			with tf.name_scope(str(self.eles[e])+'_hidden2'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+				biases = tf.Variable(tf.zeros([hidden2_units]),
+				name='biases')
+				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
+			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+				biases = tf.Variable(tf.zeros([self.outshape]), name='biases')
+				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
+				outputs.append(tf.reshape(tf.matmul(branches[-1][-1], mats_pl[e]),[self.batch_size, 1]))
 		with tf.name_scope('sum_up'):
-				H_C_output = tf.add(H_output, C_output)
-				output = tf.add(H_C_output, O_output)
-
-		return output, H_output, C_output, O_output, H_inputs, C_inputs, O_inputs
-
-
+			for e in range(len(self.eles)):
+				output = tf.add(output,outputs[e])
+		return output
 
 	def PrepareData(self, raw_data): # for debug purpose, this only works for system with two kinds of element: H and O
 		H_index_matrix = raw_data[3][1]  # 
 		C_index_matrix = raw_data[3][6]  # 
 		O_index_matrix = raw_data[3][8]
-		
 		H_length = raw_data[2][1]  
 		C_length = raw_data[2][6]
 		O_length = raw_data[2][8]
-
 		index_matrix = np.zeros((self.input_case, self.batch_size),dtype=bool)
 		index_matrix[0:H_length, :] = H_index_matrix
 		index_matrix[H_length:H_length + C_length,  :] = C_index_matrix
 		index_matrix[H_length + C_length:H_length + C_length + O_length, :] = O_index_matrix
-	
 		return [raw_data[0], raw_data[1]], [H_length, C_length, O_length], index_matrix
 		
 	def fill_feed_dict(self, batch_data, atom_length, index_matrix, images_pl, labels_pl, index_mat_pl, H_length_pl, C_length_pl, O_length_pl):
-                # Create the feed_dict for the placeholders filled with the next
-                # `batch size` examples.
-                images_feed = batch_data[0]
-                labels_feed = batch_data[1]
+		# Create the feed_dict for the placeholders filled with the next
+		# `batch size` examples.
+		images_feed = batch_data[0]
+		labels_feed = batch_data[1]
 		H_length_feed = atom_length[0] # debug, shitty way to write it.
 		C_length_feed = atom_length[1]
 		O_length_feed = atom_length[2]  # debug, shitty way to write it.
 		index_feed = index_matrix
-                # Don't eat shit. 
-                if (not np.all(np.isfinite(images_feed),axis=(0,1))):
-                        print("I was fed shit")
-                        raise Exception("DontEatShit")
-                if (not np.all(np.isfinite(labels_feed))):
-                        print("I was fed shit")
-                        raise Exception("DontEatShit")
-                feed_dict = {
-                images_pl: images_feed,
-                labels_pl: labels_feed,
-                index_mat_pl: index_feed,
+		# Don't eat shit.
+		if (not np.all(np.isfinite(images_feed),axis=(0,1))):
+				print("I was fed shit")
+				raise Exception("DontEatShit")
+		if (not np.all(np.isfinite(labels_feed))):
+				print("I was fed shit")
+				raise Exception("DontEatShit")
+		feed_dict = {
+		images_pl: images_feed,
+		labels_pl: labels_feed,
+		index_mat_pl: index_feed,
 	 	H_length_pl: H_length_feed,
 		C_length_pl: C_length_feed,
-                O_length_pl: O_length_feed,
-                }
-                return feed_dict
+		O_length_pl: O_length_feed,
+		}
+		return feed_dict
 
-        def placeholder_inputs(self, batch_size):
-                # rather than the full size of the train or test data sets.
-                inputs_pl = tf.placeholder(tf.float32, shape=(self.input_case, self.inshape)) # JAP : Careful about the shapes... should be flat for now.
-                outputs_pl = tf.placeholder(tf.float32, shape=(batch_size, self.outshape))
-		index_mat_pl = tf.placeholder(tf.bool, shape=((self.input_case, batch_size)))
+	def placeholder_inputs(self, batch_size):
+		# rather than the full size of the train or test data sets.
+		inputs_pl = tf.placeholder(tf.float32, shape=(self.input_case, self.inshape)) # JAP : Careful about the shapes... should be flat for now.
+		outputs_pl = tf.placeholder(tf.float32, shape=(batch_size, self.outshape))
+		index_mat_pl = tf.placeholder(tf.float32, shape=((self.input_case, batch_size)))
 		H_pl = tf.placeholder("int32")
 		C_pl = tf.placeholder("int32")
-                O_pl = tf.placeholder("int32")
-                return inputs_pl, outputs_pl, index_mat_pl, H_pl, C_pl, O_pl 
+		O_pl = tf.placeholder("int32")
+		return inputs_pl, outputs_pl, index_mat_pl, H_pl, C_pl, O_pl 
 
 	def train_prepare(self,  continue_training =False):
-                """Train for a number of steps."""
-                with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-                        self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length = self.placeholder_inputs(self.batch_size)
-                        self.output, self.H_output, self.C_output, self.O_output, self.H_input, self.C_input, self.O_input = self.inference(self.embeds_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length, self.hidden1, self.hidden2)
-                        self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
-                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-                        self.summary_op = tf.merge_all_summaries()
-                        init = tf.initialize_all_variables()
-                        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-                        self.saver = tf.train.Saver()
-                        try: # I think this may be broken 
-                                chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-                                if (len(chkfiles)>0):
-                                        most_recent_chk_file=chkfiles[0]
-                                        print("Restoring training from Checkpoint: ",most_recent_chk_file)
-                                        self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-                        except Exception as Ex:
-                                print("Restore Failed",Ex)
-                                pass
-                        self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
-                        self.sess.run(init)
-                        return
+		"""Train for a number of steps."""
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+				self.emb_pl, self.label_pl, self.bnds_pl, self.mats_pl = self.placeholder_inputs(self.batch_size)
+				#self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length = self.placeholder_inputs(self.batch_size)
+				self.output = self.inference(self.emb_pl, self.bnds_pl, self.mats_pl)
+				self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+				self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+				self.summary_op = tf.merge_all_summaries()
+				init = tf.initialize_all_variables()
+				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+				self.saver = tf.train.Saver()
+				try: # I think this may be broken 
+						chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+						if (len(chkfiles)>0):
+								most_recent_chk_file=chkfiles[0]
+								print("Restoring training from Checkpoint: ",most_recent_chk_file)
+								self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+				except Exception as Ex:
+						print("Restore Failed",Ex)
+						pass
+				self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
+				self.sess.run(init)
+				return
 
 	def train_step(self, step):
 		Ncase_train = self.TData.NTrain
 		#print ("NTraing:", Ncase_train)
 		start_time = time.time()
-                train_loss =  0.0
+		train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			raw_data=self.TData.GetTrainBatch(self.input_case, self.batch_size) # batch_data strucutre: inputs (self.input_case*self.eshape), outputs (self.batch_size*self.lshape), number_atom_per_ele (dic[1(H)]=2000, dic[8(0)]=1000), index_matrix(dic[1(H)]: number_atom_per_ele[1(H)]*self.batch_size)
 			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
@@ -631,23 +581,23 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		#print ("ministep:", ministep)
 		#print ("accu:", batch_data[1],  "Mol:", tmp_mol_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
 		#print ("input:", raw_data[0], "output:", raw_data[1])
-                self.print_training(step, train_loss, Ncase_train, duration)
-                return
+		self.print_training(step, train_loss, Ncase_train, duration)
+		return
 
 
 	def test(self, step):
-                Ncase_test = self.TData.NTest
-                test_loss =  0.0
-                test_correct = 0.
-                test_start_time = time.time()
-                for  ministep in range (0, int(Ncase_test/self.batch_size)):
-                        raw_data=self.TData.GetTestBatch( self.input_case, self.batch_size)
-			batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
-			feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
-                        total_loss_value, loss_value, output_value  = self.sess.run([self.total_loss,  self.loss, self.output],  feed_dict=feed_dict)
-                        test_loss = test_loss + loss_value
-                        duration = time.time() - test_start_time
-                print("testing...")
-                self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
+		Ncase_test = self.TData.NTest
+		test_loss =  0.0
+		test_correct = 0.
+		test_start_time = time.time()
+		for  ministep in range (0, int(Ncase_test/self.batch_size)):
+				raw_data=self.TData.GetTestBatch( self.input_case, self.batch_size)
+		batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
+		feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
+		total_loss_value, loss_value, output_value  = self.sess.run([self.total_loss,  self.loss, self.output],  feed_dict=feed_dict)
+		test_loss = test_loss + loss_value
+		duration = time.time() - test_start_time
+		print("testing...")
+		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
 		return test_loss, feed_dict
 

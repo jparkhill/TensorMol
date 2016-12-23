@@ -239,95 +239,200 @@ class TensorMolData_BP(TensorMolData):
 			A tensordata for molecules and Behler-Parinello.
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):
-		self.atom_index = None
-		self.test_atom_index = None
-		self.train_atom_index = None
-		self.Ele_ScratchPointer = None
-		self.num_test_atoms = None
-		self.test_mol_len = None
-		self.num_train_atoms = None
-		self.train_mol_len = None
-		self.scratch_outputs = None
-		self.scratch_test_outputs = None
-		self.test_ScratchPointer = None
-		self.test_Ele_ScratchPointer = None
+		# a Case is an input to the NN.
+		self.CaseMetadata=None # case X molecule index X element type (Strictly ascending)
+		self.LastTrainMol=0
+		self.NTestMols=0
+		self.scratch_meta = None
+		self.scratch_test_meta = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
 		self.eles = list(self.set.AtomTypes()) 
 		self.eles.sort()
-		print "self.eles", self.eles
+		self.MeanStoich=None
+		self.MeanNAtoms=None
+		print "TensorMolData_BP.eles", self.eles
+		print "TensorMolData_BP.MeanStoich", self.MeanStoich
+		print "TensorMolData_BP.MeanNAtoms", self.MeanStoich
 		return 
 
 	def CleanScratch(self):
 		TensorMolData.CleanScratch(self)
-		self.test_atom_index = None
-		self.train_atom_index = None
-		self.Ele_ScratchPointer = None
-		self.test_Ele_ScratchPointer = None
-		self.test_ScratchPointer = None
-		self.num_test_atoms = None
-		self.test_mol_len = None
-		self.num_train_atoms = None
-		self.train_mol_len = None
-		self.scratch_outputs = None
-		self.scratch_test_outputs = None
+		self.CaseMetadata=None # case X molecule index , element type , first atom in this mol, last atom in this mol (exclusive)
+		self.scratch_meta = None
+		self.scratch_test_meta = None
 		return
 
 	def BuildTrain(self, name_="gdb9",  append=False):
 		self.CheckShapes()
 		self.name=name_
-		total_case = 0
 		print "self.type:", self.type
 		if self.type=="frag":
-			for mi in range(len(self.set.mols)):
-				total_case += len(self.set.mols[mi].mbe_frags[self.order])  # debug
-		elif self.type=="mol":
-			total_case  = len(self.set.mols)
-		else:
-			raise Exception("Unknown Type")
-                cases = []
-                labels = np.zeros((total_case, self.dig.lshape))
-                casep=0
-		self.atom_index = self.Generate_Atom_Index()
-		if self.type=="frag":
-			for mi in range(len(self.set.mols)):
-				for frag in self.set.mols[mi].mbe_frags[self.order]:  # debug
-						  #print  frag.dist[0], frag.frag_mbe_energy
-						  ins,outs = self.dig.TrainDigest(frag)
-						  cases.append(ins)
-						  labels[casep:casep+1] += outs
-						  casep += 1
-			#print cases, labels, cases.shape, labels.shape
-		cases = np.asarray(cases)
+			raise Exception("No BP frags now")
+		nmols  = len(self.set.mols)
+		natoms = self.set.NAtoms()
+		cases = np.zeros((natoms, self.dig.eshape))
+		labels = np.zeros((nmols, self.dig.lshape))
+		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
 		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
-		elif self.type=="mol":
-			for mi in range(len(self.set.mols)):
-				print "casep:", casep
-				ins,outs = self.dig.TrainDigest(self.set.mols[mi])
-				cases.append(ins)
-				labels[casep:casep+1] += outs
-				casep += 1
-				#print cases, labels, cases.shape, labels.shape
-			cases = np.asarray(cases)
-		else:
-			raise Exception("Unknown Type")
-		if (not append):
-				inf = open(insname,"wb")
-				ouf = open(outsname,"wb")
-				np.save(inf,cases[:casep])
-				np.save(ouf,labels[:casep])
-				inf.close()
-				ouf.close()
-				self.AvailableDataFiles.append([insname,outsname])
-		else:
-				inf = open(insname,"a+b")
-				ouf = open(outsname,"a+b")
-				np.save(inf,cases)
-				np.save(ouf,labels)
-				inf.close()
-				ouf.close()
+		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
+		casep=0
+		for mi in range(len(self.set.mols)):
+			print "casep:", casep
+			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+			cases[casep:casep+outs.shape[0]] = ins
+			labels[mi] = outs
+			for j in range(casep,casep+outs.shape[0]):
+				self.CaseMetadata[j,0] = mi
+				self.CaseMetadata[j,1] = self.set.mols[mi].Atoms[j-casep]
+				self.CaseMetadata[j,2] = casep
+				self.CaseMetadata[j,3] = casep+outs.shape[0]
+			casep += outs.shape[0]
+		inf = open(insname,"wb")
+		ouf = open(outsname,"wb")
+		mef = open(metasname,"wb")
+		np.save(inf,cases)
+		np.save(ouf,labels)
+		np.save(mef,self.CaseMetadata)
+		inf.close()
+		ouf.close()
+		mef.close()
+		self.AvailableDataFiles.append([insname,outsname,metasname])
 		self.Save() #write a convenience pickle.
 		return
+
+	def LoadData(self, random=False):
+		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
+		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
+		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_meta.npy" # Used aggregate
+		inf = open(insname,"rb")
+		ouf = open(outsname,"rb")
+		mef = open(metasname,"rb")
+		ti = np.load(inf)
+		to = np.load(ouf)
+		tm = np.load(mef)
+		inf.close()
+		ouf.close()
+		mef.close()
+		to = to.reshape((to.shape[0],-1))  # flat labels to [mol, 1]
+		if (random):
+			print "Cannot yet properly randomize molecule cases. Please implement soon."
+			#ti, to, atom_index = self.Randomize(ti, to)
+		self.NTrain = ti.shape[0]
+		return ti, to, tm
+
+	def LoadDataToScratch(self, random=True):
+		""" 
+			Behler parinello batches need to have a typical overall stoichiometry.
+			and a constant number of atoms, and must contain an integer number of molecules.
+			
+			Besides making sure all of that takes place this routine makes the summation matrices 
+			which map the cases => molecular energies in the Neural Network output.
+		"""
+		ti, to, tm = self.LoadData(random)
+		self.NTestMols = int(self.TestRatio * to.shape[0])
+		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
+		print "LastTrainMol in TensorMolData:", self.LastTrainMol
+		print "NTestMols in TensorMolData:", self.NTestMols
+		print "Number of molecules in meta:", tm[-1,0]+1
+		LastTrainCase=0
+		# Figure out the number of atoms in training and test.
+		for i in range(len(tm)):
+			if (tm[i,0] == self.LastTrainMol):
+				LastTrainCase = tm[i,3] # exclusive
+				break
+		print "last train atom: ", LastTrainCase
+		print "Num Test atoms: ", len(tm)-LastTrainCase
+		print "Num atoms: ", len(tm)
+	
+		self.scratch_inputs = ti[:LastTrainCase]
+		self.scratch_outputs = to[:LastTrainMol]
+		self.scratch_meta = tm[:LastTrainCase]
+		self.scratch_test_inputs = ti[LastTrainCase:]
+		self.scratch_test_outputs = to[LastTrainMol:]
+		self.scratch_test_meta = tm[LastTrainCase:]
+
+		self.ScratchState = 1
+		self.ScratchPointer = 0
+		self.test_ScratchPointer=0
+		
+		# Compute mean Stoichiometry and number of atoms.
+		self.eles = np.unique(tm[:,1])
+		atomcount = np.zeros(len(self.eles))
+		self.MeanStoich = np.zeros(len(self.eles))
+		for j in range(len(self.eles)):
+			for i in range(len(ti)):
+				if (tm[i,1]==j):
+					atomcount[j]=atomcount[j]+1
+		self.MeanStoich=atomcount[j]/len(self.eles)
+		self.MeanNumAtoms = np.sum(self.MeanStoich)
+		return
+
+	def
+
+	def GetTrainBatch(self,ncases=1200):
+		""" Returns inputs (sorted by element), outputs, and indexing matrices"""
+		start_time = time.time()
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		if (num_mol> self.NTrain):
+			raise Exception("Training Data is less than the batchsize... :( ")
+		reset = False
+		if ( self.ScratchPointer+num_mol > self.NTrain):
+			reset = True
+		if reset==True:
+			self.ScratchPointer = 0
+
+		# The cases returned will always be less than or equal to ncases, and padded with zeros.
+
+		inputs = np.zeros((ncases, self.dig.eshape[1]))
+		outputs = self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+num_mol]
+		number_atom_per_ele = dict()
+		input_index=0
+		for ele in self.eles:
+			tmp = 0
+			for i in range (self.ScratchPointer, self.ScratchPointer + num_mol):
+				inputs[input_index:input_index+self.train_mol_len[ele][i]]=self.scratch_inputs[ele][self.Ele_ScratchPointer[ele]:self.Ele_ScratchPointer[ele]+self.train_mol_len[ele][i]]
+				self.Ele_ScratchPointer[ele] += self.train_mol_len[ele][i]
+				tmp += self.train_mol_len[ele][i]
+				input_index += self.train_mol_len[ele][i]
+			number_atom_per_ele[ele]=tmp
+		# make the index matrix
+		index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol) # one needs to know the number of molcule that contained in the ncase atom
+		self.ScratchPointer += num_mol
+		return inputs, outputs, number_atom_per_ele, index_matrix
+
+	def GetTestBatch(self,ncases=1200, num_mol = 1200/6):
+		start_time = time.time()
+		if (num_mol> self.NTest):
+				raise Exception("Test Data is less than the batchsize... :( ")
+		reset = False
+		if ( self.test_ScratchPointer+num_mol > self.NTest):
+				reset = True
+		for ele in self.eles:
+				if (self.test_Ele_ScratchPointer[ele] >= self.num_test_atoms[ele]):
+						reset = True
+		if reset==True:
+				self.test_ScratchPointer = 0
+				for ele in self.eles:
+						self.test_Ele_ScratchPointer[ele] = 0
+
+		inputs = np.zeros((ncases, self.dig.eshape[1]))
+		outputs = self.scratch_test_outputs[self.test_ScratchPointer:self.test_ScratchPointer+num_mol]
+		number_atom_per_ele = dict()
+		input_index=0
+		for ele in self.eles:
+				tmp = 0
+				for i in range (self.test_ScratchPointer, self.test_ScratchPointer + num_mol):
+						inputs[input_index:input_index+self.test_mol_len[ele][i]]=self.scratch_test_inputs[ele][self.test_Ele_ScratchPointer[ele]:self.test_Ele_ScratchPointer[ele]+self.test_mol_len[ele][i]]
+						self.test_Ele_ScratchPointer[ele] += self.test_mol_len[ele][i]
+						tmp += self.test_mol_len[ele][i]
+						input_index += self.test_mol_len[ele][i]
+				number_atom_per_ele[ele]=tmp
+		# make the index matrix
+		index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol, Train=False) # one needs to know the number of molcule that contained in the ncase atom
+		self.test_ScratchPointer += num_mol
+		return inputs, outputs, number_atom_per_ele, index_matrix
 
 	def Sort_BPinput_By_Ele(self, inputs, atom_index):
 		BPinput = dict()
@@ -396,16 +501,6 @@ class TensorMolData_BP(TensorMolData):
 		#print "index_matrix", index_matrix
 		return index_matrix
 
-	def Randomize(self, ti, to):
-		random.seed(0)
-		idx = np.random.permutation(ti.shape[0])
-		ti = ti[idx]
-		to = to[idx]
-		atom_index =dict()
-		for ele in self.eles:
-			atom_index[ele] = self.atom_index[ele][idx]
-		return ti, to, atom_index
-
 	def KRR(self):
 		from sklearn.kernel_ridge import KernelRidge
 		ti, to, atom_index = self.LoadData(True)
@@ -425,140 +520,9 @@ class TensorMolData_BP(TensorMolData):
 		print "KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:])
 		return
 
-	def LoadData(self, random=False):
-		insname = self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
-		outsname = self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
-		inf = open(insname,"rb")
-		ouf = open(outsname,"rb")
-		ti = np.load(inf)
-		to = np.load(ouf)
-		inf.close()
-		ouf.close()
-		if (ti.shape[0] != to.shape[0]):
-				raise Exception("Bad Training Data.")
-		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
-		to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
-		if (random):
-				ti, to, atom_index = self.Randomize(ti, to)
-		else:
-			atom_index = self.atom_index
-		print ti.shape, to.shape, atom_index[1].shape, atom_index[8].shape
-		self.NTrain = to.shape[0]
-		return ti, to, atom_index
-
-	def LoadDataToScratch(self, random=True):
-		ti, to, atom_index = self.LoadData(random)
-		self.NTest = int(self.TestRatio * ti.shape[0])
-		self.NTrain = int(ti.shape[0]-self.NTest)
-		print "NTrain in TensorMolData:", self.NTrain
-		self.scratch_outputs = to[:ti.shape[0]-self.NTest] 
-		tmp_inputs = ti[:ti.shape[0]-self.NTest]
-		train_atom_index=dict()
-		self.train_mol_len = dict()
-		for ele in self.eles:
-			train_atom_index[ele]=atom_index[ele][:ti.shape[0]-self.NTest]
-			self.train_mol_len[ele]=[]
-			for i in range (0, train_atom_index[ele].shape[0]):
-				self.train_mol_len[ele].append(len(train_atom_index[ele][i]))
-		self.scratch_inputs = self.Sort_BPinput_By_Ele(tmp_inputs, train_atom_index)
-		self.num_train_atoms = dict()
-		for ele in self.eles:
-			self.num_train_atoms[ele] = sum(self.train_mol_len[ele])
-			self.scratch_test_outputs = to[ti.shape[0]-self.NTest:]
-		tmp_test_inputs = ti[ti.shape[0]-self.NTest:]
-		test_atom_index=dict()
-		self.test_mol_len = dict()
-		for ele in self.eles:
-			test_atom_index[ele]=atom_index[ele][ti.shape[0]-self.NTest:]
-			self.test_mol_len[ele]=[]
-			for i in range (0, test_atom_index[ele].shape[0]):
-				self.test_mol_len[ele].append(len(test_atom_index[ele][i]))
-		self.scratch_test_inputs = self.Sort_BPinput_By_Ele(tmp_test_inputs, test_atom_index)
-		self.num_test_atoms = dict()
-			for ele in self.eles:
-					self.num_test_atoms[ele] = sum(self.test_mol_len[ele])
-		self.ScratchState = self.order
-		self.ScratchPointer=0
-		self.Ele_ScratchPointer=dict()
-		self.test_ScratchPointer=0
-		self.test_Ele_ScratchPointer=dict()
-		for ele in self.eles:
-			self.Ele_ScratchPointer[ele]=0
-			self.test_Ele_ScratchPointer[ele] = 0
-		#print self.test_mol_len, self.train_mol_len
-		return
-
-        def GetTrainBatch(self,ncases=1200, num_mol = 1200/6):
-		start_time = time.time()
-		if (self.ScratchState != self.order):
-				self.LoadDataToScratch()
-		if (num_mol> self.NTrain):
-				raise Exception("Training Data is less than the batchsize... :( ")
-		reset = False
-		if ( self.ScratchPointer+num_mol > self.NTrain):
-			reset = True
-		for ele in self.eles:
-			if (self.Ele_ScratchPointer[ele] >= self.num_train_atoms[ele]):
-				reset = True
-		if reset==True:
-			self.ScratchPointer = 0
-			for ele in self.eles:
-				self.Ele_ScratchPointer[ele] = 0
-		inputs = np.zeros((ncases, self.dig.eshape[1]))
-		outputs = self.scratch_outputs[self.ScratchPointer:self.ScratchPointer+num_mol]
-		number_atom_per_ele = dict()
-		input_index=0
-		for ele in self.eles:
-			tmp = 0
-			for i in range (self.ScratchPointer, self.ScratchPointer + num_mol):
-				inputs[input_index:input_index+self.train_mol_len[ele][i]]=self.scratch_inputs[ele][self.Ele_ScratchPointer[ele]:self.Ele_ScratchPointer[ele]+self.train_mol_len[ele][i]]
-				self.Ele_ScratchPointer[ele] += self.train_mol_len[ele][i]
-				tmp += self.train_mol_len[ele][i]
-				input_index += self.train_mol_len[ele][i]
-			number_atom_per_ele[ele]=tmp
-		# make the index matrix
-		index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol) # one needs to know the number of molcule that contained in the ncase atom
-		self.ScratchPointer += num_mol
-		return inputs, outputs, number_atom_per_ele, index_matrix
-
-	def GetTestBatch(self,ncases=1200, num_mol = 1200/6):
-		start_time = time.time()
-		if (num_mol> self.NTest):
-				raise Exception("Test Data is less than the batchsize... :( ")
-
-		reset = False
-		if ( self.test_ScratchPointer+num_mol > self.NTest):
-				reset = True
-		for ele in self.eles:
-				if (self.test_Ele_ScratchPointer[ele] >= self.num_test_atoms[ele]):
-						reset = True
-		if reset==True:
-				self.test_ScratchPointer = 0
-				for ele in self.eles:
-						self.test_Ele_ScratchPointer[ele] = 0
-
-		inputs = np.zeros((ncases, self.dig.eshape[1]))
-		outputs = self.scratch_test_outputs[self.test_ScratchPointer:self.test_ScratchPointer+num_mol]
-		number_atom_per_ele = dict()
-		input_index=0
-		for ele in self.eles:
-				tmp = 0
-				for i in range (self.test_ScratchPointer, self.test_ScratchPointer + num_mol):
-						inputs[input_index:input_index+self.test_mol_len[ele][i]]=self.scratch_test_inputs[ele][self.test_Ele_ScratchPointer[ele]:self.test_Ele_ScratchPointer[ele]+self.test_mol_len[ele][i]]
-						self.test_Ele_ScratchPointer[ele] += self.test_mol_len[ele][i]
-						tmp += self.test_mol_len[ele][i]
-						input_index += self.test_mol_len[ele][i]
-				number_atom_per_ele[ele]=tmp
-		# make the index matrix
-		index_matrix = self.Make_Index_Matrix(number_atom_per_ele, num_mol, Train=False) # one needs to know the number of molcule that contained in the ncase atom
-		self.test_ScratchPointer += num_mol
-		return inputs, outputs, number_atom_per_ele, index_matrix
-
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
 		print "self.ScratchPointer",self.ScratchPointer
 		print "self.test_ScratchPointer",self.test_ScratchPointer
-		if (self.scratch_outputs != None):
-		print "number of training molecules:",self.NTrain, " number of testing molecules:", self.NTest 
 

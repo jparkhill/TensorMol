@@ -98,6 +98,9 @@ print("--------------------------")
 # -- end Environment set up.
 #
 
+def complement(a,b):
+	return [i for i in a if b.count(i)==0]
+
 def scitodeci(sci):
 	tmp=re.search(r'(\d+\.?\d+)\*\^(-?\d+)',sci)
 	return float(tmp.group(1))*pow(10,float(tmp.group(2)))
