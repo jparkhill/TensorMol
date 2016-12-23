@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <omp.h>
 #ifdef __clang__
 #if __clang_major__ >= 7
 #include <array>
@@ -622,11 +623,13 @@ static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 	double *dmat1_data, *dmat2_data;
 	dmat1_data = (double*) ((PyArrayObject*)dmat1)->data;
 	dmat2_data = (double*) ((PyArrayObject*)dmat2)->data;
+	#pragma omp parallel for 
 	for (int i=0; i < dim1; ++i)
 		for (int j=0; j < dim2; ++j)
 		{
-			norm += pow((dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]),2.0);
+			norm += (dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j])*(dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]);
 		}
+	
 	return PyFloat_FromDouble(sqrt(norm));
 }
 
