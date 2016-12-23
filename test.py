@@ -2,23 +2,51 @@ from Util import *
 from Sets import *
 from TensorData import *
 from TFManage import *
+from TFMolManage import *
 from Opt import *
 
 # John's tests
 if (1):
-	# Whole sequence just for morphine to debug.
-	if (1): # align two structures for maximum similarity.
+# ------------------------------------------
+# General Behler Parinello
+# ------------------------------------------
+	if (1):
+		a=MSet("h2o")
+		a.ReadXYZ("h2o")
+		b=a.DistortAlongNormals()
+		b.Statistics()
+		b.Save()
+	# To generate training data
+	if (1):
+		# 1 - Get molecules into memory
+		a=MSet("h2o_NEQ")
+		a.Load()
+		TreatedAtoms = a.AtomTypes()
+		print "TreatedAtoms ", TreatedAtoms
+		d = MolDigester(TreatedAtoms, name_="Coulomb_BP", OType_="GoEnergy")
+		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain("h2o_NEQ")
+	if (1):
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"h2o_NEQ_Coulomb_BP")
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+		manager.Train(maxstep=20000)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+
+
+# ------------------------------------------
+# Molecule Alignment.
+# ------------------------------------------
+	if (0): # align two structures for maximum similarity.
 		crds = MakeUniform([0.,0.,0.],1.5,5)
 		a = Mol(np.array([1 for i in range(len(crds))]),crds)
 		b = copy.deepcopy(a)
 		b.Distort()
-		b.coords = b.coords[np.random.permutation(len(crds))]
+		b.coords = b.coords[np.random.permutation(len(crds))] # Permute the indices to make it hard.
 		b.AlignAtoms(a)
-		for i in range(10): # Check the interpolation.
-			m=Mol(a.atoms,a.coords*((i-9.)/9.)+b.coords*((i)/9.))
-			m.WriteXYZfile("./datasets/", "Interp")
-		exit(0)
 	
+# ------------------------------------------
+# A Network trained on Go-Force
+# ------------------------------------------
+
 	if (0):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")

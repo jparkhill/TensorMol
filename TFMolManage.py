@@ -11,7 +11,7 @@ import gc
 class TFMolManage(TFManage):
 	def __init__(self, Name_="", TData_=None, Train_=False, NetType_="fc_sqdiff", RandomTData_=True):  #Test_TData_ is some other randon independent test data
 		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_)
-		self.name = "Mol_"self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
+		self.name = "Mol_"+self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		print "--- TF will be fed by ---",self.TData.name
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
@@ -30,7 +30,7 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances = MolInstance_fc_sqdiff(self.TData, None, self.Test_TData)
 		elif (self.NetType == "fc_sqdiff_BP"):
-			self.Instances = MolInstance_fc_sqdiff_BP(self.TData, NAtom_in_mol, None, self.Test_TData)
+			self.Instances = MolInstance_fc_sqdiff_BP(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
 		self.Instances.train(maxstep) # Just for the sake of debugging.

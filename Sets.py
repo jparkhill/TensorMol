@@ -150,9 +150,12 @@ class MSet:
 
 	def Statistics(self):
 		""" Return some energy information about the samples we have... """
-		sampfrac = 0.01;
+		print "Set Statistics:"
+		sampfrac = 0.1;
 		np.random.seed(int(time.time()))
 		ord=np.random.permutation(int(len(self.mols)*sampfrac))
+		if len(ord)==0:
+			return
 		ens = np.zeros(len(ord))
 		rmsd = np.zeros(len(ord))
 		n=0

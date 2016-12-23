@@ -19,7 +19,7 @@ class TensorMolData(TensorData):
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):  # type can be mol or frag
-		TensorData.__init__(MSet_,Dig_,Name_)
+		TensorData.__init__(self, MSet_,Dig_,Name_)
 		self.order = order_
 		self.type = type_
 		self.num_indis = num_indis_
@@ -238,7 +238,7 @@ class TensorMolData_BP(TensorMolData):
 	"""
 			A tensordata for molecules and Behler-Parinello.
 	"""
-	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
 		# a Case is an input to the NN.
 		self.CaseMetadata=None # case X molecule index X element type (Strictly ascending)
 		self.LastTrainMol=0
@@ -270,12 +270,12 @@ class TensorMolData_BP(TensorMolData):
 			raise Exception("No BP frags now")
 		nmols  = len(self.set.mols)
 		natoms = self.set.NAtoms()
-		cases = np.zeros((natoms, self.dig.eshape))
-		labels = np.zeros((nmols, self.dig.lshape))
+		cases = np.zeros(tuple([natoms]+list(self.dig.eshape)))
+		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
 		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
-		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
-		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
-		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
+		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
+		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_out.npy"
+		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
 		casep=0
 		for mi in range(len(self.set.mols)):
 			print "casep:", casep
@@ -284,7 +284,7 @@ class TensorMolData_BP(TensorMolData):
 			labels[mi] = outs
 			for j in range(casep,casep+outs.shape[0]):
 				self.CaseMetadata[j,0] = mi
-				self.CaseMetadata[j,1] = self.set.mols[mi].Atoms[j-casep]
+				self.CaseMetadata[j,1] = self.set.mols[mi].atoms[j-casep]
 				self.CaseMetadata[j,2] = casep
 				self.CaseMetadata[j,3] = casep+outs.shape[0]
 			casep += outs.shape[0]
@@ -302,9 +302,9 @@ class TensorMolData_BP(TensorMolData):
 		return
 
 	def LoadData(self, random=False):
-		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
-		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
-		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_meta.npy" # Used aggregate
+		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
+		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_out.npy"
+		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate
 		inf = open(insname,"rb")
 		ouf = open(outsname,"rb")
 		mef = open(metasname,"rb")
@@ -368,7 +368,7 @@ class TensorMolData_BP(TensorMolData):
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
 		return
 
-	def
+#	def
 
 	def GetTrainBatch(self,ncases=1200):
 		""" Returns inputs (sorted by element), outputs, and indexing matrices"""

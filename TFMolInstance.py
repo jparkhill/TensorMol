@@ -20,7 +20,7 @@ import sys
 
 class MolInstance(Instance):
 	def __init__(self, TData_,  Name_=None):
-		Instance.__init__(TData_, 0, Name)
+		Instance.__init__(self, TData_, 0, Name_)
 		self.learning_rate = 0.0001
 		#self.learning_rate = 0.0001 # for adam
 		#self.learning_rate = 0.00001 # for adadelta 
@@ -412,7 +412,6 @@ class MolInstance_fc_sqdiff(MolInstance):
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
 
-
 	def train_step(self,step):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
@@ -421,12 +420,11 @@ class MolInstance_fc_sqdiff(MolInstance):
 			batch_data=self.TData.GetTrainBatch( self.batch_size) #advances the case pointer in TData...
 			batch_data=self.PrepareData(batch_data)
 			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
-				_, total_loss_value, loss_value  = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-				train_loss = train_loss + loss_value
+			_, total_loss_value, loss_value  = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
+			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			self.print_training(step, train_loss, Ncase_train, duration)
 		return
-
 
 class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 	def __init__(self, TData_, Name_=None):

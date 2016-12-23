@@ -290,15 +290,14 @@ class Mol:
 			m.WriteXYZfile("./results/", "Interp"+str(n))
 
 	def AlignAtoms(self, m):
-		""" So looking at some interpolations I figured out why this wasn't working The problem was the outside can get permuted and then it can't be fixed
-			by pairwise permutations because it takes all-atom moves to drag the system through itself.
+		""" So looking at some interpolations I figured out why this wasn't working The problem was the outside can get permuted and then it can't be fixed by pairwise permutations because it takes all-atom moves to drag the system through itself Ie: local minima
 			
 			The solution is to force the crystal to have roughly the right orientation by minimizing position differences in a greedy way, then fixing the local structure once they are all roughly in the right place.
 			
 			This now MOVES BOTH THE MOLECULES assignments, but works.
 			"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
-		self.WriteInterpolation(m,-1)
+		#self.WriteInterpolation(m,-1)
 		self.SortAtoms()
 		m.SortAtoms()
 		
@@ -324,7 +323,10 @@ class Mol:
 			self.coords[b0s] = self.coords[assignedas]
 			m.coords[b0s] = m.coords[assignedbs]
 
-		self.WriteInterpolation(m,0)
+		#self.WriteInterpolation(m,0)
+		# If you look at this you'll see that the greedy alg. does great.
+		# but it's not perfect the local swaps clean up
+		
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
 		diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
@@ -339,26 +341,17 @@ class Mol:
 						continue
 
 					ir = tmp_dm[i].copy()
-					irti = np.sqrt(ir*ir) > 15.0
 					ir -= self.DistMatrix[i]
-					#ir[irti] *= 0.0
-
 					jr = tmp_dm[j].copy()
-					jrti = np.sqrt(jr*jr) > 15.0
 					jr -= self.DistMatrix[j]
-					#jr[jrti] *= 0.0
 
 					irp = tmp_dm[j].copy()
 					irp[i], irp[j] = irp[j], irp[i]
 					jrp = tmp_dm[i].copy()
 					jrp[i], jrp[j] = jrp[j], jrp[i]
 
-					irpti = np.sqrt(irp*irp) > 15.0
-					jrpti = np.sqrt(jrp*jrp) > 15.0
 					irp -= self.DistMatrix[i]
 					jrp -= self.DistMatrix[j]
-					#irp[irpti] *= 0.0
-					#jrp[jrpti] *= 0.0
 
 					if (np.linalg.norm(irp)+np.linalg.norm(jrp) < np.linalg.norm(ir)+np.linalg.norm(jr)):
 						k = 0
@@ -370,12 +363,12 @@ class Mol:
 						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
 						print np.linalg.norm(self.DistMatrix - tmp_dm)
 						steps = steps+1
-						if (steps%400==0):
-							self.WriteInterpolation(Mol(self.atoms,tmp_coords),steps)
+						#if (steps%400==0):
+						#	self.WriteInterpolation(Mol(self.atoms,tmp_coords),steps)
 				print i
 			k+=1
-		best_coords = tmp_coords.copy()
-		print "best",best_coords
+		m.coords=tmp_coords.copy()
+		print "best",tmp_coords
 		print "self",self.coords
 		self.WriteInterpolation(Mol(self.atoms,tmp_coords),9999)
 		return

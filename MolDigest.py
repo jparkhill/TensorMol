@@ -163,10 +163,16 @@ class MolDigester:
 			return SYM, out
 		elif (self.name == "Coulomb_BP"):
 			CM_BP, deri_CM_BP =  (self.EmbF(mol_))(mol_)
-			out = mol_.atomization  # debug
-			if self.lshape ==None or self.eshape==None:
-				self.lshape = 1
-				self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]
+			if (self.OType == "GoEnergy"):
+				if (self.lshape ==None or self.eshape==None):
+					self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]
+					self.lshape = [1]
+				out = np.array([mol_.GoEnergy(mol_.coords)])
+			else:
+				if (self.lshape ==None or self.eshape==None):
+						self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]
+						self.lshape = [1]
+				out = mol_.atomization  # debug
 			return CM_BP, out
 		elif (self.name == "GauInv"):
 			GauInv, deri_GauInv =  (self.EmbF(mol_))(mol_)
