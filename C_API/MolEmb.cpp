@@ -621,15 +621,13 @@ static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 	const int dim1 = (dmat1->dimensions)[0];
 	const int dim2 = (dmat1->dimensions)[1];
 	double *dmat1_data, *dmat2_data;
+	double normmat[dim1*dim2];
 	dmat1_data = (double*) ((PyArrayObject*)dmat1)->data;
 	dmat2_data = (double*) ((PyArrayObject*)dmat2)->data;
-	#pragma omp parallel for 
+	#pragma omp parallel for reduction(+:norm)
 	for (int i=0; i < dim1; ++i)
 		for (int j=0; j < dim2; ++j)
-		{
 			norm += (dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j])*(dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]);
-		}
-	
 	return PyFloat_FromDouble(sqrt(norm));
 }
 
