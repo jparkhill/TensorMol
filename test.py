@@ -279,6 +279,8 @@ if (1):
 
 	if (0):
 		a=MSet('cspbbr3_mixed')
+		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
+		#a.Save()
 		a.Load()
 		mol1 = a.mols[0]
 		mol2 = a.mols[1]
@@ -289,13 +291,25 @@ if (1):
 		#mol2.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new')
 
 	if (0):
+		a=MSet('cspbbr3_mixed')
+		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
+		#a.Save()
+		a.Load()
+		mol1 = a.mols[0]
+		mol2 = a.mols[1]
+		mol1.BuildDistanceMatrix()
+		mol2.BuildDistanceMatrix()
+		print np.linalg.norm(mol1.DistMatrix - mol2.DistMatrix)
+		print mol1.NormMatrices(mol1.DistMatrix, mol2.DistMatrix)
+
+	if (0):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		mol = a.mols[1]
 		mol.BuildDistanceMatrix()
 		print mol.LJForce()
 
-	if (1):
+	if (0):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		test_mol = a.mols[0]
@@ -311,3 +325,23 @@ if (1):
 		#optimizer = Optimizer(None)
 		#optimizer.OptGoForce(test_mol)
 		#optimizer.OptLJForce(test_mol)
+
+	if (1):
+		a=MSet('cspbbr3_mixed')
+		a.Load()
+		mol1 = a.mols[0]
+		mol2 = a.mols[1]
+		mol1.BuildDistanceMatrix()
+		mol2.BuildDistanceMatrix()
+		#t1 = time.time()
+		#for i in range(0,10000):
+		#	a = np.linalg.norm(mol1.DistMatrix - mol2.DistMatrix)
+		#t2 = time.time()
+		#print a
+		#print t2-t1
+		t3 = time.time()
+		for i in range(0,10000):
+			b = mol1.NormMatrices(mol1.DistMatrix, mol2.DistMatrix)
+		t4 = time.time()
+		print t4-t3
+		print b
