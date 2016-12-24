@@ -387,10 +387,6 @@ class Mol:
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		self.LJEFromDist()
 
-	def NormMatrices(self, mat1, mat2):
-		assert mat1.shape == mat2.shape, "Shape of matrices must match to calculate the norm"
-		return MolEmb.Norm_Matrices(mat1, mat2)
-
 	def LJEFromDist(self):
 		" Assigns lennard jones depth matrix "
 		self.LJE = np.zeros((len(self.coords),len(self.coords)))

@@ -175,6 +175,10 @@ def Binominal_Combination(indis=[0,1,2], group=3):
 				new_index.append(list(sub_list)+list(sub_index))
 		return new_index
 
+def NormMatrices(mat1, mat2):
+	assert mat1.shape == mat2.shape, "Shape of matrices must match to calculate the norm"
+	return MolEmb.Norm_Matrices(mat1, mat2)
+
 def String_To_Atoms(s=""):
 	l = list(s)
 	atom_l = []
