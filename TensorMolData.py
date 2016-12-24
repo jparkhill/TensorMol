@@ -302,9 +302,9 @@ class TensorMolData_BP(TensorMolData):
 		return
 
 	def LoadData(self, random=False):
-		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
-		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_out.npy"
-		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate
+		insname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_in.npy"
+		outsname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_out.npy"
+		metasname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_meta.npy" # Used aggregate
 		inf = open(insname,"rb")
 		ouf = open(outsname,"rb")
 		mef = open(metasname,"rb")
