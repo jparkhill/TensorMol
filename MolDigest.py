@@ -163,9 +163,11 @@ class MolDigester:
 			return SYM, out
 		elif (self.name == "Coulomb_BP"):
 			CM_BP, deri_CM_BP =  (self.EmbF(mol_))(mol_)
+			# at this point, only flat input is supported in BP.
+			CM_BP=CM_BP.flatten()
 			if (self.OType == "GoEnergy"):
 				if (self.lshape ==None or self.eshape==None):
-					self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]
+					self.eshape = CM_BP.shape
 					self.lshape = [1]
 				out = np.array([mol_.GoEnergy(mol_.coords)])
 			else:
