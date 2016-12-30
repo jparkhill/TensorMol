@@ -45,10 +45,10 @@ class Mol:
 
 	def NAtoms(self):
 		return self.atoms.shape[0]
-	
+
 	def AtomTypes(self):
 		return np.unique(self.atoms)
-	
+
 	def NEles(self):
 		return len(self.AtomTypes())
 
@@ -175,10 +175,6 @@ class Mol:
 				self.coords[i,2]=scitodeci(line[3])
 		return
 
-#
-# Deleting code which has been improved is a good thing
-# incases like this where the functionality was compatible, you should have just deleted the old routine.
-#
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):
 		f = open(fpath+"/"+fname+".xyz", mode)
 		natom = self.atoms.shape[0]
@@ -259,22 +255,22 @@ class Mol:
 		return
 
 	def SortAtoms(self):
-		""" First sorts by element, then sorts by distance to the center of the molecule 
+		""" First sorts by element, then sorts by distance to the center of the molecule
 			This improves alignment. """
 		order = np.argsort(self.atoms)
 		self.atoms = self.atoms[order]
 		self.coords = self.coords[order,:]
 		self.coords = self.coords - self.Center()
 		self.ElementBounds = [[0,0] for i in range(self.NEles())]
-		ele = self.atoms[0]
-		for e in range(self.NEles()):
+		#ele = self.atoms[0]
+		for e, ele in enumerate(self.AtomTypes()):
 			inblock=False
 			for i in range(0, self.NAtoms()):
 				if (not inblock and self.atoms[i]==ele):
 					self.ElementBounds[e][0] = i
 					inblock=True
 				elif (inblock and (self.atoms[i]!=ele or i==self.NAtoms()-1)):
-					self.ElementBounds[e][1] = i+1
+					self.ElementBounds[e][1] = i
 					inblock=False
 					break
 		for e in range(self.NEles()):
@@ -291,16 +287,15 @@ class Mol:
 
 	def AlignAtoms(self, m):
 		""" So looking at some interpolations I figured out why this wasn't working The problem was the outside can get permuted and then it can't be fixed by pairwise permutations because it takes all-atom moves to drag the system through itself Ie: local minima
-			
+
 			The solution is to force the crystal to have roughly the right orientation by minimizing position differences in a greedy way, then fixing the local structure once they are all roughly in the right place.
-			
+
 			This now MOVES BOTH THE MOLECULES assignments, but works.
 			"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
 		#self.WriteInterpolation(m,-1)
 		self.SortAtoms()
 		m.SortAtoms()
-		
 #		print "self coords before: ", self.coords
 #		print "m coords before: ", m.coords
 		# Greedy assignment
@@ -323,10 +318,10 @@ class Mol:
 			self.coords[b0s] = self.coords[assignedas]
 			m.coords[b0s] = m.coords[assignedbs]
 
-		#self.WriteInterpolation(m,0)
+		#self.WriteInterpolation(m,2)
 		# If you look at this you'll see that the greedy alg. does great.
 		# but it's not perfect the local swaps clean up
-		
+
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
 		diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)
@@ -359,7 +354,7 @@ class Mol:
 						perm[i] = j
 						perm[j] = i
 						tmp_coords=tmp_coords[perm]
-						print "Moved"
+						#print "Moved"
 						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
 						print np.linalg.norm(self.DistMatrix - tmp_dm)
 						steps = steps+1
