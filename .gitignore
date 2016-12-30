@@ -21,6 +21,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+doc/_build
 .Python
 env/
 build/
