@@ -12,7 +12,6 @@ class TFMolManage(TFManage):
 	def __init__(self, Name_="", TData_=None, Train_=False, NetType_="fc_sqdiff", RandomTData_=True):  #Test_TData_ is some other randon independent test data
 		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_)
 		self.name = "Mol_"+self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
-		print "--- TF will be fed by ---",self.TData.name
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=None # In order of the elements in TData

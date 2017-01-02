@@ -80,6 +80,7 @@ except:
 
 try:
 	import tensorflow as tf
+	tf.logging.set_verbosity(tf.logging.DEBUG)
 	HAS_TF = True
 	print("Tensorflow has been found")
 except:

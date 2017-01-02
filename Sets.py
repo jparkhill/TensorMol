@@ -33,8 +33,16 @@ class MSet:
 		print self.AtomTypes(), " Types "
 		return
 
-	def DistortAlongNormals(self, npts=8, random=True):
-		''' Create a distorted copy of a set'''
+	def DistortAlongNormals(self, npts=8, random=True, disp=.2):
+		''' 
+		Create a distorted copy of a set
+		Args: 
+			npts: the number of points to sample along the normal mode coordinate. 
+			random: whether to randomize the order of the new set.
+			disp: the maximum displacement of atoms along the mode
+		Returns: 
+			A set containing distorted versions of the original set.
+		'''
 		print "Making distorted clone of:", self.name
 		s = MSet(self.name+"_NEQ")
 		ord = range(len(self.mols))
@@ -42,7 +50,7 @@ class MSet:
 			np.random.seed(int(time.time()))
 			ord=np.random.permutation(len(self.mols))
 		for j in ord:
-			newcoords = self.mols[j].ScanNormalModes(npts)
+			newcoords = self.mols[j].ScanNormalModes(npts,disp)
 			for i in range(newcoords.shape[0]): # Loop modes
 				for k in range(newcoords.shape[1]): # loop points
 					s.mols.append(Mol(self.mols[j].atoms,newcoords[i,k,:,:]))
@@ -135,22 +143,23 @@ class MSet:
 	def CutSet(self, allowed_eles):
 		mols=[]
 		for mol in self.mols:
-				if set(list(mol.atoms)).issubset(allowed_eles):
-						mols.append(mol)
+			if set(list(mol.atoms)).issubset(allowed_eles):
+				mols.append(mol)
 		for i in allowed_eles:
-				self.name += "_"+str(i)
+			self.name += "_"+str(i)
 		self.mols=mols
 		return
 
-	def CombineSet(self, b, name_=None):
-		if name_ == None:
+	def AppendSet(self, b):
+		if (self.name == None):
 			self.name = self.name + b.name
-		self.mols.append(b.mols)
+		self.mols = self.mols+b.mols
 		return
 
 	def Statistics(self):
 		""" Return some energy information about the samples we have... """
-		print "Set Statistics:"
+		print "Set Statistics----"
+		print "Nmol: ", len(self.mols)
 		sampfrac = 0.1;
 		np.random.seed(int(time.time()))
 		ord=np.random.permutation(int(len(self.mols)*sampfrac))

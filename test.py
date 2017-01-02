@@ -13,7 +13,9 @@ if (1):
 	if (1):
 		a=MSet("h2o")
 		a.ReadXYZ("h2o")
-		b=a.DistortAlongNormals()
+		b=a.DistortAlongNormals(13,True,0.4)
+		c=a.DistortedClone(60)
+		b.AppendSet(c)
 		b.Statistics()
 		b.Save()
 	# To generate training data

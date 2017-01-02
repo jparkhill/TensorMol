@@ -74,7 +74,7 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 10
+		test_freq = 40
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -281,7 +281,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 #		self.inshape = self.TData.scratch_inputs.shape[1] 
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
@@ -439,6 +439,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.TData.LoadDataToScratch()
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
+		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
 		self.eles = self.TData.eles
 		self.n_eles = len(self.eles)
 		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
@@ -446,86 +447,16 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.AtomBranchNames=[] # a list of the layers named in each atom branch
 		
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 10
+		self.batch_size = 50
 		self.batch_size_output = 0
-		
 		self.hidden1 = 100
 		self.hidden2 = 100
-		self.hidden3 = 500
+		self.hidden3 = 100
 
 		self.NetType = "fc_sqdiff_BP"
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
-
-
-	def inference(self, inp_pl, bnds_pl, mats_pl):
-		""" 
-		Builds a Behler-Parinello graph
-		
-		Args:
-			inp_pl: a (batch_size X flattened input shape) matrix of input cases.
-			bnds_pl: a (num_ele X 2) int32 tensor of bounds of the input ** which must be passed in element order. **
-			mats_pl: a (num_ele X Bnds_size[e] X batch_size_output) tensor which linearly combines the elements.
-		Returns: 
-			The BP graph output
-		"""
-		# convert the index matrix from bool to float
-		branches=[]
-		hidden1_units=self.hidden1
-		hidden2_units=self.hidden2
-		output = tf.zeros([self.batch_size_output])
-		for e in range(len(self.eles)):
-			branches.append([])
-			with tf.name_scope(str(self.eles[e])+'_hidden1'):
-				#inputs = tf.slice(inp_pl,[tf.squeeze(tf.slice(bnds_pl,[e,0],[1,1])),0],[tf.squeeze(tf.slice(bnds_pl,[e,1],[1,1])),self.inshape])
-				inputs = inp_pl
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden1_units]),
-				name='biases')
-				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
-			with tf.name_scope(str(self.eles[e])+'_hidden2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden2_units]),
-				name='biases')
-				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
-			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.batch_size], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([self.batch_size]), name='biases')
-				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
-				tmp = tf.matmul(branches[-1][-1],tf.reshape(tf.slice(mats_pl,[e,0,0],[1,self.batch_size,self.batch_size_output]),[self.batch_size,self.batch_size_output]))
-				tmp2 = tf.reduce_sum(tmp,0)
-				output = tf.add(output,tmp2)
-		return output
-	
-	def fill_feed_dict(self, batch_data, inp_pl, bounds_pl, mats_pl, labels_pl):
-		"""
-		Fill the tensorflow feed dictionary.
-
-		Args:
-			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
-			and placeholders to be assigned.
-			
-		Returns: 
-			Filled feed dictionary.
-		"""
-		images_feed = batch_data[0]
-		labels_feed = batch_data[3]
-		# Don't eat shit.
-		if (not np.all(np.isfinite(images_feed),axis=(0,1))):
-				print("I was fed shit")
-				raise Exception("DontEatShit")
-		if (not np.all(np.isfinite(labels_feed))):
-				print("I was fed shit")
-				raise Exception("DontEatShit")
-		feed_dict = {
-		
-		inp_pl:batch_data[0],
-		bounds_pl:batch_data[1],
-		mats_pl:batch_data[2],
-		labels_pl:batch_data[3]
-		}
-		return feed_dict
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def train_prepare(self,  continue_training =False):
 		"""
@@ -537,9 +468,9 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.TData.LoadDataToScratch()
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
-
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
-		self.batch_size_output = int(1.2*self.batch_size/self.MeanNumAtoms)
+		self.batch_size_output = int(3.*self.batch_size/self.MeanNumAtoms)
+		print("Assigned batch input size: ",self.batch_size)
 		print("Assigned batch output size: ",self.batch_size_output)
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 				self.emb_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size,self.inshape]))
@@ -568,6 +499,80 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 				self.sess.run(init)
 				return
 
+	def inference(self, inp_pl, bnds_pl, mats_pl):
+		""" 
+		Builds a Behler-Parinello graph
+		
+		Args:
+			inp_pl: a (batch_size X flattened input shape) matrix of input cases.
+			bnds_pl: a (num_ele X 2) int32 tensor of bounds of the input ** which must be passed in element order. **
+			mats_pl: a (num_ele X Bnds_size[e] X batch_size_output) tensor which linearly combines the elements.
+		Returns: 
+			The BP graph output
+		"""
+		# convert the index matrix from bool to float
+		branches=[]
+		hidden1_units=self.hidden1
+		hidden2_units=self.hidden2
+		output = tf.zeros([self.batch_size_output])
+		nrm1=1.0/math.sqrt(float(self.inshape))
+		nrm2=1.0/math.sqrt(float(hidden1_units))
+		nrm3=1.0/math.sqrt(float(hidden2_units))
+		print("Norms:", nrm1,nrm2,nrm3)
+		for e in range(len(self.eles)):
+			branches.append([])
+			with tf.name_scope(str(self.eles[e])+'_hidden1'):
+				#inputs = tf.slice(inp_pl,[tf.squeeze(tf.slice(bnds_pl,[e,0],[1,1])),0],[tf.squeeze(tf.slice(bnds_pl,[e,1],[1,1])),self.inshape])
+				inputs = inp_pl
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=None)
+				biases = tf.Variable(tf.zeros([hidden1_units]),
+				name='biases')
+				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
+				tf.Print(branches[-1], [branches[-1]], message="This is a: ")
+			with tf.name_scope(str(self.eles[e])+'_hidden2'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=None)
+				biases = tf.Variable(tf.zeros([hidden2_units]),
+				name='biases')
+				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
+			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.batch_size], var_stddev=nrm3, var_wd=None)
+				biases = tf.Variable(tf.zeros([self.batch_size]), name='biases')
+				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
+				tmp = tf.matmul(branches[-1][-1],tf.reshape(tf.slice(mats_pl,[e,0,0],[1,self.batch_size,self.batch_size_output]),[self.batch_size,self.batch_size_output]))
+				tmp2 = tf.reduce_sum(tmp,0)
+				output = tf.add(output,tmp2)
+				tf.verify_tensor_all_finite(output,"Nan in output!!!")
+		return output
+	
+	def fill_feed_dict(self, batch_data, inp_pl, bounds_pl, mats_pl, labels_pl):
+		"""
+		Fill the tensorflow feed dictionary.
+
+		Args:
+			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
+			and placeholders to be assigned.
+			
+		Returns: 
+			Filled feed dictionary.
+		"""
+		# Don't eat shit.
+		if (not np.all(np.isfinite(batch_data[0]),axis=(0,1))):
+			print("I was fed shit1")
+			raise Exception("DontEatShit")
+		if (not np.all(np.isfinite(batch_data[2]),axis=(0,1,2))):
+			print("I was fed shit3")
+			raise Exception("DontEatShit")
+		if (not np.all(np.isfinite(batch_data[3]),axis=(0,1))):
+			print("I was fed shit4")
+			raise Exception("DontEatShit")
+		feed_dict = {
+			inp_pl:batch_data[0],
+			bounds_pl:batch_data[1],
+			mats_pl:batch_data[2],
+			labels_pl:batch_data[3]
+		}
+		return feed_dict
+
 	def train_step(self, step):
 		"""
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
@@ -582,6 +587,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
 			_, total_loss_value, loss_value, mol_output = self.sess.run([self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data, self.emb_pl, self.bnds_pl, self.mats_pl,self.label_pl))
+			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
 		#print ("ministep:", ministep)
@@ -590,22 +596,14 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.print_training(step, train_loss, Ncase_train, duration)
 		return
 
-
 	def test(self, step):
-		print("Please implement a test... ")
-		return
-		Ncase_test = self.TData.NTest
 		test_loss =  0.0
-		test_correct = 0.
 		test_start_time = time.time()
-		for  ministep in range (0, int(Ncase_test/self.batch_size)):
-				raw_data=self.TData.GetTestBatch( self.input_case, self.batch_size)
-		batch_data, atom_length, index_matrix=self.PrepareData(raw_data)
-		feed_dict = self.fill_feed_dict(batch_data, atom_length, index_matrix, self.embeds_placeholder, self.labels_placeholder, self.index_matrix, self.H_length, self.C_length, self.O_length)
-		total_loss_value, loss_value, output_value  = self.sess.run([self.total_loss,  self.loss, self.output],  feed_dict=feed_dict)
-		test_loss = test_loss + loss_value
+		batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
+		feed_dict=self.fill_feed_dict(batch_data, self.emb_pl, self.bnds_pl, self.mats_pl,self.label_pl)
+		preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
 		duration = time.time() - test_start_time
-		print("testing...")
-		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
+		self.print_training(step, test_loss, self.TData.NTest , duration)
+		self.TData.dig.EvaluateTestOutputs(batch_data[3],preds)
 		return test_loss, feed_dict
 
