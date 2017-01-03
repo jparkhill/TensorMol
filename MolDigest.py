@@ -165,14 +165,10 @@ class MolDigester:
 			CM_BP, deri_CM_BP =  (self.EmbF(mol_))(mol_)
 			if (self.OType == "GoEnergy"):
 				if (self.lshape ==None or self.eshape==None):
-					self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]
+					self.eshape = [CM_BP.shape[1]]
 					self.lshape = [1]
 				out = np.array([mol_.GoEnergy(mol_.coords)])
-			else:
-				if (self.lshape ==None or self.eshape==None):
-						self.eshape = [CM_BP.shape[0], CM_BP.shape[1]]
-						self.lshape = [1]
-				out = mol_.atomization  # debug
+			# at this point, only flat input is supported in BP.
 			return CM_BP, out
 		elif (self.name == "GauInv"):
 			GauInv, deri_GauInv =  (self.EmbF(mol_))(mol_)
@@ -184,6 +180,18 @@ class MolDigester:
 		else:
 			raise Exception("Unknown Embedding Function")
 		return
+
+	def EvaluateTestOutputs(self, desired, predicted):
+			print "Evaluating, ", len(desired), " predictions... "
+			if (self.OType=="GoEnergy"):
+				print "NCases: ", len(desired)
+				print "Mean Energy ", np.average(desired)
+				print "Mean Predicted Energy ", np.average(predicted)
+				print "MAE ", np.average(np.abs(desired-predicted))
+				print "std ", np.std(desired-predicted)
+			else:
+				raise Exception("Unknown Digester Output Type.")
+			return
 
 	def Print(self):
 		print "Digest name: ", self.name
