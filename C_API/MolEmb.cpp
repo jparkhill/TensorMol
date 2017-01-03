@@ -676,6 +676,64 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
 				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
 				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+				//std::cout<<i<<"  "<<j<<"  "<<'dij'<<"  "<<dij<<"  "<<(-2*(dij-d_data[i*nat+j])*u[0])<<"  "<<(-2*(dij-d_data[i*nat+j])*u[1])<<"  "<<(-2*(dij-d_data[i*nat+j])*u[2])<<std::endl;
+				frc_data[0] += -2*(dij-d_data[i*nat+j])*u[0];
+				frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
+				frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
+			}
+	}
+	return hess;
+}
+
+static PyObject* Make_GoForceLocal(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz, *EqDistMat;
+	int at;
+	if (!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nat,3};
+	if (at>=0)
+		outdim[0] = 1;
+	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *frc_data,*xyz_data,*d_data;
+	xyz_data = (double*) ((PyArrayObject*)xyz)->data;
+	frc_data = (double*) ((PyArrayObject*)hess)->data;
+	d_data = (double*) ((PyArrayObject*)EqDistMat)->data;
+	double u[3]={0.0,0.0,0.0};
+	if (at<0)
+	{
+		for (int i=0; i < nat; ++i)
+		{
+			for (int j=0; j < nat; ++j)
+			{
+				if (i==j)
+					continue;
+				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+				if (dij > 15.0)
+					continue;
+				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+				frc_data[i*3+0] += -2*(dij-d_data[i*nat+j])*u[0];
+				frc_data[i*3+1] += -2*(dij-d_data[i*nat+j])*u[1];
+				frc_data[i*3+2] += -2*(dij-d_data[i*nat+j])*u[2];
+			}
+		}
+	}
+	else
+	{
+		int i=at;
+			for (int j=0; j < nat; ++j)
+			{
+				if (i==j)
+					continue;
+				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+				if (dij > 15.0)
+					continue;
+				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
 				frc_data[0] += -2*(dij-d_data[i*nat+j])*u[0];
 				frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
 				frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
@@ -1104,6 +1162,8 @@ static PyMethodDef EmbMethods[] =
 		"Make_Go method"},
 	{"Make_GoForce", Make_GoForce, METH_VARARGS,
 		"Make_GoForce method"},
+	{"Make_GoForceLocal", Make_GoForceLocal, METH_VARARGS,
+		"Make_GoForceLocal method"},
 	{"Make_GoHess", Make_GoHess, METH_VARARGS,
 		"Make_GoHess method"},
 	{"Make_LJForce", Make_LJForce, METH_VARARGS,

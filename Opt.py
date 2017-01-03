@@ -8,11 +8,11 @@ import random
 
 class Optimizer:
 	def __init__(self,tfm_):
-		self.thresh = 0.001
+		self.thresh = 1e-4
 		self.maxstep = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
-		self.max_opt_step = 1000
+		self.max_opt_step = 100000
 		self.step = self.maxstep
 		self.ngrid = 10 # Begin with 500 pts sampled 0.2A in each direction.
 		self.probtype = 0 # 0 = one atom probability, 1 = product of all probabilities for each sample.
@@ -75,7 +75,7 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			for i in range(m.NAtoms()):
-				veloc[i] = -1.0*m.GoForce(i)
+				veloc[i] = -0.1*m.GoForce(i)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
@@ -392,35 +392,32 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m1.atoms, m1.coords)
 		#print "Orig Coords", m1.coords
-		m3 = Mol(m1.atoms, m1.coords)
-		m1.center = np.sum(m1.coords, axis=0)/m1.NAtoms()
-		m2.center = np.sum(m2.coords, axis=0)/m2.NAtoms()
-		if (m1.center-m2.center).all() != 0:
-			m2.coords += m1.center - m2.center
-			m2.center = np.sum(m2.coords, axis=0)/m2.NAtoms()
-		center_dist = np.array(np.linalg.norm(m2.coords - m2.center, axis=1))
+		if (m1.Center()-m2.Center()).all() != 0:
+			m2.coords += m1.Center() - m2.Center()
+		center_dist = np.array(np.linalg.norm(m2.coords - m2.Center(), axis=1))
 		veloc=np.zeros(m1.coords.shape)
-		old_veloc=np.zeros(m1.coords.shape)
+		#old_veloc=np.zeros(m1.coords.shape)
 		m1.BuildDistanceMatrix()
+		m1eq = m1.DistMatrix
 		m2.BuildDistanceMatrix()
-		m1.GoK = 1.0e6
-		m2.GoK = 1.0e6
-		while step < self.max_opt_step:
+		while(err>self.thresh and step < self.max_opt_step):
 			for i in range(m1.NAtoms()):
-				#print 'm1.GoForce:', m1.GoForce(i)
-				#print 'm2.GoForce:', m2.GoForce(i)
-				#veloc[i] = -1.0*m1.GoForce(i)
-				veloc[i] = -1.0*(m1.GoForce(i)*(1-np.linalg.norm(m3.coords[i]-m1.center)/np.amax(center_dist)) + m2.GoForce(i)*(np.linalg.norm(m3.coords[i]-m1.center)/np.amax(center_dist)))
-			print 'Veloc max values:', np.amax(veloc[:,0]), np.amax(veloc[:,1]), np.amax(veloc[:,2])
-			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
-			# Remove translation.
-			c_veloc = c_veloc - np.average(c_veloc,axis=0)
-			prev_m = Mol(m3.atoms, m3.coords)
-			m3.coords = m3.coords + c_veloc
-			old_veloc = self.momentum_decay*c_veloc
-			#err = m2.rms(prev_m)
+				seq = (3*(1-2*np.linalg.norm(m2.coords[i]-m2.Center())/np.amax(center_dist)))
+				m1.DistMatrix = m2.DistMatrix
+				m2force = m1.GoForceLocal(i)
+				m1.DistMatrix = m1eq
+				#linear interpolation
+				#veloc[i] = -0.1*(m1.GoForceLocal(i)*(1-np.linalg.norm(m2.coords[i]-m2.Center())/np.amax(center_dist)) + m2force*(np.linalg.norm(m2.coords[i]-m2.Center())/np.amax(center_dist)))
+				#tanh interpolation
+				veloc[i] = -0.01*(m1.GoForceLocal(i)*(math.tanh(seq)+1)/2 + m2force*(math.tanh(-seq)+1)/2)
+				#print (math.tanh(seq)+1)/2, (math.tanh(-seq)+1)/2, (math.tanh(seq)+1)/2 + (math.tanh(-seq)+1)/2
+			c_veloc = veloc - np.average(veloc,axis=0)
+			prev_m = Mol(m1.atoms, m1.coords)
+			m1.coords = m1.coords + c_veloc
+			err = m1.rms(prev_m)
+			#err = np.sqrt(np.mean(np.square(c_veloc)))
 			mol_hist.append(prev_m)
-			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			prev_m.WriteXYZfile("./results", "OptLog")
 			step+=1
-			print "Step:", step, #"Coords:", m1.coords[1000]
+			print "Step:", step, " RMS Error: ", err#, " Coords: ", m1.coords
 		return

@@ -6,7 +6,7 @@ from TFMolManage import *
 from Opt import *
 
 # John's tests
-if (1):
+if (0):
 # ------------------------------------------
 # General Behler Parinello
 # ------------------------------------------
@@ -42,7 +42,7 @@ if (1):
 		b.Distort()
 		b.coords = b.coords[np.random.permutation(len(crds))] # Permute the indices to make it hard.
 		b.AlignAtoms(a)
-	
+
 # ------------------------------------------
 # A Network trained on Go-Force
 # ------------------------------------------
@@ -266,16 +266,20 @@ if (0):
 
 #jeherr tests
 if (1):
-	if (0):
-		a=MSet('cspbbr3_mixed')
-		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
-		#a.Save()
-		#a.WriteXYZ('cspbbr3_mixed')
+	if (1):
+		a=MSet('cspbbr3_aligned')
+		a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/results/cspbbr3/')
+		a.Save()
 		a.Load()
-		mol1 = a.mols[1]
-		mol2 = a.mols[0]
+		mol1 = a.mols[0]
+		mol2 = a.mols[1]
+		#mol1.BuildDistanceMatrix()
+		#mol1.Distort(0.3)
 		optimizer = Optimizer(None)
 		optimizer.Interpolate_OptForce(mol1, mol2)
+		#optimizer.OptGoForceMix(mol1, mol2)
+		#mol1.WriteXYZfile(fpath='./results', fname='cspbbr3_6sc_goopt', mode='w')
+		#mol2.WriteXYZfile(fpath='./results', fname='cspbbr3_6sc_goopt2', mode='w')
 
 	if (0):
 		a=MSet('cspbbr3_mixed')
@@ -285,22 +289,8 @@ if (1):
 		mol1 = a.mols[0]
 		mol2 = a.mols[1]
 		mol1.AlignAtoms(mol2)
-		#mol1.SortAtoms_3()
-		#mol2.SortAtoms_3()
-		#mol1.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_cubic_new')
-		#mol2.WriteXYZfile(fpath='./datasets/cspbbr3', fname='cspbbr3_6sc_ortho_new')
-
-	if (0):
-		a=MSet('cspbbr3_mixed')
-		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
-		#a.Save()
-		a.Load()
-		mol1 = a.mols[0]
-		mol2 = a.mols[1]
-		mol1.BuildDistanceMatrix()
-		mol2.BuildDistanceMatrix()
-		print np.linalg.norm(mol1.DistMatrix - mol2.DistMatrix)
-		print mol1.NormMatrices(mol1.DistMatrix, mol2.DistMatrix)
+		mol1.WriteXYZfile(fpath='./results/cspbbr3', fname='cspbbr3_6sc_cubic_new', mode='w')
+		mol2.WriteXYZfile(fpath='./results/cspbbr3', fname='cspbbr3_6sc_ortho_new', mode='w')
 
 	if (0):
 		a=MSet("OptMols")
@@ -316,7 +306,7 @@ if (1):
 		#print "Orig Coords", test_mol.coords
 		test_mol.BuildDistanceMatrix()
 		test_mol.LJEFromDist()
-		test_mol.Distort()
+		test_mol.Distort(0.3)
 		#print test_mol.coords
 		#print test_mol.LJEnergy(test_mol.coords)
 		print test_mol.GoForce()
@@ -326,7 +316,7 @@ if (1):
 		#optimizer.OptGoForce(test_mol)
 		#optimizer.OptLJForce(test_mol)
 
-	if (1):
+	if (0):
 		a=MSet('cspbbr3_mixed')
 		a.Load()
 		mol1 = a.mols[0]
