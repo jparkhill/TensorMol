@@ -240,6 +240,7 @@ class Instance:
 		Returns:
 		loss: Loss tensor of type float.
 		"""
+		raise Exception("Base Loss.")
 		return
 
 	def training(self, loss, learning_rate, momentum):

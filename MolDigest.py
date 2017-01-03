@@ -32,6 +32,11 @@ class MolDigester:
 			raise Exception("Unknown Embedding Function")
 		return 	
 
+	def AssignNormalization(self,mn,sn):
+		self.MeanNorm=mn
+		self.StdNorm=sn
+		return
+
 	def make_sym(self, mol):
 		zeta=[]
 		eta1=[]

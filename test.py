@@ -13,8 +13,8 @@ if (1):
 	if (1):
 		a=MSet("h2o")
 		a.ReadXYZ("h2o")
-		b=a.DistortAlongNormals(13,True,0.4)
-		c=a.DistortedClone(60)
+		b=a.DistortAlongNormals(18,True,0.5)
+		c=a.DistortedClone(80)
 		b.AppendSet(c)
 		b.Statistics()
 		b.Save()
