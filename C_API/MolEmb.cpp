@@ -4,12 +4,12 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
-#include <omp.h>
 #ifdef __clang__
 #if __clang_major__ >= 7
 #include <array>
 using namespace std;
 #else
+#include <omp.h>
 #include <tr1/array>
 using namespace std::tr1;
 #endif
