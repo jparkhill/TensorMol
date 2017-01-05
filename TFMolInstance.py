@@ -436,6 +436,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			Name_: A name for this instance.
 		"""
 		MolInstance.__init__(self, TData_,  Name_)
+		self.learning_rate = 0.00001
+		self.momentum = 0.95
 		self.TData.LoadDataToScratch()
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
@@ -446,13 +448,15 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
 		self.AtomBranchNames=[] # a list of the layers named in each atom branch
 		
+		self.inp_pl=None
+		self.mats_pl=None
+		self.label_pl=None
+		
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 50
+		self.batch_size = 500
 		self.batch_size_output = 0
-		self.hidden1 = 100
+		self.hidden1 = 200
 		self.hidden2 = 100
-		self.hidden3 = 100
-
 		self.NetType = "fc_sqdiff_BP"
 		self.summary_op =None
 		self.summary_writer=None
@@ -473,41 +477,49 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		print("Assigned batch input size: ",self.batch_size)
 		print("Assigned batch output size: ",self.batch_size_output)
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-				self.emb_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size,self.inshape]))
-				# The bounds are used for slicing the input into separate elements and atoms.
-				self.bnds_pl = tf.placeholder(tf.int32, shape=tuple([self.n_eles,2])) # beginnings and endings of atoms in the input.
-				self.mats_pl = tf.placeholder(tf.float32, shape=tuple([self.n_eles,self.batch_size,self.batch_size_output]))
-				self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]+self.outshape))
+			self.inp_pl=[]
+			self.mats_pl=[]
+			for e in range(len(self.eles)):
+				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
+				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
+			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+			self.output = self.inference(self.inp_pl, self.mats_pl)
+			self.check = tf.add_check_numerics_ops()
+			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver = tf.train.Saver()
+			try: # I think this may be broken 
+				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+				if (len(chkfiles)>0):
+						most_recent_chk_file=chkfiles[0]
+						print("Restoring training from Checkpoint: ",most_recent_chk_file)
+						self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+			except Exception as Ex:
+				print("Restore Failed",Ex)
+				pass
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
+		return
 
-				self.output = self.inference(self.emb_pl, self.bnds_pl, self.mats_pl)
-				self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
-				self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-				self.summary_op = tf.merge_all_summaries()
-				init = tf.initialize_all_variables()
-				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-				self.saver = tf.train.Saver()
-				try: # I think this may be broken 
-					chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-					if (len(chkfiles)>0):
-							most_recent_chk_file=chkfiles[0]
-							print("Restoring training from Checkpoint: ",most_recent_chk_file)
-							self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-				except Exception as Ex:
-					print("Restore Failed",Ex)
-					pass
-				self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
-				self.sess.run(init)
-				return
+	def loss_op(self, output, labels):
+		diff  = tf.sub(output, labels)
+		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)
+		#tf.Print(labels, [labels], message="This is labels: ",first_n=10000000,summarize=100000000)
+		loss = tf.nn.l2_loss(diff)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
-	def inference(self, inp_pl, bnds_pl, mats_pl):
+	def inference(self, inp_pl, mats_pl):
 		""" 
 		Builds a Behler-Parinello graph
 		
 		Args:
-			inp_pl: a (batch_size X flattened input shape) matrix of input cases.
-			bnds_pl: a (num_ele X 2) int32 tensor of bounds of the input ** which must be passed in element order. **
-			mats_pl: a (num_ele X Bnds_size[e] X batch_size_output) tensor which linearly combines the elements.
-		Returns: 
+				inp_pl: a list of (num_of atom type X flattened input shape) matrix of input cases.
+				mats_pl: a list of (num_of atom type X batchsize) matrices which linearly combines the elements
+		Returns:
 			The BP graph output
 		"""
 		# convert the index matrix from bool to float
@@ -515,36 +527,45 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		hidden1_units=self.hidden1
 		hidden2_units=self.hidden2
 		output = tf.zeros([self.batch_size_output])
-		nrm1=1.0/math.sqrt(float(self.inshape))
-		nrm2=1.0/math.sqrt(float(hidden1_units))
-		nrm3=1.0/math.sqrt(float(hidden2_units))
+		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
+		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
+		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
 		print("Norms:", nrm1,nrm2,nrm3)
+		#print(inp_pl)
+		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
+		#tf.Print(bnds_pl, [bnds_pl], message="bnds_pl: ",first_n=10000000,summarize=100000000)
+		#tf.Print(mats_pl, [mats_pl], message="mats_pl: ",first_n=10000000,summarize=100000000)
 		for e in range(len(self.eles)):
 			branches.append([])
-			with tf.name_scope(str(self.eles[e])+'_hidden1'):
-				#inputs = tf.slice(inp_pl,[tf.squeeze(tf.slice(bnds_pl,[e,0],[1,1])),0],[tf.squeeze(tf.slice(bnds_pl,[e,1],[1,1])),self.inshape])
-				inputs = inp_pl
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=None)
-				biases = tf.Variable(tf.zeros([hidden1_units]),
-				name='biases')
+			inputs = inp_pl[e]
+			mats = mats_pl[e]
+			shp_in = tf.shape(inputs)
+			#tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="This is inputs: ",first_n=10000000,summarize=100000000)
+			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
+				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
-				tf.Print(branches[-1], [branches[-1]], message="This is a: ")
-			with tf.name_scope(str(self.eles[e])+'_hidden2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=None)
-				biases = tf.Variable(tf.zeros([hidden2_units]),
-				name='biases')
+			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
+				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
+				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.batch_size], var_stddev=nrm3, var_wd=None)
-				biases = tf.Variable(tf.zeros([self.batch_size]), name='biases')
+				shp = tf.shape(inputs)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, 1], var_stddev=nrm3, var_wd=None)
+				biases = tf.Variable(tf.zeros([1]), name='biases')
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
-				tmp = tf.matmul(branches[-1][-1],tf.reshape(tf.slice(mats_pl,[e,0,0],[1,self.batch_size,self.batch_size_output]),[self.batch_size,self.batch_size_output]))
-				tmp2 = tf.reduce_sum(tmp,0)
-				output = tf.add(output,tmp2)
-				tf.verify_tensor_all_finite(output,"Nan in output!!!")
+				shp_out = tf.shape(branches[-1][-1])
+				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
+				#tf.Print(tf.to_float(shp_out), [tf.to_float(shp_out)], message="This is outshape: ",first_n=10000000,summarize=100000000)
+				rshp = tf.reshape(cut,[1,shp_out[0]])
+				tmp = tf.matmul(rshp,mats)
+				output = tf.add(output,tmp)
+		tf.verify_tensor_all_finite(output,"Nan in output!!!")
+		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return output
 	
-	def fill_feed_dict(self, batch_data, inp_pl, bounds_pl, mats_pl, labels_pl):
+	def fill_feed_dict(self, batch_data):
 		"""
 		Fill the tensorflow feed dictionary.
 
@@ -556,21 +577,17 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			Filled feed dictionary.
 		"""
 		# Don't eat shit.
-		if (not np.all(np.isfinite(batch_data[0]),axis=(0,1))):
-			print("I was fed shit1")
-			raise Exception("DontEatShit")
-		if (not np.all(np.isfinite(batch_data[2]),axis=(0,1,2))):
-			print("I was fed shit3")
-			raise Exception("DontEatShit")
-		if (not np.all(np.isfinite(batch_data[3]),axis=(0,1))):
+		for e in range(len(self.eles)):
+			if (not np.all(np.isfinite(batch_data[0][e]),axis=(0,1))):
+				print("I was fed shit1")
+				raise Exception("DontEatShit")
+			if (not np.all(np.isfinite(batch_data[1][e]),axis=(0,1))):
+				print("I was fed shit3")
+				raise Exception("DontEatShit")
+		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit4")
 			raise Exception("DontEatShit")
-		feed_dict = {
-			inp_pl:batch_data[0],
-			bounds_pl:batch_data[1],
-			mats_pl:batch_data[2],
-			labels_pl:batch_data[3]
-		}
+		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+[self.label_pl], batch_data[0]+batch_data[1]+[batch_data[2]])}
 		return feed_dict
 
 	def train_step(self, step):
@@ -586,7 +603,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
-			_, total_loss_value, loss_value, mol_output = self.sess.run([self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data, self.emb_pl, self.bnds_pl, self.mats_pl,self.label_pl))
+			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
@@ -600,10 +617,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		test_loss =  0.0
 		test_start_time = time.time()
 		batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
-		feed_dict=self.fill_feed_dict(batch_data, self.emb_pl, self.bnds_pl, self.mats_pl,self.label_pl)
+		feed_dict=self.fill_feed_dict(batch_data)
 		preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
 		duration = time.time() - test_start_time
 		self.print_training(step, test_loss, self.TData.NTest , duration)
-		self.TData.dig.EvaluateTestOutputs(batch_data[3],preds)
+		self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
 

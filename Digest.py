@@ -45,11 +45,19 @@ class Digester:
 		self.BlurRadius = BlurRadius_ # Stdev of gaussian used as prob of atom
 		self.SensRadius=6.0 # Distance which is used for input.
 
+		# These are used to normalize data.
+		self.MeanNorm=0.0
+		self.StdNorm=1.0
 
 		self.embtime=0.0
 		self.outtime=0.0
 		
 		self.Print()
+		return
+
+	def AssignNormalization(self,mn,sn):
+		self.MeanNorm=mn
+		self.StdNorm=sn
 		return
 
 	def Print(self):

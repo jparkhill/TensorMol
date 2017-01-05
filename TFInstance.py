@@ -240,6 +240,7 @@ class Instance:
 		Returns:
 		loss: Loss tensor of type float.
 		"""
+		raise Exception("Base Loss.")
 		return
 
 	def training(self, loss, learning_rate, momentum):
@@ -254,7 +255,7 @@ class Instance:
 		Returns:
 		train_op: The Op for training.
 		"""
-		tf.scalar_summary(loss.op.name, loss)
+		tf.summary.scalar(loss.op.name, loss)
 		optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
 		train_op = optimizer.minimize(loss, global_step=global_step)
