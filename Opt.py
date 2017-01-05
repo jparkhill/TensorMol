@@ -8,7 +8,7 @@ import random
 
 class Optimizer:
 	def __init__(self,tfm_):
-		self.thresh = 0.00001
+		self.thresh = 0.0001
 		self.maxstep = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
@@ -101,9 +101,9 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			for i in range(m.NAtoms()):
-				veloc[i] = 1.0*m.LJForce(i)
+				veloc[i] = -0.0001*m.LJForce(i)
 				#print veloc[i]
-			veloc = -0.1*m.NumericLJForce()
+			#veloc = -0.1*m.NumericLJForce()
 			print veloc
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.

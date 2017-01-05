@@ -450,7 +450,7 @@ class Mol:
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
-		return self.GoK*MolEmb.Make_LJForce(self.coords,self.DistMatrix,self.LJE,at_)
+		return MolEmb.Make_LJForce(self.coords,self.DistMatrix,self.LJE,at_)
 
 	def NumericLJForce(self):
 		disp = 0.00000001

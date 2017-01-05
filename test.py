@@ -268,31 +268,20 @@ if (0):
 
 #jeherr tests
 if (1):
-	if (1):
-		a=MSet('cspbbr3_aligned')
-		a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/results/cspbbr3/')
-		a.Save()
-		a.Load()
-		mol1 = a.mols[0]
-		mol2 = a.mols[1]
-		#mol1.BuildDistanceMatrix()
-		#mol1.Distort(0.3)
-		optimizer = Optimizer(None)
-		optimizer.Interpolate_OptForce(mol1, mol2)
-		#optimizer.OptGoForceMix(mol1, mol2)
-		#mol1.WriteXYZfile(fpath='./results', fname='cspbbr3_6sc_goopt', mode='w')
-		#mol2.WriteXYZfile(fpath='./results', fname='cspbbr3_6sc_goopt2', mode='w')
-
+	# Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
 	if (0):
-		a=MSet('cspbbr3_mixed')
-		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/')
+		a=MSet('cspbbr3_tess')
+		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/pb_tess_6sc/')
 		#a.Save()
 		a.Load()
 		mol1 = a.mols[0]
 		mol2 = a.mols[1]
+		mol2.RotateX()
 		mol1.AlignAtoms(mol2)
-		mol1.WriteXYZfile(fpath='./results/cspbbr3', fname='cspbbr3_6sc_cubic_new', mode='w')
-		mol2.WriteXYZfile(fpath='./results/cspbbr3', fname='cspbbr3_6sc_ortho_new', mode='w')
+		optimizer = Optimizer(None)
+		optimizer.Interpolate_OptForce(mol1, mol2)
+		mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
+		# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
 	if (0):
 		a=MSet("OptMols")
@@ -301,22 +290,20 @@ if (1):
 		mol.BuildDistanceMatrix()
 		print mol.LJForce()
 
-	if (0):
+	if (1):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
-		test_mol = a.mols[0]
+		test_mol = a.mols[10]
 		#print "Orig Coords", test_mol.coords
-		test_mol.BuildDistanceMatrix()
-		test_mol.LJEFromDist()
-		test_mol.Distort(0.3)
+		#test_mol.BuildDistanceMatrix()
+		test_mol.Distort()
 		#print test_mol.coords
-		#print test_mol.LJEnergy(test_mol.coords)
-		print test_mol.GoForce()
-		print test_mol.LJForce()
-		print test_mol.NumericLJForce()
-		#optimizer = Optimizer(None)
+		# print test_mol.LJForce()
+		# print test_mol.NumericLJForce()
+		optimizer = Optimizer(None)
+		optimizer.momentum = 0.0
 		#optimizer.OptGoForce(test_mol)
-		#optimizer.OptLJForce(test_mol)
+		optimizer.OptLJForce(test_mol)
 
 	if (0):
 		a=MSet('cspbbr3_mixed')
