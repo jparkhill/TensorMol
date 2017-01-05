@@ -255,7 +255,7 @@ class Instance:
 		Returns:
 		train_op: The Op for training.
 		"""
-		tf.scalar_summary(loss.op.name, loss)
+		tf.summary.scalar(loss.op.name, loss)
 		optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
 		train_op = optimizer.minimize(loss, global_step=global_step)
