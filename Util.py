@@ -180,6 +180,7 @@ def Binominal_Combination(indis=[0,1,2], group=3):
 		return new_index
 
 def NormMatrices(mat1, mat2):
+	#Only faster due to subtraction of matrices being done in C_API, possibly remove
 	assert mat1.shape == mat2.shape, "Shape of matrices must match to calculate the norm"
 	return MolEmb.Norm_Matrices(mat1, mat2)
 

@@ -176,13 +176,18 @@ class Mol:
 		return
 
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):
-		f = open(fpath+"/"+fname+".xyz", mode)
-		natom = self.atoms.shape[0]
-		f.write(str(natom)+"\nComment:\n")
-		for i in range (0, natom):
-			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
-			f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
-		f.close()
+		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".xyz")):
+			try:
+				os.makedirs(os.path.dirname(fpath+"/"+fname+".xyz"))
+			except OSError as exc:
+				if exc.errno != errno.EEXIST:
+					raise
+		with open(fpath+"/"+fname+".xyz", mode) as f:
+			natom = self.atoms.shape[0]
+			f.write(str(natom)+"\nComment:\n")
+			for i in range (0, natom):
+				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
+				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
 
 	def NEle(self):
 		return np.sum(self.atoms)
@@ -262,7 +267,6 @@ class Mol:
 		self.coords = self.coords[order,:]
 		self.coords = self.coords - self.Center()
 		self.ElementBounds = [[0,0] for i in range(self.NEles())]
-		#ele = self.atoms[0]
 		for e, ele in enumerate(self.AtomTypes()):
 			inblock=False
 			for i in range(0, self.NAtoms()):
@@ -280,6 +284,10 @@ class Mol:
 			self.coords[self.ElementBounds[e][0]:self.ElementBounds[e][1],:] = blk[inds]
 		return
 
+	def RotateX(self):
+		self.coords[:,1] = self.Center()[1] + np.cos(np.pi)*(self.coords[:,1]-self.Center()[1]) - np.sin(np.pi)*(self.coords[:,2]-self.Center()[2])
+		self.coords[:,2] = self.Center()[2] + np.sin(np.pi)*(self.coords[:,1]-self.Center()[1]) + np.cos(np.pi)*(self.coords[:,2]-self.Center()[2])
+
 	def WriteInterpolation(self,b,n=0):
 		for i in range(10): # Check the interpolation.
 			m=Mol(self.atoms,self.coords*((9.-i)/9.)+b.coords*((i)/9.))
@@ -293,34 +301,27 @@ class Mol:
 			This now MOVES BOTH THE MOLECULES assignments, but works.
 			"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
-		#self.WriteInterpolation(m,-1)
+		if (self.Center()-m.Center()).all() != 0:
+			m.coords += self.Center() - m.Center()
 		self.SortAtoms()
 		m.SortAtoms()
-#		print "self coords before: ", self.coords
-#		print "m coords before: ", m.coords
 		# Greedy assignment
 		for e in range(self.NEles()):
-			ass = range(self.ElementBounds[e][0],self.ElementBounds[e][1])
-			b0s = range(self.ElementBounds[e][0],self.ElementBounds[e][1])
-			assignedas=[]
-			assignedbs=[]
-			for b in b0s:
-				acs = self.coords[ass]
+			mones = range(self.ElementBounds[e][0],self.ElementBounds[e][1])
+			mtwos = range(self.ElementBounds[e][0],self.ElementBounds[e][1])
+			assignedmones=[]
+			assignedmtwos=[]
+			for b in mtwos:
+				acs = self.coords[mones]
 				tmp = acs - m.coords[b]
 				best = np.argsort(np.sqrt(np.sum(tmp*tmp,axis=1)))[0]
-#				print "Matching ", m.coords[b]," to ", self.coords[ass[best]]
-#				print "Matching ", b," to ", ass[best]
-				assignedbs.append(b)
-				assignedas.append(ass[best])
-				ass = complement(ass,assignedas)
-				# Choose the a which is closest to b then eliminate both.
-			#Finally perform the permutation.
-			self.coords[b0s] = self.coords[assignedas]
-			m.coords[b0s] = m.coords[assignedbs]
-
-		#self.WriteInterpolation(m,2)
-		# If you look at this you'll see that the greedy alg. does great.
-		# but it's not perfect the local swaps clean up
+				#print "Matching ", m.coords[b]," to ", self.coords[mones[best]]
+				#print "Matching ", b," to ", mones[best]
+				assignedmtwos.append(b)
+				assignedmones.append(mones[best])
+				mones = complement(mones,assignedmones)
+			self.coords[mtwos] = self.coords[assignedmones]
+			m.coords[mtwos] = m.coords[assignedmtwos]
 
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
@@ -334,32 +335,23 @@ class Mol:
 				for j in range(i+1,m.NAtoms()):
 					if m.atoms[i] != m.atoms[j]:
 						continue
-
-					ir = tmp_dm[i].copy()
-					ir -= self.DistMatrix[i]
-					jr = tmp_dm[j].copy()
-					jr -= self.DistMatrix[j]
-
+					ir = tmp_dm[i].copy() - self.DistMatrix[i]
+					jr = tmp_dm[j].copy() - self.DistMatrix[j]
 					irp = tmp_dm[j].copy()
 					irp[i], irp[j] = irp[j], irp[i]
 					jrp = tmp_dm[i].copy()
 					jrp[i], jrp[j] = jrp[j], jrp[i]
-
 					irp -= self.DistMatrix[i]
 					jrp -= self.DistMatrix[j]
-
 					if (np.linalg.norm(irp)+np.linalg.norm(jrp) < np.linalg.norm(ir)+np.linalg.norm(jr)):
 						k = 0
 						perm=range(m.NAtoms())
 						perm[i] = j
 						perm[j] = i
 						tmp_coords=tmp_coords[perm]
-						#print "Moved"
 						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
 						print np.linalg.norm(self.DistMatrix - tmp_dm)
 						steps = steps+1
-						#if (steps%400==0):
-						#	self.WriteInterpolation(Mol(self.atoms,tmp_coords),steps)
 				print i
 			k+=1
 		m.coords=tmp_coords.copy()
@@ -367,7 +359,6 @@ class Mol:
 		print "self",self.coords
 		self.WriteInterpolation(Mol(self.atoms,tmp_coords),9999)
 		return
-
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
@@ -448,6 +439,12 @@ class Mol:
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
 		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
+
+	def GoForceLocal(self, at_=-1):
+		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
+			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
+		'''
+		return self.GoK*MolEmb.Make_GoForceLocal(self.coords,self.DistMatrix,at_)
 
 	def LJForce(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
