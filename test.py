@@ -6,15 +6,15 @@ from TFMolManage import *
 from Opt import *
 
 # John's tests
-if (0):
+if (1):
 # ------------------------------------------
 # General Behler Parinello
 # ------------------------------------------
 	if (1):
 		a=MSet("h2o")
 		a.ReadXYZ("h2o")
-		b=a.DistortAlongNormals(18,True,0.5)
-		c=a.DistortedClone(80)
+		b=a.DistortAlongNormals(22,True,0.7)
+		c=a.DistortedClone(90)
 		b.AppendSet(c)
 		b.Statistics()
 		b.Save()

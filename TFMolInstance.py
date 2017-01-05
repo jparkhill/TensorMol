@@ -436,7 +436,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			Name_: A name for this instance.
 		"""
 		MolInstance.__init__(self, TData_,  Name_)
-		self.learning_rate = 0.000001
+		self.learning_rate = 0.00001
 		self.momentum = 0.95
 		self.TData.LoadDataToScratch()
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
@@ -453,10 +453,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.label_pl=None
 		
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 100
+		self.batch_size = 500
 		self.batch_size_output = 0
-		self.hidden1 = 50
-		self.hidden2 = 50
+		self.hidden1 = 200
+		self.hidden2 = 100
 		self.NetType = "fc_sqdiff_BP"
 		self.summary_op =None
 		self.summary_writer=None
@@ -542,11 +542,11 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			shp_in = tf.shape(inputs)
 			#tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="This is inputs: ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=None)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=None)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
@@ -617,7 +617,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		test_loss =  0.0
 		test_start_time = time.time()
 		batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
-		preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=self.fill_feed_dict(batch_data))
+		feed_dict=self.fill_feed_dict(batch_data)
+		preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
 		duration = time.time() - test_start_time
 		self.print_training(step, test_loss, self.TData.NTest , duration)
 		self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
