@@ -284,6 +284,10 @@ class Mol:
 			self.coords[self.ElementBounds[e][0]:self.ElementBounds[e][1],:] = blk[inds]
 		return
 
+	def RotateX(self):
+		self.coords[:,1] = self.Center()[1] + np.cos(np.pi)*(self.coords[:,1]-self.Center()[1]) - np.sin(np.pi)*(self.coords[:,2]-self.Center()[2])
+		self.coords[:,2] = self.Center()[2] + np.sin(np.pi)*(self.coords[:,1]-self.Center()[1]) + np.cos(np.pi)*(self.coords[:,2]-self.Center()[2])
+
 	def WriteInterpolation(self,b,n=0):
 		for i in range(10): # Check the interpolation.
 			m=Mol(self.atoms,self.coords*((9.-i)/9.)+b.coords*((i)/9.))
@@ -297,6 +301,8 @@ class Mol:
 			This now MOVES BOTH THE MOLECULES assignments, but works.
 			"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
+		if (self.Center()-m.Center()).all() != 0:
+			m.coords += self.Center() - m.Center()
 		self.SortAtoms()
 		m.SortAtoms()
 		# Greedy assignment
@@ -351,7 +357,7 @@ class Mol:
 		m.coords=tmp_coords.copy()
 		print "best",tmp_coords
 		print "self",self.coords
-		#self.WriteInterpolation(Mol(self.atoms,tmp_coords),9999)
+		self.WriteInterpolation(Mol(self.atoms,tmp_coords),9999)
 		return
 
 # ---------------------------------------------------------------

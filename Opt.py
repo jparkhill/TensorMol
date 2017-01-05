@@ -8,7 +8,7 @@ import random
 
 class Optimizer:
 	def __init__(self,tfm_):
-		self.thresh = 1e-4
+		self.thresh = 0.00001
 		self.maxstep = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
@@ -84,7 +84,7 @@ class Optimizer:
 			old_veloc = self.momentum_decay*c_veloc
 			err = m.rms(prev_m)
 			mol_hist.append(prev_m)
-			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			prev_m.WriteXYZfile("./results/", "OptLog")
 			step+=1
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
@@ -100,10 +100,10 @@ class Optimizer:
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
-			#for i in range(m.NAtoms()):
-			#	veloc[i] = -1.0*m.LJForce(i)
-			#	print veloc[i]
-			veloc = -1.0*m.NumericLJForce()
+			for i in range(m.NAtoms()):
+				veloc[i] = 1.0*m.LJForce(i)
+				#print veloc[i]
+			veloc = -0.1*m.NumericLJForce()
 			print veloc
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
@@ -113,7 +113,7 @@ class Optimizer:
 			old_veloc = self.momentum_decay*c_veloc
 			err = m.rms(prev_m)
 			mol_hist.append(prev_m)
-			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			prev_m.WriteXYZfile("./results/", "OptLog")
 			step+=1
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
@@ -392,6 +392,7 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m1.atoms, m1.coords)
 		#print "Orig Coords", m1.coords
+		#Needs to confirm the two molecules are oriented the same here too
 		if (m1.Center()-m2.Center()).all() != 0:
 			m2.coords += m1.Center() - m2.Center()
 		center_dist = np.array(np.linalg.norm(m2.coords - m2.Center(), axis=1))
@@ -419,5 +420,5 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results", "OptLog")
 			step+=1
-			print "Step:", step, " RMS Error: ", err#, " Coords: ", m1.coords
+			print "Step:", step, " RMS Error: ", err, " Coords: ", m1.coords
 		return
