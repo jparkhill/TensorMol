@@ -69,6 +69,11 @@ class Optimizer:
 		return velocs
 
 	def OptGoForce(self,m):
+		"""
+		Simple test of the Go-Force
+		Args: 
+			m: A distorted molecule to optimize
+		"""
 		# Sweeps one at a time
 		err=10.0
 		lasterr=10.0
@@ -95,6 +100,11 @@ class Optimizer:
 		return
 
 	def OptLJForce(self,m):
+		"""
+		Simple test of the LJ-Force
+		Args: 
+			m: A distorted molecule to optimize
+		"""
 		# Sweeps one at a time
 		err=10.0
 		lasterr=10.0
@@ -124,6 +134,11 @@ class Optimizer:
 		return
 
 	def OptForce(self,m,IfDebug=True):
+		"""
+		Optimize using force output of an atomwise network.
+		Args: 
+			m: A distorted molecule to optimize
+		"""
 		# Sweeps one at a time
 		err=10.0
 		lasterr=10.0

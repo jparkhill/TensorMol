@@ -43,9 +43,6 @@ def TestBP():
 	optimizer.Opt(test_mol)
 	return
 
-	
-	return
-
 def TestAlign():
 	""" 
 	align two structures for maximum similarity.
