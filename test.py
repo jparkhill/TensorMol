@@ -5,12 +5,7 @@ Many of these tests take a pretty significant amount of time and memory to compl
 
 """
 
-from Util import *
-from Sets import *
-from TensorData import *
-from TFManage import *
-from TFMolManage import *
-from Opt import *
+from TensorMol import * 
 
 # John's tests
 def TestBP():
