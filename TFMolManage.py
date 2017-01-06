@@ -9,9 +9,25 @@ import numpy as np
 import gc
 
 class TFMolManage(TFManage):
-	def __init__(self, Name_="", TData_=None, Train_=False, NetType_="fc_sqdiff", RandomTData_=True):  #Test_TData_ is some other randon independent test data
-		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_)
+	"""
+		A manager of tensorflow instances which perform molecule-wise predictions 
+		including Many Body and Behler-Parinello
+	"""
+	def __init__(self, Name_="", TData_=None, Train_=False, NetType_="fc_sqdiff", RandomTData_=True):
+		"""
+			Args: 
+				Name_: If not blank, will try to load a network with that name using Prepare()
+				TData_: A TensorMolData instance to provide and process data. 
+				Train_: Whether to train the instances raised. 
+				NetType_: Choices of Various network architectures. 
+				RandomTData_: Modifes the preparation of training batches.
+		"""
+		TFManage.__init__(self, None, TData_, False, NetType_, RandomTData_)
 		self.name = "Mol_"+self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
+		if (Name_!=""):
+			self.name = Name_
+			self.Prepare()
+			return
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=None # In order of the elements in TData
@@ -20,7 +36,13 @@ class TFMolManage(TFManage):
 			return
 		return
 
-	def Train(self, maxstep=10000):
+	def Train(self, maxstep=3000):
+		"""
+		Instantiates and trains a Molecular network.
+		
+		Args:
+			maxstep: The number of training steps.
+		"""
 		if (self.TData.dig.eshape==None):
 			raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.

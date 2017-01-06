@@ -29,7 +29,7 @@ class MolInstance(Instance):
 		self.momentum = 0.9
 		self.max_steps = 10000
 		self.batch_size = 1000 # This is just the train batch size.
-		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.TData.LoadDataToScratch(True)
 		self.TData.PrintStatus()
@@ -107,17 +107,17 @@ class MolInstance(Instance):
 class MolInstance_fc_classify(MolInstance):
 	def __init__(self, TData_,  Name_=None):
 		MolInstance.__init__(self, TData_,  Name_)
+		self.NetType = "fc_classify"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.hidden1 = 200
 		self.hidden2 = 200
 		self.hidden3 = 200
-		self.NetType = "fc_classify"
 		self.prob = None
 #		self.inshape = self.TData.scratch_inputs.shape[1] 
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-
+	
 	def evaluation(self, output, labels):
 		# For a classifier model, we can use the in_top_k Op.
 		# It returns a bool tensor with shape [batch_size] that is true for
@@ -274,11 +274,12 @@ class MolInstance_fc_classify(MolInstance):
 class MolInstance_fc_sqdiff(MolInstance):
 	def __init__(self, TData_,  Name_=None):
 		MolInstance.__init__(self, TData_,  Name_)
+		self.NetType = "fc_sqdiff"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.hidden1 = 500
 		self.hidden2 = 500
 		self.hidden3 = 500
-		self.NetType = "fc_sqdiff"
-#		self.inshape = self.TData.scratch_inputs.shape[1] 
+#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.summary_op =None
 		self.summary_writer=None
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
@@ -427,6 +428,10 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return
 
 class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
+	""" 
+		An instance of A fully connected Behler-Parinello network. 
+		Which requires a TensorMolData to train/execute.
+	"""
 	def __init__(self, TData_, Name_=None):
 		"""
 		Raise a Behler-Parinello TensorFlow instance.
@@ -436,6 +441,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			Name_: A name for this instance.
 		"""
 		MolInstance.__init__(self, TData_,  Name_)
+		self.NetType = "fc_sqdiff_BP"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.learning_rate = 0.00001
 		self.momentum = 0.95
 		self.TData.LoadDataToScratch()
@@ -457,10 +464,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.batch_size_output = 0
 		self.hidden1 = 200
 		self.hidden2 = 100
-		self.NetType = "fc_sqdiff_BP"
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def train_prepare(self,  continue_training =False):
 		"""
@@ -614,6 +619,12 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return
 
 	def test(self, step):
+		"""
+		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
+		
+		Args:
+			step: the index of this step.
+		"""
 		test_loss =  0.0
 		test_start_time = time.time()
 		batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
