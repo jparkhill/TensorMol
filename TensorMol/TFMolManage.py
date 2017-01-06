@@ -22,7 +22,7 @@ class TFMolManage(TFManage):
 				NetType_: Choices of Various network architectures. 
 				RandomTData_: Modifes the preparation of training batches.
 		"""
-		TFManage.__init__(self, None, TData_, False, NetType_, RandomTData_)
+		TFManage.__init__(self, "", TData_, False, NetType_, RandomTData_)
 		self.name = "Mol_"+self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		if (Name_!=""):
 			self.name = Name_

@@ -1,3 +1,10 @@
+"""
+
+Various tests of tensormol's functionality.
+Many of these tests take a pretty significant amount of time and memory to complete.
+
+"""
+
 from Util import *
 from Sets import *
 from TensorData import *
@@ -7,14 +14,14 @@ from Opt import *
 
 # John's tests
 def TestBP():
-	# ------------------------------------------
-	# General Behler Parinello
-	# ------------------------------------------
+	""" 
+	General Behler Parinello
+	"""
 	print "Testing General Behler-Parrinello"
 	a=MSet("h2o")
 	a.ReadXYZ("h2o")
-	b=a.DistortAlongNormals(80,True,1.2)
-	c=a.DistortedClone(9000)
+	b=a.DistortAlongNormals(10,True,1.2)
+	c=a.DistortedClone(90)
 	b.AppendSet(c)
 	b.Statistics()
 	b.Save()
@@ -28,13 +35,26 @@ def TestBP():
 	tset.BuildTrain("h2o_NEQ")
 	tset = TensorMolData_BP(MSet(),MolDigester([]),"h2o_NEQ_Coulomb_BP")
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-	manager.Train(maxstep=20000)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+	manager.Train(maxstep=200)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+	# Now check that the network can be revived and even used for optimizations...
+	optmanager=TFMolManage("Mol_h2o_NEQ_Coulomb_BP_3_None",tset,False,"fc_sqdiff_BP")
+	m = a.mols[0] # Try to optimize the first water.
+	test_mol = a.mols[0]
+	print "Orig Coords", test_mol.coords
+	test_mol.Distort()
+	print test_mol.coords
+	print test_mol.atoms
+	optimizer  = Optimizer(manager)
+	optimizer.Opt(test_mol)
 	return
 
-def TestAlign(): # align two structures for maximum similarity.
-	# ------------------------------------------
-	# Molecule Alignment.
-	# ------------------------------------------
+	
+	return
+
+def TestAlign():
+	""" 
+	align two structures for maximum similarity.
+	"""
 	crds = MakeUniform([0.,0.,0.],1.5,5)
 	a = Mol(np.array([1 for i in range(len(crds))]),crds)
 	b = copy.deepcopy(a)
@@ -44,9 +64,9 @@ def TestAlign(): # align two structures for maximum similarity.
 	return
 
 def TestGoForceAtom():
-	# ------------------------------------------
-	# A Network trained on Go-Force
-	# ------------------------------------------
+	""" 
+	A Network trained on Go-Force
+	"""
 	print "Testing a Network learning Go-Atom Force..."
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
@@ -83,7 +103,7 @@ def TestGoForceAtom():
 	return
 
 # Tests to run.
-TestGoForceAtom()
+TestBP()
 
 # Kun's tests.
 if (0):

@@ -91,7 +91,7 @@ print("TensorMol ready...")
 TOTAL_SENSORY_BASIS=None
 SENSORY_BASIS=None
 if (HAS_PYSCF and HAS_GRIDS):
-	from Grids import *
+	from TensorMol.Grids import *
 	GRIDS = Grids()
 	GRIDS.Populate()
 print("--------------------------")

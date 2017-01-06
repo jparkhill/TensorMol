@@ -1,6 +1,6 @@
-#
-# Optimization algorithms
-#
+"""
+Changes that need to be made: 
+"""
 
 from Sets import *
 from TFManage import *
@@ -8,6 +8,11 @@ import random
 
 class Optimizer:
 	def __init__(self,tfm_):
+		"""
+		Geometry optimizations based on NN-PES's etc.
+		Args: 
+			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
+		"""
 		self.thresh = 0.0001
 		self.maxstep = 0.1
 		self.momentum = 0.9
