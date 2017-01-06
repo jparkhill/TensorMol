@@ -7,3 +7,4 @@ from TensorMol.MolDigest import *
 from TensorMol.TensorMolData import * 
 from TensorMol.TFMolManage import * 
 from TensorMol.TFInstance import * 
+from TensorMol.TFMolInstance import * 

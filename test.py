@@ -7,6 +7,8 @@ Many of these tests take a pretty significant amount of time and memory to compl
 
 from TensorMol import * 
 
+print "HAS TF", HAS_TF
+
 # John's tests
 def TestBP():
 	""" 
@@ -32,7 +34,7 @@ def TestBP():
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 	manager.Train(maxstep=200)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 	# Now check that the network can be revived and even used for optimizations...
-	optmanager=TFMolManage("Mol_h2o_NEQ_Coulomb_BP_3_None",tset,False,"fc_sqdiff_BP")
+	optmanager=TFMolManage("Mol_h2o_NEQ_Coulomb_BP_fc_sqdiff_BP_3",tset,False,"fc_sqdiff_BP")
 	m = a.mols[0] # Try to optimize the first water.
 	test_mol = a.mols[0]
 	print "Orig Coords", test_mol.coords

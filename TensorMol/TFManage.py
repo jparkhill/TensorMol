@@ -58,7 +58,7 @@ class TFManage:
 		return
 
 	def Save(self):
-		print "Saving TFManager."
+		print "Saving TFManager:",self.path+self.name+".tfm"
 		self.TData.CleanScratch()
 		f=open(self.path+self.name+".tfm","wb")
 		pickle.dump(self.__dict__, f, protocol=1)

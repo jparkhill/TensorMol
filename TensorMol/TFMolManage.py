@@ -23,7 +23,7 @@ class TFMolManage(TFManage):
 				RandomTData_: Modifes the preparation of training batches.
 		"""
 		TFManage.__init__(self, "", TData_, False, NetType_, RandomTData_)
-		self.name = "Mol_"+self.TData.name+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		if (Name_!=""):
 			self.name = Name_
 			self.Prepare()
@@ -95,6 +95,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_classify(None,  self.TrainedNetworks[0], None)
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances = MolInstance_fc_sqdiff(None, self.TrainedNetworks[0], None)
+		elif (self.NetType == "fc_sqdiff_BP"):
+			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0],None)
 		else:
 			raise Exception("Unknown Network Type!")	
 		# Raise TF instances for each atom which have already been trained.

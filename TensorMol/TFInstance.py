@@ -104,6 +104,7 @@ class Instance:
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
+		#print("Going to pickle...\n",[(attr,type(ins)) for attr,ins in self.__dict__.items()])
 		f=open(self.path+self.name+".tfn","wb")
 		pickle.dump(self.__dict__, f, protocol=1)
 		f.close()
@@ -125,7 +126,7 @@ class Instance:
 #this isn't really the correct way to load()
 # only the local class members (not any TF objects should be unpickled.)
 	def Load(self):
-		print ("Unpickling Instance...")
+		print ("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")
 		tmp=pickle.load(f)
 		# This is just to use an updated version of evaluate and should be removed after I re-train...
@@ -439,7 +440,7 @@ class Instance_fc_classify(Instance):
 					print("Restoring training from Checkpoint: ",most_recent_chk_file)
 					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 			except Exception as Ex:
-				print("Restore Failed",Ex)
+				print("Restore Failed 12343",Ex)
 				pass
 			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
 		return
@@ -607,7 +608,7 @@ class Instance_fc_sqdiff(Instance):
 					print("Restoring training from Checkpoint: ",most_recent_chk_file)
 					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 			except Exception as Ex:
-				print("Restore Failed",Ex)
+				print("Restore Failed 2341325",Ex)
 				pass
 			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
 			return
@@ -812,7 +813,7 @@ class Instance_3dconv_sqdiff(Instance):
 					print("Restoring training from Checkpoint: ",most_recent_chk_file)
 					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 			except Exception as Ex:
-				print("Restore Failed",Ex)
+				print("Restore Failed 39495",Ex)
 				pass
 			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
 			return

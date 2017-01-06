@@ -106,9 +106,10 @@ class MolInstance(Instance):
 
 class MolInstance_fc_classify(MolInstance):
 	def __init__(self, TData_,  Name_=None):
-		MolInstance.__init__(self, TData_,  Name_)
 		self.NetType = "fc_classify"
+		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 		self.hidden1 = 200
 		self.hidden2 = 200
 		self.hidden3 = 200
@@ -273,9 +274,10 @@ class MolInstance_fc_classify(MolInstance):
 
 class MolInstance_fc_sqdiff(MolInstance):
 	def __init__(self, TData_,  Name_=None):
-		MolInstance.__init__(self, TData_,  Name_)
 		self.NetType = "fc_sqdiff"
+		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 		self.hidden1 = 500
 		self.hidden2 = 500
 		self.hidden3 = 500
@@ -322,6 +324,10 @@ class MolInstance_fc_sqdiff(MolInstance):
 	def Save(self):
 		self.summary_op =None
 		self.summary_writer=None
+		self.check=None
+		self.label_pl = None
+		self.mats_pl = None
+		self.inp_pl = None
 		MolInstance.Save(self)
 		return
 
@@ -440,9 +446,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
 		"""
-		MolInstance.__init__(self, TData_,  Name_)
 		self.NetType = "fc_sqdiff_BP"
+		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
 		self.momentum = 0.95
 		self.TData.LoadDataToScratch()
