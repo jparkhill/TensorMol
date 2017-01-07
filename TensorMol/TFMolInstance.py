@@ -2,8 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from TFInstance import *
-from TensorMolData import *
+from TensorMol.TFInstance import *
+from TensorMol.TensorMolData import *
 import numpy as np
 import math,pickle
 import time
@@ -29,7 +29,7 @@ class MolInstance(Instance):
 		self.momentum = 0.9
 		self.max_steps = 10000
 		self.batch_size = 1000 # This is just the train batch size.
-		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.TData.LoadDataToScratch(True)
 		self.TData.PrintStatus()
@@ -106,18 +106,19 @@ class MolInstance(Instance):
 
 class MolInstance_fc_classify(MolInstance):
 	def __init__(self, TData_,  Name_=None):
+		self.NetType = "fc_classify"
 		MolInstance.__init__(self, TData_,  Name_)
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 		self.hidden1 = 200
 		self.hidden2 = 200
 		self.hidden3 = 200
-		self.NetType = "fc_classify"
 		self.prob = None
 #		self.inshape = self.TData.scratch_inputs.shape[1] 
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = "Mol"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-
+	
 	def evaluation(self, output, labels):
 		# For a classifier model, we can use the in_top_k Op.
 		# It returns a bool tensor with shape [batch_size] that is true for
@@ -273,12 +274,14 @@ class MolInstance_fc_classify(MolInstance):
 
 class MolInstance_fc_sqdiff(MolInstance):
 	def __init__(self, TData_,  Name_=None):
+		self.NetType = "fc_sqdiff"
 		MolInstance.__init__(self, TData_,  Name_)
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 		self.hidden1 = 500
 		self.hidden2 = 500
 		self.hidden3 = 500
-		self.NetType = "fc_sqdiff"
-#		self.inshape = self.TData.scratch_inputs.shape[1] 
+#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.summary_op =None
 		self.summary_writer=None
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
@@ -321,6 +324,10 @@ class MolInstance_fc_sqdiff(MolInstance):
 	def Save(self):
 		self.summary_op =None
 		self.summary_writer=None
+		self.check=None
+		self.label_pl = None
+		self.mats_pl = None
+		self.inp_pl = None
 		MolInstance.Save(self)
 		return
 
@@ -427,6 +434,10 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return
 
 class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
+	""" 
+		An instance of A fully connected Behler-Parinello network. 
+		Which requires a TensorMolData to train/execute.
+	"""
 	def __init__(self, TData_, Name_=None):
 		"""
 		Raise a Behler-Parinello TensorFlow instance.
@@ -435,7 +446,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
 		"""
+		self.NetType = "fc_sqdiff_BP"
 		MolInstance.__init__(self, TData_,  Name_)
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
 		self.momentum = 0.95
 		self.TData.LoadDataToScratch()
@@ -457,10 +471,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.batch_size_output = 0
 		self.hidden1 = 200
 		self.hidden2 = 100
-		self.NetType = "fc_sqdiff_BP"
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def train_prepare(self,  continue_training =False):
 		"""
@@ -614,6 +626,12 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return
 
 	def test(self, step):
+		"""
+		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
+		
+		Args:
+			step: the index of this step.
+		"""
 		test_loss =  0.0
 		test_start_time = time.time()
 		batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)

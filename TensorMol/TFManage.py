@@ -8,8 +8,20 @@ import gc
 
 
 class TFManage:
-	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True):  #Test_TData_ is some other randon independent test data
-	        self.path = "./networks/"	
+	"""
+		A manager of tensorflow instances which perform atom-wise predictions
+		and parent of the molecular instance mangager.
+	"""
+	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True):
+		"""
+			Args: 
+				Name_: If not blank, will try to load a network with that name using Prepare()
+				TData_: A TensorData instance to provide and process data.
+				Train_: Whether to train the instances raised. 
+				NetType_: Choices of Various network architectures. 
+				RandomTData_: Modifes the preparation of training batches.
+		"""
+		self.path = "./networks/"
 		if (Name_ != ""):
 			# This will unpickle and instantiate TData...
 			self.name = Name_
@@ -19,12 +31,13 @@ class TFManage:
 		if (RandomTData_==False):
 			self.TData.Randomize=False
 		self.NetType = NetType_
+		# All done if you're doing molecular calculations
+		
 		print self.TData.AvailableElements
 		print self.TData.AvailableDataFiles
 		print self.TData.SamplesPerElement
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		print "--- TF will be fed by ---",self.TData.name
-
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData
@@ -45,7 +58,7 @@ class TFManage:
 		return
 
 	def Save(self):
-		print "Saving TFManager."
+		print "Saving TFManager:",self.path+self.name+".tfm"
 		self.TData.CleanScratch()
 		f=open(self.path+self.name+".tfm","wb")
 		pickle.dump(self.__dict__, f, protocol=1)

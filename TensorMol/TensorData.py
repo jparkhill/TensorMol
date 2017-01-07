@@ -18,6 +18,7 @@ class TensorData():
 		self.suffix = ".pdb"
 		self.set = MSet_
 		self.dig = Dig_
+		self.type = "atom"
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
 		self.SamplesPerElement = []
 		self.AvailableElements = []

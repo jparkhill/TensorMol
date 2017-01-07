@@ -18,10 +18,19 @@ class TensorMolData(TensorData):
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):  # type can be mol or frag
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):
+		"""
+			Args: 
+				MSet_: A molecule set from which to cull data.
+				Dig_: A MolDigester object to create embeddings, and evaluate outputs.
+				Name_: A name for this TensorMolData
+				order_ : Order of many-body expansion to perform.
+				num_indis_: Number of Indistinguishable Fragments. 
+				type_: Whether this TensorMolData is for "frag", "atom", or "mol"
+		"""
 		TensorData.__init__(self, MSet_,Dig_,Name_)
 		self.order = order_
-		self.type = type_
+		self.type = type_ # type can be mol or frag
 		self.num_indis = num_indis_
 		self.NTrain = 0
 		return

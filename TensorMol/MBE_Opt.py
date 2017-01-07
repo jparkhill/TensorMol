@@ -1,18 +1,23 @@
-
+"""
+Changes that need to be made: 
+ - LBFGS needs to be modularized (Solvers.py)?
+ - The filename needs to be changed to Opt_MBE
+ - This needs to be a child of the ordinary optimizer class.
+"""
 
 from NN_MBE import *
 
 class MBE_Optimizer:
-        def __init__(self,nn_mbe_):
-                self.energy_thresh = 1e-9
+	def __init__(self,nn_mbe_):
+		self.energy_thresh = 1e-9
 		self.force_thresh = 0.001
-                self.step_size = 0.1
-                self.momentum = 0.0
-                self.momentum_decay = 0.7
-                self.max_opt_step = 500
-                self.nn_mbe = nn_mbe_
+		self.step_size = 0.1
+		self.momentum = 0.0
+		self.momentum_decay = 0.7
+		self.max_opt_step = 500
+		self.nn_mbe = nn_mbe_
 		self.m_max = 7
-                return
+		return
 
 	def MBE_Opt(self, m):
 		coords_hist = []

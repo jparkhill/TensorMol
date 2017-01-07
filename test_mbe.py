@@ -1,14 +1,11 @@
-from Util import *
-from Sets import *
-from TensorMolData import *
-from TFMolManage import *
-from MolDigest import *
-from NN_MBE import *
-from MBE_Opt import *
+"""
+Kun: please check this is working with our code currently, and include a little test data so this can be replicated, and then delete this message... -JAP
+"""
 
+from TensorMol import *
+from TensorMol.NN_MBE import *
+from TensorMol.MBE_Opt import *
 
-# steps to train a NN-MBE model
-if (1):
 	#Load .xyz files.
 	if (0):
 		a=MSet("H2O_tinker_amoeba") # Define our set.
