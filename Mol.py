@@ -466,6 +466,64 @@ class Mol:
 				frc[i,ip] = (e1-e2)/(2.0*disp)
 		return frc
 
+	def NumericLJHessDiag(self):
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		disp=0.001
+		hessd=np.zeros((self.NAtoms(),3))
+		for i in range(self.NAtoms()):
+			for ip in range(3):
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] += disp
+				tmp[i*3+ip] += disp
+				f1 = self.LJEnergy(tmp)
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] += disp
+				tmp[i*3+ip] -= disp
+				f2 = self.LJEnergy(tmp)
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] -= disp
+				tmp[i*3+ip] += disp
+				f3 = self.LJEnergy(tmp)
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] -= disp
+				tmp[i*3+ip] -= disp
+				f4 = self.LJEnergy(tmp)
+				hessd[i, ip] = (f1-f2-f3+f4)/(4.0*disp*disp)
+		return hessd
+
+	def NumericLJHessian(self):
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		disp=0.001
+		hess=np.zeros((self.NAtoms()*3,self.NAtoms()*3))
+		for i in range(self.NAtoms()):
+			for j in range(self.NAtoms()):
+				for ip in range(3):
+					for jp in range(3):
+						if (j*3+jp >= i*3+ip):
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] += disp
+							f1 = self.LJEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] -= disp
+							f2 = self.LJEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] += disp
+							f3 = self.LJEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] -= disp
+							f4 = self.LJEnergy(tmp)
+							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
+		return (hess+hess.T-np.diag(np.diag(hess)))
+
+
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
 			print "Build DistMatrix"
