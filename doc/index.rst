@@ -10,8 +10,7 @@ TensorMol
    :maxdepth: 2
    :caption: Contents:
   
-.. autoclass:: Optimizer
-   :members:
+   TensorMol
 
 TensorMol will solve your problem of where to start with documentation,
 by providing a basic explanation of how to do it easily.
