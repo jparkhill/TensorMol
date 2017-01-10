@@ -154,6 +154,8 @@ class Mol:
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
+		if (len(lines[1].split())>1):
+			self.energy=float(lines[1].split()[1])
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
