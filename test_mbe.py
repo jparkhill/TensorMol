@@ -1,22 +1,22 @@
-"""
-Kun: please check this is working with our code currently, and include a little test data so this can be replicated, and then delete this message... -JAP
-"""
-
 from TensorMol import *
 from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
 
+
+if (1):
 	#Load .xyz files.
 	if (0):
 		a=MSet("H2O_tinker_amoeba") # Define our set.
 		a.ReadGDB9Unpacked("./H2O_tinker_amoeba/") # Load .xyz file into set and set maxinum many-body expansion order.
-		a.Generate_All_MBE_term(atom_group=3, cutoff=6, center_atom=0) # Generate all the many-
+		a.Generate_All_MBE_term(atom_group=3, cutoff=6, center_atom=0, max_case=2000) # Generate all the many-
+		a.Save()
 	
 	#Calculate the MP2 many-body energies.
 	if (0):
 		a=MSet("H2O_tinker_amoeba")  
 		a.Load() # Load generated training set (.pdb file).
 		#a.Calculate_All_Frag_Energy(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
+		a.Set_Qchem_Data_Path()
 		a.Get_All_Qchem_Frag_Energy()
 		a.Save() 
 
@@ -33,15 +33,15 @@ from TensorMol.MBE_Opt import *
                 a.Load()
 		TreatedAtoms = a.AtomTypes()
 		print "TreatedAtoms ", TreatedAtoms 
-		d = MolDigester(TreatedAtoms, name_="SymFunc")  # Initialize a digester that apply descriptor for the fragments.
-		#tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-		#tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
-		tset = TensorMolData_BP(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-		tset.BuildTrain("H2O_tinker_amoeba")
+		d = MolDigester(TreatedAtoms, name_="Coulomb")  # Initialize a digester that apply descriptor for the fragments.
+		tset = TensorMolData(a,d, order_=1, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+		tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
+		#tset = TensorMolData_BP(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+		#tset.BuildTrain("H2O_tinker_amoeba")
 
 	# doing the KRR for the set for debug purpose.
 	if (0):
-		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_GauInv_1") # Load the generated data for training the neural network.
+		tset = TensorMolData(MSet(),MolDigester([]),"H2O_tinker_amoeba_Coulomb_1") # Load the generated data for training the neural network.
 		tset.KRR()
 	
 	# testing the BP TensorMolData
@@ -51,8 +51,8 @@ from TensorMol.MBE_Opt import *
 
 	# Train the neural network.
 	if (1):
-		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_2") # Load the generated data for training the neural network.
-		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+		tset = TensorMolData(MSet(),MolDigester([]),"H2O_tinker_amoeba_Coulomb_1") # Load the generated data for training the neural network.
+		manager=TFMolManage("",tset,False,"fc_sqdiff") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=20000)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 
 	# Test the neural network.

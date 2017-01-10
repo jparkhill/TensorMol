@@ -1066,15 +1066,15 @@ class Mol:
 			del sub_combinations
 		return
 
-	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
+	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0, max_case=1000000):
 		for i in range (1, self.mbe_order+1):
-			self.Generate_MBE_term(i, atom_group, cutoff, center_atom)
-		return  0
+			self.Generate_MBE_term(i, atom_group, cutoff, center_atom, max_case)
+		return  
 
-	def Generate_MBE_term(self, order,  atom_group=1, cutoff=10, center_atom=0):
+	def Generate_MBE_term(self, order,  atom_group=1, cutoff=10, center_atom=0, max_case=1000000):
 		if order in self.mbe_frags.keys():
 			print ("MBE order", order, "already generated..skipping..")
-			return 0
+			return 
 		if (self.coords).shape[0]%atom_group!=0:
 			raise Exception("check number of group size")
 		else:
@@ -1094,7 +1094,6 @@ class Mol:
 			print ("finished..takes", time_log-time.time(),"second")
 		time_now=time.time()
 		flag = np.zeros(1)
-		max_case = 10000000   #  set max cases for debug
 		for i in range (0, len(combinations)):
 			term = list(combinations[i])
 			pairs=list(itertools.combinations(term, 2))
@@ -1235,6 +1234,10 @@ class Mol:
 			self.Get_Qchem_Frag_Energy(i)
 		return
 
+	def Set_Qchem_Data_Path(self):
+		self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+		return
+
 	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
                 if method == "qchem":
                         if not os.path.isdir("./qchem"):
@@ -1302,8 +1305,8 @@ class Mol:
 				self.mbe_energy[i] += self.mbe_frags_energy[j]
 		return 0.0
 
-	def MBE(self,  atom_group=1, cutoff=10, center_atom=0):
-		self.Generate_All_MBE_term(atom_group, cutoff, center_atom)
+	def MBE(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
+		self.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
 		self.Calculate_All_Frag_Energy()
 		self.Set_MBE_Energy()
 		print self.mbe_frags_energy
@@ -1338,7 +1341,7 @@ class Mol:
 	def Get_Permute_Frags(self, indis=[0]):
 		self.mbe_permute_frags=dict()
 		for order in self.mbe_frags.keys():
-		   if order <= 2:  # for debug purpose
+		#   if order <= 2:  # for debug purpose
 			self.mbe_permute_frags[order]=list()
 			for frags in self.mbe_frags[order]:
 				self.mbe_permute_frags[order] += frags.Permute_Frag( indis  )

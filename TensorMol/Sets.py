@@ -188,9 +188,9 @@ class MSet:
 			mol.PySCF_Energy()
 		return
 
-	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
+	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
 		for mol in self.mols:
-                	mol.Generate_All_MBE_term(atom_group, cutoff, center_atom)
+                	mol.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
                 return
 
 	def Generate_All_MBE_term_General(self, frag_list=[], cutoff=10, center_atom=0):
@@ -229,3 +229,8 @@ class MSet:
 		for mol in self.mols:
 			mol.Get_Permute_Frags(indis)
 		return
+
+	def Set_Qchem_Data_Path(self):
+		for mol in self.mols:
+			mol.Set_Qchem_Data_Path()
+		return 
