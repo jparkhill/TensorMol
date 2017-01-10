@@ -34,13 +34,13 @@ class MSet:
 		return
 
 	def DistortAlongNormals(self, npts=8, random=True, disp=.2):
-		''' 
+		'''
 		Create a distorted copy of a set
-		Args: 
-			npts: the number of points to sample along the normal mode coordinate. 
+		Args:
+			npts: the number of points to sample along the normal mode coordinate.
 			random: whether to randomize the order of the new set.
 			disp: the maximum displacement of atoms along the mode
-		Returns: 
+		Returns:
 			A set containing distorted versions of the original set.
 		'''
 		print "Making distorted clone of:", self.name
@@ -169,10 +169,13 @@ class MSet:
 		rmsd = np.zeros(len(ord))
 		n=0
 		for j in ord:
-			ens[n] = self.mols[j].GoEnergy(self.mols[j].coords.flatten())
-			tmp = MolEmb.Make_DistMat(self.mols[j].coords) - self.mols[j].DistMatrix
-			rmsd[n] = np.sum(tmp*tmp)/len(self.mols[j].coords)
-			n=n+1
+			if (self.mols[j].energy != None):
+				ens[n] = self.mols[j].energy
+			else :
+				ens[n] = self.mols[j].GoEnergy(self.mols[j].coords.flatten())
+				tmp = MolEmb.Make_DistMat(self.mols[j].coords) - self.mols[j].DistMatrix
+				rmsd[n] = np.sum(tmp*tmp)/len(self.mols[j].coords)
+				n=n+1
 		print "Mean and Std. Energy", np.average(ens), np.std(ens)
 		print "Energy Histogram", np.histogram(ens, 100)
 		print "RMSD Histogram", np.histogram(rmsd, 100)

@@ -12,7 +12,7 @@ class MolDigester:
 		self.name = name_
 		self.OType = OType_
 		self.lshape = None  # output is just the energy
-		self.eshape = None	
+		self.eshape = None
 		self.SensRadius = SensRadius_
 		self.eles = eles_
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
@@ -30,7 +30,7 @@ class MolDigester:
 			return self.make_gauinv
 		else:
 			raise Exception("Unknown Embedding Function")
-		return 	
+		return
 
 	def AssignNormalization(self,mn,sn):
 		self.MeanNorm=mn
@@ -57,7 +57,7 @@ class MolDigester:
 			SYM.append(sym)
 		SYM =  np.asarray(SYM)
 		print "mol.atoms", mol.atoms, "SYM", SYM
-		SYM_deri = np.zeros((SYM.shape[0], SYM.shape[1])) # debug, it will take some work to implement to derivative of sym func. 
+		SYM_deri = np.zeros((SYM.shape[0], SYM.shape[1])) # debug, it will take some work to implement to derivative of sym func.
 		return SYM, SYM_deri
 
 	def make_cm_bp(self, mol):
@@ -72,11 +72,11 @@ class MolDigester:
 			CM_BP.append(cm_bp)
 			#print "CM_BP:", CM_BP
 		CM_BP = np.asarray(CM_BP)
-		CM_BP_deri = np.zeros((CM_BP.shape[0], CM_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func. 
+		CM_BP_deri = np.zeros((CM_BP.shape[0], CM_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
 		return 	CM_BP, CM_BP_deri
 
 	def make_gauinv(self, mol):
-		""" This is a totally inefficient way of doing this 
+		""" This is a totally inefficient way of doing this
 			MolEmb should loop atoms. """
 		GauInv = []
 		for i in range (0, mol.NAtoms()):
@@ -109,7 +109,7 @@ class MolDigester:
 					deri[3] =0.0;
 					deri[4] =0.0;
 					deri[5] =0.0;
-				} 
+				}
 				else {
 					dist=sqrt(pow(xyz[j*3+0]-xyz[k*3+0],2) + pow(xyz[j*3+1]-xyz[k*3+1],2) + pow(xyz[j*3+2]-xyz[k*3+2],2));
 					deri[0] = -(xyz[j*3+0]-xyz[k*3+0])/(dist*dist*dist);
@@ -156,7 +156,7 @@ class MolDigester:
 			#out = mol_.energy # debug
 			#print CM, deri_CM, out
 			if self.lshape ==None or self.eshape==None:
-				self.lshape=[1]
+				self.lshape=[1]  # debug, should these be a list or int?
 				self.eshape=[UpTri.shape[0]] 
 				print "self.eshape", self.eshape
 			return UpTri, out
@@ -171,10 +171,15 @@ class MolDigester:
 		elif (self.name == "Coulomb_BP"):
 			CM_BP, deri_CM_BP =  (self.EmbF(mol_))(mol_)
 			if (self.OType == "GoEnergy"):
+				out = np.array([mol_.GoEnergy(mol_.coords)])
 				if (self.lshape ==None or self.eshape==None):
 					self.eshape = [CM_BP.shape[1]]
 					self.lshape = [1]
-				out = np.array([mol_.GoEnergy(mol_.coords)])
+			if (self.OType == "Energy"):
+				out = np.array([mol_.energy])
+				if (self.lshape ==None or self.eshape==None):
+					self.eshape = [CM_BP.shape[1]]
+					self.lshape = [1]
 			# at this point, only flat input is supported in BP.
 			return CM_BP, out
 		elif (self.name == "GauInv"):
