@@ -290,6 +290,7 @@ class TensorMolData_BP(TensorMolData):
 		natoms = self.set.NAtoms()
 		print "self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape
 		cases = np.zeros(tuple([natoms]+list(self.dig.eshape)))
+		print "cases:", cases.shape
 		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
 		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
@@ -300,6 +301,7 @@ class TensorMolData_BP(TensorMolData):
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+			print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
 			labels[mi] = outs
 			for j in range(casep,casep+nat):
