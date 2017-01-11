@@ -1,6 +1,6 @@
-#
-# Either trains, tests, evaluates or provides an interface for optimization.
-#
+"""
+ Either trains, tests, evaluates or provides an interface for optimization.
+"""
 from TensorData import *
 from TFInstance import *
 import numpy as np
@@ -12,7 +12,7 @@ class TFManage:
 		A manager of tensorflow instances which perform atom-wise predictions
 		and parent of the molecular instance mangager.
 	"""
-	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True):
+	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True, ntrain_=2000):
 		"""
 			Args: 
 				Name_: If not blank, will try to load a network with that name using Prepare()
@@ -20,6 +20,7 @@ class TFManage:
 				Train_: Whether to train the instances raised. 
 				NetType_: Choices of Various network architectures. 
 				RandomTData_: Modifes the preparation of training batches.
+				ntrain_: Number of steps to train an element.
 		"""
 		self.path = "./networks/"
 		if (Name_ != ""):
@@ -31,8 +32,8 @@ class TFManage:
 		if (RandomTData_==False):
 			self.TData.Randomize=False
 		self.NetType = NetType_
+		self.n_train = ntrain_
 		# All done if you're doing molecular calculations
-		
 		print self.TData.AvailableElements
 		print self.TData.AvailableDataFiles
 		print self.TData.SamplesPerElement
@@ -92,7 +93,7 @@ class TFManage:
 		#for step in range (0, 10):
 			#self.Instances[ele].train_step(step)
 		#tself.Instances[ele].test(step)
-		self.Instances[ele].train(1000) # Just for the sake of debugging.
+		self.Instances[ele].train(self.n_train) # Just for the sake of debugging.
 		nm = self.Instances[ele].name
 		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:

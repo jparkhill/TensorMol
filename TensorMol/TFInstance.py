@@ -7,14 +7,14 @@ import numpy as np
 import math,pickle
 import time
 import os.path
-if (HAS_TF): 
+if (HAS_TF):
 	import tensorflow as tf
 import os
 import sys
 
 #
 # Manages a persistent training network instance
-# To evaluate a property over many molecules or many points in a large molecule. 
+# To evaluate a property over many molecules or many points in a large molecule.
 #
 
 class Instance:
@@ -27,7 +27,7 @@ class Instance:
 			self.Load() # Network still cannot be used until it is prepared.
 			print("raised network: ", self.train_dir)
 			return
-		
+
 		self.element = ele_
 		self.TData = TData_
 		if (not os.path.isdir(self.path)):
@@ -63,6 +63,7 @@ class Instance:
 		self.labels_placeholder = None
 		self.saver = None
 		self.gradient =None
+		self.summary_writer = None
 		return
 
 	def __del__(self):
@@ -79,7 +80,7 @@ class Instance:
 			raise Exception("bad digest.")
 		if (self.PreparedFor<eval_input.shape[0]):
 			self.Prepare(eval_input,eval_input.shape[0])
-		return 
+		return
 
 # This should really be called prepare for evaluation...
 # Since we do training once we don't really need the same thing.
@@ -88,6 +89,8 @@ class Instance:
 		return
 
 	def Clean(self):
+		if (self.sess != None):
+			self.sess.close()
 		self.sess = None
 		self.loss = None
 		self.output = None
@@ -96,11 +99,14 @@ class Instance:
 		self.embeds_placeholder = None
 		self.labels_placeholder = None
 		self.saver = None
+		self.gradient =None
+		self.summary_writer = None
 		self.PreparedFor = 0
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
 		print("Saving TFInstance...")
+		self.save_chk(self,99999)
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
@@ -110,17 +116,24 @@ class Instance:
 		f.close()
 		return
 
+	def variable_summaries(var):
+	  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+	  with tf.name_scope('summaries'):
+		mean = tf.reduce_mean(var)
+		tf.summary.scalar('mean', mean)
+		with tf.name_scope('stddev'):
+		  stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+		tf.summary.scalar('stddev', stddev)
+		tf.summary.scalar('max', tf.reduce_max(var))
+		tf.summary.scalar('min', tf.reduce_min(var))
+		tf.summary.histogram('histogram', var)
+
 	# one of these two routines need to be removed I think. -JAP
-	def save_chk(self,  step, afloat_, feed_dict=None):  # this can be included in the Instance
+	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
-		checkpoint_file_mini = os.path.join(self.train_dir, self.name+'-chk-'+str(step)+"-"+str(float(afloat_)))
+		checkpoint_file_mini = os.path.join(self.train_dir, self.name+'-chk-'+str(step))
 		self.saver.save(self.sess, checkpoint_file_mini)
-		self.chk_file = checkpoint_file_mini
-		if (self.summary_op!=None and self.summary_writer!=None and feed_dict!=None):
-			self.summary_str = self.sess.run(self.summary_op, feed_dict=feed_dict)
-			self.summary_writer.add_summary(self.summary_str, step)
-			self.summary_writer.flush()
 		return
 
 #this isn't really the correct way to load()
@@ -138,7 +151,7 @@ class Instance:
 		chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 		if (len(chkfiles)>0):
 			self.chk_file = chkfiles[0]
-		else: 
+		else:
 			print("Network not found... Traindir:", self.train_dir)
 			print("Traindir contents: ", os.listdir(self.train_dir))
 		return
@@ -185,10 +198,10 @@ class Instance:
 		"""
 		# Don't eat shit.
 		if (not np.all(np.isfinite(batch_data[0]))):
-			print("I was fed shit") 
+			print("I was fed shit")
 			raise Exception("DontEatShit")
 		if (not np.all(np.isfinite(batch_data[1]))):
-			print("I was fed shit") 
+			print("I was fed shit")
 			raise Exception("DontEatShit")
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
@@ -208,8 +221,8 @@ class Instance:
 				biases = tf.Variable(tf.zeros([hidden1_units]),
 				name='biases')
 				hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
-				tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
-				tf.histogram_summary(weights.name, weights)
+				#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
+				#tf.summary.histogram(weights.name, weights)
 		# Hidden 2
 		with tf.name_scope('hidden2'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
@@ -266,7 +279,7 @@ class Instance:
 	def train(self, mxsteps, continue_training= False):
 		self.TData.LoadElementToScratch(self.element)
 		self.train_prepare(continue_training)
-		test_freq = 50
+		test_freq = 40
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -274,11 +287,10 @@ class Instance:
 				test_loss, feed_dict = self.test(step)
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
-					self.save_chk(step, time.time(), feed_dict)
-		self.sess.close()
-		self.Save()
+					self.save_chk(step,feed_dict)
+		self.SaveAndClose()
 		return
-	
+
 	def train_step(self,step):
 		raise Exception("Cannot Train base...")
 		return
@@ -288,7 +300,7 @@ class Instance:
 
 	def test(self,step):
 		raise Exception("Base Test")
-		return 
+		return
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		denom = max((int(Ncase/self.batch_size)),1)
@@ -308,7 +320,7 @@ class Instance_fc_classify(Instance):
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
 		self.prob = None
-#		self.inshape = self.TData.scratch_inputs.shape[1] 
+#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
@@ -338,11 +350,11 @@ class Instance_fc_classify(Instance):
 		tmp = (np.array(self.sess.run([self.prob], feed_dict=feed_dict))[0,:eval_input.shape[0],1])
 		if (not np.all(np.isfinite(tmp))):
 			print("TFsession returned garbage")
-			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph. 
+			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
-		
+
 	def Prepare(self, eval_input, Ncase=1250):
 		Instance.Prepare(self)
 		print("Preparing a ",self.NetType,"Instance")
@@ -373,7 +385,7 @@ class Instance_fc_classify(Instance):
 		Instance.Save(self)
 		return
 
-	
+
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
 		These placeholders are used as inputs by the rest of the model building
@@ -424,17 +436,17 @@ class Instance_fc_classify(Instance):
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss, self.prob = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.merge_all_summaries()
+			self.summary_op = tf.summary.merge_all()
 			init = tf.initialize_all_variables()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken 
+			try: # I think this may be broken
 				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 				if (len(chkfiles)>0):
 					most_recent_chk_file=chkfiles[0]
@@ -443,7 +455,7 @@ class Instance_fc_classify(Instance):
 			except Exception as Ex:
 				print("Restore Failed 12343",Ex)
 				pass
-			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		return
 
 	def train_step(self,step):
@@ -508,11 +520,11 @@ class Instance_fc_sqdiff(Instance):
 		tmp = np.array(self.sess.run([self.output], feed_dict=feed_dict))
 		if (not np.all(np.isfinite(tmp))):
 			print("TFsession returned garbage")
-			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph. 
+			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
-	
+
 	def Prepare(self, eval_input, Ncase=1250):
 		Instance.Prepare(self)
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
@@ -555,7 +567,7 @@ class Instance_fc_sqdiff(Instance):
 
 	def loss_op(self, output, labels):
 		diff  = tf.slice(tf.sub(output, labels),[0,self.outshape[0]-3],[-1,-1])
-		# this only compares direct displacement predictions. 		
+		# this only compares direct displacement predictions.
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
@@ -592,17 +604,17 @@ class Instance_fc_sqdiff(Instance):
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.merge_all_summaries()
-			init = tf.initialize_all_variables()
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken 
+			try: # I think this may be broken
 				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 				if (len(chkfiles)>0):
 					most_recent_chk_file=chkfiles[0]
@@ -611,7 +623,7 @@ class Instance_fc_sqdiff(Instance):
 			except Exception as Ex:
 				print("Restore Failed 2341325",Ex)
 				pass
-			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			return
 
 	def PrepareData(self, batch_data):
@@ -688,7 +700,7 @@ class Instance_3dconv_sqdiff(Instance):
 			conv2 = tf.nn.relu(bias, name=scope.name)
 			prev_layer = conv2
 			in_filters = out_filters
-		
+
 		# normalize prev_layer here
 		# prev_layer = tf.nn.max_pool3d(prev_layer, ksize=[1, 3, 3, 3, 1], strides=[1, 2, 2, 2, 1], padding='SAME')
 
@@ -714,7 +726,7 @@ class Instance_3dconv_sqdiff(Instance):
 			biases = self._bias_variable('biases', self.outshape)
 			output = tf.add(tf.matmul(prev_layer, weights), biases, name=scope.name)
 		return output
-		
+
 	def evaluate(self, eval_input):
 		# Check sanity of input
 		Instance.evaluate(self, eval_input)
@@ -751,20 +763,20 @@ class Instance_3dconv_sqdiff(Instance):
 				self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
 		return
-	
+
 	def Save(self):
 		self.summary_op =None
 		self.summary_writer=None
 		Instance.Save(self)
 		return
-	
+
 	def loss_op(self, output, labels):
 		diff  = tf.slice(tf.sub(output, labels),[0,self.outshape[0]-3],[-1,-1])
 		# this only compares direct displacement predictions.
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
-	
+
 	def train_step(self,step):
 		Ncase_train = self.TData.NTrainCasesInScratch()
 		start_time = time.time()
@@ -779,7 +791,7 @@ class Instance_3dconv_sqdiff(Instance):
 		#self.print_training(step, train_loss, total_correct, Ncase_train, duration)
 		self.print_training(step, train_loss, Ncase_train, duration)
 		return
-	
+
 	def test(self, step):
 		Ncase_test = self.TData.NTestCasesInScratch()
 		test_loss =  0.0
@@ -794,7 +806,7 @@ class Instance_3dconv_sqdiff(Instance):
 		print("testing...")
 		self.print_training(step, test_loss,  Ncase_test, duration)
 		return test_loss, feed_dict
-	
+
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
@@ -802,8 +814,8 @@ class Instance_3dconv_sqdiff(Instance):
 			self.output = self.inference(self.embeds_placeholder)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.merge_all_summaries()
-			init = tf.initialize_all_variables()
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			self.saver = tf.train.Saver()
@@ -820,11 +832,11 @@ class Instance_3dconv_sqdiff(Instance):
 			return
 
 	def PrepareData(self, batch_data):
-		
+
 		#for i in range(self.batch_size):
 		#	ds=GRIDS.Rasterize(batch_data[0][i])
 		#	GridstoRaw(ds, GRIDS.NPts, "Inp"+str(i))
-		
+
 		if (batch_data[0].shape[0]==self.batch_size):
 			batch_data=[batch_data[0].reshape(batch_data[0].shape[0],GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1), batch_data[1]]
 		elif (batch_data[0].shape[0] < self.batch_size):
@@ -837,5 +849,3 @@ class Instance_3dconv_sqdiff(Instance):
 #			tmp_output.resize((self.batch_size,  batch_data[1].shape[1]))
 #			batch_data=[ tmp_input, tmp_output]
 		return batch_data
-
-

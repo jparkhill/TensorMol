@@ -8,8 +8,6 @@ Many of these tests take a pretty significant amount of time and memory to compl
 from TensorMol import * 
 import cProfile
 
-print "HAS TF", HAS_TF
-
 # John's tests
 def TestBP():
 	"""
@@ -93,9 +91,10 @@ def TestGoForceAtom():
 	print "Testing a Network learning Go-Atom Force..."
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
+	a.pop(10)
 	print "nmols:",len(a.mols)
-	c=a.DistortedClone(200)
-	b=a.DistortAlongNormals(80, True, 1.2)
+	c=a.DistortedClone(1)
+	b=a.DistortAlongNormals(2, True, 1.2)
 	c.Statistics()
 	b.Statistics()
 	print len(b.mols)
@@ -110,7 +109,7 @@ def TestGoForceAtom():
 	tset2 = TensorData(c,d)
 	tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
-	tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
+	tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,100)
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
 	a=MSet("OptMols")
@@ -125,6 +124,47 @@ def TestGoForceAtom():
 	optimizer.Opt(test_mol)
 	return
 
+# Tests to run.
+#TestGoForceAtom()
+#TestBP()
+
+# Kun's tests.
+if (0):
+	if (0):
+		#a=MSet("CxHy_test")
+		#a.ReadXYZ("CxHy_test")
+		#a.Save()
+	#	a=MSet("gdb9_NEQ")
+	#	a.Load()
+		b=MSet("gdb9")
+		b.Load()
+		allowed_eles=[1, 6]
+		b.CutSet(allowed_eles)
+		print "length of dmols:", len(b.mols)
+		#b = a.DistortedClone(20)
+		b.Save()
+
+	if (1):
+		#a=MSet("CxHy_test")
+		#a.Load()
+		a=MSet("gdb9_1_6")
+	  	a=a.DistortedClone(1)
+		a.Load()
+		# Choose allowed atoms.
+		TreatedAtoms = a.AtomTypes()
+		#for mol in a.mols:
+		#	mol.BuildDistanceMatrix()
+		# 2 - Choose Digester
+		#d = Digester(TreatedAtoms, name_="SymFunc",OType_ ="Force")
+		#d.TrainDigestW(a.mols[0], 6)
+		d = Digester(TreatedAtoms, name_="PGaussian",OType_ ="GoForce_old_version")
+		d.Emb(a.mols[0],0, np.zeros((1,3)))
+		#d.Emb(a.mols[0],0, a.mols[0].coords[0].reshape(1,-1))
+		#4 - Generate training set samples.
+
+	if (0):
+		tset = TensorData(a,d)
+		tset.BuildTrain("CxHy_test") # generates dataset numpy arrays for each atom.
 
 
 
@@ -148,7 +188,7 @@ def TestBP_Kun():
         tset.BuildTrain("CH3OH_NEQ")
         tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
         manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-	cProfile.run('manager.Train(maxstep=5)')
+	('manager.Train(maxstep=5)')
         #manager.Train(maxstep=200)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
         # Now check that the network can be revived and even used for optimizations...
         #optmanager=TFMolManage("Mol_h2o_NEQ_Coulomb_BP_fc_sqdiff_BP_3",tset,False,"fc_sqdiff_BP")
@@ -164,7 +204,9 @@ def TestBP_Kun():
 if (1):
 	tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
         manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-        cProfile.run('manager.Train(maxstep=5)')  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+        cProfile.run('manager.Train(maxstep=100)')  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+
+#TestBP_Kun()
 
 
 # Kun's tests.
@@ -302,7 +344,7 @@ if (0):
 
 
 #jeherr tests
-if (1):
+if (0):
 	# Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
 	if (0):
 		a=MSet('cspbbr3_tess')

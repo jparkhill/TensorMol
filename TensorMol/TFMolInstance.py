@@ -8,7 +8,7 @@ import numpy as np
 import math,pickle
 import time
 import os.path
-if (HAS_TF): 
+if (HAS_TF):
 	import tensorflow as tf
 import os
 import sys
@@ -23,7 +23,7 @@ class MolInstance(Instance):
 		Instance.__init__(self, TData_, 0, Name_)
 		self.learning_rate = 0.0001
 		#self.learning_rate = 0.0001 # for adam
-		#self.learning_rate = 0.00001 # for adadelta 
+		#self.learning_rate = 0.00001 # for adadelta
 		#self.learning_rate = 0.000001 # 1st sgd
 		#self.learning_rate = 0.0000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
 		self.momentum = 0.9
@@ -84,11 +84,10 @@ class MolInstance(Instance):
 				test_loss, feed_dict = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, test_loss, feed_dict)  # this method is kind of shitty written 
-		self.sess.close()
-		self.Save()
+					self.save_chk(step, test_loss, feed_dict)  # this method is kind of shitty written
+		self.SaveAndClose()
 		return
-	
+
 	def train_step(self,step):
 		""" I don't think the base class should be
 			train-able. Remove? JAP """
@@ -116,11 +115,11 @@ class MolInstance_fc_classify(MolInstance):
 		self.hidden2 = 200
 		self.hidden3 = 200
 		self.prob = None
-#		self.inshape = self.TData.scratch_inputs.shape[1] 
+#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-	
+
 	def evaluation(self, output, labels):
 		# For a classifier model, we can use the in_top_k Op.
 		# It returns a bool tensor with shape [batch_size] that is true for
@@ -146,11 +145,11 @@ class MolInstance_fc_classify(MolInstance):
 		tmp = (np.array(self.sess.run([self.prob], feed_dict=feed_dict))[0,:eval_input.shape[0],1])
 		if (not np.all(np.isfinite(tmp))):
 			print("TFsession returned garbage")
-			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph. 
+			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
-		
+
 	def Prepare(self, eval_input, Ncase=125000):
 		super().Prepare(self)
 		print("Preparing a ",self.NetType,"MolInstance")
@@ -169,15 +168,14 @@ class MolInstance_fc_classify(MolInstance):
 		self.PreparedFor = Ncase
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
 		self.prob = None
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-		MolInstance.Save(self)
+		MolInstance.SaveAndClose(self)
 		return
 
-	
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
 		These placeholders are used as inputs by the rest of the model building
@@ -237,7 +235,7 @@ class MolInstance_fc_classify(MolInstance):
 			init = tf.initialize_all_variables()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken 
+			try: # I think this may be broken
 				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 				if (len(chkfiles)>0):
 					most_recent_chk_file=chkfiles[0]
@@ -266,11 +264,6 @@ class MolInstance_fc_classify(MolInstance):
 			duration = time.time() - test_start_time
 			print("testing...")
 			self.print_training(step, test_loss, test_correct, Ncase_test, duration)
-#			if (self.Test_TData!=None):
-#				batch_data= self.Test_TData.LoadData()
-#				predicts=self.evaluate(batch_data[0])
-#				print("another testing ...")
-#				print (batch_data[1], predicts) 
 		return test_loss, feed_dict
 
 
@@ -309,7 +302,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]], gradient[:eval_input.shape[0]]
 		return tmp, gradient
-	
+
 	def Prepare(self, eval_input, Ncase=125000):
 		MolInstance.Prepare(self)
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
@@ -325,14 +318,14 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.PreparedFor = Ncase
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
+		MolInstance.SaveAndClose(self)
 		self.summary_op =None
 		self.summary_writer=None
 		self.check=None
 		self.label_pl = None
 		self.mats_pl = None
 		self.inp_pl = None
-		MolInstance.Save(self)
 		return
 
 	def placeholder_inputs(self, batch_size):
@@ -372,19 +365,6 @@ class MolInstance_fc_sqdiff(MolInstance):
 			duration = time.time() - test_start_time
 		print("testing...")
 		self.print_training(step, test_loss,  Ncase_test, duration)
-#		if (self.Test_TData!=None):
-#			batch_data= self.Test_TData.LoadData()
-#			if (self.normalize):
-#				norm_output=self.TData.ApplyNormalize(batch_data[1])
-#			batch_data = [batch_data[0] , norm_output]
-#			actual_size = batch_data[0].shape[0]
-#			batch_data = self.PrepareData(batch_data)
-#			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
-#			predicts  = self.sess.run([self.output],  feed_dict=feed_dict)
-#			print("another testing ...")
-#			for i in range (0, actual_size):
-#				print (batch_data[1][i], predicts[0][i])
-		#print ("input:",batch_data[0], "predict:",output_value, "accu:",batch_data[1])
 		return test_loss, feed_dict
 
 	def train_prepare(self,  continue_training =False):
@@ -398,7 +378,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 			init = tf.initialize_all_variables()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken 
+			try: # I think this may be broken
 				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 				if (len(chkfiles)>0):
 					most_recent_chk_file=chkfiles[0]
@@ -438,14 +418,14 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return
 
 class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
-	""" 
-		An instance of A fully connected Behler-Parinello network. 
+	"""
+		An instance of A fully connected Behler-Parinello network.
 		Which requires a TensorMolData to train/execute.
 	"""
 	def __init__(self, TData_, Name_=None):
 		"""
 		Raise a Behler-Parinello TensorFlow instance.
-		
+
 		Args:
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
@@ -465,13 +445,13 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
 		self.AtomBranchNames=[] # a list of the layers named in each atom branch
-		
+
 		self.inp_pl=None
 		self.mats_pl=None
 		self.label_pl=None
-		
+
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 500
+		self.batch_size = 3000
 		self.batch_size_output = 0
 		self.hidden1 = 200
 		self.hidden2 = 100
@@ -481,7 +461,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 	def train_prepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
-		
+		Also assigns the desired padding.
+
 		Args:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
@@ -489,7 +470,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
-		self.batch_size_output = int(3.*self.batch_size/self.MeanNumAtoms)
+		self.batch_size_output = int(2.*self.batch_size/self.MeanNumAtoms)
 		print("Assigned batch input size: ",self.batch_size)
 		print("Assigned batch output size: ",self.batch_size_output)
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
@@ -509,7 +490,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken 
+			try: # I think this may be broken
 				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 				if (len(chkfiles)>0):
 						most_recent_chk_file=chkfiles[0]
@@ -532,9 +513,9 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
 	def inference(self, inp_pl, mats_pl):
-		""" 
+		"""
 		Builds a Behler-Parinello graph
-		
+
 		Args:
 				inp_pl: a list of (num_of atom type X flattened input shape) matrix of input cases.
 				mats_pl: a list of (num_of atom type X batchsize) matrices which linearly combines the elements
@@ -583,7 +564,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return output
-	
+
 	def fill_feed_dict(self, batch_data):
 		"""
 		Fill the tensorflow feed dictionary.
@@ -591,8 +572,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		Args:
 			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
 			and placeholders to be assigned.
-			
-		Returns: 
+
+		Returns:
 			Filled feed dictionary.
 		"""
 		# Don't eat shit.
@@ -612,7 +593,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 	def train_step(self, step):
 		"""
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
-		
+
 		Args:
 			step: the index of this step.
 		"""
@@ -636,7 +617,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 	def test(self, step):
 		"""
 		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
-		
+
 		Args:
 			step: the index of this step.
 		"""
@@ -649,4 +630,3 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.print_training(step, test_loss, self.TData.NTest , duration)
 		self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
-
