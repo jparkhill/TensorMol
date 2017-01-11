@@ -1,5 +1,5 @@
 #
-# Contains Routines to generate training sets 
+# Contains Routines to generate training sets
 # Combining a dataset, sampler and an embedding. (CM etc.)
 #
 # These work Moleculewise the versions without the mol prefix work atomwise.
@@ -20,12 +20,12 @@ class TensorMolData(TensorData):
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):
 		"""
-			Args: 
+			Args:
 				MSet_: A molecule set from which to cull data.
 				Dig_: A MolDigester object to create embeddings, and evaluate outputs.
 				Name_: A name for this TensorMolData
 				order_ : Order of many-body expansion to perform.
-				num_indis_: Number of Indistinguishable Fragments. 
+				num_indis_: Number of Indistinguishable Fragments.
 				type_: Whether this TensorMolData is for "frag", "atom", or "mol"
 		"""
 		self.order = order_
@@ -57,7 +57,7 @@ class TensorMolData(TensorData):
 	def BuildTrain(self, name_="gdb9",  append=False):
 		self.CheckShapes()
 		self.name=name_
-		total_case = 0 
+		total_case = 0
 		for mi in range(len(self.set.mols)):
 			total_case += len(self.set.mols[mi].mbe_permute_frags[self.order])
 		cases = np.zeros(tuple([total_case]+list(self.dig.eshape)))
@@ -176,14 +176,14 @@ class TensorMolData(TensorData):
 		krr.fit(ti[0:trainsize,:], to[0:trainsize])
 		predict  = krr.predict(ti[trainsize:, : ])
 		print predict.shape
-		krr_acc_pred  = np.zeros((predict.shape[0],2))	
+		krr_acc_pred  = np.zeros((predict.shape[0],2))
 		krr_acc_pred[:,0] = to[trainsize:].reshape(to[trainsize:].shape[0])
 		krr_acc_pred[:,1] = predict.reshape(predict.shape[0])
 		np.savetxt("krr_acc_pred.dat", krr_acc_pred)
 		print "KRR train R^2:", krr.score(ti[0:trainsize, : ], to[0:trainsize])
 		print "KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:])
 		return
-		
+
 	def LoadDataToScratch(self, random=True):
 		ti, to = self.LoadData( random)
 		self.NTest = int(self.TestRatio * ti.shape[0])
@@ -201,7 +201,7 @@ class TensorMolData(TensorData):
 		# Also get the relevant Normalizations of input, output
 		# and average stoichiometries, etc.
 		#
-		
+
 		return
 
 	def NormalizeInputs(self):
@@ -262,7 +262,7 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_meta = None
 		self.scratch_test_meta = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
-		self.eles = list(self.set.AtomTypes()) 
+		self.eles = list(self.set.AtomTypes())
 		self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
@@ -271,7 +271,7 @@ class TensorMolData_BP(TensorMolData):
 		print "TensorMolData_BP.eles", self.eles
 		print "TensorMolData_BP.MeanStoich", self.MeanStoich
 		print "TensorMolData_BP.MeanNAtoms", self.MeanStoich
-		return 
+		return
 
 	def CleanScratch(self):
 		TensorData.CleanScratch(self)
@@ -354,15 +354,15 @@ class TensorMolData_BP(TensorMolData):
 
 	def LoadDataToScratch(self, random=True):
 		"""
-		Reads built training data off disk into scratch space. 
-		Divides training and test data. 
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
 		Normalizes inputs and outputs.
 			note that modifies my MolDigester to incorporate the normalization
 		Initializes pointers used to provide training batches.
-		
+
 		Args:
 			random: Not yet implemented randomization of the read data.
-			
+
 		Note:
 			Also determines mean stoichiometry
 		"""
@@ -385,7 +385,7 @@ class TensorMolData_BP(TensorMolData):
 		print "last train atom: ", LastTrainCase
 		print "Num Test atoms: ", len(tm)-LastTrainCase
 		print "Num atoms: ", len(tm)
-	
+
 		self.NTrain = LastTrainCase
 		self.NTest = len(tm)-LastTrainCase
 		self.scratch_inputs = ti[:LastTrainCase]
@@ -403,7 +403,7 @@ class TensorMolData_BP(TensorMolData):
 		self.ScratchState = 1
 		self.ScratchPointer = 0
 		self.test_ScratchPointer=0
-		
+
 		# Compute mean Stoichiometry and number of atoms.
 		self.eles = np.unique(tm[:,1]).tolist()
 		atomcount = np.zeros(len(self.eles))
@@ -417,19 +417,19 @@ class TensorMolData_BP(TensorMolData):
 		return
 
 	def GetTrainBatch(self,ncases,noutputs):
-		""" 
+		"""
 		Construct the data required for a training batch Returns inputs (sorted by element), and indexing matrices and outputs.
 		Behler parinello batches need to have a typical overall stoichiometry.
 		and a constant number of atoms, and must contain an integer number of molecules.
 
-		Besides making sure all of that takes place this routine makes the summation matrices 
+		Besides making sure all of that takes place this routine makes the summation matrices
 		which map the cases => molecular energies in the Neural Network output.
 
 		Args:
 			ncases: the size of a training cases.
 			noutputs: the maximum number of molecule energies which can be produced.
-		Returns: 
-			A an **ordered** list containing 
+		Returns:
+			A an **ordered** list containing
 				a list of (num_of atom type X flattened input shape) matrix of input cases.
 				a list of (num_of atom type X batchsize) matrices which linearly combines the elements
 				a list of outputs.
@@ -571,4 +571,3 @@ class TensorMolData_BP(TensorMolData):
                 pickle.dump(self.__dict__, f, protocol=1)
                 f.close()
                 return
-
