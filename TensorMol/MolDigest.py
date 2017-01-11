@@ -1,14 +1,13 @@
-#
-# Calculate an embeeding for a molecule, such as coulomb matrix
-#  - Should inherit from Digest.py (which needs cleanup)
-#
+"""
+ Calculate an embeeding for a molecule, such as coulomb matrix
+ Todo: Should inherit from Digest.py (which needs cleanup)
+"""
 
 from Mol import *
 from Util import *
 
-
 class MolDigester:
-	def __init__(self, eles_, name_="Coulomb", OType_="Energy", SensRadius_=6):
+	def __init__(self, eles_, name_="Coulomb", OType_="FragEnergy", SensRadius_=6):
 		self.name = name_
 		self.OType = OType_
 		self.lshape = None  # output is just the energy
@@ -18,19 +17,6 @@ class MolDigester:
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
 		self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
-
-	def EmbF(self, mol_):
-		if (self.name =="Coulomb"):
-			return self.make_cm
-		elif (self.name == "SymFunc"):
-			return self.make_sym
-		elif (self.name == "Coulomb_BP"):
-			return self.make_cm_bp
-		elif (self.name == "GauInv"):
-			return self.make_gauinv
-		else:
-			raise Exception("Unknown Embedding Function")
-		return
 
 	def AssignNormalization(self,mn,sn):
 		self.MeanNorm=mn
@@ -67,8 +53,9 @@ class MolDigester:
 			cm_bp = MolEmb.Make_CM(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, i,  0.0 )
 			#print "before: ", cm_bp, len(cm_bp)
 			cm_bp = np.asarray(cm_bp[0], dtype=np.float32)
+			print "SHAPE", cm_bp.shape
 			cm_bp = cm_bp.reshape(-1)
-			cm_bp = cm_bp[np.nonzero(cm_bp)]
+			cm_bp = cm_bp[np.nonzero(cm_bp)] Kun: what were you trying to do here...
 			CM_BP.append(cm_bp)
 			#print "CM_BP:", CM_BP
 		CM_BP = np.asarray(CM_BP)
@@ -141,57 +128,64 @@ class MolDigester:
 		return  CM  #for debug purpose, ignore the diagnoal element
 
 	def EvalDigest(self, mol_):
-		CM, deri_CM = (self.EmbF(mol_))(mol_)
-		UpTri = self.GetUpTri(CM)
-		if self.lshape ==None or self.eshape==None:
-			self.lshape=1
-			self.eshape=UpTri.shape[0]
-		return UpTri, deri_CM
+		return self.Emb(mol_,False)
+
+	def Emb(self, mol_, MakeOutputs=True, MakeGradients=False):
+		"""
+		Generates various molecular embeddings.
+		If the embedding has BP on the end it comes out atomwise and includes all atoms in the molecule.
+		Args:
+			mol_: a Molecule to be digested
+			MakeOutputs: generates outputs according to self.OType.
+			MakeGradients: generates outputs according to self.OType.
+		Returns:
+			Output embeddings, and possibly labels and gradients.
+		Todo:
+			Hook up the gradients.
+		"""
+		Ins=None
+		Grads=None
+		Outs=None
+		if (self.name == "Coulomb"):
+			CM, deri_CM = self.make_cm(mol_)
+			Ins = self.GetUpTri(CM)
+		elif(self.name == "Coulomb_BP"):
+			Ins, deri_CM_BP =  self.make_cm_bp(mol_)
+		elif(self.name == "SymFunc"):
+			Ins, SYM_deri = self.make_sym(mol_)
+		elif(self.name == "GauInv_BP"):
+			Ins, deri_GauInv =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
+		else:
+			raise Exception("Unknown MolDigester Type.")
+
+		if (self.eshape == None):
+			self.eshape=Ins.shape
+		if (MakeOutputs):
+			if (self.OType == "Energy"):
+				Outs = np.array([mol_.energy])
+			if (self.OType == "FragEnergy"):
+				Outs = np.array([mol_.frag_mbe_energy])
+			if (self.OType == "GoEnergy"):
+				Outs = np.array([mol_.GoEnergy()])
+			else:
+				raise Exception("Unknown Output Type... ")
+			if (self.lshape == None):
+				self.lshape=Outs.shape
+			if (MakeGradients):
+				return Ins, Grads, Outs
+			else:
+				return Ins, Outs
+		else:
+			 return Ins
 
 	def TrainDigest(self, mol_):
-		if (self.name =="Coulomb"):
-			CM, deri_CM = (self.EmbF(mol_))(mol_)
-			UpTri = self.GetUpTri(CM)
-			out = mol_.frag_mbe_energy # debug for mbe
-			#out = mol_.energy # debug
-			#print CM, deri_CM, out
-			if self.lshape ==None or self.eshape==None:
-				self.lshape=[1]  # debug, should these be a list or int?
-				self.eshape=[UpTri.shape[0]] 
-				print "self.eshape", self.eshape
-			return UpTri, out
-		elif (self.name == "SymFunc"):
-			SYM, SYM_deri = (self.EmbF(mol_))(mol_)
-			#out = mol_.frag_energy   # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
-			out = mol_.energy # debug
-			if self.lshape ==None or self.eshape==None:
-				self.lshape = 1
-				self.eshape = [SYM.shape[0], SYM.shape[1]]
-			return SYM, out
-		elif (self.name == "Coulomb_BP"):
-			CM_BP, deri_CM_BP =  (self.EmbF(mol_))(mol_)
-			if (self.OType == "GoEnergy"):
-				out = np.array([mol_.GoEnergy(mol_.coords)])
-				if (self.lshape ==None or self.eshape==None):
-					self.eshape = [CM_BP.shape[1]]
-					self.lshape = [1]
-			if (self.OType == "Energy"):
-				out = np.array([mol_.energy])
-				if (self.lshape ==None or self.eshape==None):
-					self.eshape = [CM_BP.shape[1]]
-					self.lshape = [1]
-			# at this point, only flat input is supported in BP.
-			return CM_BP, out
-		elif (self.name == "GauInv"):
-			GauInv, deri_GauInv =  (self.EmbF(mol_))(mol_)
-			out = mol_.frag_energy # debug, here we trying the using BP method to calculate the energy of the whole cluster instead the Many-Body Energy
-			if self.lshape ==None or self.eshape==None:
-				self.lshape = 1
-				self.eshape = [GauInv.shape[0], GauInv.shape[1]]
-			return GauInv, out
-		else:
-			raise Exception("Unknown Embedding Function")
-		return
+		"""
+		Returns list of inputs and outputs for a molecule.
+		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+		Args:
+			mol_: a molecule to be digested
+		"""
+		return self.Emb(mol_,True,False)
 
 	def EvaluateTestOutputs(self, desired, predicted):
 			print "Evaluating, ", len(desired), " predictions... "

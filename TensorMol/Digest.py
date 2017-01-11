@@ -12,12 +12,12 @@
 from Mol import *
 from Util import *
 import numpy,os,sys,pickle,re
-if (HAS_EMB): 
+if (HAS_EMB):
 	import MolEmb
 
 class Digester:
 	def __init__(self, eles_, name_="GauSH", OType_="Disp", SamplingType_="", BlurRadius_ = 0.05 ):
-		
+
 		 # In Atomic units at 300K
 		# These are the key variables which determine the type of digestion.
 		self.name = name_ # Embedding type.
@@ -36,7 +36,7 @@ class Digester:
 		self.eles.sort() # Consistent list of atoms in the order they are treated.
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
 		self.TrainSampDistance=2.0 #how far in Angs to sample on average.
-		
+
 		self.ngrid = 20 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
 		self.npgaussian = self.neles # channel of PGaussian
@@ -51,7 +51,7 @@ class Digester:
 
 		self.embtime=0.0
 		self.outtime=0.0
-		
+
 		self.Print()
 		return
 
@@ -84,7 +84,7 @@ class Digester:
 	def Blurs(self, diffs):
 		dists=np.array(map(np.linalg.norm,diffs))
 		return np.exp(dists*dists/(-1.0*self.BlurRadius*self.BlurRadius))/(np.power(2.0*Pi*self.BlurRadius*self.BlurRadius,3.0/2.0))
-     
+
 	def HardCut(self, diffs, cutoff=0.05):
 		# 0, 1 output
 		dists=np.array(map(np.linalg.norm,diffs))
@@ -97,7 +97,17 @@ class Digester:
 #  Instead call a batch digest routine.
 #
 
-	def Emb(self, mol_, at_, xyz_, MakeOutputs=True):
+	def Emb(self, mol_, at_, xyz_, MakeOutputs=True, MakeGradients=False):
+		"""
+		Generates various molecular embeddings.
+		Args:
+			mol_: a Molecule to be digested
+			at_: an atom to be digested or moved.
+			xyz_: makes inputs with at_ moved to these positions.
+			MakeOutputs: generates outputs according to self.OType.
+		Returns: 
+			Output embeddings, and possibly labels and gradients.
+		"""
 		#start = time.time()
 		if (self.name=="Coulomb"):
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
@@ -186,7 +196,7 @@ class Digester:
 				ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
 				iers[i] = np.linalg.norm(p-desired[i,-3:])
 				comp[i] = np.linalg.norm(p-predicted[i,-3:])
-			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp) 
+			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
 			print "average input: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
 			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 		elif (self.OType=="StoP"):
@@ -203,19 +213,21 @@ class Digester:
 #  Various types of Batch Digests.
 #
 
-	def TrainDigest(self, mol_, ele_,MakeDebug=False):
-		""" 
-			Returns list of inputs and output gaussians.
-			Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
-			if MakeDebug is True, it also returns a list with debug information to trace possible errors in digestion.
-			
-			"""
+	def TrainDigest(self, mol_, ele_, MakeDebug=False):
+		"""
+		Returns list of inputs and outputs for a molecule.
+		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+		Args:
+			mol_: a molecule to be digested
+			ele_: an element for which training data will be made.
+			MakeDebug: if MakeDebug is True, it also returns a list with debug information to trace possible errors in digestion.
+		"""
 		if (self.eshape==None or self.lshape==None):
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
 			self.eshape = list(tinps[0].shape)
 			self.lshape = list(touts[0].shape)
 			print "Assigned Digester shapes: ",self.eshape,self.lshape
-		
+
 		ncase = mol_.NumOfAtomsE(ele_)*self.NTrainSamples
 		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float32)
 		outs=np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
@@ -250,7 +262,7 @@ class Digester:
 				samps=None
 				if (not uniform):
 					samps=self.MakeSamples(mol_.coords[i])
-				else: 
+				else:
 					samps=MakeUniform(mol_.coords[i],4.0,20)
 				energies=mol_.RunPySCFWithCoords(samps,i)
 
@@ -279,7 +291,7 @@ class Digester:
 			eta1.append(0.008*(2**i))
 			eta2.append(0.002*(2**i))
 			Rs.append(i*SensRadius/float(ngrid))
-		SYM =  MolEmb.Make_Sym(coords_, xyz_, ats_, eles, at_, SensRadius, zeta, eta1, eta2, Rs)    
+		SYM =  MolEmb.Make_Sym(coords_, xyz_, ats_, eles, at_, SensRadius, zeta, eta1, eta2, Rs)
 		SYM = numpy.asarray(SYM[0], dtype=np.float32)
 		SYM = SYM.reshape((SYM.shape[0]/self.nsym, self.nsym,  SYM.shape[1] *  SYM.shape[2]))
 		return SYM

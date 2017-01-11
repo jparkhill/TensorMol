@@ -188,7 +188,7 @@ static PyObject*  Make_RDF(PyObject *self, PyObject  *args) {
 	double   dist_cut,  width;
 	int  ngrids, theatom; // omit the training atom from the RDF
 	if (!PyArg_ParseTuple(args, "O!O!O!O!diid",
-						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &theatom, &width))  return NULL;
+	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &theatom, &width))  return NULL;
 	PyObject* RDF_all = PyList_New(0);
 
 	//npy_intp* nelep = elements->dimensions;
@@ -297,7 +297,7 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
 	if (!PyArg_ParseTuple(args, "O!O!O!O!diid",
-						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &theatom, &mask))
+	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &theatom, &mask))
 	return NULL;
 	PyObject* CM_all = PyList_New(0);
 
@@ -405,8 +405,8 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
 	if (!PyArg_ParseTuple(args, "O!O!O!diid",
-						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &ngrids, &theatom, &mask))
-		return NULL;
+	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &ngrids, &theatom, &mask))
+	return NULL;
 
 	const int nele = (elements->dimensions)[0];
 	uint8_t* ele=(uint8_t*)elements->data;
@@ -426,21 +426,21 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 
 	int ai=0;
-//	for (int i = 0; i < natom; i++)
-//	{
+	//	for (int i = 0; i < natom; i++)
+	//	{
 	int i = theatom;
 
-		double xc = xyz_data[i*Nxyz[1]+0];
-		double yc = xyz_data[i*Nxyz[1]+1];
-		double zc = xyz_data[i*Nxyz[1]+2];
-		for (int j = 0; j < natom; j++)
-		{
-			double x = xyz_data[j*Nxyz[1]+0];
-			double y = xyz_data[j*Nxyz[1]+1];
-			double z = xyz_data[j*Nxyz[1]+2];
-			RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
-		}
-//	}
+	double xc = xyz_data[i*Nxyz[1]+0];
+	double yc = xyz_data[i*Nxyz[1]+1];
+	double zc = xyz_data[i*Nxyz[1]+2];
+	for (int j = 0; j < natom; j++)
+	{
+		double x = xyz_data[j*Nxyz[1]+0];
+		double y = xyz_data[j*Nxyz[1]+1];
+		double z = xyz_data[j*Nxyz[1]+2];
+		RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+	}
+	//	}
 	return SH;
 }
 
@@ -456,8 +456,8 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
 	if (!PyArg_ParseTuple(args, "O!O!O!di",
-						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &theatom))
-		return NULL;
+	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &theatom))
+	return NULL;
 
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
@@ -465,20 +465,33 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	int natom, num_CM;
 	natom = Nxyz[0];
 
-	//npy_intp outdim[2] = {natom,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
-	npy_intp outdim[2] = {1,SH_NRAD*(1+SH_LMAX)};
+	npy_intp* outdim;
+	if (theatom>=0)
+		outdim[0] = 1;
+	else
+		outdim[0] = natom;
+	outdim[1]=SH_NRAD*(1+SH_LMAX);
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 
 	double *SH_data, *xyz_data, *grids_data;
-	double center[3]; // x y z of the center
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
-	grids_data = (double*) grids -> data;
+	//grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 
-//	for (int i = 0; i < natom; i++)
-//	{
-	int i = theatom;
+	/*double center[3]={0.,0.,0.};
+	for (int j = 0; j < natom; j++)
+	{
+		center[0]+=xyz_data[j*Nxyz[1]+0];
+		center[1]+=xyz_data[j*Nxyz[1]+1];
+		center[2]+=xyz_data[j*Nxyz[1]+2];
+	}
+	center[0]/= natom;
+	center[1]/= natom;
+	center[2]/= natom;*/
 
+	if (theatom >= 0)
+	{
+		int i = theatom;
 		double xc = xyz_data[i*Nxyz[1]+0];
 		double yc = xyz_data[i*Nxyz[1]+1];
 		double zc = xyz_data[i*Nxyz[1]+2];
@@ -489,7 +502,26 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 			double z = xyz_data[j*Nxyz[1]+2];
 			RadInvProjection(x-xc,y-yc,z-zc,SH_data,(double)atoms[j]);
 		}
-//	}
+	}
+	else
+	{
+		#ifdef OPENMP
+		#pragma omp parallel for
+		#endif
+		for (int i=0; i<natom; ++i )
+		{
+			double xc = xyz_data[i*Nxyz[1]+0];
+			double yc = xyz_data[i*Nxyz[1]+1];
+			double zc = xyz_data[i*Nxyz[1]+2];
+			for (int j = 0; j < natom; j++)
+			{
+				double x = xyz_data[j*Nxyz[1]+0];
+				double y = xyz_data[j*Nxyz[1]+1];
+				double z = xyz_data[j*Nxyz[1]+2];
+				RadInvProjection(x-xc,y-yc,z-zc,SH_data+i*(outdim[1]),(double)atoms[j]);
+			}
+		}
+	}
 	return SH;
 }
 
@@ -503,7 +535,7 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
 	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
-		return NULL;
+	return NULL;
 
 	const int npts = (xyz->dimensions)[0];
 	int nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
@@ -521,9 +553,9 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 		double theta = acos(xyz_data[pt*3+2]/r);
 		double phi = atan2(xyz_data[pt*3+1],xyz_data[pt*3+0]);
 
-//		cout << "r" << r << endl;
-//		cout << "r" << theta << endl;
-//		cout << "r" << phi << endl;
+		//		cout << "r" << r << endl;
+		//		cout << "r" << theta << endl;
+		//		cout << "r" << phi << endl;
 
 		int bi = 0;
 		for (int i=0; i<SH_NRAD ; ++i)
@@ -531,11 +563,11 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 			double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
 			for (int l=0; l<SH_LMAX+1 ; ++l)
 			{
-//				cout << "l=" << l << " Gv "<< Gv <<endl;
+				//				cout << "l=" << l << " Gv "<< Gv <<endl;
 				for (int m=-l; m<l+1 ; ++m)
 				{
 					SH_data[bi*npts+pt] += Gv*RealSphericalHarmonic(l,m,theta,phi);
-//					cout << SH_data[bi*npts+pt] << endl;
+					//					cout << SH_data[bi*npts+pt] << endl;
 					++bi;
 				}
 			}
@@ -552,7 +584,7 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	double x,y,z;
 	PyArrayObject *xyz;
 	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
-		return NULL;
+	return NULL;
 
 	int nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
 	npy_intp outdim[2] = {1,nbas};
@@ -565,15 +597,15 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	z=xyz_data[2];
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 	int Nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
-//	int Nang = (1+SH_LMAX)*(1+SH_LMAX);
+	//	int Nang = (1+SH_LMAX)*(1+SH_LMAX);
 	double r = sqrt(x*x+y*y+z*z);
 
 	if (r<pow(10.0,-11.0))
-		return SH;
+	return SH;
 	double theta = acos(z/r);
 	double phi = atan2(y,x);
 
-//	cout << "R,theta,phi" << r << " " << theta << " " <<phi << " " <<endl;
+	//	cout << "R,theta,phi" << r << " " << theta << " " <<phi << " " <<endl;
 
 	int bi = 0;
 	for (int i=0; i<SH_NRAD ; ++i)
@@ -597,7 +629,7 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz;
 	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
-		return NULL;
+	return NULL;
 	const int nat = (xyz->dimensions)[0];
 	npy_intp outdim[2] = {nat,nat};
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
@@ -605,11 +637,11 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 	for (int i=0; i < nat; ++i)
-		for (int j=i+1; j < nat; ++j)
-		{
-			SH_data[i*nat+j] = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
-			SH_data[j*nat+i] = SH_data[i*nat+j];
-			}
+	for (int j=i+1; j < nat; ++j)
+	{
+		SH_data[i*nat+j] = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
+		SH_data[j*nat+i] = SH_data[i*nat+j];
+	}
 	return SH;
 }
 
@@ -617,7 +649,7 @@ static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 {
 	PyArrayObject *dmat1, *dmat2;
 	if (!PyArg_ParseTuple(args, "O!O!", &PyArray_Type, &dmat1, &PyArray_Type, &dmat2))
-		return NULL;
+	return NULL;
 	double norm = 0;
 	const int dim1 = (dmat1->dimensions)[0];
 	const int dim2 = (dmat1->dimensions)[1];
@@ -627,8 +659,8 @@ static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 	dmat2_data = (double*) ((PyArrayObject*)dmat2)->data;
 	#pragma omp parallel for reduction(+:norm)
 	for (int i=0; i < dim1; ++i)
-		for (int j=0; j < dim2; ++j)
-			norm += (dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j])*(dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]);
+	for (int j=0; j < dim2; ++j)
+	norm += (dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j])*(dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]);
 	return PyFloat_FromDouble(sqrt(norm));
 }
 
@@ -637,11 +669,11 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *EqDistMat;
 	int at;
 	if (!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at))
-		return NULL;
+	return NULL;
 	const int nat = (xyz->dimensions)[0];
 	npy_intp outdim[2] = {nat,3};
 	if (at>=0)
-		outdim[0] = 1;
+	outdim[0] = 1;
 	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *frc_data,*xyz_data,*d_data;
 	xyz_data = (double*) ((PyArrayObject*)xyz)->data;
@@ -655,7 +687,7 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 			for (int j=0; j < nat; ++j)
 			{
 				if (i==j)
-					continue;
+				continue;
 				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
 				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
 				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
@@ -669,19 +701,19 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 	else
 	{
 		int i=at;
-			for (int j=0; j < nat; ++j)
-			{
-				if (i==j)
-					continue;
-				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
-				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
-				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
-				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
-				//std::cout<<i<<"  "<<j<<"  "<<'dij'<<"  "<<dij<<"  "<<(-2*(dij-d_data[i*nat+j])*u[0])<<"  "<<(-2*(dij-d_data[i*nat+j])*u[1])<<"  "<<(-2*(dij-d_data[i*nat+j])*u[2])<<std::endl;
-				frc_data[0] += -2*(dij-d_data[i*nat+j])*u[0];
-				frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
-				frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
-			}
+		for (int j=0; j < nat; ++j)
+		{
+			if (i==j)
+			continue;
+			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+			u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+			u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+			u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+			//std::cout<<i<<"  "<<j<<"  "<<'dij'<<"  "<<dij<<"  "<<(-2*(dij-d_data[i*nat+j])*u[0])<<"  "<<(-2*(dij-d_data[i*nat+j])*u[1])<<"  "<<(-2*(dij-d_data[i*nat+j])*u[2])<<std::endl;
+			frc_data[0] += -2*(dij-d_data[i*nat+j])*u[0];
+			frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
+			frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
+		}
 	}
 	return hess;
 }
@@ -691,11 +723,11 @@ static PyObject* Make_GoForceLocal(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *EqDistMat;
 	int at;
 	if (!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at))
-		return NULL;
+	return NULL;
 	const int nat = (xyz->dimensions)[0];
 	npy_intp outdim[2] = {nat,3};
 	if (at>=0)
-		outdim[0] = 1;
+	outdim[0] = 1;
 	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *frc_data,*xyz_data,*d_data;
 	xyz_data = (double*) ((PyArrayObject*)xyz)->data;
@@ -709,10 +741,10 @@ static PyObject* Make_GoForceLocal(PyObject *self, PyObject  *args)
 			for (int j=0; j < nat; ++j)
 			{
 				if (i==j)
-					continue;
+				continue;
 				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
 				if (dij > 15.0)
-					continue;
+				continue;
 				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
 				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
 				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
@@ -725,20 +757,20 @@ static PyObject* Make_GoForceLocal(PyObject *self, PyObject  *args)
 	else
 	{
 		int i=at;
-			for (int j=0; j < nat; ++j)
-			{
-				if (i==j)
-					continue;
-				double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
-				if (dij > 15.0)
-					continue;
-				u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
-				u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
-				u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
-				frc_data[0] += -2*(dij-d_data[i*nat+j])*u[0];
-				frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
-				frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
-			}
+		for (int j=0; j < nat; ++j)
+		{
+			if (i==j)
+			continue;
+			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+			if (dij > 15.0)
+			continue;
+			u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
+			u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
+			u[2] = (xyz_data[j*3+2]-xyz_data[i*3+2])/dij;
+			frc_data[0] += -2*(dij-d_data[i*nat+j])*u[0];
+			frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
+			frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
+		}
 	}
 	return hess;
 }
@@ -747,7 +779,7 @@ static PyObject* Make_GoHess(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *EqDistMat;
 	if (!PyArg_ParseTuple(args, "O!O!", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat))
-		return NULL;
+	return NULL;
 	const int nat = (xyz->dimensions)[0];
 	npy_intp outdim[2] = {3*nat,3*nat};
 	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
@@ -761,7 +793,7 @@ static PyObject* Make_GoHess(PyObject *self, PyObject  *args)
 		for (int j=0; j < nat; ++j)
 		{
 			if (i==j)
-				continue;
+			continue;
 			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
 			u[0] = (xyz_data[j*3]-xyz_data[i*3])/dij;
 			u[1] = (xyz_data[j*3+1]-xyz_data[i*3+1])/dij;
@@ -792,11 +824,11 @@ static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *EqDistMat, *eps;
 	int at;
 	if (!PyArg_ParseTuple(args, "O!O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &PyArray_Type, &eps, &at ))
-		return NULL;
+	return NULL;
 	const int nat = (xyz->dimensions)[0];
 	npy_intp outdim[2] = {nat,3};
 	if (at>=0)
-		outdim[0] = 1;
+	outdim[0] = 1;
 	PyObject* hess = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *frc_data,*xyz_data,*eps_data,*d_data;
 	xyz_data = (double*) ((PyArrayObject*)xyz)->data;
@@ -812,7 +844,7 @@ static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
 			for (int j=0; j < nat; ++j)
 			{
 				if (i==j)
-					continue;
+				continue;
 				double dij = (pow((xyz_data[i*3+0]-xyz_data[j*3+0]), 2.0) + pow((xyz_data[i*3+1]-xyz_data[j*3+1]), 2.0) + pow((xyz_data[i*3+2]-xyz_data[j*3+2]), 2.0));
 				u[0] = (xyz_data[i*3] - xyz_data[j*3]);
 				u[1] = (xyz_data[i*3+1] - xyz_data[j*3+1]);
@@ -831,7 +863,7 @@ static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
 		for (int j=0; j < nat; ++j)
 		{
 			if (i==j)
-				continue;
+			continue;
 			double dij = (pow((xyz_data[i*3+0]-xyz_data[j*3+0]), 2.0) + pow((xyz_data[i*3+1]-xyz_data[j*3+1]), 2.0) + pow((xyz_data[i*3+2]-xyz_data[j*3+2]), 2.0));
 			u[0] = (xyz_data[i*3] - xyz_data[j*3])/dij;
 			u[1] = (xyz_data[i*3+1] - xyz_data[j*3+1])/dij;
@@ -977,7 +1009,7 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 	double   dist_cut;
 	int theatom;
 	if (!PyArg_ParseTuple(args, "O!O!O!O!idO!",
-						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom, &dist_cut,   &PyList_Type, &eta_py))  return NULL;
+	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom, &dist_cut,   &PyList_Type, &eta_py))  return NULL;
 	PyObject* PGaussian_all = PyList_New(0);
 	int dim_eta = PyList_Size(eta_py);
 	double  eta[dim_eta];
@@ -1046,7 +1078,7 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 	double   dist_cut;
 	int theatom;
 	if (!PyArg_ParseTuple(args, "O!O!O!O!idO!O!O!O!",
-						  &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom, &dist_cut,   &PyList_Type, &zeta_py,  &PyList_Type, &eta1_py,  &PyList_Type, &eta2_py,  &PyList_Type, &Rs_py))  return NULL;
+	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom, &dist_cut,   &PyList_Type, &zeta_py,  &PyList_Type, &eta1_py,  &PyList_Type, &eta2_py,  &PyList_Type, &Rs_py))  return NULL;
 	PyObject* SYM_all = PyList_New(0);
 	int dim_zeta = PyList_Size(zeta_py);
 	int dim_eta1 = PyList_Size(eta1_py);
@@ -1153,39 +1185,39 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 static PyMethodDef EmbMethods[] =
 {
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
-		"Make_DistMat method"},
+	"Make_DistMat method"},
 	{"Norm_Matrices", Norm_Matrices, METH_VARARGS,
- 		"Norm_Matrices method"},
+	"Norm_Matrices method"},
 	{"Make_CM", Make_CM, METH_VARARGS,
-		"Make_CM method"},
+	"Make_CM method"},
 	{"Make_RDF", Make_RDF, METH_VARARGS,
-		"Make_RDF method"},
+	"Make_RDF method"},
 	{"Make_Go", Make_Go, METH_VARARGS,
-		"Make_Go method"},
+	"Make_Go method"},
 	{"Make_GoForce", Make_GoForce, METH_VARARGS,
-		"Make_GoForce method"},
+	"Make_GoForce method"},
 	{"Make_GoForceLocal", Make_GoForceLocal, METH_VARARGS,
-		"Make_GoForceLocal method"},
+	"Make_GoForceLocal method"},
 	{"Make_GoHess", Make_GoHess, METH_VARARGS,
-		"Make_GoHess method"},
+	"Make_GoHess method"},
 	{"Make_LJForce", Make_LJForce, METH_VARARGS,
-		"Make_LJForce method"},
+	"Make_LJForce method"},
 	{"Make_SH", Make_SH, METH_VARARGS,
-		"Make_SH method"},
+	"Make_SH method"},
 	{"Make_Inv", Make_Inv, METH_VARARGS,
-		"Make_Inv method"},
+	"Make_Inv method"},
 	{"Raster_SH", Raster_SH, METH_VARARGS,
-		"Raster_SH method"},
+	"Raster_SH method"},
 	{"Overlap_SH", Overlap_SH, METH_VARARGS,
-		"Overlap_SH method"},
+	"Overlap_SH method"},
 	{"Project_SH", Project_SH, METH_VARARGS,
-		"Project_SH method"},
+	"Project_SH method"},
 	{"Make_PGaussian", Make_PGaussian, METH_VARARGS,
-		"Make_PGaussian method"},
+	"Make_PGaussian method"},
 	{"Make_Sym", Make_Sym, METH_VARARGS,
-		"Make_Sym method"},
+	"Make_Sym method"},
 	{"Make_CM_vary_coords", Make_CM_vary_coords, METH_VARARGS,
-		"Make_CM_vary_coords method"},
+	"Make_CM_vary_coords method"},
 	{NULL, NULL, 0, NULL}
 };
 
