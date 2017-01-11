@@ -161,7 +161,7 @@ def TestBP_Kun():
         #optimizer  = Optimizer(manager)
         #optimizer.Opt(test_mol)
         return
-if (0):
+if (1):
 	tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
         manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
         cProfile.run('manager.Train(maxstep=5)')  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.

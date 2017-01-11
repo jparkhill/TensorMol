@@ -34,8 +34,8 @@ class MolInstance(Instance):
 		self.TData.LoadDataToScratch(True)
 		self.TData.PrintStatus()
 		self.normalize= True
-		if (self.normalize):
-                        self.TData.NormalizeOutputs()
+		#if (self.normalize):
+                #        self.TData.NormalizeOutputs()
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 		self.outshape = self.TData.dig.lshape    # use the flatted version
 		print ("inshape", self.inshape, "outshape", self.outshape)
@@ -621,7 +621,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		start_time = time.time()
 		train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
-			print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
+			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
 			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
