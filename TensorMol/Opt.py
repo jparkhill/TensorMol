@@ -114,12 +114,17 @@ class Optimizer:
 		print "Orig Coords", m.coords
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
+		self.momentum = 0.0
 		while(err>self.thresh and step < self.max_opt_step):
-			for i in range(m.NAtoms()):
-				veloc[i] = -0.0001*m.LJForce(i)
-				#print veloc[i]
-			#veloc = -0.1*m.NumericLJForce()
-			print veloc
+			HessD = m.NumericLJHessDiag()
+			# for i in range(m.NAtoms()):
+			# 	veloc[i] = -0.0001*m.LJForce(i)
+			# 	#print veloc[i]
+			veloc = -m.NumericLJForce()/HessD
+			print "Coords", m.coords
+			print "Hess", HessD
+			print "velco", veloc
+			#print m.LJEnergy(m.coords)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
@@ -130,7 +135,7 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", "OptLog")
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+			#print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
 	def OptForce(self,m,IfDebug=True):

@@ -27,7 +27,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #  TODO: have some type of param file.
 MAX_ATOMIC_NUMBER = 10
 GRIDS = None
-MBE_ORDER = 3
+MBE_ORDER = 2
 HAS_GRIDS=True
 
 # Derived Quantities and useful things.

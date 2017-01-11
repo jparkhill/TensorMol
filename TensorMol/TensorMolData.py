@@ -28,11 +28,11 @@ class TensorMolData(TensorData):
 				num_indis_: Number of Indistinguishable Fragments. 
 				type_: Whether this TensorMolData is for "frag", "atom", or "mol"
 		"""
-		TensorData.__init__(self, MSet_,Dig_,Name_)
 		self.order = order_
-		self.type = type_ # type can be mol or frag
 		self.num_indis = num_indis_
 		self.NTrain = 0
+		TensorData.__init__(self, MSet_,Dig_,Name_, type_=type_)
+		print "self.type:", self.type
 		return
 
 	def QueryAvailable(self):
@@ -60,8 +60,8 @@ class TensorMolData(TensorData):
 		total_case = 0 
 		for mi in range(len(self.set.mols)):
 			total_case += len(self.set.mols[mi].mbe_permute_frags[self.order])
-		cases = np.zeros((total_case, self.dig.eshape))
-		labels = np.zeros((total_case, self.dig.lshape))
+		cases = np.zeros(tuple([total_case]+list(self.dig.eshape)))
+		labels = np.zeros(tuple([total_case]+list(self.dig.lshape)))
 		casep=0
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_in.npy"
 		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
@@ -100,8 +100,7 @@ class TensorMolData(TensorData):
 			inf.close()
 			ouf.close()
 			self.AvailableDataFiles.append([insname,outsname])
-			self.AvailableElements.append(element)
-			self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
+			#self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
 		else:
 			inf = open(insname,"wb")
 			ouf = open(outsname,"wb")
@@ -110,8 +109,7 @@ class TensorMolData(TensorData):
 			inf.close()
 			ouf.close()
 			self.AvailableDataFiles.append([insname,outsname])
-			self.AvailableElements.append(element)
-			self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
+			#self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
 		self.Save() #write a convenience pickle.
 		return
 
@@ -244,6 +242,14 @@ class TensorMolData(TensorData):
 		return
 
 
+        def Save(self):
+                self.CleanScratch()
+                f=open(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+".tdt","wb")
+                pickle.dump(self.__dict__, f, protocol=1)
+                f.close()
+                return
+
+
 class TensorMolData_BP(TensorMolData):
 	"""
 			A tensordata for molecules and Behler-Parinello.
@@ -282,6 +288,7 @@ class TensorMolData_BP(TensorMolData):
 			raise Exception("No BP frags now")
 		nmols  = len(self.set.mols)
 		natoms = self.set.NAtoms()
+		print "self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape
 		cases = np.zeros(tuple([natoms]+list(self.dig.eshape)))
 		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
 		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
@@ -556,4 +563,12 @@ class TensorMolData_BP(TensorMolData):
 		print "self.ScratchState",self.ScratchState
 		print "self.ScratchPointer",self.ScratchPointer
 		print "self.test_ScratchPointer",self.test_ScratchPointer
+
+
+	def Save(self):
+                self.CleanScratch()
+                f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
+                pickle.dump(self.__dict__, f, protocol=1)
+                f.close()
+                return
 

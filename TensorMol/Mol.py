@@ -154,6 +154,8 @@ class Mol:
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
+		if (len(lines[1].split())>1):
+			self.energy=float(lines[1].split()[1])
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
@@ -465,6 +467,64 @@ class Mol:
 				e2 = self.LJEnergy(tmp)
 				frc[i,ip] = (e1-e2)/(2.0*disp)
 		return frc
+
+	def NumericLJHessDiag(self):
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		disp=0.001
+		hessd=np.zeros((self.NAtoms(),3))
+		for i in range(self.NAtoms()):
+			for ip in range(3):
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] += disp
+				tmp[i*3+ip] += disp
+				f1 = self.LJEnergy(tmp)
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] += disp
+				tmp[i*3+ip] -= disp
+				f2 = self.LJEnergy(tmp)
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] -= disp
+				tmp[i*3+ip] += disp
+				f3 = self.LJEnergy(tmp)
+				tmp = self.coords.flatten()
+				tmp[i*3+ip] -= disp
+				tmp[i*3+ip] -= disp
+				f4 = self.LJEnergy(tmp)
+				hessd[i, ip] = (f1-f2-f3+f4)/(4.0*disp*disp)
+		return hessd
+
+	def NumericLJHessian(self):
+		if (self.DistMatrix==None):
+			print "Build DistMatrix"
+			raise Exception("dmat")
+		disp=0.001
+		hess=np.zeros((self.NAtoms()*3,self.NAtoms()*3))
+		for i in range(self.NAtoms()):
+			for j in range(self.NAtoms()):
+				for ip in range(3):
+					for jp in range(3):
+						if (j*3+jp >= i*3+ip):
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] += disp
+							f1 = self.LJEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] += disp
+							tmp[j*3+jp] -= disp
+							f2 = self.LJEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] += disp
+							f3 = self.LJEnergy(tmp)
+							tmp = self.coords.flatten()
+							tmp[i*3+ip] -= disp
+							tmp[j*3+jp] -= disp
+							f4 = self.LJEnergy(tmp)
+							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
+		return (hess+hess.T-np.diag(np.diag(hess)))
+
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
@@ -1008,15 +1068,15 @@ class Mol:
 			del sub_combinations
 		return
 
-	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0):
+	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0, max_case=1000000):
 		for i in range (1, self.mbe_order+1):
-			self.Generate_MBE_term(i, atom_group, cutoff, center_atom)
-		return  0
+			self.Generate_MBE_term(i, atom_group, cutoff, center_atom, max_case)
+		return  
 
-	def Generate_MBE_term(self, order,  atom_group=1, cutoff=10, center_atom=0):
+	def Generate_MBE_term(self, order,  atom_group=1, cutoff=10, center_atom=0, max_case=1000000):
 		if order in self.mbe_frags.keys():
 			print ("MBE order", order, "already generated..skipping..")
-			return 0
+			return 
 		if (self.coords).shape[0]%atom_group!=0:
 			raise Exception("check number of group size")
 		else:
@@ -1036,7 +1096,6 @@ class Mol:
 			print ("finished..takes", time_log-time.time(),"second")
 		time_now=time.time()
 		flag = np.zeros(1)
-		max_case = 10000000   #  set max cases for debug
 		for i in range (0, len(combinations)):
 			term = list(combinations[i])
 			pairs=list(itertools.combinations(term, 2))
@@ -1177,6 +1236,10 @@ class Mol:
 			self.Get_Qchem_Frag_Energy(i)
 		return
 
+	def Set_Qchem_Data_Path(self):
+		self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+		return
+
 	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
                 if method == "qchem":
                         if not os.path.isdir("./qchem"):
@@ -1244,8 +1307,8 @@ class Mol:
 				self.mbe_energy[i] += self.mbe_frags_energy[j]
 		return 0.0
 
-	def MBE(self,  atom_group=1, cutoff=10, center_atom=0):
-		self.Generate_All_MBE_term(atom_group, cutoff, center_atom)
+	def MBE(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
+		self.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
 		self.Calculate_All_Frag_Energy()
 		self.Set_MBE_Energy()
 		print self.mbe_frags_energy
@@ -1280,7 +1343,7 @@ class Mol:
 	def Get_Permute_Frags(self, indis=[0]):
 		self.mbe_permute_frags=dict()
 		for order in self.mbe_frags.keys():
-		   if order <= 2:  # for debug purpose
+		#   if order <= 2:  # for debug purpose
 			self.mbe_permute_frags[order]=list()
 			for frags in self.mbe_frags[order]:
 				self.mbe_permute_frags[order] += frags.Permute_Frag( indis  )
