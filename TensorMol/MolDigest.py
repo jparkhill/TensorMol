@@ -193,12 +193,13 @@ class MolDigester:
 
 	def EvaluateTestOutputs(self, desired, predicted):
 			print "Evaluating, ", len(desired), " predictions... "
-			if (self.OType=="GoEnergy"):
+			if (self.OType=="GoEnergy" or self.OType == "Energy"):
+				print "Mean Norm and Std", self.mn, self.sn
 				print "NCases: ", len(desired)
-				print "Mean Energy ", np.average(desired)
-				print "Mean Predicted Energy ", np.average(predicted)
-				print "MAE ", np.average(np.abs(desired-predicted))
-				print "std ", np.std(desired-predicted)
+				print "Mean Energy ", self.sn*np.average(desired)+self.mn
+				print "Mean Predicted Energy ", self.sn*np.average(predicted)+self.mn
+				print "MAE ", np.average(self.sn*np.abs(desired-predicted)+self.mn)
+				print "std ", self.sn*np.std(desired-predicted)+self.mn
 			else:
 				raise Exception("Unknown Digester Output Type.")
 			return
