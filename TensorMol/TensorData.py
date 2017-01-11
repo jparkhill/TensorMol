@@ -8,59 +8,59 @@ from Digest import *
 #import tables should go to hdf5 soon...
 
 class TensorData():
-	"""
-		A Training Set is a Molecule set, with a sampler and an embedding
-		The sampler chooses points in the molecular volume.
-		The embedding turns that into inputs and labels for a network to regress.
-	"""
-		def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=3600, ChopTo_=None, type_="atom" ):
-		"""
+    """
+    	A Training Set is a Molecule set, with a sampler and an embedding
+    	The sampler chooses points in the molecular volume.
+    	The embedding turns that into inputs and labels for a network to regress.
+    """
+    def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=3600, ChopTo_=None, type_="atom"):
+        """
 			make a tensordata object
-			Args: 
+			Args:
 				MSet_: A MoleculeSet
 				Dig_: A Digester
 				Name_: A Name
 				MxTimePerElement_: An amount of time to spend building the training set.
 				ChopTo_: A maximum number of molecules to include.
 		"""
-		self.path = "./trainsets/"
-		self.suffix = ".pdb"
-		self.set = MSet_
-		self.dig = Dig_
-		self.type = type_
-		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
-		self.SamplesPerElement = []
-		self.AvailableElements = []
-		self.AvailableDataFiles = []
-		self.NTest = 0  # assgin this value when the data is loaded
-		self.TestRatio = 0.2 # number of cases withheld for testing.
-		self.MxTimePerElement=MxTimePerElement_
-		self.MxMemPerElement=16000 # Max Array for an element in MB
-		self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
-		self.ScratchNCase = 0
-		self.ScratchState=None
-		self.ScratchPointer=0 # for non random batch iteration.
-		self.scratch_inputs=None
-		self.scratch_outputs=None
-		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
-		self.scratch_test_outputs=None
-		self.ExpandIsometriesAltogether = False
-		self.ExpandIsometriesBatchwise = False
-		self.ChopTo = ChopTo_
-		
-		# Ordinarily during training batches will be requested repeatedly
-		# for the same element. Introduce some scratch space for that.
-		if (not os.path.isdir(self.path)):
-			os.mkdir(self.path)
-		if (Name_!= None):
-			self.name = Name_
-			self.Load()
-			self.QueryAvailable() # Should be a sanity check on the data files.
-			return
-		elif (MSet_==None or Dig_==None):
-			raise Exception("I need a set and Digester if you're not loading me.")
-		self.name = ""
-	
+        self.path = "./trainsets/"
+        self.suffix = ".pdb"
+        self.set = MSet_
+        self.dig = Dig_
+        self.type = type_
+        self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
+        self.SamplesPerElement = []
+        self.AvailableElements = []
+        self.AvailableDataFiles = []
+        self.NTest = 0  # assgin this value when the data is loaded
+        self.TestRatio = 0.2 # number of cases withheld for testing.
+        self.MxTimePerElement=MxTimePerElement_
+        self.MxMemPerElement=16000 # Max Array for an element in MB
+        self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
+        self.ScratchNCase = 0
+        self.ScratchState=None
+        self.ScratchPointer=0 # for non random batch iteration.
+        self.scratch_inputs=None
+        self.scratch_outputs=None
+        self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
+        self.scratch_test_outputs=None
+        self.ExpandIsometriesAltogether = False
+        self.ExpandIsometriesBatchwise = False
+        self.ChopTo = ChopTo_
+
+        # Ordinarily during training batches will be requested repeatedly
+        # for the same element. Introduce some scratch space for that.
+        if (not os.path.isdir(self.path)):
+        	os.mkdir(self.path)
+        if (Name_!= None):
+        	self.name = Name_
+        	self.Load()
+        	self.QueryAvailable() # Should be a sanity check on the data files.
+        	return
+        elif (MSet_==None or Dig_==None):
+        	raise Exception("I need a set and Digester if you're not loading me.")
+        self.name = ""
+
 	def CleanScratch(self):
 		self.ScratchState=None
 		self.ScratchPointer=0 # for non random batch iteration.
@@ -92,7 +92,7 @@ class TensorData():
 			raise Exception("Ain't got no fucking shape.")
 
 	def BuildTrain(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
-		""" 
+		"""
 			Generates probability inputs for all training data using the chosen digester.
 			All the inputs for a given atom are built separately.
 			Now requires some sort of PES information.
@@ -203,10 +203,10 @@ class TensorData():
 		return
 
 	def BuildSamples(self,name_="gdb9", atypes=[],uniform=False):
-		""" 
-			Generates sampled data set without preparing the probabilities or embedding 
-			if uniform is true, it generate a grid of uniform samples up to 4 angstrom away from 
-			the central atom to generate known-good validation data. 
+		"""
+			Generates sampled data set without preparing the probabilities or embedding
+			if uniform is true, it generate a grid of uniform samples up to 4 angstrom away from
+			the central atom to generate known-good validation data.
 		"""
 		self.name=name_
 		print "Sampling set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
@@ -222,10 +222,10 @@ class TensorData():
 		for element in atypes:
 			for m in self.set.mols:
 				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
-		if (uniform): 
+		if (uniform):
 			for element in atypes:
 				print "AN: ", element, " contributes ", nofe[element]*20*20*20 , " samples "
-		else: 
+		else:
 			for element in atypes:
 				print "AN: ", element, " contributes ", nofe[element]*self.dig.NTrainSamples , " samples "
 		t0 = time.time()
@@ -435,7 +435,7 @@ class TensorData():
 			return self.scratch_inputs.shape[0]*GRIDS.NIso()
 		else:
 			return self.scratch_inputs.shape[0]
-	
+
 	def NTestCasesInScratch(self):
 		return self.scratch_inputs.shape[0]
 
@@ -445,7 +445,3 @@ class TensorData():
 			print "AN: ", self.AvailableElements[i], " contributes ", self.SamplesPerElement[i] , " samples "
 			print "From files: ", self.AvailableDataFiles[i]
 		return
-
-
-
-
