@@ -83,8 +83,7 @@ class MolInstance(Instance):
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
 					self.save_chk(step, test_loss, feed_dict)  # this method is kind of shitty written 
-		self.sess.close()
-		self.Save()
+		self.SaveAndClose()
 		return
 	
 	def train_step(self,step):
@@ -167,14 +166,13 @@ class MolInstance_fc_classify(MolInstance):
 		self.PreparedFor = Ncase
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
 		self.prob = None
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-		MolInstance.Save(self)
+		MolInstance.SaveAndClose(self)
 		return
-
 	
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
@@ -321,14 +319,14 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.PreparedFor = Ncase
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
+		MolInstance.SaveAndClose(self)
 		self.summary_op =None
 		self.summary_writer=None
 		self.check=None
 		self.label_pl = None
 		self.mats_pl = None
 		self.inp_pl = None
-		MolInstance.Save(self)
 		return
 
 	def placeholder_inputs(self, batch_size):

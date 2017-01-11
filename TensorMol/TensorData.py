@@ -1,7 +1,7 @@
-#
-# Contains Routines to generate training sets 
-# Combining a dataset, sampler and an embedding. (CM etc.)
-#
+"""
+ Contains Routines to generate training sets
+ Combining a dataset, sampler and an embedding. (CM etc.)
+"""
 import os, gc
 from Sets import *
 from Digest import *
@@ -14,6 +14,15 @@ class TensorData():
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
 	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=3600, ChopTo_=None ):
+		"""
+			make a tensordata object
+			Args: 
+				MSet_: A MoleculeSet
+				Dig_: A Digester
+				Name_: A Name
+				MxTimePerElement_: An amount of time to spend building the training set.
+				ChopTo_: A maximum number of molecules to include.
+		"""
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_

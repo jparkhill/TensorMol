@@ -7,8 +7,6 @@ Many of these tests take a pretty significant amount of time and memory to compl
 
 from TensorMol import * 
 
-print "HAS TF", HAS_TF
-
 # John's tests
 def TestBP():
 	""" 
@@ -64,9 +62,10 @@ def TestGoForceAtom():
 	print "Testing a Network learning Go-Atom Force..."
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
+	a.pop(10)
 	print "nmols:",len(a.mols)
-	c=a.DistortedClone(200)
-	b=a.DistortAlongNormals(80, True, 1.2)
+	c=a.DistortedClone(1)
+	b=a.DistortAlongNormals(2, True, 1.2)
 	c.Statistics()
 	b.Statistics()
 	print len(b.mols)
@@ -81,7 +80,7 @@ def TestGoForceAtom():
 	tset2 = TensorData(c,d)
 	tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
-	tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
+	tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,100)
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
 	a=MSet("OptMols")
@@ -97,6 +96,7 @@ def TestGoForceAtom():
 	return
 
 # Tests to run.
+TestGoForceAtom()
 TestBP()
 
 # Kun's tests.
