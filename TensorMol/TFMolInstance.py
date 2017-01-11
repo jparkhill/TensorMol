@@ -33,7 +33,9 @@ class MolInstance(Instance):
 		self.train_dir = './networks/'+self.name
 		self.TData.LoadDataToScratch(True)
 		self.TData.PrintStatus()
-		self.normalize= False
+		self.normalize= True
+		if (self.normalize):
+                        self.TData.NormalizeOutputs()
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 		self.outshape = self.TData.dig.lshape    # use the flatted version
 		print ("inshape", self.inshape, "outshape", self.outshape)
@@ -74,7 +76,7 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 40
+		test_freq = 10
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -83,8 +85,7 @@ class MolInstance(Instance):
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
 					self.save_chk(step, test_loss, feed_dict)  # this method is kind of shitty written
-		self.sess.close()
-		self.Save()
+		self.SaveAndClose()
 		return
 
 	def train_step(self,step):
@@ -167,14 +168,13 @@ class MolInstance_fc_classify(MolInstance):
 		self.PreparedFor = Ncase
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
 		self.prob = None
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
-		MolInstance.Save(self)
+		MolInstance.SaveAndClose(self)
 		return
-
 
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
@@ -264,11 +264,6 @@ class MolInstance_fc_classify(MolInstance):
 			duration = time.time() - test_start_time
 			print("testing...")
 			self.print_training(step, test_loss, test_correct, Ncase_test, duration)
-			if (self.Test_TData!=None):
-				batch_data= self.Test_TData.LoadData()
-				predicts=self.evaluate(batch_data[0])
-				print("another testing ...")
-				print (batch_data[1], predicts)
 		return test_loss, feed_dict
 
 
@@ -281,6 +276,8 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.hidden1 = 500
 		self.hidden2 = 500
 		self.hidden3 = 500
+		self.inshape = np.prod(self.TData.dig.eshape)
+		self.outshape = np.prod(self.TData.dig.lshape)
 #		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.summary_op =None
 		self.summary_writer=None
@@ -321,14 +318,14 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.PreparedFor = Ncase
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
+		MolInstance.SaveAndClose(self)
 		self.summary_op =None
 		self.summary_writer=None
 		self.check=None
 		self.label_pl = None
 		self.mats_pl = None
 		self.inp_pl = None
-		MolInstance.Save(self)
 		return
 
 	def placeholder_inputs(self, batch_size):
@@ -368,19 +365,6 @@ class MolInstance_fc_sqdiff(MolInstance):
 			duration = time.time() - test_start_time
 		print("testing...")
 		self.print_training(step, test_loss,  Ncase_test, duration)
-		if (self.Test_TData!=None):
-			batch_data= self.Test_TData.LoadData()
-			if (self.normalize):
-				norm_output=self.TData.ApplyNormalize(batch_data[1])
-			batch_data = [batch_data[0] , norm_output]
-			actual_size = batch_data[0].shape[0]
-			batch_data = self.PrepareData(batch_data)
-			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
-			predicts  = self.sess.run([self.output],  feed_dict=feed_dict)
-			print("another testing ...")
-			for i in range (0, actual_size):
-				print (batch_data[1][i], predicts[0][i])
-		print ("input:",batch_data[0], "predict:",output_value, "accu:",batch_data[1])
 		return test_loss, feed_dict
 
 	def train_prepare(self,  continue_training =False):
@@ -430,7 +414,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 			_, total_loss_value, loss_value  = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
-			self.print_training(step, train_loss, Ncase_train, duration)
+		self.print_training(step, train_loss, Ncase_train, duration)
 		return
 
 class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
@@ -500,8 +484,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
+			self.summary_op = tf.merge_all_summaries()
+			init = tf.initialize_all_variables()
+			#self.summary_op = tf.summary.merge_all()
+			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			try: # I think this may be broken
@@ -513,7 +499,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			except Exception as Ex:
 				print("Restore Failed",Ex)
 				pass
-			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
+			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
 
@@ -615,6 +602,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		start_time = time.time()
 		train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
 			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value

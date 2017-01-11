@@ -361,17 +361,18 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 				dist=sqrt(pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+0]-center[0], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+1]-center[1], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+2]-center[2], 2.0));
 				//           std::cout<<disp<<"  "<<dist<<std::endl;
 				//     std::cout<<" "<<m<<"  "<<k<<"  "<<1/dist*(1 - erf(4*(dist-dist_cut)))/2<<"  "<<1/dist<<std::endl;
-				if (dist > 0.5)
-				ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
-				else
-				ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
+				//if (dist > 0.5)
+				//ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
+				//else
+				//ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
+				ele_dist[m].push_back(1/dist);
 			}
 		}
 
-		for (int m = 0; m < nele; m++) {
-			std::sort(ele_dist[m].begin(), ele_dist[m].end());
-			std::reverse(ele_dist[m].begin(), ele_dist[m].end());
-		}
+		//for (int m = 0; m < nele; m++) {
+		//	std::sort(ele_dist[m].begin(), ele_dist[m].end());
+		//	std::reverse(ele_dist[m].begin(), ele_dist[m].end());
+		//}
 
 		for (int m = 0;  m < nele; m++)
 		for (int n= 0; n < ele_dist[m].size() && n < ngrids; n++)

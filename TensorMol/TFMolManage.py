@@ -47,9 +47,9 @@ class TFMolManage(TFManage):
 			raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.
 		if (self.NetType == "fc_classify"):
-			self.Instances = MolInstance_fc_classify(self.TData, None, self.Test_TData)
+			self.Instances = MolInstance_fc_classify(self.TData, None)
 		elif (self.NetType == "fc_sqdiff"):
-			self.Instances = MolInstance_fc_sqdiff(self.TData, None, self.Test_TData)
+			self.Instances = MolInstance_fc_sqdiff(self.TData, None)
 		elif (self.NetType == "fc_sqdiff_BP"):
 			self.Instances = MolInstance_fc_sqdiff_BP(self.TData)
 		else:

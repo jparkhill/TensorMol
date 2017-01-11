@@ -63,6 +63,7 @@ class Instance:
 		self.labels_placeholder = None
 		self.saver = None
 		self.gradient =None
+		self.summary_writer = None
 		return
 
 	def __del__(self):
@@ -88,6 +89,8 @@ class Instance:
 		return
 
 	def Clean(self):
+		if (self.sess != None):
+			self.sess.close()
 		self.sess = None
 		self.loss = None
 		self.output = None
@@ -96,11 +99,14 @@ class Instance:
 		self.embeds_placeholder = None
 		self.labels_placeholder = None
 		self.saver = None
+		self.gradient =None
+		self.summary_writer = None
 		self.PreparedFor = 0
 		return
 
-	def Save(self):
+	def SaveAndClose(self):
 		print("Saving TFInstance...")
+		self.save_chk(self,99999)
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
@@ -110,17 +116,24 @@ class Instance:
 		f.close()
 		return
 
+	def variable_summaries(var):
+	  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+	  with tf.name_scope('summaries'):
+		mean = tf.reduce_mean(var)
+		tf.summary.scalar('mean', mean)
+		with tf.name_scope('stddev'):
+		  stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+		tf.summary.scalar('stddev', stddev)
+		tf.summary.scalar('max', tf.reduce_max(var))
+		tf.summary.scalar('min', tf.reduce_min(var))
+		tf.summary.histogram('histogram', var)
+
 	# one of these two routines need to be removed I think. -JAP
-	def save_chk(self,  step, afloat_, feed_dict=None):  # this can be included in the Instance
+	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
-		checkpoint_file_mini = os.path.join(self.train_dir, self.name+'-chk-'+str(step)+"-"+str(float(afloat_)))
+		checkpoint_file_mini = os.path.join(self.train_dir, self.name+'-chk-'+str(step))
 		self.saver.save(self.sess, checkpoint_file_mini)
-		self.chk_file = checkpoint_file_mini
-		if (self.summary_op!=None and self.summary_writer!=None and feed_dict!=None):
-			self.summary_str = self.sess.run(self.summary_op, feed_dict=feed_dict)
-			self.summary_writer.add_summary(self.summary_str, step)
-			self.summary_writer.flush()
 		return
 
 #this isn't really the correct way to load()
@@ -208,8 +221,8 @@ class Instance:
 				biases = tf.Variable(tf.zeros([hidden1_units]),
 				name='biases')
 				hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
-				tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
-				tf.histogram_summary(weights.name, weights)
+				#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
+				#tf.summary.histogram(weights.name, weights)
 		# Hidden 2
 		with tf.name_scope('hidden2'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
@@ -257,7 +270,8 @@ class Instance:
 		train_op: The Op for training.
 		"""
 		tf.summary.scalar(loss.op.name, loss)
-		optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
+		optimizer = tf.train.AdamOptimizer(learning_rate)
+		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
 		train_op = optimizer.minimize(loss, global_step=global_step)
 		return train_op
@@ -273,9 +287,8 @@ class Instance:
 				test_loss, feed_dict = self.test(step)
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
-					self.save_chk(step, time.time(), feed_dict)
-		self.sess.close()
-		self.Save()
+					self.save_chk(step,feed_dict)
+		self.SaveAndClose()
 		return
 
 	def train_step(self,step):
@@ -428,7 +441,7 @@ class Instance_fc_classify(Instance):
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss, self.prob = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.merge_all_summaries()
+			self.summary_op = tf.summary.merge_all()
 			init = tf.initialize_all_variables()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
@@ -442,7 +455,7 @@ class Instance_fc_classify(Instance):
 			except Exception as Ex:
 				print("Restore Failed 12343",Ex)
 				pass
-			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		return
 
 	def train_step(self,step):
@@ -596,8 +609,8 @@ class Instance_fc_sqdiff(Instance):
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.merge_all_summaries()
-			init = tf.initialize_all_variables()
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			self.saver = tf.train.Saver()
@@ -610,7 +623,7 @@ class Instance_fc_sqdiff(Instance):
 			except Exception as Ex:
 				print("Restore Failed 2341325",Ex)
 				pass
-			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			return
 
 	def PrepareData(self, batch_data):
@@ -801,8 +814,8 @@ class Instance_3dconv_sqdiff(Instance):
 			self.output = self.inference(self.embeds_placeholder)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.merge_all_summaries()
-			init = tf.initialize_all_variables()
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			self.saver = tf.train.Saver()

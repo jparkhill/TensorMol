@@ -68,6 +68,7 @@ class MolDigester:
 			#print "before: ", cm_bp, len(cm_bp)
 			cm_bp = np.asarray(cm_bp[0], dtype=np.float32)
 			cm_bp = cm_bp.reshape(-1)
+			cm_bp = cm_bp[np.nonzero(cm_bp)]
 			CM_BP.append(cm_bp)
 			#print "CM_BP:", CM_BP
 		CM_BP = np.asarray(CM_BP)
@@ -151,12 +152,13 @@ class MolDigester:
 		if (self.name =="Coulomb"):
 			CM, deri_CM = (self.EmbF(mol_))(mol_)
 			UpTri = self.GetUpTri(CM)
-			#out = mol_.frag_mbe_energy # debug
-			out = mol_.energy # debug
+			out = mol_.frag_mbe_energy # debug for mbe
+			#out = mol_.energy # debug
 			#print CM, deri_CM, out
 			if self.lshape ==None or self.eshape==None:
-				self.lshape=1
-				self.eshape=UpTri.shape[0]
+				self.lshape=[1]  # debug, should these be a list or int?
+				self.eshape=[UpTri.shape[0]] 
+				print "self.eshape", self.eshape
 			return UpTri, out
 		elif (self.name == "SymFunc"):
 			SYM, SYM_deri = (self.EmbF(mol_))(mol_)
