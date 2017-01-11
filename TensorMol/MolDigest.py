@@ -55,7 +55,7 @@ class MolDigester:
 			cm_bp = np.asarray(cm_bp[0], dtype=np.float32)
 			print "SHAPE", cm_bp.shape
 			cm_bp = cm_bp.reshape(-1)
-			cm_bp = cm_bp[np.nonzero(cm_bp)] Kun: what were you trying to do here...
+			cm_bp = cm_bp[np.nonzero(cm_bp)] #debug, delete meaningless  zero values from input
 			CM_BP.append(cm_bp)
 			#print "CM_BP:", CM_BP
 		CM_BP = np.asarray(CM_BP)
@@ -166,7 +166,7 @@ class MolDigester:
 			if (self.OType == "FragEnergy"):
 				Outs = np.array([mol_.frag_mbe_energy])
 			if (self.OType == "GoEnergy"):
-				Outs = np.array([mol_.GoEnergy()])
+				Outs = np.array([mol_.GoEnergy(mol_.coords)])
 			else:
 				raise Exception("Unknown Output Type... ")
 			if (self.lshape == None):

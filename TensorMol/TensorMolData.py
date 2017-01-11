@@ -274,7 +274,7 @@ class TensorMolData_BP(TensorMolData):
 		return 
 
 	def CleanScratch(self):
-		TensorMolData.CleanScratch(self)
+		TensorData.CleanScratch(self)
 		self.CaseMetadata=None # case X molecule index , element type , first atom in this mol, last atom in this mol (exclusive)
 		self.scratch_meta = None
 		self.scratch_test_meta = None
