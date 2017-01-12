@@ -470,7 +470,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
-		self.batch_size_output = int(2.*self.batch_size/self.MeanNumAtoms)
+		self.batch_size_output = int(2.3*self.batch_size/self.MeanNumAtoms)
+		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
 		print("Assigned batch input size: ",self.batch_size)
 		print("Assigned batch output size: ",self.batch_size_output)
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):

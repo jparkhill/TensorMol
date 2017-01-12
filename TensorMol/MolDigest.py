@@ -150,7 +150,8 @@ class MolDigester:
     		CM, deri_CM = self.make_cm(mol_)
     		Ins = self.GetUpTri(CM)
     	elif(self.name == "Coulomb_BP"):
-    		Ins, deri_CM_BP =  self.make_cm_bp(mol_)
+            Ins, deri_CM_BP =  self.make_cm_bp(mol_)
+            Ins = Ins.reshape([Ins.shape[0],-1])
     	elif(self.name == "SymFunc"):
     		Ins, SYM_deri = self.make_sym(mol_)
     	elif(self.name == "GauInv_BP"):
