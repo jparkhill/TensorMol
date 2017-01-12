@@ -190,7 +190,7 @@ def TestBP_Kun():
         tset.BuildTrain("CH3OH_NEQ")
         tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
         manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-		('manager.Train(maxstep=5)')
+		manager.Train(maxstep=5)
         #manager.Train(maxstep=200)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
         # Now check that the network can be revived and even used for optimizations...
         #optmanager=TFMolManage("Mol_h2o_NEQ_Coulomb_BP_fc_sqdiff_BP_3",tset,False,"fc_sqdiff_BP")
