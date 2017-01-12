@@ -65,7 +65,6 @@ class MolInstance(Instance):
 			biases = tf.Variable(tf.zeros([hidden2_units]),
 			name='biases')
 			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
-
 		# Linear
 		with tf.name_scope('regression_linear'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
@@ -84,7 +83,7 @@ class MolInstance(Instance):
 				test_loss, feed_dict = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, test_loss, feed_dict)  # this method is kind of shitty written
+					self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
 
@@ -485,8 +484,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.merge_all_summaries()
-			init = tf.initialize_all_variables()
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
 			#self.summary_op = tf.summary.merge_all()
 			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -598,7 +597,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			step: the index of this step.
 		"""
 		Ncase_train = self.TData.NTrain
-		#print ("NTraing:", Ncase_train)
 		start_time = time.time()
 		train_loss =  0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
@@ -607,10 +605,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
-		#print ("self.H_length, self.O_length", self.H_length, self.O_length)
-		#print ("ministep:", ministep)
-		#print ("accu:", batch_data[1],  "Mol:", tmp_mol_output,"H:", tmp_H_output, "C:", tmp_C_output, "O:", tmp_O_output)
-		#print ("input:", raw_data[0], "output:", raw_data[1])
 		self.print_training(step, train_loss, Ncase_train, duration)
 		return
 
