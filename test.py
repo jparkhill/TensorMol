@@ -5,7 +5,7 @@ Many of these tests take a pretty significant amount of time and memory to compl
 
 """
 
-from TensorMol import * 
+from TensorMol import *
 import cProfile
 
 # John's tests
@@ -48,8 +48,10 @@ def TestBP():
 def TestBP2():
 	"""
 	General Behler Parinello using ab-initio energies.
+	Args:
+		must have datasets/alchohol.xyz
 	"""
-	print "Testing General Behler-Parrinello"
+	print "Testing General Behler-Parrinello using ab-initio energies...."
 	a=MSet("alcohol")
 	a.ReadXYZ("alcohol")
 	TreatedAtoms = a.AtomTypes()
@@ -125,53 +127,11 @@ def TestGoForceAtom():
 	return
 
 # Tests to run.
-TestGoForceAtom()
-TestBP()
-
-# Kun's tests.
-if (0):
-	if (0):
-		#a=MSet("CxHy_test")
-		#a.ReadXYZ("CxHy_test")
-		#a.Save()
-	#	a=MSet("gdb9_NEQ")
-	#	a.Load()
-		b=MSet("gdb9")
-		b.Load()
-		allowed_eles=[1, 6]
-		b.CutSet(allowed_eles)
-		print "length of dmols:", len(b.mols)
-		#b = a.DistortedClone(20)
-		b.Save()
-
-	if (1):
-		#a=MSet("CxHy_test")
-		#a.Load()
-		a=MSet("gdb9_1_6")
-	  	a=a.DistortedClone(1)
-		a.Load()
-		# Choose allowed atoms.
-		TreatedAtoms = a.AtomTypes()
-		#for mol in a.mols:
-		#	mol.BuildDistanceMatrix()
-		# 2 - Choose Digester
-		#d = Digester(TreatedAtoms, name_="SymFunc",OType_ ="Force")
-		#d.TrainDigestW(a.mols[0], 6)
-		d = Digester(TreatedAtoms, name_="PGaussian",OType_ ="GoForce_old_version")
-		d.Emb(a.mols[0],0, np.zeros((1,3)))
-		#d.Emb(a.mols[0],0, a.mols[0].coords[0].reshape(1,-1))
-		#4 - Generate training set samples.
-
-	if (0):
-		tset = TensorData(a,d)
-		tset.BuildTrain("CxHy_test") # generates dataset numpy arrays for each atom.
-=======
->>>>>>> 6b6934a5d07186eb4f2e367f4cb517b12e77d2f9
-
-
+#TestGoForceAtom()
+TestBP2()
 
 def TestBP_Kun():
-        """ 
+        """
         General Behler Parinello
         """
         print "Testing General Behler-Parrinello"
