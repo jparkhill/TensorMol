@@ -34,6 +34,7 @@ HAS_GRIDS=True
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
+N_CORES = 1
 ele_roomT_H = {1:-0.497912, 6:-37.844411, 7:-54.581501, 8:-75.062219, 9:-99.716370}     # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
 atoi = {'H':1,'He':2,'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,'K':19,'Ca':20,'Sc':21,'Ti':22,'Si':23,'V':24,'Cr':25,'Br':35, 'Cs':55, 'Pb':82}
 atoc = {1: 40, 6: 100, 7: 150, 8: 200, 9:240}
@@ -86,6 +87,15 @@ try:
 except:
 	print("Tensorflow not Installed, very limited functionality")
 	pass
+
+try:
+	import multiprocessing
+	N_CORES=multiprocessing.cpu_count()
+	print("Found "+str(N_CORES)+" CPUs to thread over... ")
+except:
+	print("Only a single CPU, :( did you lose a war?")
+	pass
+
 print("TensorMol ready...")
 
 TOTAL_SENSORY_BASIS=None
