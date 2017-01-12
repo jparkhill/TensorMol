@@ -436,7 +436,7 @@ class Instance_fc_classify(Instance):
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss, self.prob = self.loss_op(self.output, self.labels_placeholder)
@@ -604,7 +604,7 @@ class Instance_fc_sqdiff(Instance):
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)

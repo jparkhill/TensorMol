@@ -129,6 +129,46 @@ def TestGoForceAtom():
 # Tests to run.
 #TestGoForceAtom()
 TestBP2()
+#TestBP()
+
+# Kun's tests.
+if (0):
+	if (0):
+		#a=MSet("CxHy_test")
+		#a.ReadXYZ("CxHy_test")
+		#a.Save()
+	#	a=MSet("gdb9_NEQ")
+	#	a.Load()
+		b=MSet("gdb9")
+		b.Load()
+		allowed_eles=[1, 6]
+		b.CutSet(allowed_eles)
+		print "length of dmols:", len(b.mols)
+		#b = a.DistortedClone(20)
+		b.Save()
+
+	if (1):
+		#a=MSet("CxHy_test")
+		#a.Load()
+		a=MSet("gdb9_1_6")
+	  	a=a.DistortedClone(1)
+		a.Load()
+		# Choose allowed atoms.
+		TreatedAtoms = a.AtomTypes()
+		#for mol in a.mols:
+		#	mol.BuildDistanceMatrix()
+		# 2 - Choose Digester
+		#d = Digester(TreatedAtoms, name_="SymFunc",OType_ ="Force")
+		#d.TrainDigestW(a.mols[0], 6)
+		d = Digester(TreatedAtoms, name_="PGaussian",OType_ ="GoForce_old_version")
+		d.Emb(a.mols[0],0, np.zeros((1,3)))
+		#d.Emb(a.mols[0],0, a.mols[0].coords[0].reshape(1,-1))
+		#4 - Generate training set samples.
+
+	if (0):
+		tset = TensorData(a,d)
+		tset.BuildTrain("CxHy_test") # generates dataset numpy arrays for each atom.
+
 
 def TestBP_Kun():
         """
@@ -150,7 +190,7 @@ def TestBP_Kun():
         tset.BuildTrain("CH3OH_NEQ")
         tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
         manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-	cProfile.run('manager.Train(maxstep=5)')
+		('manager.Train(maxstep=5)')
         #manager.Train(maxstep=200)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
         # Now check that the network can be revived and even used for optimizations...
         #optmanager=TFMolManage("Mol_h2o_NEQ_Coulomb_BP_fc_sqdiff_BP_3",tset,False,"fc_sqdiff_BP")
@@ -163,10 +203,13 @@ def TestBP_Kun():
         #optimizer  = Optimizer(manager)
         #optimizer.Opt(test_mol)
         return
-if (0):
+
+if (1):
 	tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
         manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-        cProfile.run('manager.Train(maxstep=5)')  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+        cProfile.run('manager.Train(maxstep=100)')  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+
+#TestBP_Kun()
 
 
 # Kun's tests.
@@ -304,7 +347,7 @@ if (0):
 
 
 #jeherr tests
-if (1):
+if (0):
 	# Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
 	if (0):
 		a=MSet('cspbbr3_tess')
