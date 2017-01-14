@@ -51,6 +51,7 @@ class Mol:
 		self.atom_nodes = atom_nodes
 
 	def Connect_AtomNodes(self):
+		print self.atom_nodes
 		dist_mat = MolEmb.Make_DistMat(self.coords)
 		for i in range (0, self.NAtoms()):
 			for j in range (i+1, self.NAtoms()):
@@ -59,8 +60,20 @@ class Mol:
 				atom_pair.sort()
 				bond_name = self.AtomName_From_List(atom_pair)
 				if dist <= bond_length_thresh[bond_name]:
-					self.atom_nodes[i].connected_nodes.append(self.atom_nodes[j])
-					self.atom_nodes[j].connected_nodes.append(self.atom_nodes[i])
+					print "we only update ", i, j , " here !"
+					print "before:"
+					print "atom:", 1, self.atom_nodes[1].connected_nodes
+                                        print "atom:", 2, self.atom_nodes[2].connected_nodes
+                                        print "atom:", 3, self.atom_nodes[3].connected_nodes
+					(self.atom_nodes[i]).Append(self.atom_nodes[j])  
+					(self.atom_nodes[j]).Append(self.atom_nodes[i])
+					print i, self.atom_nodes[i].connected_nodes, self.atom_nodes[j]
+					print j, self.atom_nodes[j].connected_nodes, self.atom_nodes[i]
+					print "after:"
+					print "atom:", 1, self.atom_nodes[1].connected_nodes
+					print "atom:", 2, self.atom_nodes[2].connected_nodes
+					print "atom:", 3, self.atom_nodes[3].connected_nodes
+					print "why the fuck 1,2,3 are both changed!!!!!" 
 		return 
 
 	def Make_Mol_Graph(self):
@@ -184,7 +197,10 @@ class Mol:
 		lines = string.split("\n")
 		natoms=int(lines[0])
 		if (len(lines[1].split())>1):
-			self.energy=float(lines[1].split()[1])
+			try:
+				self.energy=float(lines[1].split()[1])
+			except:
+				pass
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
@@ -1724,15 +1740,64 @@ class Frag(Mol):
 
 
 
+class Frag_of_Mol(Mol):
+	def __init__(self, atoms_=None, coords_=None):
+		Mol.__init__(self, atoms_, coords_)
+		self.undefined_bonds = None  # capture the undefined bonds of each atom
 
-class AtomNode:
-	""" Treat each atom as a node for the purpose of building the molecule graph """
-        def __init__(self, node_type_=None, node_index_=None, connected_nodes_ = []):
-		self.node_type = node_type_
-		self.node_index = node_index_
-		self.connected_nodes = connected_nodes_
+
+        def FromXYZString(self,string):
+                lines = string.split("\n")
+                natoms=int(lines[0])
+                self.atoms.resize((natoms))
+                self.coords.resize((natoms,3))
+                for i in range(natoms):
+                        line = lines[i+2].split()
+                        if len(line)==0:
+                                return
+                        self.atoms[i]=AtomicNumber(line[0])
+                        try:
+                                self.coords[i,0]=float(line[1])
+                        except:
+                                self.coords[i,0]=scitodeci(line[1])
+                        try:
+                                self.coords[i,1]=float(line[2])
+                        except:
+                                self.coords[i,1]=scitodeci(line[2])
+                        try:
+                                self.coords[i,2]=float(line[3])
+                        except:
+                                self.coords[i,2]=scitodeci(line[3])
+		import ast
+		self.undefined_bonds = ast.literal_eval(lines[1].split()[1])
+                return
+
+
+	def Make_AtomNodes(self):
+                atom_nodes = []
+                for i in range (0, self.NAtoms()):
+			if i in self.undefined_bonds.keys():
+                        	atom_nodes.append(AtomNode(self.atoms[i], i, [], self.undefined_bonds[i]))
+			else:
+				atom_nodes.append(AtomNode(self.atoms[i], i))
+                self.atom_nodes = atom_nodes
 		return 
 
 
+class AtomNode:
+	""" Treat each atom as a node for the purpose of building the molecule graph """
+        def __init__(self, node_type_=None, node_index_=None, connected_nodes_ = [], undefined_bond_ = 0):
+		self.node_type = node_type_
+		self.node_index = node_index_
+		self.connected_nodes = connected_nodes_
+		self.undefined_bond = undefined_bond_
+		return 
+
+	def Append(self, node):
+		print "append is running on atom:", self.node_index
+		self.connected_nodes.append(0)
+		#self.connected_nodes.append(node)
+		return
+
 	def Num_of_Bonds(self):
-		return len(self.next_nodes)	
+		return len(self.connected_nodes)+self.undefined_bond 	
