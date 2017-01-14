@@ -12,8 +12,8 @@ if (1):
 
 		b = MSet("CH3OH_C6H6_frag")
 		b.ReadXYZ("CH3OH_C6H6_frag", "frag_of_mol")	
-		b.mols[0].Make_Mol_Graph()
-		for node in b.mols[0].atom_nodes:
+		b.mols[2].Make_Mol_Graph()
+		for node in b.mols[2].atom_nodes:
 			print node.Num_of_Bonds()
 
 if (0):
