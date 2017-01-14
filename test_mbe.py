@@ -3,7 +3,15 @@ from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
 
 
+# for testing the fragmentation of molecule 
 if (1):
+	if (1):
+		a= MSet("CH3OH_C6H6")
+		a.ReadXYZ("CH3OH_C6H6")
+		a.mols[0].Make_Mol_Graph()	
+
+
+if (0):
 	#Load .xyz files.
 	if (0):
 		a=MSet("H2O_tinker_amoeba") # Define our set.

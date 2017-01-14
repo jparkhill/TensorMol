@@ -1,6 +1,7 @@
 from Util import *
 import numpy as np
 import random, math
+import MolEmb
 
 class Mol:
 	""" Provides a general purpose molecule"""
@@ -38,7 +39,35 @@ class Mol:
 		self.nn_energy=None
 		self.ngroup=None
 		self.qchem_data_path = None
+		self.atom_nodes = None
 		return
+
+
+
+	def Make_AtomNodes(self):
+		atom_nodes = []
+		for i in range (0, self.NAtoms()):
+			atom_nodes.append(AtomNode(self.atoms[i], i)) 
+		self.atom_nodes = atom_nodes
+
+	def Connect_AtomNodes(self):
+		dist_mat = MolEmb.Make_DistMat(self.coords)
+		for i in range (0, self.NAtoms()):
+			for j in range (i+1, self.NAtoms()):
+				dist = dist_mat[i][j]
+				atom_pair=[self.atoms[i], self.atoms[j]]
+				atom_pair.sort()
+				bond_name = self.AtomName_From_List(atom_pair)
+				if dist <= bond_length_thresh[bond_name]:
+					self.atom_nodes[i].connected_nodes.append(self.atom_nodes[j])
+					self.atom_nodes[j].connected_nodes.append(self.atom_nodes[i])
+		return 
+
+	def Make_Mol_Graph(self):
+		self.Make_AtomNodes()
+		self.Connect_AtomNodes()
+		return
+
 
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
@@ -776,6 +805,13 @@ class Mol:
 
 	def AtomName(self, i):
 		return atoi.keys()[atoi.values().index(self.atoms[i])]
+
+
+	def AtomName_From_List(self, atom_list):
+		name = ""
+		for i in atom_list:
+			name += atoi.keys()[atoi.values().index(i)]
+		return name
 
 	def AllAtomNames(self):
 		names=[]
@@ -1685,3 +1721,18 @@ class Frag(Mol):
 				frag_deri[i][1] += nn_dcm * cm_dy
 				frag_deri[i][2] += nn_dcm * cm_dz
 		return frag_deri
+
+
+
+
+class AtomNode:
+	""" Treat each atom as a node for the purpose of building the molecule graph """
+        def __init__(self, node_type_=None, node_index_=None, connected_nodes_ = []):
+		self.node_type = node_type_
+		self.node_index = node_index_
+		self.connected_nodes = connected_nodes_
+		return 
+
+
+	def Num_of_Bonds(self):
+		return len(self.next_nodes)	
