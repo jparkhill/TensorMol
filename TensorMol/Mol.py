@@ -68,6 +68,20 @@ class Mol:
 		self.Connect_AtomNodes()
 		return
 
+	def GetNextNode_DFS(self, visited_list, node_stack):
+		node = node_stack.pop()
+		visited_list.append(node.node_index)
+		for next_node in node.connected_nodes:
+			if next_node.node_index not in visited_list:
+				node_stack.append(next_node)
+		return node, visited_list, node_stack
+
+	def DFS(self, head_node):
+		node_stack = [head_node]
+		visited_list = []
+		while(node_stack):   # if node stack is not empty
+			node, visited_list, node_stack  = self.GetNextNode_DFS(visited_list, node_stack)
+			print "node.node_index", node.node_index,  visited_list
 
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
@@ -1778,11 +1792,28 @@ class AtomNode:
 		self.node_index = node_index_
 		self.connected_nodes = []
 		self.undefined_bond = undefined_bond_
+		self.num_of_bonds = None
+		self.connected_atoms = None
+		self.Update_Node()
 		return 
 
 	def Append(self, node):
 		self.connected_nodes.append(node)
+		self.Update_Node()
 		return
 
 	def Num_of_Bonds(self):
-		return len(self.connected_nodes)+self.undefined_bond 	
+		self.num_of_bonds = len(self.connected_nodes)+self.undefined_bond
+		return len(self.connected_nodes)+self.undefined_bond 
+
+	def Connected_Atoms(self):
+		connected_atoms = []
+		for node in self.connected_nodes:
+			connected_atoms.append(node.node_type)
+		self.connected_atoms = connected_atoms
+		return connected_atoms	
+
+	def Update_Node(self):
+		self.Num_of_Bonds()
+		self.Connected_Atoms()
+		return
