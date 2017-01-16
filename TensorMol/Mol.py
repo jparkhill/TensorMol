@@ -139,17 +139,23 @@ class Mol:
 				possible_node = []
 				if mol_visited_list ==[]:
                                                 possible_node = list(self.atom_nodes)
+						for mol_node in possible_node:
+							if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
+								updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
+								if mol_node.node_type in ignored_ele:# just once 
+									break 
 				else:
-					for mol_visited_node_index in mol_visited_list:
-						for mol_visited_node_next_node in self.atom_nodes[mol_visited_node_index].connected_nodes:
-							if mol_visited_node_next_node not in possible_node and mol_visited_node_next_node.node_index not in mol_visited_list:
-								possible_node.append(mol_visited_node_next_node)
-				for mol_node in possible_node:
-#				for mol_node in self.atom_nodes:
-					if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
-						updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
-						if mol_node.node_type in ignored_ele:# just once 
-							break 
+					connected_node_index_in_frag = []
+                	                for connected_node_in_frag in current_frag_node.connected_nodes:
+                        	                if connected_node_in_frag.node_index in frag_visited_list:
+							connected_node_index_in_frag.append(frag_visited_list.index(connected_node_in_frag.node_index))
+					for connected_node_index in connected_node_index_in_frag:
+						connected_node_in_mol = self.atom_nodes[mol_visited_list[connected_node_index]]
+						for target_node in connected_node_in_mol.connected_nodes:
+							if target_node.node_index not in mol_visited_list and self.Compare_Node(target_node, current_frag_node) and self.Check_Connection(target_node, current_frag_node, mol_visited_list, frag_visited_list):
+								updated_all_mol_visited_list.append(mol_visited_list+[target_node.node_index])
+								if target_node.node_type in ignored_ele:
+									break
 			all_mol_visited_list = list(updated_all_mol_visited_list) 
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
 		print all_mol_visited_list	
