@@ -158,8 +158,12 @@ class Mol:
 									break
 			all_mol_visited_list = list(updated_all_mol_visited_list) 
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
-		print all_mol_visited_list	
-		return 
+		frags_in_mol = []
+		for mol_visited_list in all_mol_visited_list:
+			if list(set(mol_visited_list)) not in frags_in_mol:
+				frags_in_mol.append(list(set(mol_visited_list)))
+		print frags_in_mol
+		return frags_in_mol 
 	
 
 	def Check_Connection(self, mol_node, frag_node, mol_visited_list, frag_visited_list):  # the connection of mol_node should be the same as frag_node in the list we visited so far.
