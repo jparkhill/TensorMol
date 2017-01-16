@@ -136,7 +136,16 @@ class Mol:
 			current_frag_node = frag_node_stack[-1]
 			updated_all_mol_visited_list = []
 			for mol_visited_list in all_mol_visited_list:
-				for mol_node in self.atom_nodes:
+				possible_node = []
+				if mol_visited_list ==[]:
+                                                possible_node = list(self.atom_nodes)
+				else:
+					for mol_visited_node_index in mol_visited_list:
+						for mol_visited_node_next_node in self.atom_nodes[mol_visited_node_index].connected_nodes:
+							if mol_visited_node_next_node not in possible_node and mol_visited_node_next_node.node_index not in mol_visited_list:
+								possible_node.append(mol_visited_node_next_node)
+				for mol_node in possible_node:
+#				for mol_node in self.atom_nodes:
 					if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
 						updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
 						if mol_node.node_type in ignored_ele:# just once 
