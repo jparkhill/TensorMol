@@ -106,7 +106,7 @@ class MSet:
 			self.mols[-1].ReadGDB9(path+file, file, self.name)
 		return
 
-	def ReadXYZ(self,filename):
+	def ReadXYZ(self,filename, xyz_type = 'mol'):
 		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """
 		f = open(self.path+filename+".xyz","r")
 		txts = f.readlines()
@@ -114,7 +114,12 @@ class MSet:
 			if (txts[line].count('Comment:')>0):
 				line0=line-1
 				nlines=int(txts[line0])
-				self.mols.append(Mol())
+				if xyz_type == 'mol':
+					self.mols.append(Mol())
+				elif xyz_type == 'frag_of_mol':
+					self.mols.append(Frag_of_Mol())
+				else:
+					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
 		return
 

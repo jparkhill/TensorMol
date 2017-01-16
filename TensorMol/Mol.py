@@ -1,6 +1,7 @@
 from Util import *
 import numpy as np
 import random, math
+import MolEmb
 
 class Mol:
 	""" Provides a general purpose molecule"""
@@ -38,7 +39,157 @@ class Mol:
 		self.nn_energy=None
 		self.ngroup=None
 		self.qchem_data_path = None
+		self.atom_nodes = None
 		return
+
+
+
+	def Make_AtomNodes(self):
+		atom_nodes = []
+		for i in range (0, self.NAtoms()):
+			atom_nodes.append(AtomNode(self.atoms[i], i)) 
+		self.atom_nodes = atom_nodes
+
+	def Connect_AtomNodes(self):
+		dist_mat = MolEmb.Make_DistMat(self.coords)
+		for i in range (0, self.NAtoms()):
+			for j in range (i+1, self.NAtoms()):
+				dist = dist_mat[i][j]
+				atom_pair=[self.atoms[i], self.atoms[j]]
+				atom_pair.sort()
+				bond_name = self.AtomName_From_List(atom_pair)
+				if dist <= bond_length_thresh[bond_name]:
+					(self.atom_nodes[i]).Append(self.atom_nodes[j])  
+					(self.atom_nodes[j]).Append(self.atom_nodes[i])
+		return 
+
+	def Make_Mol_Graph(self):
+		self.Make_AtomNodes()
+		self.Connect_AtomNodes()
+		return
+
+	def GetNextNode_DFS(self, visited_list, node_stack):
+		node = node_stack.pop()
+		visited_list.append(node.node_index)
+		for next_node in node.connected_nodes:
+			if next_node.node_index not in visited_list:
+				node_stack.append(next_node)
+		return node, visited_list, node_stack
+
+	def DFS(self, head_node):
+		node_stack = [head_node]
+		visited_list = []
+		while(node_stack):   # if node stack is not empty
+			node, visited_list, node_stack  = self.GetNextNode_DFS(visited_list, node_stack)
+			print "node.node_index", node.node_index,  visited_list
+
+
+	def DFS_recursive(self, node, visited_list):
+		print node.node_index
+		visited_list.append(node.node_index)
+		for next_node in node.connected_nodes:
+			if next_node.node_index not in visited_list:
+				visited_list = self.DFS_recursive(next_node, visited_list)
+		return visited_list
+
+	def DFS_recursive_all_order(self, node, visited_list, ignored_ele = [1]):
+		atom_set = list(set(node.connected_atoms))
+		atom_set.sort()
+		node_set_index = []
+		for i in range (0, len(atom_set)):
+			node_set_index.append([])
+			for j in range (0, len(node.connected_atoms)):	
+				if node.connected_atoms[j] == atom_set[i]:
+					node_set_index[i].append(j)
+		sub_order = []
+		for index in node_set_index:
+			sub_order.append([])
+			if node.connected_atoms[index[0]]in ignored_ele:  # element that do not permute
+				sub_order[-1] = [list(index)]	
+			else:
+				sub_order[-1] = [list(x) for x in list(itertools.permutations(index))]
+		all_order = [list(x) for x in list(itertools.product(*sub_order))]
+		tmp = []
+		for order in all_order:
+			tmp.append([])
+			for l in order:
+				tmp[-1] += l
+		all_order = list(tmp)
+
+		print node.node_index
+		visited_list.append(node.node_index)
+		visited_list_save =  list(visited_list)
+		for order in all_order:
+			connected_nodes = [node.connected_nodes[i] for i in order]
+			for next_node in connected_nodes:
+				visited_list = list(visited_list_save)
+				if next_node.node_index not in visited_list:
+					visited_list = self.DFS_recursive(next_node, visited_list)
+		return visited_list
+
+	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0):   # ignore all the H for assigment
+		frag_head_node = frag.atom_nodes[frag_head]	
+		frag_node_stack = [frag_head_node]
+                frag_visited_list = []
+		all_mol_visited_list = [[]]
+                while(frag_node_stack):   # if node stack is not empty
+			current_frag_node = frag_node_stack[-1]
+			updated_all_mol_visited_list = []
+			for mol_visited_list in all_mol_visited_list:
+				possible_node = []
+				if mol_visited_list ==[]:
+                                                possible_node = list(self.atom_nodes)
+						for mol_node in possible_node:
+							if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
+								updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
+								if mol_node.node_type in ignored_ele:# just once 
+									break 
+				else:
+					connected_node_index_in_frag = []
+                	                for connected_node_in_frag in current_frag_node.connected_nodes:
+                        	                if connected_node_in_frag.node_index in frag_visited_list:
+							connected_node_index_in_frag.append(frag_visited_list.index(connected_node_in_frag.node_index))
+					for connected_node_index in connected_node_index_in_frag:
+						connected_node_in_mol = self.atom_nodes[mol_visited_list[connected_node_index]]
+						for target_node in connected_node_in_mol.connected_nodes:
+							if target_node.node_index not in mol_visited_list and self.Compare_Node(target_node, current_frag_node) and self.Check_Connection(target_node, current_frag_node, mol_visited_list, frag_visited_list):
+								updated_all_mol_visited_list.append(mol_visited_list+[target_node.node_index])
+								if target_node.node_type in ignored_ele:
+									break
+			all_mol_visited_list = list(updated_all_mol_visited_list) 
+                        next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
+		frags_in_mol = []
+		for mol_visited_list in all_mol_visited_list:
+			if list(set(mol_visited_list)) not in frags_in_mol:
+				frags_in_mol.append(list(set(mol_visited_list)))
+		print frags_in_mol
+		return frags_in_mol 
+	
+
+	def Check_Connection(self, mol_node, frag_node, mol_visited_list, frag_visited_list):  # the connection of mol_node should be the same as frag_node in the list we visited so far.
+		mol_node_connection_index_found = []
+		for node in mol_node.connected_nodes:
+			if node.node_index in mol_visited_list:
+				mol_node_connection_index_found.append(mol_visited_list.index(node.node_index))
+
+		frag_node_connection_index_found = []
+                for node in frag_node.connected_nodes:
+                        if node.node_index in frag_visited_list:
+                                frag_node_connection_index_found.append(frag_visited_list.index(node.node_index))
+		
+		if set(mol_node_connection_index_found) == set(frag_node_connection_index_found):
+			return True
+		else:
+			return False
+		
+
+
+	def Compare_Node(self, mol_node, frag_node):
+		if mol_node.node_type == frag_node.node_type and mol_node.num_of_bonds == frag_node.num_of_bonds  and Subset(mol_node.connected_atoms, frag_node.connected_atoms):
+			return True
+		else:
+			return False 
+
 
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
@@ -162,10 +313,11 @@ class Mol:
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
-		#if (len(lines[1].split())>1):
-		#Deals with xyz's which have no energy in the comment line now.
-		if (lines[1].count('Energy:')>0):
-			self.energy=float(lines[1].split()[1])
+		if (len(lines[1].split())>1):
+			try:
+				self.energy=float(lines[1].split()[1])
+			except:
+				pass
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
@@ -787,6 +939,13 @@ class Mol:
 
 	def AtomName(self, i):
 		return atoi.keys()[atoi.values().index(self.atoms[i])]
+
+
+	def AtomName_From_List(self, atom_list):
+		name = ""
+		for i in atom_list:
+			name += atoi.keys()[atoi.values().index(i)]
+		return name
 
 	def AllAtomNames(self):
 		names=[]
@@ -1696,3 +1855,84 @@ class Frag(Mol):
 				frag_deri[i][1] += nn_dcm * cm_dy
 				frag_deri[i][2] += nn_dcm * cm_dz
 		return frag_deri
+
+
+
+class Frag_of_Mol(Mol):
+	def __init__(self, atoms_=None, coords_=None):
+		Mol.__init__(self, atoms_, coords_)
+		self.undefined_bonds = None  # capture the undefined bonds of each atom
+
+
+        def FromXYZString(self,string):
+                lines = string.split("\n")
+                natoms=int(lines[0])
+                self.atoms.resize((natoms))
+                self.coords.resize((natoms,3))
+                for i in range(natoms):
+                        line = lines[i+2].split()
+                        if len(line)==0:
+                                return
+                        self.atoms[i]=AtomicNumber(line[0])
+                        try:
+                                self.coords[i,0]=float(line[1])
+                        except:
+                                self.coords[i,0]=scitodeci(line[1])
+                        try:
+                                self.coords[i,1]=float(line[2])
+                        except:
+                                self.coords[i,1]=scitodeci(line[2])
+                        try:
+                                self.coords[i,2]=float(line[3])
+                        except:
+                                self.coords[i,2]=scitodeci(line[3])
+		import ast
+		self.undefined_bonds = ast.literal_eval(lines[1].split()[1])
+                return
+
+
+	def Make_AtomNodes(self):
+                atom_nodes = []
+                for i in range (0, self.NAtoms()):
+			if i in self.undefined_bonds.keys():
+                        	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bonds[i]))
+			else:
+				atom_nodes.append(AtomNode(self.atoms[i], i))
+                self.atom_nodes = atom_nodes
+		return 
+
+
+class AtomNode:
+	""" Treat each atom as a node for the purpose of building the molecule graph """
+        def __init__(self, node_type_=None, node_index_=None,  undefined_bond_ = 0):
+		self.node_type = node_type_
+		self.node_index = node_index_
+		self.connected_nodes = []
+		self.undefined_bond = undefined_bond_
+		self.num_of_bonds = None
+		self.connected_atoms = None
+		self.Update_Node()
+		return 
+
+	def Append(self, node):
+		self.connected_nodes.append(node)
+		self.Update_Node()
+		return
+
+	def Num_of_Bonds(self):
+		self.num_of_bonds = len(self.connected_nodes)+self.undefined_bond
+		return len(self.connected_nodes)+self.undefined_bond 
+
+	def Connected_Atoms(self):
+		connected_atoms = []
+		for node in self.connected_nodes:
+			connected_atoms.append(node.node_type)
+		self.connected_atoms = connected_atoms
+		return connected_atoms	
+
+	def Update_Node(self):
+		self.Num_of_Bonds()
+		self.Connected_Atoms()
+		self.connected_nodes = [x for (y, x) in sorted(zip(self.connected_atoms, self.connected_nodes))]
+		self.connected_atoms.sort()
+		return
