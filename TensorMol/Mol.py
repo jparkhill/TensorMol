@@ -98,6 +98,7 @@ class Mol:
 	def Distort(self,disp=0.38,movechance=.20):
 		''' Randomly distort my coords, but save eq. coords first '''
 		self.BuildDistanceMatrix()
+		e0= self.GoEnergy(self.coords)
 		for i in range(0, self.atoms.shape[0]):
 			for j in range(0, 3):
 				if (random.uniform(0, 1)<movechance):
@@ -107,12 +108,19 @@ class Mol:
 					while (not accepted and maxiter>0):
 						tmp = self.coords
 						tmp[i,j] += np.random.normal(0.0, disp)
+						# mindist = None
+						# if (self.DistMatrix != None):
+						# 	if((self.GoEnergy(tmp)-e0) < 0.005):
+						# 		#print "LJE: ", self.LJEnergy(tmp)
+						# 		#print self.coords
+						# 		accepted = True
+						# 		self.coords = tmp
+						# else:
 						mindist = np.min([ np.linalg.norm(tmp[i,:]-tmp[k,:]) if i!=k else 1.0 for k in range(self.NAtoms()) ])
 						if (mindist>0.35):
 							accepted = True
 							self.coords = tmp
-						else:
-							maxiter=maxiter-1
+						maxiter=maxiter-1
 
 	def ReadGDB9(self,path,filename, set_name):
                 try:
@@ -154,7 +162,9 @@ class Mol:
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
-		if (len(lines[1].split())>1):
+		#if (len(lines[1].split())>1):
+		#Deals with xyz's which have no energy in the comment line now.
+		if (lines[1].count('Energy:')>0):
 			self.energy=float(lines[1].split()[1])
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
@@ -374,6 +384,8 @@ class Mol:
 	def LJEFromDist(self):
 		" Assigns lennard jones depth matrix "
 		self.LJE = np.zeros((len(self.coords),len(self.coords)))
+		self.LJE += 0.1
+		return
 		for i in range(len(self.coords)):
 			for j in range(i+1,len(self.coords)):
 				if (self.DistMatrix[i,j] < 2.8): # is covalent
@@ -524,7 +536,6 @@ class Mol:
 							f4 = self.LJEnergy(tmp)
 							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
 		return (hess+hess.T-np.diag(np.diag(hess)))
-
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
@@ -1071,12 +1082,12 @@ class Mol:
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0, max_case=1000000):
 		for i in range (1, self.mbe_order+1):
 			self.Generate_MBE_term(i, atom_group, cutoff, center_atom, max_case)
-		return  
+		return
 
 	def Generate_MBE_term(self, order,  atom_group=1, cutoff=10, center_atom=0, max_case=1000000):
 		if order in self.mbe_frags.keys():
 			print ("MBE order", order, "already generated..skipping..")
-			return 
+			return
 		if (self.coords).shape[0]%atom_group!=0:
 			raise Exception("check number of group size")
 		else:

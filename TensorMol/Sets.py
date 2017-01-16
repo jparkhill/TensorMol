@@ -236,4 +236,4 @@ class MSet:
 	def Set_Qchem_Data_Path(self):
 		for mol in self.mols:
 			mol.Set_Qchem_Data_Path()
-		return 
+		return

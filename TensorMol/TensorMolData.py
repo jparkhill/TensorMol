@@ -371,7 +371,7 @@ class TensorMolData_BP(TensorMolData):
 		if (self.ScratchState == 1):
 			return
 		ti, to, tm = self.LoadData(random)
-		ti,to = self.Normalize(ti,to)
+		ti, to = self.Normalize(ti,to)
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
 		print "LastTrainMol in TensorMolData:", self.LastTrainMol

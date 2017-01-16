@@ -4,9 +4,9 @@ Various tests of tensormol's functionality.
 Many of these tests take a pretty significant amount of time and memory to complete.
 
 """
-
 from TensorMol import *
-import cProfile
+
+print "HAS TF", HAS_TF
 
 # John's tests
 def TestBP():
@@ -44,36 +44,6 @@ def TestBP():
 	optimizer.Opt(test_mol)
 	return
 
-# John's tests
-def TestBP2():
-	"""
-	General Behler Parinello using ab-initio energies.
-	Args:
-		must have datasets/alchohol.xyz
-	"""
-	print "Testing General Behler-Parrinello using ab-initio energies...."
-	a=MSet("alcohol")
-	a.ReadXYZ("alcohol")
-	TreatedAtoms = a.AtomTypes()
-	print "TreatedAtoms ", TreatedAtoms
-	d = MolDigester(TreatedAtoms, name_="Coulomb_BP", OType_="Energy")
-	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
-	tset.BuildTrain("alcohol")
-	tset = TensorMolData_BP(MSet(),MolDigester([]),"alcohol_Coulomb_BP")
-	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-	manager.Train(maxstep=200)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
-	# Now check that the network can be revived and even used for optimizations...
-	optmanager=TFMolManage("Mol_alcohol_Coulomb_BP_fc_sqdiff_BP_3",tset,False,"fc_sqdiff_BP")
-	m = a.mols[0] # Try to optimize the first water.
-	test_mol = a.mols[0]
-	print "Orig Coords", test_mol.coords
-	test_mol.Distort()
-	print test_mol.coords
-	print test_mol.atoms
-	optimizer  = Optimizer(manager)
-	optimizer.Opt(test_mol)
-	return
-
 def TestAlign():
 	"""
 	align two structures for maximum similarity.
@@ -93,10 +63,9 @@ def TestGoForceAtom():
 	print "Testing a Network learning Go-Atom Force..."
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
-	a.pop(10)
 	print "nmols:",len(a.mols)
-	c=a.DistortedClone(1)
-	b=a.DistortAlongNormals(2, True, 1.2)
+	c=a.DistortedClone(200)
+	b=a.DistortAlongNormals(80, True, 1.2)
 	c.Statistics()
 	b.Statistics()
 	print len(b.mols)
@@ -111,7 +80,7 @@ def TestGoForceAtom():
 	tset2 = TensorData(c,d)
 	tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
-	tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,100)
+	tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
 	a=MSet("OptMols")
@@ -128,75 +97,7 @@ def TestGoForceAtom():
 
 # Tests to run.
 #TestGoForceAtom()
-TestBP2()
 #TestBP()
-
-# Kun's tests.
-if (0):
-	if (0):
-		#a=MSet("CxHy_test")
-		#a.ReadXYZ("CxHy_test")
-		#a.Save()
-	#	a=MSet("gdb9_NEQ")
-	#	a.Load()
-		b=MSet("gdb9")
-		b.Load()
-		allowed_eles=[1, 6]
-		b.CutSet(allowed_eles)
-		print "length of dmols:", len(b.mols)
-		#b = a.DistortedClone(20)
-		b.Save()
-
-	if (1):
-		#a=MSet("CxHy_test")
-		#a.Load()
-		a=MSet("gdb9_1_6")
-	  	a=a.DistortedClone(1)
-		a.Load()
-		# Choose allowed atoms.
-		TreatedAtoms = a.AtomTypes()
-		#for mol in a.mols:
-		#	mol.BuildDistanceMatrix()
-		# 2 - Choose Digester
-		#d = Digester(TreatedAtoms, name_="SymFunc",OType_ ="Force")
-		#d.TrainDigestW(a.mols[0], 6)
-		d = Digester(TreatedAtoms, name_="PGaussian",OType_ ="GoForce_old_version")
-		d.Emb(a.mols[0],0, np.zeros((1,3)))
-		#d.Emb(a.mols[0],0, a.mols[0].coords[0].reshape(1,-1))
-		#4 - Generate training set samples.
-
-	if (0):
-		tset = TensorData(a,d)
-		tset.BuildTrain("CxHy_test") # generates dataset numpy arrays for each atom.
-
-
-def TestBP_Kun():
-	"""
-	General Behler Parinello
-	"""
-	print "Testing General Behler-Parrinello"
-	a=MSet("CH3OH")
-	a.ReadXYZ("CH3OH")
-	b=a.DistortedClone(100000)
-	b.Statistics()
-	b.Save()
-	# 1 - Get molecules into memory
-	a=MSet("CH3OH_NEQ")
-	a.Load()
-	TreatedAtoms = a.AtomTypes()
-	print "TreatedAtoms ", TreatedAtoms
-	d = MolDigester(TreatedAtoms, name_="Coulomb_BP", OType_="GoEnergy")
-	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
-	tset.BuildTrain("CH3OH_NEQ")
-	tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
-	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-	manager.Train(maxstep=5)
-	tset = TensorMolData_BP(MSet(),MolDigester([]),"CH3OH_NEQ_Coulomb_BP")
-	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-	cProfile.run('manager.Train(maxstep=100)')  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
-
-#TestBP_Kun()
-
 
 # Kun's tests.
 if (0):
@@ -333,7 +234,7 @@ if (0):
 
 
 #jeherr tests
-if (0):
+if (1):
 	# Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
 	if (0):
 		a=MSet('cspbbr3_tess')
@@ -356,13 +257,13 @@ if (0):
 		mol.BuildDistanceMatrix()
 		print mol.LJForce()
 
-	if (1):
+	if (0):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		test_mol = a.mols[10]
 		#print "Orig Coords", test_mol.coords
 		test_mol.BuildDistanceMatrix()
-		test_mol.Distort()
+		test_mol.Distort(.1,1.0)
 		# print test_mol.NumericLJHessian()
 		# print test_mol.NumericLJHessDiag()
 		#print test_mol.coords
@@ -392,3 +293,42 @@ if (0):
 		t4 = time.time()
 		print t4-t3
 		print b
+
+	if (1):
+		"""
+		A Network trained on Go-Force
+		"""
+		print "Testing a Network learning Go-Atom Force..."
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		print "nmols:",len(a.mols)
+		# c=a.DistortedClone(200)
+		b=a.DistortAlongNormals(6, True, 1.2)
+		# c.Statistics()
+		b.Statistics()
+		print len(b.mols)
+		b.Save()
+		b.WriteXYZ()
+		TreatedAtoms = b.AtomTypes()
+		# 2 - Choose Digester
+		d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+		# 4 - Generate training set samples.
+		tset = TensorData(b,d)
+		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
+		# tset2 = TensorData(c,d)
+		# tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
+		#Train
+		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
+		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+		# This Tests the optimizer.
+		# a=MSet("OptMols")
+		# a.ReadXYZ("OptMols")
+		# test_mol = a.mols[11]
+		# print "Orig Coords", test_mol.coords
+		# test_mol.Distort()
+		# print test_mol.coords
+		# print test_mol.atoms
+		# manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
+		# optimizer  = Optimizer(manager)
+		# optimizer.Opt(test_mol)
+		# return
