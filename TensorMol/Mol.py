@@ -127,19 +127,20 @@ class Mol:
 					visited_list = self.DFS_recursive(next_node, visited_list)
 		return visited_list
 
-	def Find_Frag(self, frag, frag_head=0):   # ignore all the H for assigment
+	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0):   # ignore all the H for assigment
 		frag_head_node = frag.atom_nodes[frag_head]	
 		frag_node_stack = [frag_head_node]
                 frag_visited_list = []
 		all_mol_visited_list = [[]]
                 while(frag_node_stack):   # if node stack is not empty
-			print all_mol_visited_list
 			current_frag_node = frag_node_stack[-1]
 			updated_all_mol_visited_list = []
 			for mol_visited_list in all_mol_visited_list:
 				for mol_node in self.atom_nodes:
 					if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
 						updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
+						if mol_node.node_type in ignored_ele:# just once 
+							break 
 			all_mol_visited_list = list(updated_all_mol_visited_list) 
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
 		print all_mol_visited_list	
