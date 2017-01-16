@@ -15,7 +15,9 @@ if (1):
 		a.mols[-1].Make_Mol_Graph()
 		b.mols[-1].Make_Mol_Graph()
 		#print a.mols[0].Compare_Node(a.mols[0].atom_nodes[0], b.mols[0].atom_nodes[0])
-		a.mols[-1].Find_Frag(b.mols[-1])	
+		t = time.time()
+		a.mols[-1].Find_Frag(b.mols[-1])
+		print "time:", time.time()- t	
 		#a.mols[0].DFS_recursive_all_order(a.mols[0].atom_nodes[0], [])
 		#for node in b.mols[0].atom_nodes:
 		#	print node.num_of_bonds
