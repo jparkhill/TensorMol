@@ -212,5 +212,19 @@ def iter_product(args, repeat=1):
     for prod in result:
         yield list(prod)
 
+def Subset(A, B): # check whether B is subset of A
+	checked_index = []
+	found = 0
+	for value in B:
+		for i in range (0, len(A)):
+			if value==A[i] and i not in checked_index:
+				checked_index.append(i)	
+				found += 1
+				break
+	if found == len(B):
+		return True
+	else:
+		return False 
+
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)
