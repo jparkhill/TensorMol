@@ -83,6 +83,48 @@ class Mol:
 			node, visited_list, node_stack  = self.GetNextNode_DFS(visited_list, node_stack)
 			print "node.node_index", node.node_index,  visited_list
 
+
+	def DFS_recursive(self, node, visited_list):
+		print node.node_index
+		visited_list.append(node.node_index)
+		for next_node in node.connected_nodes:
+			if next_node.node_index not in visited_list:
+				visited_list = self.DFS_recursive(next_node, visited_list)
+		return visited_list
+
+	def DFS_recursive_all_order(self, node, visited_list):
+		atom_set = list(set(node.connected_atoms))
+		atom_set.sort()
+		node_set_index = []
+		for i in range (0, len(atom_set)):
+			node_set_index.append([])
+			for j in range (0, len(node.connected_atoms)):	
+				if node.connected_atoms[j] == atom_set[i]:
+					node_set_index[i].append(j)
+		sub_order = []
+		for index in node_set_index:
+			sub_order.append([])
+			sub_order[-1] = [list(x) for x in list(itertools.permutations(index))]
+		all_order = [list(x) for x in list(itertools.product(*sub_order))]
+		tmp = []
+		for order in all_order:
+			tmp.append([])
+			for l in order:
+				tmp[-1] += l
+		all_order = list(tmp)
+
+		print node.node_index
+		visited_list.append(node.node_index)
+		visited_list_save =  list(visited_list)
+		for order in all_order:
+			connected_nodes = [node.connected_nodes[i] for i in order]
+			for next_node in connected_nodes:
+				visited_list = list(visited_list_save)
+				if next_node.node_index not in visited_list:
+					visited_list = self.DFS_recursive(next_node, visited_list)
+		return visited_list
+
+
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
 
@@ -1816,4 +1858,6 @@ class AtomNode:
 	def Update_Node(self):
 		self.Num_of_Bonds()
 		self.Connected_Atoms()
+		self.connected_nodes = [x for (y, x) in sorted(zip(self.connected_atoms, self.connected_nodes))]
+		self.connected_atoms.sort()
 		return

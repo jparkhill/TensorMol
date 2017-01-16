@@ -13,7 +13,7 @@ if (1):
 		b = MSet("CH3OH_C6H6_frag")
 		b.ReadXYZ("CH3OH_C6H6_frag", "frag_of_mol")	
 		a.mols[0].Make_Mol_Graph()
-		a.mols[0].DFS(a.mols[0].atom_nodes[0])
+		a.mols[0].DFS_recursive_all_order(a.mols[0].atom_nodes[0], [])
 		#for node in b.mols[0].atom_nodes:
 		#	print node.num_of_bonds
 		#	print node.connected_atoms
