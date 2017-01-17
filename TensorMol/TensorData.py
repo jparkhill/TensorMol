@@ -14,52 +14,54 @@ class TensorData():
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
 	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=3600, ChopTo_=None, type_="atom"):
-	    """
-	    	make a tensordata object
-	    	Args:
-	    		MSet_: A MoleculeSet
-	    		Dig_: A Digester
-	    		Name_: A Name
-	    		MxTimePerElement_: An amount of time to spend building the training set.
-	    		ChopTo_: A maximum number of molecules to include.
-	    """
-	    self.path = "./trainsets/"
-	    self.suffix = ".pdb"
-	    self.set = MSet_
-	    self.dig = Dig_
-	    self.type = type_
-	    self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
-	    self.SamplesPerElement = []
-	    self.AvailableElements = []
-	    self.AvailableDataFiles = []
-	    self.NTest = 0  # assgin this value when the data is loaded
-	    self.TestRatio = 0.2 # number of cases withheld for testing.
-	    self.MxTimePerElement=MxTimePerElement_
-	    self.MxMemPerElement=16000 # Max Array for an element in MB
-	    self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
-	    self.ScratchNCase = 0
-	    self.ScratchState=None
-	    self.ScratchPointer=0 # for non random batch iteration.
-	    self.scratch_inputs=None
-	    self.scratch_outputs=None
-	    self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
-	    self.scratch_test_outputs=None
-	    self.ExpandIsometriesAltogether = False
-	    self.ExpandIsometriesBatchwise = False
-	    self.ChopTo = ChopTo_
+		"""
+			make a tensordata object
+			Args:
+				MSet_: A MoleculeSet
+				Dig_: A Digester
+				Name_: A Name
+				MxTimePerElement_: An amount of time to spend building the training set.
+				ChopTo_: A maximum number of molecules to include.
+		"""
+		self.path = "./trainsets/"
+		self.suffix = ".pdb"
+		self.set = MSet_
+		self.dig = Dig_
+		self.type = type_
+		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
+		self.SamplesPerElement = []
+		self.AvailableElements = []
+		self.AvailableDataFiles = []
+		self.NTest = 0  # assgin this value when the data is loaded
+		self.TestRatio = 0.2 # number of cases withheld for testing.
+		self.MxTimePerElement=MxTimePerElement_
+		self.MxMemPerElement=16000 # Max Array for an element in MB
+		self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
+		self.ScratchNCase = 0
+		self.ScratchState=None
+		self.ScratchPointer=0 # for non random batch iteration.
+		self.scratch_inputs=None
+		self.scratch_outputs=None
+		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
+		self.scratch_test_outputs=None
+		self.NormalizeInputs = True
+		self.NormalizeOutputs = True
+		self.ExpandIsometriesAltogether = False
+		self.ExpandIsometriesBatchwise = False
+		self.ChopTo = ChopTo_
 
-	    # Ordinarily during training batches will be requested repeatedly
-	    # for the same element. Introduce some scratch space for that.
-	    if (not os.path.isdir(self.path)):
-	    	os.mkdir(self.path)
-	    if (Name_!= None):
-	    	self.name = Name_
-	    	self.Load()
-	    	self.QueryAvailable() # Should be a sanity check on the data files.
-	    	return
-	    elif (MSet_==None or Dig_==None):
-	    	raise Exception("I need a set and Digester if you're not loading me.")
-	    self.name = ""
+		# Ordinarily during training batches will be requested repeatedly
+		# for the same element. Introduce some scratch space for that.
+		if (not os.path.isdir(self.path)):
+			os.mkdir(self.path)
+		if (Name_!= None):
+			self.name = Name_
+			self.Load()
+			self.QueryAvailable() # Should be a sanity check on the data files.
+			return
+		elif (MSet_==None or Dig_==None):
+			raise Exception("I need a set and Digester if you're not loading me.")
+		self.name = ""
 
 	def CleanScratch(self):
 		self.ScratchState=None
@@ -418,7 +420,7 @@ class TensorData():
 	def Normalize(self,ti,to):
 		if (self.NormalizeInputs):
 			for i in range(len(ti)):
-				ti[i] = ti[i]/np.linalg.norm(ti[i])
+				ti[i] = ti[i]/(np.linalg.norm(ti[i])+1.0E-8)
 		if (self.NormalizeOutputs):
 			mo = np.average(to)
 			to -= mo
@@ -439,7 +441,6 @@ class TensorData():
 			random: Not yet implemented randomization of the read data.
 		"""
 		ti, to = self.LoadElement(ele, self.Random)
-
 		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp" and self.ExpandIsometriesAltogether):
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)

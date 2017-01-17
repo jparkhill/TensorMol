@@ -180,12 +180,14 @@ class Digester:
 			raise Exception("Unknown Digester Output Type.")
 		elif (self.OType=="Disp" or self.OType=="Force"):
 			ders=np.zeros(len(desired))
-			comp=np.zeros(len(desired))
+			#comp=np.zeros(len(desired))
 			for i in range(len(desired)):
-				ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+				ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
 			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders)
 			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
 			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+			for i in range(100):
+				print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
 		elif (self.OType=="SmoothP"):
 			ders=np.zeros(len(desired))
 			iers=np.zeros(len(desired))
@@ -234,7 +236,7 @@ class Digester:
 
 		ncase = mol_.NumOfAtomsE(ele_)*self.NTrainSamples
 		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float32)
-		outs=np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
+		outs = np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
 		dbg=[]
 		casep=0
 		for i in range(len(mol_.atoms)):
@@ -250,9 +252,11 @@ class Digester:
 				# Here we should write a short routine to debug/print the inputs and outputs.
 				#				print "Smooth",outputs
 				#print i, mol_.atoms, mol_.coords,mol_.coords[i],"Samples:",samps,"inputs ", inputs, "Outputs",outputs, "Distances",np.array(map(np.linalg.norm,samps-mol_.coords[i]))
+
 				ins[casep:casep+self.NTrainSamples] = np.array(inputs)
 				outs[casep:casep+self.NTrainSamples] = outputs
 				casep += self.NTrainSamples
+
 		if (MakeDebug):
 			return ins,outs,dbg
 		else:

@@ -16,6 +16,7 @@ using namespace std::tr1;
 #else
 #include <array>
 using namespace std;
+#include <omp.h>
 #endif
 #include <vector>
 #include "SH.hpp"
@@ -657,7 +658,9 @@ static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 	double normmat[dim1*dim2];
 	dmat1_data = (double*) ((PyArrayObject*)dmat1)->data;
 	dmat2_data = (double*) ((PyArrayObject*)dmat2)->data;
+	#ifdef OPENMP
 	#pragma omp parallel for reduction(+:norm)
+	#endif
 	for (int i=0; i < dim1; ++i)
 	for (int j=0; j < dim2; ++j)
 	norm += (dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j])*(dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]);

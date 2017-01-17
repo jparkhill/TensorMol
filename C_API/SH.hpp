@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <omp.h>
 using namespace std;
 #define PI 3.14159265358979
 
@@ -385,7 +386,7 @@ double CartSphericalHarmonic(int l, int m, double x, double y, double z)
 	double x2=x*x;
 	double y2=y*y;
 	double z2=z*z;
-	
+
 	double x4=x2*x2;
 	double y4=y2*y2;
 	double z4=z2*z2;
@@ -791,7 +792,8 @@ void RadSHProjection(double x, double y, double z, double* output, double fac=1.
 	double r = sqrt(x*x+y*y+z*z);
 	if (r<pow(10.0,-9))
 		return;
-	int op=0;
+//int op=0;
+	#pragma omp parallel for
 	for (int i=0; i<SH_NRAD ; ++i)
 	{
 		double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
@@ -799,13 +801,11 @@ void RadSHProjection(double x, double y, double z, double* output, double fac=1.
 		{
 			for (int m=-l; m<l+1 ; ++m)
 			{
-//	double theta = acos(z/r);
-//	double phi = atan2(y,x);
-
-				output[op] += Gv*CartSphericalHarmonic(l,m,x,y,z)*fac;
+				output[i*((SH_LMAX+1)*(SH_LMAX+1)) + (l)*(l) + m+l] += Gv*CartSphericalHarmonic(l,m,x,y,z)*fac;
 //				if ((RealSphericalHarmonic(l,m,theta,phi) - CartSphericalHarmonic(l,m,x,y,z))>0.0000001)
 //					cout << "Real vs. Cart: " << RealSphericalHarmonic(l,m,theta,phi) << " " << CartSphericalHarmonic(l,m,x,y,z) << endl;
-				++op;
+	//		cout << "op " << op << " ind " << i*(SH_LMAX+1)*(SH_LMAX+1) + (l)*(l) + m+l << endl;
+	//		++op;
 			}
 		}
 	}
@@ -863,5 +863,3 @@ void RadInvProjection(double x, double y, double z, double* output, double fac=1
 		}
 	}
 }
-
-
