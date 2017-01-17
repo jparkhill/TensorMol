@@ -226,5 +226,19 @@ def Subset(A, B): # check whether B is subset of A
 	else:
 		return False 
 
+def Setdiff(A, B): # return the element of A that not included in B
+	diff = []
+	checked_index = []
+	for value in A:
+		found = 0
+		for i in range (0, len(B)):
+			if value == B[i] and i not in checked_index:
+				found = 1
+				checked_index.append(i)
+				break
+		if found == 0:
+			diff.append(value)
+	return diff
+
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

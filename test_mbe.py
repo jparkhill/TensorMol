@@ -11,12 +11,15 @@ if (1):
 		#a.mols[0].Make_Mol_Graph()
 
 		b = MSet("CH3OH_C6H6_frag")
-		b.ReadXYZ("CH3OH_C6H6_frag", "frag_of_mol")	
-		a.mols[-1].Make_Mol_Graph()
-		b.mols[-1].Make_Mol_Graph()
+		b.ReadXYZ("CH3OH_C6H6_frag", "frag_of_mol")
+		for mol in a.mols:	
+			mol.Make_Mol_Graph()
+		for mol in b.mols:
+			mol.Make_Mol_Graph()
 		#print a.mols[0].Compare_Node(a.mols[0].atom_nodes[0], b.mols[0].atom_nodes[0])
 		t = time.time()
-		a.mols[-1].Find_Frag(b.mols[-1])
+		a.mols[0].Find_Frag(b.mols[0])
+		a.mols[0].Find_Frag(b.mols[1])
 		print "time:", time.time()- t	
 		#a.mols[0].DFS_recursive_all_order(a.mols[0].atom_nodes[0], [])
 		#for node in b.mols[0].atom_nodes:

@@ -186,7 +186,13 @@ class Mol:
 
 	def Compare_Node(self, mol_node, frag_node):
 		if mol_node.node_type == frag_node.node_type and mol_node.num_of_bonds == frag_node.num_of_bonds  and Subset(mol_node.connected_atoms, frag_node.connected_atoms):
-			return True
+			if frag_node.undefined_bond_type == "heavy": #  check whether the dangling bond is connected to H in the mol
+				if 1 in Setdiff(mol_node.connected_atoms, frag_node.connected_atoms):   # the dangling bond is connected to H
+					return False
+				else:
+					return True
+			else:   
+				return True
 		else:
 			return False 
 
@@ -1861,6 +1867,7 @@ class Frag(Mol):
 class Frag_of_Mol(Mol):
 	def __init__(self, atoms_=None, coords_=None):
 		Mol.__init__(self, atoms_, coords_)
+		self.undefined_bond_type =  None # whether the dangling bond can be connected  to H or not
 		self.undefined_bonds = None  # capture the undefined bonds of each atom
 
 
@@ -1887,7 +1894,11 @@ class Frag_of_Mol(Mol):
                         except:
                                 self.coords[i,2]=scitodeci(line[3])
 		import ast
-		self.undefined_bonds = ast.literal_eval(lines[1].split()[1])
+		self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
+		if "type" in self.undefined_bonds.keys():
+			self.undefined_bond_type = self.undefined_bonds["type"]
+		else:
+			self.undefined_bond_type = "any"
                 return
 
 
@@ -1895,20 +1906,21 @@ class Frag_of_Mol(Mol):
                 atom_nodes = []
                 for i in range (0, self.NAtoms()):
 			if i in self.undefined_bonds.keys():
-                        	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bonds[i]))
+                        	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
 			else:
-				atom_nodes.append(AtomNode(self.atoms[i], i))
+				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
                 self.atom_nodes = atom_nodes
 		return 
 
 
 class AtomNode:
 	""" Treat each atom as a node for the purpose of building the molecule graph """
-        def __init__(self, node_type_=None, node_index_=None,  undefined_bond_ = 0):
+        def __init__(self, node_type_=None, node_index_=None, undefined_bond_type_="any", undefined_bond_ = 0):
 		self.node_type = node_type_
 		self.node_index = node_index_
 		self.connected_nodes = []
 		self.undefined_bond = undefined_bond_
+		self.undefined_bond_type = undefined_bond_type_
 		self.num_of_bonds = None
 		self.connected_atoms = None
 		self.Update_Node()
