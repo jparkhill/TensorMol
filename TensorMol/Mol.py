@@ -196,7 +196,71 @@ class Mol:
 		else:
 			return False 
 
+	def NoOverlapping_Partition(self, frags):
+		frag_list = []
+		for frag in frags:
+			if not frag_list: # empty 
+				frag_list = list(self.Find_Frag(frag))
+			else:
+				frag_list += self.Find_Frag(frag)
+		memory = dict()
+		penalty, opt_frags = self.DP_Partition( range(0, self.NAtoms()),frag_list, memory)
+		#penalty, opt_frags = self.Partition( range(0, self.NAtoms()),frag_list)
+		print "penalty:", penalty, "opt_frags", opt_frags
+		return
 
+
+	def Partition(self, suffix_atoms, frag_list): # recursive partition
+		possible_frags = []
+		#print suffix_atoms
+		for frag in frag_list:
+                        if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix 
+                                        possible_frags.append(frag)
+                if possible_frags:    # continue partitioning
+                	mini_penalty = float('inf')
+                        opt_frags = []
+                        for frag in possible_frags:
+                        	 new_suffix_atoms = Setdiff(suffix_atoms, frag)
+                                 penalty, prev_frags = self.Partition(new_suffix_atoms, frag_list) # recursive 
+                                 if penalty < mini_penalty:
+                                 	mini_penalty = penalty
+                                        opt_frags = list(prev_frags)
+                                        opt_frags.append(frag)
+                        return [mini_penalty, opt_frags]
+             	else:   # could not partition anymore
+                	return [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # return penalty and what is left
+
+
+	def DP_Partition(self, suffix_atoms, frag_list, memory):    # non-overlapping partition using dynamic programming
+		#print "suffix_atoms", suffix_atoms
+		#print "memory:", memory
+		possible_frags = []
+		suffix_atoms.sort()
+		suffix_atoms_string = LtoS(suffix_atoms)
+		if suffix_atoms_string in memory.keys():  # already calculated
+			#print "using memory"
+			return memory[suffix_atoms_string] 
+		else:   # not calculated yet
+			#print "calculating"
+			for frag in frag_list:
+				if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix 
+					possible_frags.append(frag)
+
+			if possible_frags:    # continue partitioning
+				mini_penalty = float('inf')
+				opt_frags = []
+				for frag in possible_frags:
+					new_suffix_atoms = Setdiff(suffix_atoms, frag)
+					penalty, prev_frags = self.DP_Partition(new_suffix_atoms, frag_list, memory) # recursive 
+					if penalty < mini_penalty:
+						mini_penalty = penalty
+						opt_frags = list(prev_frags)
+						opt_frags.append(frag)
+				memory[suffix_atoms_string] = [mini_penalty, opt_frags] #memorize it
+				return [mini_penalty, opt_frags]
+			else:	# could not partition anymore
+				memory[suffix_atoms_string] = [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # memorize it
+				return [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # return penalty and what is left
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
 
