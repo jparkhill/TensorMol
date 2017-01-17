@@ -186,11 +186,81 @@ class Mol:
 
 	def Compare_Node(self, mol_node, frag_node):
 		if mol_node.node_type == frag_node.node_type and mol_node.num_of_bonds == frag_node.num_of_bonds  and Subset(mol_node.connected_atoms, frag_node.connected_atoms):
-			return True
+			if frag_node.undefined_bond_type == "heavy": #  check whether the dangling bond is connected to H in the mol
+				if 1 in Setdiff(mol_node.connected_atoms, frag_node.connected_atoms):   # the dangling bond is connected to H
+					return False
+				else:
+					return True
+			else:   
+				return True
 		else:
 			return False 
 
+	def NoOverlapping_Partition(self, frags):
+		frag_list = []
+		for frag in frags:
+			if not frag_list: # empty 
+				frag_list = list(self.Find_Frag(frag))
+			else:
+				frag_list += self.Find_Frag(frag)
+		memory = dict()
+		penalty, opt_frags = self.DP_Partition( range(0, self.NAtoms()),frag_list, memory)
+		#penalty, opt_frags = self.Partition( range(0, self.NAtoms()),frag_list)
+		print "penalty:", penalty, "opt_frags", opt_frags
+		return
 
+
+	def Partition(self, suffix_atoms, frag_list): # recursive partition
+		possible_frags = []
+		#print suffix_atoms
+		for frag in frag_list:
+                        if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix 
+                                        possible_frags.append(frag)
+                if possible_frags:    # continue partitioning
+                	mini_penalty = float('inf')
+                        opt_frags = []
+                        for frag in possible_frags:
+                        	 new_suffix_atoms = Setdiff(suffix_atoms, frag)
+                                 penalty, prev_frags = self.Partition(new_suffix_atoms, frag_list) # recursive 
+                                 if penalty < mini_penalty:
+                                 	mini_penalty = penalty
+                                        opt_frags = list(prev_frags)
+                                        opt_frags.append(frag)
+                        return [mini_penalty, opt_frags]
+             	else:   # could not partition anymore
+                	return [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # return penalty and what is left
+
+
+	def DP_Partition(self, suffix_atoms, frag_list, memory):    # non-overlapping partition using dynamic programming
+		#print "suffix_atoms", suffix_atoms
+		#print "memory:", memory
+		possible_frags = []
+		suffix_atoms.sort()
+		suffix_atoms_string = LtoS(suffix_atoms)
+		if suffix_atoms_string in memory.keys():  # already calculated
+			#print "using memory"
+			return memory[suffix_atoms_string] 
+		else:   # not calculated yet
+			#print "calculating"
+			for frag in frag_list:
+				if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix 
+					possible_frags.append(frag)
+
+			if possible_frags:    # continue partitioning
+				mini_penalty = float('inf')
+				opt_frags = []
+				for frag in possible_frags:
+					new_suffix_atoms = Setdiff(suffix_atoms, frag)
+					penalty, prev_frags = self.DP_Partition(new_suffix_atoms, frag_list, memory) # recursive 
+					if penalty < mini_penalty:
+						mini_penalty = penalty
+						opt_frags = list(prev_frags)
+						opt_frags.append(frag)
+				memory[suffix_atoms_string] = [mini_penalty, opt_frags] #memorize it
+				return [mini_penalty, opt_frags]
+			else:	# could not partition anymore
+				memory[suffix_atoms_string] = [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # memorize it
+				return [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # return penalty and what is left
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
 
@@ -1861,6 +1931,7 @@ class Frag(Mol):
 class Frag_of_Mol(Mol):
 	def __init__(self, atoms_=None, coords_=None):
 		Mol.__init__(self, atoms_, coords_)
+		self.undefined_bond_type =  None # whether the dangling bond can be connected  to H or not
 		self.undefined_bonds = None  # capture the undefined bonds of each atom
 
 
@@ -1887,7 +1958,11 @@ class Frag_of_Mol(Mol):
                         except:
                                 self.coords[i,2]=scitodeci(line[3])
 		import ast
-		self.undefined_bonds = ast.literal_eval(lines[1].split()[1])
+		self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
+		if "type" in self.undefined_bonds.keys():
+			self.undefined_bond_type = self.undefined_bonds["type"]
+		else:
+			self.undefined_bond_type = "any"
                 return
 
 
@@ -1895,20 +1970,21 @@ class Frag_of_Mol(Mol):
                 atom_nodes = []
                 for i in range (0, self.NAtoms()):
 			if i in self.undefined_bonds.keys():
-                        	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bonds[i]))
+                        	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
 			else:
-				atom_nodes.append(AtomNode(self.atoms[i], i))
+				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
                 self.atom_nodes = atom_nodes
 		return 
 
 
 class AtomNode:
 	""" Treat each atom as a node for the purpose of building the molecule graph """
-        def __init__(self, node_type_=None, node_index_=None,  undefined_bond_ = 0):
+        def __init__(self, node_type_=None, node_index_=None, undefined_bond_type_="any", undefined_bond_ = 0):
 		self.node_type = node_type_
 		self.node_index = node_index_
 		self.connected_nodes = []
 		self.undefined_bond = undefined_bond_
+		self.undefined_bond_type = undefined_bond_type_
 		self.num_of_bonds = None
 		self.connected_atoms = None
 		self.Update_Node()
