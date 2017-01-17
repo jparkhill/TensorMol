@@ -5,7 +5,7 @@ from TensorMol.MBE_Opt import *
 
 # for testing the fragmentation of molecule 
 if (1):
-	if (1):
+	if (0):
 		a= MSet("CH3OH_C6H6")
 		a.ReadXYZ("CH3OH_C6H6")
 		#a.mols[0].Make_Mol_Graph()
@@ -27,6 +27,21 @@ if (1):
 		#for node in b.mols[0].atom_nodes:
 		#	print node.num_of_bonds
 		#	print node.connected_atoms
+	if (1):
+		a= MSet("sugar")
+                a.ReadXYZ("sugar")
+		b = MSet("sugar_frag")
+                b.ReadXYZ("sugar_frag", "frag_of_mol")
+		for mol in a.mols:
+                        mol.Make_Mol_Graph()
+                for mol in b.mols:
+                        mol.Make_Mol_Graph()
+		frag_index_list  =  a.mols[0].Find_Frag(b.mols[0])  # OCCO frag
+		a.mols[0].Frag_Overlaps(frag_index_list)
+
+		frag_index_list  =  a.mols[0].Find_Frag(b.mols[1])  # CO frag
+                a.mols[0].Frag_Overlaps(frag_index_list)
+		#a.mols[0].NoOverlapping_Partition([b.mols[0])
 
 if (0):
 	#Load .xyz files.

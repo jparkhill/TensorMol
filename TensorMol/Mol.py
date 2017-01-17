@@ -160,11 +160,43 @@ class Mol:
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
 		frags_in_mol = []
 		for mol_visited_list in all_mol_visited_list:
-			if list(set(mol_visited_list)) not in frags_in_mol:
-				frags_in_mol.append(list(set(mol_visited_list)))
-		print frags_in_mol
+			mol_visited_list.sort()
+			if mol_visited_list not in frags_in_mol:
+				frags_in_mol.append(mol_visited_list)
 		return frags_in_mol 
-	
+
+	def Frag_Overlaps(self, frags_index_list):
+		print self.Check_Frags_Is_Complete(frags_index_list)
+		for i in range (0, len(frags_index_list)):
+			for j in range (i+1, len(frags_index_list)):
+				overlap=list(set(frags_index_list[i]).intersection(frags_index_list[j]))
+				if overlap:
+					print "overlap:", overlap, " frags: ", frags_index_list[i], frags_index_list[j]
+		return
+
+
+
+
+	def Check_Frags_Is_Complete(self, frags_index_list):  # check the frags contains all the heavy atoms
+		visited = []
+		heavy_atoms = 0
+		for frag_index in frags_index_list:
+			for atom_index in frag_index:
+				if self.atoms[atom_index]!=1 and atom_index not in visited:
+					heavy_atoms += 1
+					visited.append(atom_index)
+		if heavy_atoms == self.Num_of_Heavy_Atom():
+			return True
+		else:
+			return False
+		
+
+	def Num_of_Heavy_Atom(self):
+		num = 0
+		for i in range (0, self.NAtoms()):
+			if self.atoms[i] != 1:
+				num += 1
+		return num
 
 	def Check_Connection(self, mol_node, frag_node, mol_visited_list, frag_visited_list):  # the connection of mol_node should be the same as frag_node in the list we visited so far.
 		mol_node_connection_index_found = []
