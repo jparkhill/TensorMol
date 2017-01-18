@@ -240,5 +240,12 @@ def Setdiff(A, B): # return the element of A that not included in B
 			diff.append(value)
 	return diff
 
+def Pair_In_List(l, pairs): # check whether l contain pair
+	for pair in pairs:
+		if Subset(l, pair):
+			return True
+	return False
+
+
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)
