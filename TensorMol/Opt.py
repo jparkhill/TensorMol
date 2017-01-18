@@ -1,5 +1,5 @@
 """
-Changes that need to be made: 
+Changes that need to be made:
 """
 
 from Sets import *
@@ -10,7 +10,7 @@ class Optimizer:
 	def __init__(self,tfm_):
 		"""
 		Geometry optimizations based on NN-PES's etc.
-		Args: 
+		Args:
 			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
 		"""
 		self.thresh = 0.0001
@@ -71,7 +71,7 @@ class Optimizer:
 	def OptGoForce(self,m):
 		"""
 		Simple test of the Go-Force
-		Args: 
+		Args:
 			m: A distorted molecule to optimize
 		"""
 		# Sweeps one at a time
@@ -102,7 +102,7 @@ class Optimizer:
 	def OptLJForce(self,m):
 		"""
 		Simple test of the LJ-Force
-		Args: 
+		Args:
 			m: A distorted molecule to optimize
 		"""
 		# Sweeps one at a time
@@ -116,14 +116,15 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		self.momentum = 0.0
 		while(err>self.thresh and step < self.max_opt_step):
-			HessD = m.NumericLJHessDiag()
+			HessD = np.clip(m.NumericLJHessDiag(), 1e-3, 1e16)
 			# for i in range(m.NAtoms()):
 			# 	veloc[i] = -0.0001*m.LJForce(i)
 			# 	#print veloc[i]
-			veloc = -m.NumericLJForce()/HessD
-			print "Coords", m.coords
-			print "Hess", HessD
-			print "velco", veloc
+			veloc = -0.01*m.LJForce()#/HessD
+			#print "Coords", m.coords
+			# print "Hess", HessD
+			# print m.NumericLJHessDiag()
+			# print "velco", veloc
 			#print m.LJEnergy(m.coords)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
@@ -135,13 +136,13 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", "OptLog")
 			step+=1
-			#print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
 	def OptForce(self,m,IfDebug=True):
 		"""
 		Optimize using force output of an atomwise network.
-		Args: 
+		Args:
 			m: A distorted molecule to optimize
 		"""
 		# Sweeps one at a time
