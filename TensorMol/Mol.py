@@ -182,18 +182,51 @@ class Mol:
 		return overlap_list, frag_pair_list
 
 
-	def Check_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
+	def Pick_Not_Allowed_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
 		if overlap_list == None or frag_pair_list == None:
 			overlap_list, frag_pair_list = self.Frag_Overlaps(frags_index_list)
 		not_allowed_overlap_index = []
 		for overlap_index,  overlap in  enumerate(overlap_list):
-			print overlap
 			for allowed_overlap in allowed_overlap_list:
 				if allowed_overlap.NAtoms() != len(overlap) or not self.Find_Frag(allowed_overlap, avail_atoms=overlap):
 					not_allowed_overlap_index.append(overlap_index)
-					print "not allowed"
-		print not_allowed_overlap_index
+		return not_allowed_overlap_index
+
+
+	def Optimize_Overlap(self, frags_index_list, allowed_overlap_list, not_allowed_overlap_index=None):         #delete the frags that generate the not allowed overlaps 
+		overlap_list, frag_pair_list = self.Frag_Overlaps(frags_index_list)
+		if not_allowed_overlap_index == None:
+			not_allowed_overlap_index = self.Pick_Not_Allowed_Overlaps(frags_index_list, allowed_overlap_list, overlap_list, frag_pair_list)
+		memory = dict()
+		#print not_allowed_overlap_index, frag_pair_list
 		return
+
+	def DP_Delete_Frag(self, frags_index_list, frag_pair_list, not_allowed_pair_index, memory): # use dynamic programming to delete frags that generate not allowed overlaps
+		not_allowed_pair_index.sort()
+		not_allowed_pair_index_string = LtoS(not_allowed_pair_index)
+		if suffix_string in memory.keys():  # reuse memory
+			return memory[not_allowed_pair_index_string]
+		else:   # calculate
+			if not_allowed_pair_index: # still have bad pairs
+				updated_not_allowed_pair_index = list(not_allowed_pair_index)
+				target_pair_index = updated_not_allowed_pair_index.pop(0) # deal with the first pair
+				mini_penalty = float('inf')
+				opt_delete_frag_index = None
+				for frag_index in frag_pair_list[target_pair_index]:
+					tmp  = []
+					for other_pair_index in updated_not_allowed_pair_index:   # we need to remove the bad pair that contains frag_index since this bad pair will disappear.
+						if frag_index not in frag_pair_list[other_pair_index]:
+							tmp.append(other_pair_index)
+					updated_not_allowed_pair_index = list(tmp)    
+					prev_penalty, prev_deleted_frags_list = self.DP_Delete_Frag(self, frags_index_list, frag_pair_list, updated_not_allowed_pair_index, memory)	
+			else:  #  all bad pairs gone
+				pass
+		return			
+				
+						
+					
+					
+			
 
 
 	def Check_Frags_Is_Complete(self, frags_index_list):  # check the frags contains all the heavy atoms
