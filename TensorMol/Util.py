@@ -34,9 +34,11 @@ HAS_GRIDS=True
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
+N_CORES = 1
 ele_roomT_H = {1:-0.497912, 6:-37.844411, 7:-54.581501, 8:-75.062219, 9:-99.716370}     # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
 atoi = {'H':1,'He':2,'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,'K':19,'Ca':20,'Sc':21,'Ti':22,'Si':23,'V':24,'Cr':25,'Br':35, 'Cs':55, 'Pb':82}
 atoc = {1: 40, 6: 100, 7: 150, 8: 200, 9:240}
+bond_length_thresh = {"HH": 1.5, "HC": 1.5, "HN": 1.5, "HO": 1.5, "CC":2.0, "CN":2.0, "CO": 2.0, "NN":2.0, "NO":2.0, "OO":2.0 }
 KAYBEETEE = 0.000950048 # At 300K
 BOHRPERA = 1.889725989
 Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
@@ -86,6 +88,15 @@ try:
 except:
 	print("Tensorflow not Installed, very limited functionality")
 	pass
+
+try:
+	import multiprocessing
+	N_CORES=multiprocessing.cpu_count()
+	print("Found "+str(N_CORES)+" CPUs to thread over... ")
+except:
+	print("Only a single CPU, :( did you lose a war?")
+	pass
+
 print("TensorMol ready...")
 
 TOTAL_SENSORY_BASIS=None
@@ -210,6 +221,41 @@ def iter_product(args, repeat=1):
         result = [x+[y] for x in result for y in pool]
     for prod in result:
         yield list(prod)
+
+def Subset(A, B): # check whether B is subset of A
+	checked_index = []
+	found = 0
+	for value in B:
+		for i in range (0, len(A)):
+			if value==A[i] and i not in checked_index:
+				checked_index.append(i)	
+				found += 1
+				break
+	if found == len(B):
+		return True
+	else:
+		return False 
+
+def Setdiff(A, B): # return the element of A that not included in B
+	diff = []
+	checked_index = []
+	for value in A:
+		found = 0
+		for i in range (0, len(B)):
+			if value == B[i] and i not in checked_index:
+				found = 1
+				checked_index.append(i)
+				break
+		if found == 0:
+			diff.append(value)
+	return diff
+
+def Pair_In_List(l, pairs): # check whether l contain pair
+	for pair in pairs:
+		if Subset(l, pair):
+			return True
+	return False
+
 
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

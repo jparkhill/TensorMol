@@ -4,19 +4,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
-#ifdef __clang__
-#if __clang_major__ >= 7
-#include <array>
-using namespace std;
-#else
-#include <omp.h>
-#include <tr1/array>
-using namespace std::tr1;
-#endif
-#else
-#include <array>
-using namespace std;
-#endif
 #include <vector>
 #include "SH.hpp"
 
@@ -433,6 +420,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	double xc = xyz_data[i*Nxyz[1]+0];
 	double yc = xyz_data[i*Nxyz[1]+1];
 	double zc = xyz_data[i*Nxyz[1]+2];
+	
 	for (int j = 0; j < natom; j++)
 	{
 		double x = xyz_data[j*Nxyz[1]+0];
@@ -657,7 +645,9 @@ static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 	double normmat[dim1*dim2];
 	dmat1_data = (double*) ((PyArrayObject*)dmat1)->data;
 	dmat2_data = (double*) ((PyArrayObject*)dmat2)->data;
+	#ifdef OPENMP
 	#pragma omp parallel for reduction(+:norm)
+	#endif
 	for (int i=0; i < dim1; ++i)
 	for (int j=0; j < dim2; ++j)
 	norm += (dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j])*(dmat1_data[i*dim2+j] - dmat2_data[i*dim2+j]);

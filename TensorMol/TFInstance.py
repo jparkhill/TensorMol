@@ -102,6 +102,7 @@ class Instance:
 		self.gradient =None
 		self.summary_writer = None
 		self.PreparedFor = 0
+		self.summary_op = None
 		return
 
 	def SaveAndClose(self):
@@ -492,13 +493,12 @@ class Instance_fc_classify(Instance):
 			self.print_training(step, test_loss, test_correct, Ncase_test, duration)
 		return test_loss, feed_dict
 
-
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		self.hidden1 = 1024
-		self.hidden2 = 1024
-		self.hidden3 = 512
+		self.hidden1 = 256
+		self.hidden2 = 512
+		self.hidden3 = 256
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name

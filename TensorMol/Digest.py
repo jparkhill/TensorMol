@@ -32,7 +32,7 @@ class Digester:
 		if (self.OType == "SmoothP" or self.OType == "Disp"):
 			self.NTrainSamples=1 #Smoothprobability only needs one sample because it fits the go-probability and pgaussians-center.
 
-		self.eles = list(eles_)
+		self.eles = np.array(eles_)
 		self.eles.sort() # Consistent list of atoms in the order they are treated.
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
 		self.TrainSampDistance=2.0 #how far in Angs to sample on average.
@@ -105,7 +105,7 @@ class Digester:
 			at_: an atom to be digested or moved.
 			xyz_: makes inputs with at_ moved to these positions.
 			MakeOutputs: generates outputs according to self.OType.
-		Returns: 
+		Returns:
 			Output embeddings, and possibly labels and gradients.
 		"""
 		#start = time.time()
@@ -170,6 +170,9 @@ class Digester:
 		else:
 			return Ins
 
+	def unscld(self,a):
+	    return (a*self.StdNorm+self.MeanNorm)
+
 	def EvaluateTestOutputs(self, desired, predicted):
 		print "Evaluating, ", len(desired), " predictions... "
 		#print desired.shape, predicted.shape
@@ -177,12 +180,14 @@ class Digester:
 			raise Exception("Unknown Digester Output Type.")
 		elif (self.OType=="Disp" or self.OType=="Force"):
 			ders=np.zeros(len(desired))
-			comp=np.zeros(len(desired))
+			#comp=np.zeros(len(desired))
 			for i in range(len(desired)):
-				ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+				ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
 			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders)
-			print "average input: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
+			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
 			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+			for i in range(100):
+				print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
 		elif (self.OType=="SmoothP"):
 			ders=np.zeros(len(desired))
 			iers=np.zeros(len(desired))
@@ -197,7 +202,7 @@ class Digester:
 				iers[i] = np.linalg.norm(p-desired[i,-3:])
 				comp[i] = np.linalg.norm(p-predicted[i,-3:])
 			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
-			print "average input: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
+			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
 			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 		elif (self.OType=="StoP"):
 			raise Exception("Unknown Digester Output Type.")
@@ -224,13 +229,14 @@ class Digester:
 		"""
 		if (self.eshape==None or self.lshape==None):
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
+			print tinps
 			self.eshape = list(tinps[0].shape)
 			self.lshape = list(touts[0].shape)
 			print "Assigned Digester shapes: ",self.eshape,self.lshape
 
 		ncase = mol_.NumOfAtomsE(ele_)*self.NTrainSamples
 		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float32)
-		outs=np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
+		outs = np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
 		dbg=[]
 		casep=0
 		for i in range(len(mol_.atoms)):
@@ -243,17 +249,18 @@ class Digester:
 				else:
 					samps=self.MakeSamples_v2(mol_.coords[i])
 					inputs, outputs = self.Emb(mol_,i,samps)
-# Here we should write a short routine to debug/print the inputs and outputs.
-#				print "Smooth",outputs
-#print i, mol_.atoms, mol_.coords,mol_.coords[i],"Samples:",samps,"inputs ", inputs, "Outputs",outputs, "Distances",np.array(map(np.linalg.norm,samps-mol_.coords[i]))
+				# Here we should write a short routine to debug/print the inputs and outputs.
+				#				print "Smooth",outputs
+				#print i, mol_.atoms, mol_.coords,mol_.coords[i],"Samples:",samps,"inputs ", inputs, "Outputs",outputs, "Distances",np.array(map(np.linalg.norm,samps-mol_.coords[i]))
+
 				ins[casep:casep+self.NTrainSamples] = np.array(inputs)
 				outs[casep:casep+self.NTrainSamples] = outputs
 				casep += self.NTrainSamples
+
 		if (MakeDebug):
 			return ins,outs,dbg
 		else:
 			return ins,outs
-
 
 	def SampleDigestWPyscf(self, mol_, ele_,uniform=False):
 		''' Runs PySCF calculations for each sample without generating embeddings and probabilities '''
