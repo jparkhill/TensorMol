@@ -13,7 +13,7 @@ class TensorData():
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=3600, ChopTo_=None, type_="atom"):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, MxTimePerElement_=36000, ChopTo_=None, type_="atom"):
 		"""
 			make a tensordata object
 			Args:

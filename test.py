@@ -296,39 +296,40 @@ if (1):
 
 	if (1):
 		"""
-		A Network trained on Go-Force
-		"""
+		# A Network trained on Go-Force
+		# """
 		print "Testing a Network learning Go-Atom Force..."
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		print "nmols:",len(a.mols)
-		# c=a.DistortedClone(200)
-		b=a.DistortAlongNormals(6, True, 1.2)
+		c=a.DistortedClone(200)
+		# b=a.DistortAlongNormals(80, True, 1.2)
 		# c.Statistics()
-		b.Statistics()
-		print len(b.mols)
-		b.Save()
-		b.WriteXYZ()
+		# b.Statistics()
+		# print len(b.mols)
+		# b.Save()
+		# b.WriteXYZ()
+		b=MSet("OptMols_NEQ")
+		b.Load()
 		TreatedAtoms = b.AtomTypes()
 		# 2 - Choose Digester
 		d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 		# 4 - Generate training set samples.
 		tset = TensorData(b,d)
 		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-		# tset2 = TensorData(c,d)
-		# tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
+		tset2 = TensorData(c,d)
+		tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 		#Train
 		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
 		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 		# This Tests the optimizer.
-		# a=MSet("OptMols")
-		# a.ReadXYZ("OptMols")
-		# test_mol = a.mols[11]
-		# print "Orig Coords", test_mol.coords
-		# test_mol.Distort()
-		# print test_mol.coords
-		# print test_mol.atoms
-		# manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
-		# optimizer  = Optimizer(manager)
-		# optimizer.Opt(test_mol)
-		# return
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		test_mol = a.mols[11]
+		print "Orig Coords", test_mol.coords
+		test_mol.Distort()
+		print test_mol.coords
+		print test_mol.atoms
+		manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
+		optimizer  = Optimizer(manager)
+		optimizer.Opt(test_mol)

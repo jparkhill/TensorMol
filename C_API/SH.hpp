@@ -776,11 +776,13 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 			return exp(toexp);
 		}
 
+
 		//
 		// Projects a delta function at x,y,z onto
 		//  Exp[-(x-r)^2/(2 sigma^2)]*Y_{LM}(theta,phi)
 		//
 		// which will occupy a vector of length Nrad*(1+lmax)**2
+		
 		void RadSHProjection(double x, double y, double z, double* output, double fac=1.0)
 		{
 			double r = sqrt(x*x+y*y+z*z);

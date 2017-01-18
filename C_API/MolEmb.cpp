@@ -420,6 +420,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	double xc = xyz_data[i*Nxyz[1]+0];
 	double yc = xyz_data[i*Nxyz[1]+1];
 	double zc = xyz_data[i*Nxyz[1]+2];
+	
 	for (int j = 0; j < natom; j++)
 	{
 		double x = xyz_data[j*Nxyz[1]+0];

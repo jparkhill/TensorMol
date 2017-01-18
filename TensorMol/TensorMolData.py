@@ -242,11 +242,11 @@ class TensorMolData(TensorData):
 		return
 
 	def Save(self):
-        self.CleanScratch()
-        f=open(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+".tdt","wb")
-        pickle.dump(self.__dict__, f, protocol=1)
-        f.close()
-        return
+		self.CleanScratch()
+		f=open(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+".tdt","wb")
+		pickle.dump(self.__dict__, f, protocol=1)
+		f.close()
+		return
 
 class TensorMolData_BP(TensorMolData):
 	"""
