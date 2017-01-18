@@ -37,10 +37,10 @@ if (1):
                 for mol in b.mols:
                         mol.Make_Mol_Graph()
 		frag_index_list  =  a.mols[0].Find_Frag(b.mols[0])  # OCCO frag
-		a.mols[0].Frag_Overlaps(frag_index_list)
-
-		frag_index_list  =  a.mols[0].Find_Frag(b.mols[1])  # CO frag
-                a.mols[0].Frag_Overlaps(frag_index_list)
+		#a.mols[0].Frag_Overlaps(frag_index_list)
+		a.mols[0].Check_Overlaps(frag_index_list, [b.mols[1]])
+		#frag_index_list  =  a.mols[0].Find_Frag(b.mols[1])  # CO frag
+                #a.mols[0].Frag_Overlaps(frag_index_list)
 		#a.mols[0].NoOverlapping_Partition([b.mols[0])
 
 if (0):

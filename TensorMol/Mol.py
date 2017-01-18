@@ -127,7 +127,9 @@ class Mol:
 					visited_list = self.DFS_recursive(next_node, visited_list)
 		return visited_list
 
-	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0):   # ignore all the H for assigment
+	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0, avail_atoms=None):   # ignore all the H for assigment
+		if avail_atoms==None:
+			avail_atoms = range(0, self.NAtoms())
 		frag_head_node = frag.atom_nodes[frag_head]	
 		frag_node_stack = [frag_head_node]
                 frag_visited_list = []
@@ -138,7 +140,7 @@ class Mol:
 			for mol_visited_list in all_mol_visited_list:
 				possible_node = []
 				if mol_visited_list ==[]:
-                                                possible_node = list(self.atom_nodes)
+                                                possible_node = [self.atom_nodes[i] for i in avail_atoms]
 						for mol_node in possible_node:
 							if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
 								updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
@@ -152,7 +154,7 @@ class Mol:
 					for connected_node_index in connected_node_index_in_frag:
 						connected_node_in_mol = self.atom_nodes[mol_visited_list[connected_node_index]]
 						for target_node in connected_node_in_mol.connected_nodes:
-							if target_node.node_index not in mol_visited_list and self.Compare_Node(target_node, current_frag_node) and self.Check_Connection(target_node, current_frag_node, mol_visited_list, frag_visited_list):
+							if target_node.node_index not in mol_visited_list and self.Compare_Node(target_node, current_frag_node) and self.Check_Connection(target_node, current_frag_node, mol_visited_list, frag_visited_list) and target_node.node_index in avail_atoms:
 								updated_all_mol_visited_list.append(mol_visited_list+[target_node.node_index])
 								if target_node.node_type in ignored_ele:
 									break
@@ -166,15 +168,32 @@ class Mol:
 		return frags_in_mol 
 
 	def Frag_Overlaps(self, frags_index_list):
-		print self.Check_Frags_Is_Complete(frags_index_list)
+		#print self.Check_Frags_Is_Complete(frags_index_list)
+		overlap_list = []
+		frag_pair_list = []
 		for i in range (0, len(frags_index_list)):
 			for j in range (i+1, len(frags_index_list)):
 				overlap=list(set(frags_index_list[i]).intersection(frags_index_list[j]))
 				if overlap:
-					print "overlap:", overlap, " frags: ", frags_index_list[i], frags_index_list[j]
+					#print "overlap:", overlap, " frags: ", frags_index_list[i], frags_index_list[j]
+					overlap_list.append(overlap)
+					frag_pair_list.append([i,j])
+		#print "overlap", overlap_list, "pair", frag_pair_list
+		return overlap_list, frag_pair_list
+
+
+	def Check_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
+		if overlap_list == None or frag_pair_list == None:
+			overlap_list, frag_pair_list = self.Frag_Overlaps(frags_index_list)
+		not_allowed_overlap_index = []
+		for overlap_index,  overlap in  enumerate(overlap_list):
+			print overlap
+			for allowed_overlap in allowed_overlap_list:
+				if allowed_overlap.NAtoms() != len(overlap) or not self.Find_Frag(allowed_overlap, avail_atoms=overlap):
+					not_allowed_overlap_index.append(overlap_index)
+					print "not allowed"
+		print not_allowed_overlap_index
 		return
-
-
 
 
 	def Check_Frags_Is_Complete(self, frags_index_list):  # check the frags contains all the heavy atoms
@@ -293,6 +312,7 @@ class Mol:
 			else:	# could not partition anymore
 				memory[suffix_atoms_string] = [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # memorize it
 				return [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # return penalty and what is left
+
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
 
