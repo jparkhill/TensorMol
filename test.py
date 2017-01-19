@@ -62,8 +62,8 @@ def TestGoForceAtom(dig_ = "GauSH"):
 	c.Statistics()
 	b.Statistics()
 	print len(b.mols)
-	b.Save()
-	b.WriteXYZ()
+	#b.Save()
+	# b.WriteXYZ()
 	TreatedAtoms = b.AtomTypes()
 	# 2 - Choose Digester
 	d = Digester(TreatedAtoms, name_=dig_,OType_ ="Force")

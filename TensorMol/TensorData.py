@@ -98,7 +98,7 @@ class TensorData():
 		"""
 			Generates probability inputs for all training data using the chosen digester.
 			This version builds all the elements at the same time.
-            The other version builds each element separately
+            		The other version builds each element separately
 			If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
 		self.CheckShapes()
@@ -138,11 +138,11 @@ class TensorData():
 				cases_list[ai][casep_list[ai]] = ins[i]
 				labels_list[ai][casep_list[ai]] = outs[i]
 				casep_list[ai] = casep_list[ai]+1
-			if (mi%1000):
+			if (mi%10000==0 and mi>0):
 				gc.collect()
-			if (mi%1000==0):
+			if (mi%10000==0 and mi>0):
 				print mi
-			if (mi==400):
+			if (mi==40):
 				print "Seconds to process 400 molecules: ", time.time()-t0
 		for element in atypes:
 			# Write the numpy arrays for this element.
