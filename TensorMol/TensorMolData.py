@@ -304,7 +304,7 @@ class TensorMolData_BP(TensorMolData):
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
 			if (mols_done%10000==0):
-				print "Mol:", mi
+				print "Mol:", mols_done 
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
