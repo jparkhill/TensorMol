@@ -124,20 +124,20 @@ class TensorData():
 			if (reqmem[element]>self.MxMemPerElement):
 				truncto[element]=int(self.MxMemPerElement/reqmem[element]*nofe[element])
 				print "Truncating element ", element, " to ",truncto[element]," Samples"
-        # Hopefully I can avoid these truncations by speeding up significantly...
-        cases_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
-        labels_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
-        casep_list = [0 for element in atypes]
+	        # Hopefully I can avoid these truncations by speeding up significantly...
+		cases_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		casep_list = [0 for element in atypes]
 		t0 = time.time()
 		for mi in range(len(self.set.mols)):
 			m = self.set.mols[mi]
-            ins,outs = self.dig.TrainDigestMolewise(m)
-            for i in range(m.NAtoms()):
-                # Route all the inputs and outputs to the appropriate place...
-                ai = atypes.index(m.atoms[i])
-                cases_list[ai][casep_list[ai]] = ins[i]
-                labels_list[ai][casep_list[ai]] = outs[i]
-                casep_list[ai] = casep_list[ai]+1
+			ins,outs = self.dig.TrainDigestMolewise(m)
+			for i in range(m.NAtoms()):
+                	# Route all the inputs and outputs to the appropriate place...
+				ai = atypes.index(m.atoms[i])
+				cases_list[ai][casep_list[ai]] = ins[i]
+				labels_list[ai][casep_list[ai]] = outs[i]
+				casep_list[ai] = casep_list[ai]+1
 			if (mi%1000):
 				gc.collect()
 			if (mi%1000==0):
