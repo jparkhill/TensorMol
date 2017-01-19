@@ -494,9 +494,7 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	}
 	else
 	{
-		#ifdef OPENMP
 		#pragma omp parallel for
-		#endif
 		for (int i=0; i<natom; ++i )
 		{
 			double xc = xyz_data[i*Nxyz[1]+0];

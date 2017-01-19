@@ -771,9 +771,9 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 		{
 			double toexp=pow(r - r0,2.0)/(-2.*sigma*sigma);
 			if (toexp < -25.0)
-			return 0.0;
+				return 0.0;
 			else
-			return exp(toexp);
+				return exp(toexp);
 		}
 
 
@@ -785,39 +785,26 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 
 		void RadSHProjection(double x, double y, double z, double* output, double fac=1.0)
 		{
-			//double r = sqrt(x*x+y*y+z*z);
-			double r = 1/sqrt(x*x+y*y+z*z);
+			double rnotinv = sqrt(x*x+y*y+z*z);
+			double r = 1.0/rnotinv;
 			// Populate tables...
 			double x_[SH_LMAX-1];
 			double y_[SH_LMAX-1];
 			double z_[SH_LMAX-1];
 			double r_[SH_LMAX-1];
-
 			x_[0] = x*x;
 			y_[0] = y*y;
 			z_[0] = z*z;
 			r_[0] = r*r;
-
 			for (int i=2; i<(SH_LMAX-1) ; i+=2)
 			{
 				x_[i] = x_[i-2]*x*x;
 				y_[i] = y_[i-2]*y*y;
 				z_[i] = z_[i-2]*z*z;
 			}
-
 			for (int i=1; i<(SH_LMAX-1) ; ++i)
 				r_[i] = r_[i-1]*r;
 
-
-			// for (int i=0; i<(SH_LMAX-1) ; ++i)
-			// {
-			// 	x_[i] = pow(x,i+2.);
-			// 	y_[i] = pow(y,i+2.);
-			// 	z_[i] = pow(z,i+2.);
-			// 	r_[i] = pow(r,i+2.);
-			// }
-
-			//if (r<pow(10.0,-9))
 			if (r>pow(10.0,9))
 				return;
 			// double theta = acos(z/r);
@@ -827,7 +814,7 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 			for (int i=0; i<SH_NRAD ; ++i)
 			{
 				//cout << "Num Thread: " << omp_get_num_threads() << endl;
-				double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
+				double Gv = Gau(rnotinv, RBFS[i][0],RBFS[i][1]);
 				for (int l=0; l<SH_LMAX+1 ; ++l)
 				{
 					for (int m=-l; m<l+1 ; ++m)
@@ -869,22 +856,41 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 		// which will occupy a vector of length Nrad*(1+lmax)**2
 		void RadInvProjection(double x, double y, double z, double* output, double fac=1.0)
 		{
-			double r = sqrt(x*x+y*y+z*z);
-			if (r<pow(10.0,-9))
-			return;
-			double theta = acos(z/r);
-			double phi = atan2(y,x);
+			double rnotinv=sqrt(x*x+y*y+z*z);
+			double r = 1.0/rnotinv;
+			// Populate tables...
+			double x_[SH_LMAX-1];
+			double y_[SH_LMAX-1];
+			double z_[SH_LMAX-1];
+			double r_[SH_LMAX-1];
+			x_[0] = x*x;
+			y_[0] = y*y;
+			z_[0] = z*z;
+			r_[0] = r*r;
+			for (int i=2; i<(SH_LMAX-1) ; i+=2)
+			{
+				x_[i] = x_[i-2]*x*x;
+				y_[i] = y_[i-2]*y*y;
+				z_[i] = z_[i-2]*z*z;
+			}
+			for (int i=1; i<(SH_LMAX-1) ; ++i)
+				r_[i] = r_[i-1]*r;
+
+			if (r>pow(10.0,9))
+				return;
+			//double theta = acos(z/r);
+			//double phi = atan2(y,x);
 			int op=0;
 			double tmp,tmp2;
 			for (int i=0; i<SH_NRAD ; ++i)
 			{
-				double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
+				double Gv = Gau(rnotinv, RBFS[i][0],RBFS[i][1]);
 				for (int l=0; l<SH_LMAX+1 ; ++l)
 				{
 					tmp = 0.0;
 					for (int m=-l; m<l+1 ; ++m)
 					{
-						tmp2 = Gv*RealSphericalHarmonic(l,m,theta,phi);
+						tmp2 = Gv*CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_);//RealSphericalHarmonic(l,m,theta,phi);
 						tmp += tmp2*tmp2;
 					}
 					output[op] += tmp*fac;
