@@ -47,7 +47,7 @@ class Mol:
 	def Make_AtomNodes(self):
 		atom_nodes = []
 		for i in range (0, self.NAtoms()):
-			atom_nodes.append(AtomNode(self.atoms[i], i)) 
+			atom_nodes.append(AtomNode(self.atoms[i], i))
 		self.atom_nodes = atom_nodes
 
 	def Connect_AtomNodes(self):
@@ -59,9 +59,9 @@ class Mol:
 				atom_pair.sort()
 				bond_name = self.AtomName_From_List(atom_pair)
 				if dist <= bond_length_thresh[bond_name]:
-					(self.atom_nodes[i]).Append(self.atom_nodes[j])  
+					(self.atom_nodes[i]).Append(self.atom_nodes[j])
 					(self.atom_nodes[j]).Append(self.atom_nodes[i])
-		return 
+		return
 
 	def Make_Mol_Graph(self):
 		self.Make_AtomNodes()
@@ -98,14 +98,14 @@ class Mol:
 		node_set_index = []
 		for i in range (0, len(atom_set)):
 			node_set_index.append([])
-			for j in range (0, len(node.connected_atoms)):	
+			for j in range (0, len(node.connected_atoms)):
 				if node.connected_atoms[j] == atom_set[i]:
 					node_set_index[i].append(j)
 		sub_order = []
 		for index in node_set_index:
 			sub_order.append([])
 			if node.connected_atoms[index[0]]in ignored_ele:  # element that do not permute
-				sub_order[-1] = [list(index)]	
+				sub_order[-1] = [list(index)]
 			else:
 				sub_order[-1] = [list(x) for x in list(itertools.permutations(index))]
 		all_order = [list(x) for x in list(itertools.product(*sub_order))]
@@ -130,7 +130,7 @@ class Mol:
 	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0, avail_atoms=None):   # ignore all the H for assigment
 		if avail_atoms==None:
 			avail_atoms = range(0, self.NAtoms())
-		frag_head_node = frag.atom_nodes[frag_head]	
+		frag_head_node = frag.atom_nodes[frag_head]
 		frag_node_stack = [frag_head_node]
                 frag_visited_list = []
 		all_mol_visited_list = [[]]
@@ -144,8 +144,8 @@ class Mol:
 						for mol_node in possible_node:
 							if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
 								updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
-								if mol_node.node_type in ignored_ele:# just once 
-									break 
+								if mol_node.node_type in ignored_ele:# just once
+									break
 				else:
 					connected_node_index_in_frag = []
                 	                for connected_node_in_frag in current_frag_node.connected_nodes:
@@ -158,14 +158,14 @@ class Mol:
 								updated_all_mol_visited_list.append(mol_visited_list+[target_node.node_index])
 								if target_node.node_type in ignored_ele:
 									break
-			all_mol_visited_list = list(updated_all_mol_visited_list) 
+			all_mol_visited_list = list(updated_all_mol_visited_list)
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
 		frags_in_mol = []
 		for mol_visited_list in all_mol_visited_list:
 			mol_visited_list.sort()
 			if mol_visited_list not in frags_in_mol:
 				frags_in_mol.append(mol_visited_list)
-		return frags_in_mol 
+		return frags_in_mol
 
 	def Frag_Overlaps(self, frags_index_list):
 		#print self.Check_Frags_Is_Complete(frags_index_list)
@@ -194,7 +194,7 @@ class Mol:
 		return not_allowed_overlap_index
 
 
-	def Optimize_Overlap(self, frags_index_list, allowed_overlap_list, not_allowed_overlap_index=None):         #delete the frags that generate the not allowed overlaps 
+	def Optimize_Overlap(self, frags_index_list, allowed_overlap_list, not_allowed_overlap_index=None):         #delete the frags that generate the not allowed overlaps
 		overlap_list, frag_pair_list = self.Frag_Overlaps(frags_index_list)
 		if not_allowed_overlap_index == None:
 			not_allowed_overlap_index = self.Pick_Not_Allowed_Overlaps(frags_index_list, allowed_overlap_list, overlap_list, frag_pair_list)
@@ -223,8 +223,8 @@ class Mol:
 			frag_set.pop(frag_set.index(deleted_frag))
 			del frag_freq[deleted_frag]
 		return	deleted_frag_list
-				
-						
+
+
 	def Check_Frags_Is_Complete(self, frags_index_list):  # check the frags contains all the heavy atoms
 		visited = []
 		heavy_atoms = 0
@@ -237,7 +237,7 @@ class Mol:
 			return True
 		else:
 			return False
-		
+
 
 	def Num_of_Heavy_Atom(self):
 		num = 0
@@ -256,12 +256,12 @@ class Mol:
                 for node in frag_node.connected_nodes:
                         if node.node_index in frag_visited_list:
                                 frag_node_connection_index_found.append(frag_visited_list.index(node.node_index))
-		
+
 		if set(mol_node_connection_index_found) == set(frag_node_connection_index_found):
 			return True
 		else:
 			return False
-		
+
 
 
 	def Compare_Node(self, mol_node, frag_node):
@@ -271,15 +271,15 @@ class Mol:
 					return False
 				else:
 					return True
-			else:   
+			else:
 				return True
 		else:
-			return False 
+			return False
 
 	def NoOverlapping_Partition(self, frags):
 		frag_list = []
 		for frag in frags:
-			if not frag_list: # empty 
+			if not frag_list: # empty
 				frag_list = list(self.Find_Frag(frag))
 			else:
 				frag_list += self.Find_Frag(frag)
@@ -294,14 +294,14 @@ class Mol:
 		possible_frags = []
 		#print suffix_atoms
 		for frag in frag_list:
-                        if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix 
+                        if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix
                                         possible_frags.append(frag)
                 if possible_frags:    # continue partitioning
                 	mini_penalty = float('inf')
                         opt_frags = []
                         for frag in possible_frags:
                         	 new_suffix_atoms = Setdiff(suffix_atoms, frag)
-                                 penalty, prev_frags = self.Partition(new_suffix_atoms, frag_list) # recursive 
+                                 penalty, prev_frags = self.Partition(new_suffix_atoms, frag_list) # recursive
                                  if penalty < mini_penalty:
                                  	mini_penalty = penalty
                                         opt_frags = list(prev_frags)
@@ -319,11 +319,11 @@ class Mol:
 		suffix_atoms_string = LtoS(suffix_atoms)
 		if suffix_atoms_string in memory.keys():  # already calculated
 			#print "using memory"
-			return memory[suffix_atoms_string] 
+			return memory[suffix_atoms_string]
 		else:   # not calculated yet
 			#print "calculating"
 			for frag in frag_list:
-				if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix 
+				if  Subset(suffix_atoms, frag):   # possible frag contained in the suffix
 					possible_frags.append(frag)
 
 			if possible_frags:    # continue partitioning
@@ -331,7 +331,7 @@ class Mol:
 				opt_frags = []
 				for frag in possible_frags:
 					new_suffix_atoms = Setdiff(suffix_atoms, frag)
-					penalty, prev_frags = self.DP_Partition(new_suffix_atoms, frag_list, memory) # recursive 
+					penalty, prev_frags = self.DP_Partition(new_suffix_atoms, frag_list, memory) # recursive
 					if penalty < mini_penalty:
 						mini_penalty = penalty
 						opt_frags = list(prev_frags)
@@ -752,8 +752,9 @@ class Mol:
 		raise Exception("Depreciated.")
 
 	def GoForce(self, at_=-1):
-		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
-			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
+		'''
+			The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
+			Args: at_ an atom index, if at_ = -1 it returns an array for each atom. 
 		'''
 		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
 
@@ -2055,7 +2056,7 @@ class Frag_of_Mol(Mol):
 			else:
 				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
                 self.atom_nodes = atom_nodes
-		return 
+		return
 
 
 class AtomNode:
@@ -2069,7 +2070,7 @@ class AtomNode:
 		self.num_of_bonds = None
 		self.connected_atoms = None
 		self.Update_Node()
-		return 
+		return
 
 	def Append(self, node):
 		self.connected_nodes.append(node)
@@ -2078,14 +2079,14 @@ class AtomNode:
 
 	def Num_of_Bonds(self):
 		self.num_of_bonds = len(self.connected_nodes)+self.undefined_bond
-		return len(self.connected_nodes)+self.undefined_bond 
+		return len(self.connected_nodes)+self.undefined_bond
 
 	def Connected_Atoms(self):
 		connected_atoms = []
 		for node in self.connected_nodes:
 			connected_atoms.append(node.node_type)
 		self.connected_atoms = connected_atoms
-		return connected_atoms	
+		return connected_atoms
 
 	def Update_Node(self):
 		self.Num_of_Bonds()

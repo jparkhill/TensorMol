@@ -102,11 +102,12 @@ class Digester:
 		Generates various molecular embeddings.
 		Args:
 			mol_: a Molecule to be digested
-			at_: an atom to be digested or moved.
+			at_: an atom to be digested or moved. if at_ < 0 it usually returns arrays for each atom in the molecule
 			xyz_: makes inputs with at_ moved to these positions.
 			MakeOutputs: generates outputs according to self.OType.
 		Returns:
 			Output embeddings, and possibly labels and gradients.
+			if at_ < 0 the first dimension loops over atoms in mol_
 		"""
 		#start = time.time()
 		if (self.name=="Coulomb"):
@@ -217,6 +218,26 @@ class Digester:
 #
 #  Various types of Batch Digests.
 #
+
+	def TrainDigestMolwise(self, mol_):
+		"""
+		Returns list of inputs and outputs for a molecule.
+		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+		This version works mol-wise to try to speed up and avoid calling C++ so much...
+		Args:
+			mol_: a molecule to be digested
+			eles_: A list of elements coming from Tensordata to order the output.
+		Returns:
+			Two lists: containing inputs and outputs in order of eles_
+		"""
+		if ((not (self.name == "GauInv" or self.name =="GauSH")) or self.OType !="Force"):
+			raise Exception("Molwise Embedding not supported")
+		if (self.eshape==None or self.lshape==None):
+			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
+			self.eshape = list(tinps[0].shape)
+			self.lshape = list(touts[0].shape)
+			print "Assigned Digester shapes: ",self.eshape,self.lshape
+		return self.Emb(mol_,-1,mol_.coords[0]) # will deal with getting energies if it's needed.
 
 	def TrainDigest(self, mol_, ele_, MakeDebug=False):
 		"""

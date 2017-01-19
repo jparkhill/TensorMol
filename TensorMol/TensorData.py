@@ -93,6 +93,95 @@ class TensorData():
 		if (self.dig.eshape == None or self.dig.lshape ==None):
 			raise Exception("Ain't got no fucking shape.")
 
+
+	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
+		"""
+			Generates probability inputs for all training data using the chosen digester.
+			This version builds all the elements at the same time.
+            The other version builds each element separately
+			If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		"""
+		self.CheckShapes()
+		self.name=name_
+		print "Generating Train set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
+		if (len(self.set.mols[0].PESSamples)==0):
+			print "--- using a Go model of the PES ---"
+		else:
+			print "--- using ab-initio PES ---"
+			raise Exception("Finish writing code to use an ab-initio PES")
+		if (len(atypes)==0):
+			atypes = self.set.AtomTypes()
+		print "Will train atoms: ", atypes
+		# Determine the size of the training set that will be made.
+		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
+		for element in atypes:
+			for m in self.set.mols:
+				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
+		reqmem = [nofe[element]*self.dig.NTrainSamples*np.prod(self.dig.eshape)*4/1024.0/1024.0 for element in range(MAX_ATOMIC_NUMBER)]
+		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
+		for element in atypes:
+			print "AN: ", element, " contributes ", nofe[element]*self.dig.NTrainSamples , " samples, requiring ", reqmem[element], " MB of in-core memory. "
+			if (reqmem[element]>self.MxMemPerElement):
+				truncto[element]=int(self.MxMemPerElement/reqmem[element]*nofe[element])
+				print "Truncating element ", element, " to ",truncto[element]," Samples"
+        # Hopefully I can avoid these truncations by speeding up significantly...
+        cases_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+        labels_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+        casep_list = [0 for element in atypes]
+		t0 = time.time()
+		for mi in range(len(self.set.mols)):
+			m = self.set.mols[mi]
+            ins,outs = self.dig.TrainDigestMolewise(m)
+            for i in range(m.NAtoms()):
+                # Route all the inputs and outputs to the appropriate place...
+                ai = atypes.index(m.atoms[i])
+                cases_list[ai][casep_list[ai]] = ins[i]
+                labels_list[ai][casep_list[ai]] = outs[i]
+                casep_list[ai] = casep_list[ai]+1
+			if (mi%1000):
+				gc.collect()
+			if (mi%1000==0):
+				print mi
+			if (mi==400):
+				print "Seconds to process 400 molecules: ", time.time()-t0
+		for element in atypes:
+			# Write the numpy arrays for this element.
+			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
+			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
+			alreadyexists = (os.path.isfile(insname) and os.path.isfile(outsname))
+			if (append and alreadyexists):
+				ti=None
+				to=None
+				inf = open(insname,"rb")
+				ouf = open(outsname,"rb")
+				ti = np.load(inf)
+				to = np.load(ouf)
+				inf.close()
+				ouf.close()
+				cases = np.concatenate((cases_list[element][:casep_list[element]],ti))
+				labels = np.concatenate((labels_list[element][:casep_list[element]],to))
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases)
+				np.save(ouf,labels)
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
+			else:
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases_list[element][:casep_list[element]])
+				np.save(ouf,labels_list[element][:casep_list[element]])
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
+		self.Save() #write a convenience pickle.
+		return
+
 	def BuildTrain(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
 			Generates probability inputs for all training data using the chosen digester.
