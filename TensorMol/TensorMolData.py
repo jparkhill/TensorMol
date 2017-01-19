@@ -75,6 +75,8 @@ class TensorMolData(TensorData):
 					casep += 1
 		elif self.type=="mol":
 			for mi in range(len(self.set.mols)):
+				if (mi%10000==0): 
+					print "Mol: ", mi
 				ins,outs = self.dig.TrainDigest(mi)
 				cases[casep:casep+1] += ins
 				labels[casep:casep+1] += outs
