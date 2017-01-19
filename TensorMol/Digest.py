@@ -229,7 +229,6 @@ class Digester:
 		"""
 		if (self.eshape==None or self.lshape==None):
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
-			print tinps
 			self.eshape = list(tinps[0].shape)
 			self.lshape = list(touts[0].shape)
 			print "Assigned Digester shapes: ",self.eshape,self.lshape

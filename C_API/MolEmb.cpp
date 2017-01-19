@@ -9,6 +9,7 @@
 
 //Make_AM (center_m, ele_index, molxyz_data, Nxyz, AM_data);
 
+
 #define PI 3.14159265358979
 
 inline double fc(const double &dist, const double &dist_cut) {
@@ -420,7 +421,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	double xc = xyz_data[i*Nxyz[1]+0];
 	double yc = xyz_data[i*Nxyz[1]+1];
 	double zc = xyz_data[i*Nxyz[1]+2];
-	
+
 	for (int j = 0; j < natom; j++)
 	{
 		double x = xyz_data[j*Nxyz[1]+0];
