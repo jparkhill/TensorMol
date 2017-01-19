@@ -300,6 +300,8 @@ class TensorMolData_BP(TensorMolData):
 		for mi in range(len(self.set.mols)):
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
+			if (mi%10000==0): 
+				print "Mol:", mi
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
