@@ -15,8 +15,8 @@ using namespace std::tr1;
 #endif
 #else
 #include <array>
-using namespace std;
 #include <omp.h>
+using namespace std;
 #endif
 
 using namespace std;
@@ -819,13 +819,14 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 
 			//if (r<pow(10.0,-9))
 			if (r>pow(10.0,9))
-			return;
+				return;
 			// double theta = acos(z/r);
 			// double theta = acos(z*r);
 			// double phi = atan2(y,x);
 			#pragma omp parallel for
 			for (int i=0; i<SH_NRAD ; ++i)
 			{
+				//cout << "Num Thread: " << omp_get_num_threads() << endl;
 				double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
 				for (int l=0; l<SH_LMAX+1 ; ++l)
 				{

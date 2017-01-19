@@ -299,7 +299,7 @@ class TensorMolData_BP(TensorMolData):
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
-			print mi, ins.shape, outs.shape
+			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
 			labels[mi] = outs
 			for j in range(casep,casep+nat):

@@ -155,7 +155,7 @@ class MolDigester:
 		elif(self.name == "SymFunc"):
 			Ins, SYM_deri = self.make_sym(mol_)
 		elif(self.name == "GauInv_BP"):
-			Ins, deri_GauInv =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
+			Ins =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
 		else:
 			raise Exception("Unknown MolDigester Type.")
 		if (self.eshape == None):
