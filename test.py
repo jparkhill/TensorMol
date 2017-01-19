@@ -6,8 +6,6 @@ Many of these tests take a pretty significant amount of time and memory to compl
 """
 from TensorMol import *
 
-print "HAS TF", HAS_TF
-
 # John's tests
 def TestBP(dig_ = "Coulomb"):
 	"""
@@ -92,11 +90,7 @@ def TestGoForceAtom():
 
 # Tests to run.
 #TestGoForceAtom()
-<<<<<<< HEAD
 TestBP("GauInv")
-=======
->>>>>>> 5be6b69ea3f8f3c3a1a1d5893aa08f04726849bc
-#TestBP()
 
 # Kun's tests.
 if (0):

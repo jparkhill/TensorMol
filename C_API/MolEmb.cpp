@@ -454,7 +454,7 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	int natom, num_CM;
 	natom = Nxyz[0];
 
-	npy_intp* outdim;
+	npy_intp outdim[2];
 	if (theatom>=0)
 		outdim[0] = 1;
 	else
