@@ -405,29 +405,49 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 
 	//npy_intp outdim[2] = {natom,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
 	npy_intp outdim[2] = {1,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
+	if (theatom<0)
+	outdim[0] = natom;
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 
 	double *SH_data, *xyz_data, *grids_data;
 	double center[3]; // x y z of the center
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
-	grids_data = (double*) grids -> data;
+	// Note that Grids are currently unused... 
+	//grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 
-	int ai=0;
-	//	for (int i = 0; i < natom; i++)
-	//	{
-	int i = theatom;
-
-	double xc = xyz_data[i*Nxyz[1]+0];
-	double yc = xyz_data[i*Nxyz[1]+1];
-	double zc = xyz_data[i*Nxyz[1]+2];
-
-	for (int j = 0; j < natom; j++)
+	if (theatom<0)
 	{
-		double x = xyz_data[j*Nxyz[1]+0];
-		double y = xyz_data[j*Nxyz[1]+1];
-		double z = xyz_data[j*Nxyz[1]+2];
-		RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+		#pragma omp parallel for
+		for (int i=0; i<natom; ++i)
+		{
+			double xc = xyz_data[i*Nxyz[1]+0];
+			double yc = xyz_data[i*Nxyz[1]+1];
+			double zc = xyz_data[i*Nxyz[1]+2];
+			for (int j = 0; j < natom; j++)
+			{
+				double x = xyz_data[j*Nxyz[1]+0];
+				double y = xyz_data[j*Nxyz[1]+1];
+				double z = xyz_data[j*Nxyz[1]+2];
+				RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+			}
+		}
+	}
+	else{
+		int i = theatom;
+		int ai=0;
+
+		double xc = xyz_data[i*Nxyz[1]+0];
+		double yc = xyz_data[i*Nxyz[1]+1];
+		double zc = xyz_data[i*Nxyz[1]+2];
+
+		for (int j = 0; j < natom; j++)
+		{
+			double x = xyz_data[j*Nxyz[1]+0];
+			double y = xyz_data[j*Nxyz[1]+1];
+			double z = xyz_data[j*Nxyz[1]+2];
+			RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+		}
 	}
 	//	}
 	return SH;
@@ -456,9 +476,9 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 
 	npy_intp outdim[2];
 	if (theatom>=0)
-		outdim[0] = 1;
+	outdim[0] = 1;
 	else
-		outdim[0] = natom;
+	outdim[0] = natom;
 	outdim[1]=SH_NRAD*(1+SH_LMAX);
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 
@@ -470,17 +490,33 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	/*double center[3]={0.,0.,0.};
 	for (int j = 0; j < natom; j++)
 	{
-		center[0]+=xyz_data[j*Nxyz[1]+0];
-		center[1]+=xyz_data[j*Nxyz[1]+1];
-		center[2]+=xyz_data[j*Nxyz[1]+2];
-	}
-	center[0]/= natom;
-	center[1]/= natom;
-	center[2]/= natom;*/
+	center[0]+=xyz_data[j*Nxyz[1]+0];
+	center[1]+=xyz_data[j*Nxyz[1]+1];
+	center[2]+=xyz_data[j*Nxyz[1]+2];
+}
+center[0]/= natom;
+center[1]/= natom;
+center[2]/= natom;*/
 
-	if (theatom >= 0)
+if (theatom >= 0)
+{
+	int i = theatom;
+	double xc = xyz_data[i*Nxyz[1]+0];
+	double yc = xyz_data[i*Nxyz[1]+1];
+	double zc = xyz_data[i*Nxyz[1]+2];
+	for (int j = 0; j < natom; j++)
 	{
-		int i = theatom;
+		double x = xyz_data[j*Nxyz[1]+0];
+		double y = xyz_data[j*Nxyz[1]+1];
+		double z = xyz_data[j*Nxyz[1]+2];
+		RadInvProjection(x-xc,y-yc,z-zc,SH_data,(double)atoms[j]);
+	}
+}
+else
+{
+	#pragma omp parallel for
+	for (int i=0; i<natom; ++i )
+	{
 		double xc = xyz_data[i*Nxyz[1]+0];
 		double yc = xyz_data[i*Nxyz[1]+1];
 		double zc = xyz_data[i*Nxyz[1]+2];
@@ -489,27 +525,11 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 			double x = xyz_data[j*Nxyz[1]+0];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
-			RadInvProjection(x-xc,y-yc,z-zc,SH_data,(double)atoms[j]);
+			RadInvProjection(x-xc,y-yc,z-zc,SH_data+i*(outdim[1]),(double)atoms[j]);
 		}
 	}
-	else
-	{
-		#pragma omp parallel for
-		for (int i=0; i<natom; ++i )
-		{
-			double xc = xyz_data[i*Nxyz[1]+0];
-			double yc = xyz_data[i*Nxyz[1]+1];
-			double zc = xyz_data[i*Nxyz[1]+2];
-			for (int j = 0; j < natom; j++)
-			{
-				double x = xyz_data[j*Nxyz[1]+0];
-				double y = xyz_data[j*Nxyz[1]+1];
-				double z = xyz_data[j*Nxyz[1]+2];
-				RadInvProjection(x-xc,y-yc,z-zc,SH_data+i*(outdim[1]),(double)atoms[j]);
-			}
-		}
-	}
-	return SH;
+}
+return SH;
 }
 
 //
@@ -671,6 +691,7 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 	double u[3]={0.0,0.0,0.0};
 	if (at<0)
 	{
+		#pragma omp parallel for
 		for (int i=0; i < nat; ++i)
 		{
 			for (int j=0; j < nat; ++j)
