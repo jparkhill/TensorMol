@@ -298,12 +298,12 @@ class TensorMolData_BP(TensorMolData):
 		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
 		casep=0
 		# Generate the set in a random order.
-		ord=np.random.permutation(len(self.mols))
+		ord=np.random.permutation(len(self.set.mols))
 		mols_done = 0
 		for mi in ord:
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
-			if (mi%10000==0):
+			if (mols_done%10000==0):
 				print "Mol:", mi
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
@@ -316,6 +316,8 @@ class TensorMolData_BP(TensorMolData):
 				self.CaseMetadata[j,3] = casep+nat
 			casep += nat
 			mols_done = mols_done + 1
+			if (mols_done>=max_nmols_):
+				break 
 		inf = open(insname,"wb")
 		ouf = open(outsname,"wb")
 		mef = open(metasname,"wb")
