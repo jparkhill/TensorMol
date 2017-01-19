@@ -131,10 +131,10 @@ class TensorData():
 		t0 = time.time()
 		for mi in range(len(self.set.mols)):
 			m = self.set.mols[mi]
-			ins,outs = self.dig.TrainDigestMolewise(m)
+			ins,outs = self.dig.TrainDigestMolwise(m)
 			for i in range(m.NAtoms()):
                 	# Route all the inputs and outputs to the appropriate place...
-				ai = atypes.index(m.atoms[i])
+				ai = atypes.tolist().index(m.atoms[i])
 				cases_list[ai][casep_list[ai]] = ins[i]
 				labels_list[ai][casep_list[ai]] = outs[i]
 				casep_list[ai] = casep_list[ai]+1
