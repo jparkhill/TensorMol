@@ -108,7 +108,7 @@ class Instance:
 
 	def SaveAndClose(self):
 		print("Saving TFInstance...")
-		self.save_chk(self,99999)
+		self.save_chk(99999)
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
@@ -134,7 +134,8 @@ class Instance:
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
-		checkpoint_file_mini = os.path.join(self.train_dir, self.name+'-chk-'+str(step))
+		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+		print("Saving Checkpoint file, ",checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)
 		return
 
@@ -498,9 +499,9 @@ class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
 		# 256*512*512 gives [-0.01215208 -0.0064384   0.00562539] Average output (direct) [-0.01867021 -0.00484998  0.01150864] after 2k epochs.
-		self.hidden1 = 128
-		self.hidden2 = 128
-		self.hidden3 = 128
+		self.hidden1 = 32
+		self.hidden2 = 32
+		self.hidden3 = 32
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name

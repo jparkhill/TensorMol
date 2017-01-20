@@ -49,29 +49,30 @@ def TestAlign():
 	b.AlignAtoms(a)
 	return
 
-def TestGoForceAtom(dig_ = "GauSH"):
+def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False):
 	"""
 	A Network trained on Go-Force
 	"""
-	print "Testing a Network learning Go-Atom Force..."
-	a=MSet("OptMols")
-	a.ReadXYZ("OptMols")
-	print "nmols:",len(a.mols)
-	c=a.DistortedClone(200,0.3) # number of distortions, displacement
-	b=a.DistortAlongNormals(20, True, 0.8)
-	c.Statistics()
-	b.Statistics()
-	print len(b.mols)
-	#b.Save()
-	# b.WriteXYZ()
-	TreatedAtoms = b.AtomTypes()
-	# 2 - Choose Digester
-	d = Digester(TreatedAtoms, name_=dig_,OType_ ="Force")
-	# 4 - Generate training set samples.
-	tset = TensorData(b,d)
-	tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-	tset2 = TensorData(c,d)
-	tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
+	if (BuildTrain_): 
+		print "Testing a Network learning Go-Atom Force..."
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		print "nmols:",len(a.mols)
+		c=a.DistortedClone(200,0.3) # number of distortions, displacement
+		b=a.DistortAlongNormals(20, True, 0.8)
+		c.Statistics()
+		b.Statistics()
+		print len(b.mols)
+		#b.Save()
+		# b.WriteXYZ()
+		TreatedAtoms = b.AtomTypes()
+		# 2 - Choose Digester
+		d = Digester(TreatedAtoms, name_=dig_,OType_ ="Force")
+		# 4 - Generate training set samples.
+		tset = TensorData(b,d)
+		tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
+		tset2 = TensorData(c,d)
+		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
 	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,6000)
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
