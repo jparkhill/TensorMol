@@ -19,6 +19,23 @@ import sys
 
 class Instance:
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
+		# The tensorflow objects go up here.
+		self.inshape = None
+		self.outshape = None
+		self.sess = None
+		self.loss = None
+		self.output = None
+		self.train_op = None
+		self.total_loss = None
+		self.embeds_placeholder = None
+		self.labels_placeholder = None
+		self.saver = None
+		self.gradient =None
+		self.summary_writer = None
+		# The parameters below belong to tensorflow and its graph
+		# all tensorflow variables cannot be pickled they are populated by Prepare
+		self.PreparedFor=0
+
 		self.path='./networks/'
 		self.normalize = False
 		if (Name_ !=  None):
@@ -33,15 +50,13 @@ class Instance:
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
 		self.chk_file = ''
-		self.learning_rate = 0.0001  
+		self.learning_rate = 0.0001
 		self.momentum = 0.9
 		self.max_steps = 100000
-		self.batch_size = 8000 
+		self.batch_size = 8000
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.inshape = None
-		self.outshape = None
 		if (ele_ != 0):
 			self.TData.LoadElementToScratch(ele_)
 			self.TData.PrintStatus()
@@ -50,19 +65,6 @@ class Instance:
 				self.normalize=True
 			self.inshape = self.TData.dig.eshape
 			self.outshape = self.TData.dig.lshape
-		# The parameters below belong to tensorflow and its graph
-		# all tensorflow variables cannot be pickled they are populated by Prepare
-		self.PreparedFor=0
-		self.sess = None
-		self.loss = None
-		self.output = None
-		self.train_op = None
-		self.total_loss = None
-		self.embeds_placeholder = None
-		self.labels_placeholder = None
-		self.saver = None
-		self.gradient =None
-		self.summary_writer = None
 		return
 
 	def __del__(self):
@@ -495,9 +497,10 @@ class Instance_fc_classify(Instance):
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		self.hidden1 = 256
-		self.hidden2 = 512
-		self.hidden3 = 512
+		# 256*512*512 gives [-0.01215208 -0.0064384   0.00562539] Average output (direct) [-0.01867021 -0.00484998  0.01150864] after 2k epochs.
+		self.hidden1 = 128
+		self.hidden2 = 128
+		self.hidden3 = 128
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
