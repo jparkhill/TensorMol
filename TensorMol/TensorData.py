@@ -117,19 +117,14 @@ class TensorData():
 		for element in atypes:
 			for m in self.set.mols:
 				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
-		reqmem = [nofe[element]*self.dig.NTrainSamples*np.prod(self.dig.eshape)*4/1024.0/1024.0 for element in range(MAX_ATOMIC_NUMBER)]
 		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
-		for element in atypes:
-			print "AN: ", element, " contributes ", nofe[element]*self.dig.NTrainSamples , " samples, requiring ", reqmem[element], " MB of in-core memory. "
-			if (reqmem[element]>self.MxMemPerElement):
-				truncto[element]=int(self.MxMemPerElement/reqmem[element]*nofe[element])
-				print "Truncating element ", element, " to ",truncto[element]," Samples"
-	        # Hopefully I can avoid these truncations by speeding up significantly...
-		cases_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
-		labels_list = [np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
 		casep_list = [0 for element in atypes]
 		t0 = time.time()
-		for mi in range(len(self.set.mols)):
+		ord=np.random.permutation(len(self.set.mols))
+		mols_done = 0 
+		for mi in ord:
 			m = self.set.mols[mi]
 			ins,outs = self.dig.TrainDigestMolwise(m)
 			for i in range(m.NAtoms()):
@@ -138,14 +133,16 @@ class TensorData():
 				cases_list[ai][casep_list[ai]] = ins[i]
 				labels_list[ai][casep_list[ai]] = outs[i]
 				casep_list[ai] = casep_list[ai]+1
-			if (mi%10000==0 and mi>0):
+			if (mols_done%10000==0 and mols_done>0):
 				gc.collect()
-			if (mi%10000==0 and mi>0):
-				print mi
-			if (mi==40):
+			if (mols_done%10000==0 and mols_done>0):
+				print mols_done 
+			if (mols_done==400):
 				print "Seconds to process 400 molecules: ", time.time()-t0
+			mols_done = mols_done + 1
 		for element in atypes:
 			# Write the numpy arrays for this element.
+			ai = atypes.tolist().index(element) 
 			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
 			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
 			alreadyexists = (os.path.isfile(insname) and os.path.isfile(outsname))
@@ -158,8 +155,8 @@ class TensorData():
 				to = np.load(ouf)
 				inf.close()
 				ouf.close()
-				cases = np.concatenate((cases_list[element][:casep_list[element]],ti))
-				labels = np.concatenate((labels_list[element][:casep_list[element]],to))
+				cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
+				labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
 				inf = open(insname,"wb")
 				ouf = open(outsname,"wb")
 				np.save(inf,cases)
@@ -168,17 +165,17 @@ class TensorData():
 				ouf.close()
 				self.AvailableDataFiles.append([insname,outsname])
 				self.AvailableElements.append(element)
-				self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
 			else:
 				inf = open(insname,"wb")
 				ouf = open(outsname,"wb")
-				np.save(inf,cases_list[element][:casep_list[element]])
-				np.save(ouf,labels_list[element][:casep_list[element]])
+				np.save(inf,cases_list[ai][:casep_list[ai]])
+				np.save(ouf,labels_list[ai][:casep_list[ai]])
 				inf.close()
 				ouf.close()
 				self.AvailableDataFiles.append([insname,outsname])
 				self.AvailableElements.append(element)
-				self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
 		self.Save() #write a convenience pickle.
 		return
 
