@@ -19,6 +19,23 @@ import sys
 
 class Instance:
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
+		# The tensorflow objects go up here.
+		self.inshape = None
+		self.outshape = None
+		self.sess = None
+		self.loss = None
+		self.output = None
+		self.train_op = None
+		self.total_loss = None
+		self.embeds_placeholder = None
+		self.labels_placeholder = None
+		self.saver = None
+		self.gradient =None
+		self.summary_writer = None
+		# The parameters below belong to tensorflow and its graph
+		# all tensorflow variables cannot be pickled they are populated by Prepare
+		self.PreparedFor=0
+
 		self.path='./networks/'
 		self.normalize = False
 		if (Name_ !=  None):
@@ -32,17 +49,14 @@ class Instance:
 		self.TData = TData_
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
-		#	self.checkpoint_file_mini =self.path+self.name
 		self.chk_file = ''
-		self.learning_rate = 0.000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
+		self.learning_rate = 0.0001
 		self.momentum = 0.9
 		self.max_steps = 100000
-		self.batch_size = 8000 # This is just the train batch size.
+		self.batch_size = 8000
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.inshape = None
-		self.outshape = None
 		if (ele_ != 0):
 			self.TData.LoadElementToScratch(ele_)
 			self.TData.PrintStatus()
@@ -51,19 +65,6 @@ class Instance:
 				self.normalize=True
 			self.inshape = self.TData.dig.eshape
 			self.outshape = self.TData.dig.lshape
-		# The parameters below belong to tensorflow and its graph
-		# all tensorflow variables cannot be pickled they are populated by Prepare
-		self.PreparedFor=0
-		self.sess = None
-		self.loss = None
-		self.output = None
-		self.train_op = None
-		self.total_loss = None
-		self.embeds_placeholder = None
-		self.labels_placeholder = None
-		self.saver = None
-		self.gradient =None
-		self.summary_writer = None
 		return
 
 	def __del__(self):
@@ -82,10 +83,21 @@ class Instance:
 			self.Prepare(eval_input,eval_input.shape[0])
 		return
 
-# This should really be called prepare for evaluation...
-# Since we do training once we don't really need the same thing.
-	def Prepare(self):
+	def Prepare(self, eval_input, Ncase=1250):
 		self.Clean()
+		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
+		eval_labels = np.zeros(Ncase)  # dummy labels
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
+			self.output = self.inference(self.embeds_placeholder)
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+			if (len(chkfiles)>0):
+				most_recent_chk_file=chkfiles[0]
+				print("Restoring training from Checkpoint: ",most_recent_chk_file)
+				self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+		self.PreparedFor = Ncase
 		return
 
 	def Clean(self):
@@ -107,7 +119,7 @@ class Instance:
 
 	def SaveAndClose(self):
 		print("Saving TFInstance...")
-		self.save_chk(self,99999)
+		self.save_chk(99999)
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
@@ -133,7 +145,8 @@ class Instance:
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
-		checkpoint_file_mini = os.path.join(self.train_dir, self.name+'-chk-'+str(step))
+		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+		print("Saving Checkpoint file, ",checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)
 		return
 
@@ -296,8 +309,30 @@ class Instance:
 		raise Exception("Cannot Train base...")
 		return
 
-	def train_prepare(self, continue_training=False):
-		return
+
+	def train_prepare(self,  continue_training =False):
+		"""Train for a number of steps."""
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.sess.run(init)
+			try: # I think this may be broken
+				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+				if (len(chkfiles)>0):
+					most_recent_chk_file=chkfiles[0]
+					print("Restoring training from Checkpoint: ",most_recent_chk_file)
+					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+			except Exception as Ex:
+				print("Restore Failed 2341325",Ex)
+				pass
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			return
 
 	def test(self,step):
 		raise Exception("Base Test")
@@ -435,30 +470,6 @@ class Instance_fc_classify(Instance):
 		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/denom),"accu:  %.5f"%(float(total_correct)/(denom*self.batch_size)))
 		return
 
-	def train_prepare(self,  continue_training =False):
-		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
-			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
-			self.total_loss, self.loss, self.prob = self.loss_op(self.output, self.labels_placeholder)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.summary.merge_all()
-			init = tf.initialize_all_variables()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.sess.run(init)
-			self.saver = tf.train.Saver()
-			try: # I think this may be broken
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-					most_recent_chk_file=chkfiles[0]
-					print("Restoring training from Checkpoint: ",most_recent_chk_file)
-					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-			except Exception as Ex:
-				print("Restore Failed 12343",Ex)
-				pass
-			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-		return
-
 	def train_step(self,step):
 		Ncase_train = self.TData.NTrainCasesInScratch()
 		start_time = time.time()
@@ -496,9 +507,10 @@ class Instance_fc_classify(Instance):
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		self.hidden1 = 256
-		self.hidden2 = 512
-		self.hidden3 = 256
+		# 256*512*512 gives [-0.01215208 -0.0064384   0.00562539] Average output (direct) [-0.01867021 -0.00484998  0.01150864] after 2k epochs.
+		self.hidden1 = 32
+		self.hidden2 = 32
+		self.hidden3 = 32
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
@@ -524,23 +536,6 @@ class Instance_fc_sqdiff(Instance):
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
-
-	def Prepare(self, eval_input, Ncase=1250):
-		Instance.Prepare(self)
-		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
-		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
-				self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
-				self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
-				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-				self.saver = tf.train.Saver()
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-					most_recent_chk_file=chkfiles[0]
-					print("Restoring training from Checkpoint: ",most_recent_chk_file)
-					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-		self.PreparedFor = Ncase
-		return
 
 	def Save(self):
 		self.summary_op =None
@@ -601,30 +596,6 @@ class Instance_fc_sqdiff(Instance):
 		print("testing...")
 		self.print_training(step, test_loss,  Ncase_test, duration)
 		return test_loss, feed_dict
-
-	def train_prepare(self,  continue_training =False):
-		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
-			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
-			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.sess.run(init)
-			self.saver = tf.train.Saver()
-			try: # I think this may be broken
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-					most_recent_chk_file=chkfiles[0]
-					print("Restoring training from Checkpoint: ",most_recent_chk_file)
-					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-			except Exception as Ex:
-				print("Restore Failed 2341325",Ex)
-				pass
-			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			return
 
 	def PrepareData(self, batch_data):
 		if (batch_data[0].shape[0]==self.batch_size):
@@ -747,23 +718,6 @@ class Instance_3dconv_sqdiff(Instance):
 			return tmp[:eval_input.shape[0]]
 		return tmp
 
-	def Prepare(self, eval_input, Ncase=1250):
-		Instance.Prepare(self)
-		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
-		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
-			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
-			self.output = self.inference(self.embeds_placeholder)
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
-			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-			if (len(chkfiles)>0):
-				most_recent_chk_file=chkfiles[0]
-				print("Restoring training from Checkpoint: ",most_recent_chk_file)
-				self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-		self.PreparedFor = Ncase
-		return
-
 	def Save(self):
 		self.summary_op =None
 		self.summary_writer=None
@@ -806,30 +760,6 @@ class Instance_3dconv_sqdiff(Instance):
 		print("testing...")
 		self.print_training(step, test_loss,  Ncase_test, duration)
 		return test_loss, feed_dict
-
-	def train_prepare(self,  continue_training =False):
-		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.embeds_placeholder)
-			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.sess.run(init)
-			self.saver = tf.train.Saver()
-			try: # I think this may be broken
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-					most_recent_chk_file=chkfiles[0]
-					print("Restoring training from Checkpoint: ",most_recent_chk_file)
-					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-			except Exception as Ex:
-				print("Restore Failed 39495",Ex)
-				pass
-			self.summary_writer = tf.train.SummaryWriter(self.train_dir, self.sess.graph)
-			return
 
 	def PrepareData(self, batch_data):
 

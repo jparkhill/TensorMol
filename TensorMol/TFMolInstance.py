@@ -150,7 +150,7 @@ class MolInstance_fc_classify(MolInstance):
 		return tmp
 
 	def Prepare(self, eval_input, Ncase=125000):
-		super().Prepare(self)
+		self.Clean()
 		print("Preparing a ",self.NetType,"MolInstance")
 		self.prob = None
 		self.correct = None
@@ -303,7 +303,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return tmp, gradient
 
 	def Prepare(self, eval_input, Ncase=125000):
-		MolInstance.Prepare(self)
+		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
@@ -311,8 +311,8 @@ class MolInstance_fc_sqdiff(MolInstance):
 				self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 				print ("type of self.embeds_placeholder:", type(self.embeds_placeholder))
 				self.gradient = tf.gradients(self.output, self.embeds_placeholder)[0]
-				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 				self.saver = tf.train.Saver()
+				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 				self.saver.restore(self.sess, self.chk_file)
 		self.PreparedFor = Ncase
 		return
