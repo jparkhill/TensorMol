@@ -139,6 +139,24 @@ class MSet:
 				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)	
 		return 
 
+	def Analysis_Jcoupling(self):
+		
+		J_value = [] 
+		for i in range (0, self.mols[0].NAtoms()):
+			for j in range (i+1, self.mols[0].NAtoms()):
+					J_value.append([])
+
+		for mol in self.mols:
+			index = 0
+                        for i in range (0, mol.NAtoms()):
+                                for j in range (i+1, mol.NAtoms()):
+					J_value[index].append(mol.J_coupling[i][j])						
+					index += 1
+
+		for J in J_value:
+			J = np.asarray(J)
+			#print J
+			print  "mean",np.mean(J), " std", np.std(J), "ratio:",  np.std(J)/np.mean(J)
 
 	def WriteXYZ(self,filename=None):
 		if filename == None:
