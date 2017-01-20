@@ -32,12 +32,11 @@ class Instance:
 		self.TData = TData_
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
-		#	self.checkpoint_file_mini =self.path+self.name
 		self.chk_file = ''
-		self.learning_rate = 0.000001  #Pickle do not like to pickle  module, replace all the FLAGS with self.
+		self.learning_rate = 0.0001  
 		self.momentum = 0.9
 		self.max_steps = 100000
-		self.batch_size = 8000 # This is just the train batch size.
+		self.batch_size = 8000 
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
@@ -498,7 +497,7 @@ class Instance_fc_sqdiff(Instance):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.hidden1 = 256
 		self.hidden2 = 512
-		self.hidden3 = 256
+		self.hidden3 = 512
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name

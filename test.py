@@ -57,8 +57,8 @@ def TestGoForceAtom(dig_ = "GauSH"):
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	print "nmols:",len(a.mols)
-	c=a.DistortedClone(100)
-	b=a.DistortAlongNormals(50, True, 1.2)
+	c=a.DistortedClone(200,0.3) # number of distortions, displacement
+	b=a.DistortAlongNormals(20, True, 0.8)
 	c.Statistics()
 	b.Statistics()
 	print len(b.mols)
