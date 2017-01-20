@@ -40,6 +40,7 @@ class Mol:
 		self.ngroup=None
 		self.qchem_data_path = None
 		self.atom_nodes = None
+		self.J_coupling = None
 		return
 
 
@@ -423,6 +424,50 @@ class Mol:
 							accepted = True
 							self.coords = tmp
 						maxiter=maxiter-1
+
+
+	def Read_Gaussian_Output(self, path, filename, set_name):
+		try:
+			f = open(path, "r+")
+			lines = f.readlines()
+			print path
+			for i in range (0, len(lines)):
+				if "Multiplicity" in lines[i]:
+					atoms = []
+					coords = []
+					for j in range (i+1, len(lines)):
+						if lines[j].split():
+							atoms.append( AtomicNumber(lines[j].split()[0]))
+							coords.append([lines[j].split()[1], lines[j].split()[2], lines[j].split()[3]])
+						else:
+							self.atoms = np.asarray(atoms)
+							self.coords = np.asarray(coords)
+							break
+				if "SCF Done:"  in lines[i]:
+					self.energy = float(lines[i].split()[4])
+				if "Total nuclear spin-spin coupling J (Hz):" in lines[i]:
+					self.J_coupling = np.zeros((self.NAtoms(), self.NAtoms()))
+					number_per_line  = len(lines[i+1].split())
+					block_num = 0
+					for j in range (i+1, len(lines)):
+						if "D" in lines[j] and "End of" not in lines[j]:
+							for k in range (1, len(lines[j].split())):
+								J_value = list(lines[j].split()[k])
+								J_value[J_value.index("D")]="E"
+                                                        	J_value="".join(J_value)
+								self.J_coupling[int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
+						elif "End of" in lines[j]:
+							break
+						else:	
+							block_num += 1
+			for i in range (0, self.NAtoms()):
+				for j in range (i+1, self.NAtoms()):
+					self.J_coupling[i][j] = self.J_coupling[j][i]
+	
+		except Exception as Ex:
+			print "Read Failed.", Ex
+			raise Ex
+		return 
 
 	def ReadGDB9(self,path,filename, set_name):
                 try:

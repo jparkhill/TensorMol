@@ -123,6 +123,23 @@ class MSet:
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
 		return
 
+	def Read_Jcoupling(self, path):
+		from os import listdir
+		from os.path import isdir, join, isfile
+		onlyfolders = [folder for folder in listdir(path) if isdir(join(path, folder))]
+		files = []
+		for subfolder in onlyfolders:
+			onlyfiles = [f for f in listdir(join(path, subfolder)) if isfile(join(path, subfolder, f))]
+			files += onlyfiles
+		for file in files:
+			if (file[-2:]!='.z'):
+				continue
+			else:
+				self.mols.append(Mol())
+				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)	
+		return 
+
+
 	def WriteXYZ(self,filename=None):
 		if filename == None:
 			filename = self.name
