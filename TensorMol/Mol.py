@@ -41,6 +41,8 @@ class Mol:
 		self.qchem_data_path = None
 		self.atom_nodes = None
 		self.J_coupling = None
+		self.Bonds_Between  = None
+		self.H_Bonds_Between = None
 		return
 
 
@@ -68,6 +70,62 @@ class Mol:
 		self.Make_AtomNodes()
 		self.Connect_AtomNodes()
 		return
+
+	def Bonds_Between_All(self):
+		H_bonds = np.zeros((self.NAtoms(), self.NAtoms()))
+		total_bonds = np.zeros((self.NAtoms(), self.NAtoms()))
+		memory_total=dict()
+                memory_H = dict()
+		for atom_1 in range (0, self.NAtoms()):
+			for atom_2 in range (0, self.NAtoms()):
+				total_bonds[atom_1][atom_2], H_bonds[atom_1][atom_2] = self.Shortest_Path_DP(atom_1, atom_2, self.NAtoms()-1, memory_total, memory_H)
+		self.Bonds_Between = total_bonds
+		self.H_Bonds_Between = H_bonds
+		return 
+
+	def Bonds_Between(self, atom_1, atom_2, ignore_Hbond = False):  # number of bonds between to atoms, ignore H-? or not.
+		memory_total=dict()
+		memory_H = dict()
+		bonds, H_bonds = self.Shortest_Path_DP(atom_1, atom_2, self.NAtoms()-1, memory_total, memory_H)
+		return  bonds, H_bonds
+					
+
+
+	def Shortest_Path_DP(self, a, b, k, memory_total, memory_H):
+		index = [a, b]
+		index.sort()
+		index.append(k)
+		index_string = LtoS(index)
+		if index_string in memory_total.keys() and index_string in memory_H.keys():
+			return  memory_total[index_string], memory_H[index_string]
+		elif k == 0 and a!=b:
+			memory_total[index_string] = float('inf')
+			memory_H[index_string] = float('inf')
+			return memory_total[index_string], memory_H[index_string]
+		elif a == b:
+			memory_total[index_string] = 0
+			memory_H[index_string] = 0
+			return  memory_total[index_string],  memory_H[index_string] 
+		else:
+			mini_bond  = float('inf')
+			mini_H_bond = float('inf')
+			save_index = None
+			for node in self.atom_nodes[b].connected_nodes:
+				index = node.node_index
+				num_bond, H_bond = self.Shortest_Path_DP(a, index, k-1, memory_total, memory_H)
+				if num_bond < mini_bond:
+					mini_bond = num_bond
+					mini_H_bond = H_bond
+					save_index = index
+			if save_index !=None:
+				if self.atom_nodes[b].node_type == 1 or self.atom_nodes[save_index].node_type==1 : 
+					mini_H_bond += 1
+			mini_bond = mini_bond + 1
+			memory_total[index_string] = mini_bond
+			memory_H [index_string] = mini_H_bond
+			return mini_bond, mini_H_bond 
+				
+			 
 
 	def GetNextNode_DFS(self, visited_list, node_stack):
 		node = node_stack.pop()
@@ -438,7 +496,7 @@ class Mol:
 					for j in range (i+1, len(lines)):
 						if lines[j].split():
 							atoms.append( AtomicNumber(lines[j].split()[0]))
-							coords.append([lines[j].split()[1], lines[j].split()[2], lines[j].split()[3]])
+							coords.append([float(lines[j].split()[1]), float(lines[j].split()[2]), float(lines[j].split()[3])])
 						else:
 							self.atoms = np.asarray(atoms)
 							self.coords = np.asarray(coords)

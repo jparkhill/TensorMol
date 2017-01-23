@@ -5,7 +5,7 @@ from TensorMol.MBE_Opt import *
 
 # for testing the fragmentation of molecule 
 if (1):
-	if (0):
+	if (1):
 		a= MSet("CH3OH_C6H6")
 		a.ReadXYZ("CH3OH_C6H6")
 		#a.mols[0].Make_Mol_Graph()
@@ -18,7 +18,8 @@ if (1):
 			mol.Make_Mol_Graph()
 		#print a.mols[0].Compare_Node(a.mols[0].atom_nodes[0], b.mols[0].atom_nodes[0])
 		t = time.time()
-		a.mols[-1].NoOverlapping_Partition([b.mols[0], b.mols[1], b.mols[2]])
+		a.mols[-1].Bonds_Between(0, 1)
+		#a.mols[-1].NoOverlapping_Partition([b.mols[0], b.mols[1], b.mols[2]])
 		#a.mols[-1].Find_Frag(b.mols[0])
 		#a.mols[-1].Find_Frag(b.mols[1])
 		#a.mols[-1].Find_Frag(b.mols[2])
@@ -27,7 +28,7 @@ if (1):
 		#for node in b.mols[0].atom_nodes:
 		#	print node.num_of_bonds
 		#	print node.connected_atoms
-	if (1):
+	if (0):
 		a= MSet("sugar")
                 a.ReadXYZ("sugar")
 		b = MSet("sugar_frag")

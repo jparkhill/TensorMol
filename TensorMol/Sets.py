@@ -146,6 +146,16 @@ class MSet:
 			for j in range (i+1, self.mols[0].NAtoms()):
 					J_value.append([])
 
+		Bonds_Between = []
+		H_Bonds_Between = []
+		paris = []
+		for i in range (0, self.mols[0].NAtoms()):
+			for j in range (i+1, self.mols[0].NAtoms()):
+				Bonds_Between.append(self.mols[0].Bonds_Between[i][j])
+				H_Bonds_Between.append(self.mols[0].H_Bonds_Between[i][j])	
+				paris.append([self.mols[0].atoms[i], self.mols[0].atoms[j]])
+	
+
 		for mol in self.mols:
 			index = 0
                         for i in range (0, mol.NAtoms()):
@@ -153,10 +163,10 @@ class MSet:
 					J_value[index].append(mol.J_coupling[i][j])						
 					index += 1
 
-		for J in J_value:
-			J = np.asarray(J)
+		for i in range(0,len(J_value)):
+			J = np.asarray(J_value[i])
 			#print J
-			print  "mean",np.mean(J), " std", np.std(J), "ratio:",  np.std(J)/np.mean(J)
+			print  '{:10}{:12}'.format("mean:", np.mean(J)), '{:10}{:12}'.format("ratio:", np.std(J)/np.mean(J)), paris[i], Bonds_Between[i]-H_Bonds_Between[i]
 
 	def WriteXYZ(self,filename=None):
 		if filename == None:
