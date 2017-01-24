@@ -223,8 +223,33 @@ class Mol:
 		for mol_visited_list in all_mol_visited_list:
 			mol_visited_list.sort()
 			if mol_visited_list not in frags_in_mol:
-				frags_in_mol.append(mol_visited_list)
+				sorted_mol_visited_list = [x for (y, x) in sorted(zip(frag_visited_list,mol_visited_list))]## sort the index order of frags in mol to the same as the frag
+				frags_in_mol.append(sorted_mol_visited_list)
 		return frags_in_mol
+
+
+	def Mol_Frag_Index_to_Mol(self, frag, frags_in_mol=None, capping=False):  
+		convert_to_mol = []
+		if frags_in_mol == None:
+			frags_in_mol = self.Find_Frag(frag)	
+		for frag_in_mol in frags_in_mol:
+			convert_to_mol.append(Mol())
+			convert_to_mol[-1].atoms = self.atoms[frag_in_mol].copy()
+			convert_to_mol[-1].coords = self.coords[frag_in_mol].copy()
+			if capping:
+				caps = []
+				for dangling_atom in frag.undefined_bonds.keys():
+					if isinstance(dangling_atom, int):
+						dangling_index_in_mol = frag_in_mol[dangling_atom]
+						for node in self.atom_nodes[dangling_index_in_mol].connected_nodes:
+							node_index = node.node_index
+							if node_index not in frag_in_mol:
+								convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms,[1])) # use hydrogen capping
+								H_coords = self.coords[dangling_index_in_mol] + (atomic_radius[self.atoms[dangling_index_in_mol]]+atomic_radius[1])/(atomic_radius[self.atoms[dangling_index_in_mol]]+atomic_radius[self.atoms[node_index]])*(self.coords[node_index] - self.coords[dangling_index_in_mol]) # use the SMF capping scheme
+								convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, H_coords.reshape((1,-1))))
+			convert_to_mol[-1].WriteXYZfile()
+		return convert_to_mol
+			
 
 	def Frag_Overlaps(self, frags_index_list):
 		#print self.Check_Frags_Is_Complete(frags_index_list)
