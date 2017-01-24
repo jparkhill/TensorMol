@@ -283,7 +283,7 @@ class Mol:
 			return new_index_list, new_pair_list 
 
 
-	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True):
+	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True, Order=2):
 		all_frags_index  = []
 		frags_type = []
 		all_frags_mol = []
@@ -293,11 +293,15 @@ class Mol:
 				all_frags_index.append(frag_index)
 				frags_type.append(i)
 			one_type_frags_mol = self.Mol_Frag_Index_to_Mol(frags_list[i], one_type_frags_index, capping)
-			for frag_mol in one_type_frags_index:
+			for frag_mol in one_type_frags_mol:
 				all_frags_mol.append(frag_mol)
 
-
-		overlap_index_list, frag_pair_list = self.Frag_Overlaps(all_frags_index)
+		overlap_index_list = []
+		frag_pair_list = []
+		for order in range (2, Order+1):
+			tmp_index_list, tmp_pair_list = self.Frag_Overlaps(all_frags_index, order)
+			overlap_index_list += tmp_index_list
+			frag_pair_list += tmp_pair_list
 		all_overlaps_mol = []
 		overlaps_type = []
 		if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
@@ -318,6 +322,7 @@ class Mol:
 
 		return	all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
 				
+
 
 
 
@@ -1810,23 +1815,23 @@ class Mol:
 			self.mbe_energy[i] = 0.0
 			for j in range (1, i+1):
 				self.mbe_energy[i] += self.mbe_frags_energy[j]
-		return 0.0
+		return 
 
 	def MBE(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
 		self.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
 		self.Calculate_All_Frag_Energy()
 		self.Set_MBE_Energy()
 		print self.mbe_frags_energy
-		return 0
+		return 
 
-	def PySCF_Energy(self):
+	def PySCF_Energy(self, basis_='cc-pvqz'):
 		mol = gto.Mole()
 		pyscfatomstring=""
 		for j in range(len(self.atoms)):
 			s = self.coords[j]
 			pyscfatomstring=pyscfatomstring+str(self.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(self.atoms)-1 else "")
 		mol.atom = pyscfatomstring
-		mol.basis = 'cc-pvqz'
+		mol.basis = basis_
 		mol.verbose = 0
 		try:
 			mol.build()
@@ -1843,7 +1848,7 @@ class Mol:
 				print "Pyscf string:", pyscfatomstring
 				return 0.0
 				#raise Ex
-		return 0.0
+		return 
 
 	def Get_Permute_Frags(self, indis=[0]):
 		self.mbe_permute_frags=dict()
