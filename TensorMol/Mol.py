@@ -247,11 +247,11 @@ class Mol:
 								convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms,[1])) # use hydrogen capping
 								H_coords = self.coords[dangling_index_in_mol] + (atomic_radius[self.atoms[dangling_index_in_mol]]+atomic_radius[1])/(atomic_radius[self.atoms[dangling_index_in_mol]]+atomic_radius[self.atoms[node_index]])*(self.coords[node_index] - self.coords[dangling_index_in_mol]) # use the SMF capping scheme
 								convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, H_coords.reshape((1,-1))))
-			convert_to_mol[-1].WriteXYZfile()
+	#		print convert_to_mol[-1].atoms, convert_to_mol[-1].coords
 		return convert_to_mol
 			
 
-	def Frag_Overlaps(self, frags_index_list):
+	def Frag_Overlaps(self, frags_index_list, order=2):  # 
 		#print self.Check_Frags_Is_Complete(frags_index_list)
 		overlap_list = []
 		frag_pair_list = []
@@ -262,8 +262,45 @@ class Mol:
 					#print "overlap:", overlap, " frags: ", frags_index_list[i], frags_index_list[j]
 					overlap_list.append(overlap)
 					frag_pair_list.append([i,j])
-		#print "overlap", overlap_list, "pair", frag_pair_list
 		return overlap_list, frag_pair_list
+
+
+	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True):
+		all_frags_index  = []
+		frags_type = []
+		all_frags_mol = []
+		for i in range (0, len(frags_list)):
+			one_type_frags_index = self.Find_Frag(frags_list[i])
+			for frag_index in one_type_frags_index:
+				all_frags_index.append(frag_index)
+				frags_type.append(i)
+			one_type_frags_mol = self.Mol_Frag_Index_to_Mol(frags_list[i], one_type_frags_index, capping)
+			for frag_mol in one_type_frags_index:
+				all_frags_mol.append(frag_mol)
+
+
+		overlap_index_list, frag_pair_list = self.Frag_Overlaps(all_frags_index)
+		all_overlaps_mol = []
+		overlaps_type = []
+		if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
+			for overlap_index in overlap_index_list:
+				found = 0
+				for i, overlap in enumerate(frag_overlap_list):
+					if len(overlap_index) == overlap.NAtoms() and self.Find_Frag(overlap, avail_atoms = overlap_index):
+						found = 1
+						overlaps_type.append(i)
+						tmp_mol = self.Mol_Frag_Index_to_Mol(overlap, [overlap_index], capping)
+						all_overlaps_mol.append(tmp_mol)
+						break   # assuming the overlap can only belong to one kind of overlap fragment	 
+				if not found:
+					print "Warning! Overlap: ", overlap_index," is not found in the provided list"
+			
+		else:   # determine the type of overlaps after generate, this has not been implemented yet. KY
+			raise Exception("needs to provide the possible overlaps")
+
+		return	all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
+				
+
 
 
 	def Pick_Not_Allowed_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
