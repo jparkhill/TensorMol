@@ -251,18 +251,36 @@ class Mol:
 		return convert_to_mol
 			
 
-	def Frag_Overlaps(self, frags_index_list, order=2):  # 
+	def Frag_Overlaps(self, frags_index_list, order=2):  #   decide the Nth order overlap of fragment
 		#print self.Check_Frags_Is_Complete(frags_index_list)
 		overlap_list = []
 		frag_pair_list = []
-		for i in range (0, len(frags_index_list)):
-			for j in range (i+1, len(frags_index_list)):
-				overlap=list(set(frags_index_list[i]).intersection(frags_index_list[j]))
-				if overlap:
-					#print "overlap:", overlap, " frags: ", frags_index_list[i], frags_index_list[j]
-					overlap_list.append(overlap)
-					frag_pair_list.append([i,j])
-		return overlap_list, frag_pair_list
+		if order < 2:
+			raise Exception("Overlap order needs to be  >= 2 ")
+		elif order == 2:
+			for i in range (0, len(frags_index_list)):
+				for j in range (i+1, len(frags_index_list)):
+					overlap=list(set(frags_index_list[i]).intersection(frags_index_list[j]))
+					if overlap:
+						#print "overlap:", overlap, " frags: ", frags_index_list[i], frags_index_list[j]
+						overlap_list.append(overlap)
+						frag_pair_list.append([i,j])
+			return overlap_list, frag_pair_list
+		else:
+			old_index_list, old_pair_list = self.Frag_Overlaps(frags_index_list, order-1)
+			new_index_list = []
+			new_pair_list = []
+			for i in range (0, len(old_index_list)):
+				for j in range (0, len(frags_index_list)):
+					if j not in old_pair_list[i]:
+						overlap = list(set(old_index_list[i]).intersection(frags_index_list[j]))
+						if overlap:
+							tmp_pair = old_pair_list[i]+[j]
+							tmp_pair.sort()
+							if tmp_pair not in new_pair_list:
+								new_index_list.append(overlap)
+								new_pair_list.append(tmp_pair)
+			return new_index_list, new_pair_list 
 
 
 	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True):
