@@ -5,7 +5,7 @@ from TensorMol.MBE_Opt import *
 
 # for testing the fragmentation of molecule 
 if (1):
-	if (1):
+	if (0):
 		a= MSet("CH3OH_C6H6")
 		a.ReadXYZ("CH3OH_C6H6")
 		#a.mols[0].Make_Mol_Graph()
@@ -28,21 +28,28 @@ if (1):
 		#for node in b.mols[0].atom_nodes:
 		#	print node.num_of_bonds
 		#	print node.connected_atoms
-	if (0):
+	if (1):
 		a= MSet("sugar")
                 a.ReadXYZ("sugar")
 		b = MSet("sugar_frag")
                 b.ReadXYZ("sugar_frag", "frag_of_mol")
+		c = MSet("sugar_overlap")
+                c.ReadXYZ("sugar_overlap", "frag_of_mol")
 		for mol in a.mols:
                         mol.Make_Mol_Graph()
                 for mol in b.mols:
                         mol.Make_Mol_Graph()
+		for mol in c.mols:
+                        mol.Make_Mol_Graph()
 		#frag_index_list  =  a.mols[0].Find_Frag(b.mols[0])  # OCCO frag
+		#a.mols[0].Mol_Frag_Index_to_Mol(b.mols[0],capping=True)
 		#a.mols[0].Frag_Overlaps(frag_index_list)
 		#a.mols[0].Optimize_Overlap(frag_index_list, [b.mols[1]])
-		frag_index_list  =  a.mols[0].Find_Frag(b.mols[1])  # CO frag
-		print frag_index_list
-		a.mols[0].Optimize_Overlap(frag_index_list, [b.mols[2]])
+		#frag_index_list  =  a.mols[0].Find_Frag(b.mols[1])  # CO frag
+		a.mols[0].Overlap_Partition([b.mols[1], b.mols[2]],[c.mols[0], c.mols[1]])
+		#a.mols[0].Mol_Frag_Index_to_Mol(b.mols[1],capping=True)
+		#print frag_index_list
+		#a.mols[0].Optimize_Overlap(frag_index_list, [b.mols[2]])
                 #a.mols[0].Frag_Overlaps(frag_index_list)
 		#a.mols[0].NoOverlapping_Partition([b.mols[0])
 
