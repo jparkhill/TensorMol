@@ -93,10 +93,14 @@ class Instance:
 			self.saver = tf.train.Saver()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-			if (len(chkfiles)>0):
-				most_recent_chk_file=chkfiles[0]
-				print("Restoring training from Checkpoint: ",most_recent_chk_file)
-				self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+			if (len(metafiles)>0):
+				most_recent_meta_file=metafiles[0]
+				print("Restoring training from Meta file: ",most_recent_meta_file)
+				self.sess = tf.Session()
+				self.saver = tf.train.import_meta_graph(most_recent_meta_file)
+				self.saver.restore(sess, tf.train.latest_checkpoint(self.train_dir))
+				# self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
 		return
 
@@ -324,10 +328,19 @@ class Instance:
 			self.sess.run(init)
 			try: # I think this may be broken
 				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-					most_recent_chk_file=chkfiles[0]
-					print("Restoring training from Checkpoint: ",most_recent_chk_file)
-					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					print("Restoring training from Metafile: ",most_recent_meta_file)
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+					all_vars = tf.get_collection('vars')
+					for v in all_vars:
+						v_ = sess.run(v)
+						print(v_)
+					# self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 			except Exception as Ex:
 				print("Restore Failed 2341325",Ex)
 				pass
