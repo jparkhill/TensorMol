@@ -57,6 +57,7 @@ class Mol:
                 self.connected_dimers_type = None
 		self.frag_pair_list = None
 		self.mob_all_frags = dict() # dictionary that stores all the necessary frags in mol format  for MOB dic[LtoS([list])] = mol
+		self.mob_energy = None
 		return
 
 
@@ -342,7 +343,6 @@ class Mol:
 			tmp_index_list, tmp_pair_list = self.Frag_Overlaps(all_frags_index, order)
 			overlap_index_list += tmp_index_list
 			frag_pair_list += tmp_pair_list
-			print "order:", order, tmp_pair_list
 		all_overlaps_mol = []
 		overlaps_type = []
 		if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
@@ -432,10 +432,8 @@ class Mol:
 		if method=="pyscf":
 			for key in self.mob_all_frags.keys():
 				mol = self.mob_all_frags[key]
-				print mol.atoms
 				if mol.energy == None:
-					mol.PySCF_Energy("cc-pvtz")
-				print mol.energy
+					mol.PySCF_Energy("cc-pvdz")
 		else:
 			raise Exception("Other method is not supported yet") 
 
@@ -450,23 +448,24 @@ class Mol:
 				Mono_Cp.append(pow(-1, overlap_order-1))
 		first_order_energy = 0
 		for i in range (0, len(self.mob_monomer_index)):
-			first_oder_energy += Mono_Cp[i]*self.mob_monomer_mol[i].energy
+			first_order_energy += Mono_Cp[i]*self.mob_all_frags[LtoS(self.mob_monomer_index[i])].energy
 		second_order_energy = 0
 		for i in range (0, len(self.connected_dimers_index)):
 			p_index = self.connected_dimers_type[i][0]
 			q_index = self.connected_dimers_type[i][1]
-			Epandq = self.mob_all_frags[LtoS(self.connected_dimers_index[i])]
-			Ep = self.mob_all_frags[LtoS(self.mob_monomer_index[p_index])]
-			Eq = self.mob_all_frags[LtoS(self.mob_monomer_index[q_index])]
+			Epandq = self.mob_all_frags[LtoS(self.connected_dimers_index[i])].energy
+			Ep = self.mob_all_frags[LtoS(self.mob_monomer_index[p_index])].energy
+			Eq = self.mob_all_frags[LtoS(self.mob_monomer_index[q_index])].energy
 			if self.connected_dimers_type[i] in self.mob_monomer_overlap_type:  #overlap
 				index = self.mob_monomer_overlap_type.index(self.connected_dimers_type[i])
-				Epnotq = self.mob_all_frags[LtoS(self.mob_monomer_overlap_index[index])]
+				Epnotq = self.mob_all_frags[LtoS(self.mob_monomer_overlap_index[index])].energy
 			else:
 				Epnotq = 0.0  #not overlap
 			deltaEpq = Epandq - (Ep + Eq - Epnotq)
 			second_order_energy += Mono_Cp[p_index]*Mono_Cp[q_index]*deltaEpq
 
 		self.mob_energy = first_order_energy + second_order_energy
+		print "MOB_energy", self.mob_energy
 		return		
 
 
