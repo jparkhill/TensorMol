@@ -48,7 +48,9 @@ if (1):
 		#frag_index_list  =  a.mols[0].Find_Frag(b.mols[1])  # CO frag
 		all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol = a.mols[0].Overlap_Partition([b.mols[1], b.mols[2]],[c.mols[0], c.mols[1]])
 		a.mols[0].MOB_Monomer()
+		a.mols[0].MOB_Monomer_Overlap()
 		a.mols[0].Connected_MOB_Dimer()
+		a.mols[0].MOB_Energy()
 		a.mols[0].Calculate_MOB_Frags()
 		#a.mols[0].Mol_Frag_Index_to_Mol(b.mols[1],capping=True)
 		#print frag_index_list

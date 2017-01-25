@@ -51,12 +51,12 @@ class Mol:
 		self.all_frags_mol = None
 		self.all_overlaps_mol = None
 		self.mob_monomer_index = None
-		self.mob_monomer_mol = None
 		self.mob_monomer_type = None
 		self.mob_dimer = None
 		self.connected_dimers_index = None
                 self.connected_dimers_type = None
-		self.connected_dimers_mol = None
+		self.frag_pair_list = None
+		self.mob_all_frags = dict() # dictionary that stores all the necessary frags in mol format  for MOB dic[LtoS([list])] = mol
 		return
 
 
@@ -366,21 +366,42 @@ class Mol:
 		self.overlaps_type = overlaps_type
 		self.all_frags_mol = all_frags_mol
 		self.all_overlaps_mol = all_overlaps_mol
+		self.frag_pair_list = frag_pair_list
 		return	all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
 				
 	def MOB_Monomer(self):
 		self.mob_monomer_index = []
 		self.mob_monomer_type = []
-		self.mob_monomer_mol = []
 		for i in range (0, len(self.all_frags_index)):
 			self.mob_monomer_index.append(self.all_frags_index[i])
 			self.mob_monomer_type.append(self.frags_type[i])  # if it is frag,the type is the Nth frag in frag_list
-			self.mob_monomer_mol.append(self.all_frags_mol[i])
 		for i in range (0, len(self.overlap_index_list)):
 			self.mob_monomer_index.append(self.overlap_index_list[i])
 			self.mob_monomer_type.append(int(-1-self.overlaps_type[i]))  # if it is overlap, the type is the (abs(N)-1)th overlap in overlap_list
-			self.mob_monomer_mol.append(self.all_overlaps_mol[i])
-		return 	
+		for monomer_index in self.mob_monomer_index:
+			monomer_index.sort()
+			harsh_string = LtoS(monomer_index)
+			if harsh_string not in self.mob_all_frags.keys():	
+				self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([monomer_index],True))[0]  
+		return 
+	
+	def MOB_Monomer_Overlap(self):
+		self.mob_monomer_overlap_index = []
+		self.mob_monomer_overlap_type = []
+		for i in range (0, len(self.mob_monomer_index)):
+			for j in range (i+1, len(self.mob_monomer_index)):
+				mob_monomer_overlap_index=list(set(self.mob_monomer_index[i]).intersection(self.mob_monomer_index[j]))
+				if mob_monomer_overlap_index:
+					self.mob_monomer_overlap_index.append(mob_monomer_overlap_index)
+					self.mob_monomer_overlap_type.append([i,j])
+		for overlap_type in self.mob_monomer_overlap_type:
+			overlap_type.sort()
+		for overlap_index in self.mob_monomer_overlap_index:
+			overlap_index.sort()
+                        harsh_string = LtoS(overlap_index)
+                        if harsh_string not in self.mob_all_frags.keys():
+                                self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([overlap_index],True))[0]
+		return	
 
 	def Connected_MOB_Dimer(self):
 		self.connected_dimers_index = []
@@ -397,17 +418,23 @@ class Mol:
 							break
 					if is_connected:
 						break
-		self.connected_dimers_mol = self.Mol_Frag_Index_to_Mol(self.connected_dimers_index, True)
-		return self.connected_dimers_index,  self.connected_dimers_type, self.connected_dimers_mol	
+		for dimer_type in self.connected_dimers_type:
+			dimer_type.sort()
+		for dimer_index in self.connected_dimers_index:
+                        dimer_index.sort()
+                        harsh_string = LtoS(dimer_index)
+                        if harsh_string not in self.mob_all_frags.keys():
+                                self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([dimer_index],True))[0]
+		return 	
 							
 		
 	def Calculate_MOB_Frags(self, method='pyscf'):
 		if method=="pyscf":
-			for mol in self.mob_monomer_mol:
-				mol.PySCF_Energy("cc-pvtz")
-				print mol.energy
-			for mol	in self.connected_dimers_mol:
-				mol.PySCF_Energy("cc-pvtz")
+			for key in self.mob_all_frags.keys():
+				mol = self.mob_all_frags[key]
+				print mol.atoms
+				if mol.energy == None:
+					mol.PySCF_Energy("cc-pvtz")
 				print mol.energy
 		else:
 			raise Exception("Other method is not supported yet") 
@@ -415,6 +442,31 @@ class Mol:
 
 	def MOB_Energy(self):
 		Mono_Cp = []
+		for i in range (0, len(self.mob_monomer_index)):
+			if self.mob_monomer_type[i] >= 0:  # monomer is from frag
+				Mono_Cp.append(1) 
+			else:   #momer is from overlap
+				overlap_order = len(self.frag_pair_list[abs(self.mob_monomer_type[i])-1])
+				Mono_Cp.append(pow(-1, overlap_order-1))
+		first_order_energy = 0
+		for i in range (0, len(self.mob_monomer_index)):
+			first_oder_energy += Mono_Cp[i]*self.mob_monomer_mol[i].energy
+		second_order_energy = 0
+		for i in range (0, len(self.connected_dimers_index)):
+			p_index = self.connected_dimers_type[i][0]
+			q_index = self.connected_dimers_type[i][1]
+			Epandq = self.mob_all_frags[LtoS(self.connected_dimers_index[i])]
+			Ep = self.mob_all_frags[LtoS(self.mob_monomer_index[p_index])]
+			Eq = self.mob_all_frags[LtoS(self.mob_monomer_index[q_index])]
+			if self.connected_dimers_type[i] in self.mob_monomer_overlap_type:  #overlap
+				index = self.mob_monomer_overlap_type.index(self.connected_dimers_type[i])
+				Epnotq = self.mob_all_frags[LtoS(self.mob_monomer_overlap_index[index])]
+			else:
+				Epnotq = 0.0  #not overlap
+			deltaEpq = Epandq - (Ep + Eq - Epnotq)
+			second_order_energy += Mono_Cp[p_index]*Mono_Cp[q_index]*deltaEpq
+
+		self.mob_energy = first_order_energy + second_order_energy
 		return		
 
 
@@ -434,12 +486,9 @@ class Mol:
 		overlap_list, frag_pair_list = self.Frag_Overlaps(frags_index_list)
 		if not_allowed_overlap_index == None:
 			not_allowed_overlap_index = self.Pick_Not_Allowed_Overlaps(frags_index_list, allowed_overlap_list, overlap_list, frag_pair_list)
-		#print not_allowed_overlap_index, frag_pair_list
 		deleted_frag_list = self.Greedy_Delete_Frag(frags_index_list, frag_pair_list, not_allowed_overlap_index)
 		opt_frags_index_list = [ frags_index_list[i] for i in Setdiff(range(0, len(frags_index_list)), deleted_frag_list) ]
-		#print Setdiff(range(0, len(frags_index_list)), deleted_frag_list)
 		print "Is the new frags complete:", self.Check_Frags_Is_Complete(opt_frags_index_list)
-		#atom_list = list(set([atom_index for frags in opt_frags_index_list for atom_index in frags]))
 		return
 
 	def Greedy_Delete_Frag(self, frags_index_list, frag_pair_list, not_allowed_overlap_index): # use greedy algorithim to delete frags that generate not allowed overlaps
