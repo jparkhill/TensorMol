@@ -43,6 +43,17 @@ class Mol:
 		self.J_coupling = None
 		self.Bonds_Between  = None
 		self.H_Bonds_Between = None
+		# all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
+		self.all_frags_index = None
+		self.overlap_index_list = None
+		self.frags_type = None
+		self.overlaps_type = None
+		self.all_frags_mol = None
+		self.all_overlaps_mol = None
+		self.mob_monomer_index = None
+		self.mob_monomer_mol = None
+		self.mob_monomer_type = None
+		self.mob_dimer = None
 		return
 
 
@@ -228,7 +239,35 @@ class Mol:
 		return frags_in_mol
 
 
-	def Mol_Frag_Index_to_Mol(self, frag, frags_in_mol=None, capping=False):  
+	def Mol_Frag_Index_to_Mol(self, frags_index, capping=True):
+		convert_to_mol = []
+		for frag_index in frags_index:
+			convert_to_mol.append(Mol())
+			convert_to_mol[-1].atoms = self.atoms[frag_index].copy()
+			convert_to_mol[-1].coords =  self.coords[frag_index].copy()
+			if capping:
+				cap_atoms, cap_coords = self.Frag_Caps(frag_index)
+				convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms, cap_atoms))
+				convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, cap_coords))
+		return convert_to_mol
+
+
+	def Frag_Caps(self, frag_index, capping_atom = 1):  # 1 stand for H, used H capping by default
+		cap_atoms = []
+		cap_coords = []
+		for atom_index in frag_index:
+			for node in self.atom_nodes[atom_index].connected_nodes:
+				if node.node_index not in frag_index:
+					node_index = node.node_index
+					cap_atoms.append(capping_atom)
+					cap_coords.append(self.coords[atom_index]+ (atomic_radius[self.atoms[atom_index]]+atomic_radius[capping_atom])/(atomic_radius[self.atoms[atom_index]]+atomic_radius[self.atoms[node_index]])*(self.coords[node_index] - self.coords[atom_index]))
+		cap_atoms = np.array(cap_atoms)
+		cap_coords = np.array(cap_coords)
+		return cap_atoms, cap_coords
+		
+		
+
+	def Mol_Frag_Index_to_Mol_Old(self, frag, frags_in_mol=None, capping=False):  
 		convert_to_mol = []
 		if frags_in_mol == None:
 			frags_in_mol = self.Find_Frag(frag)	
@@ -245,7 +284,7 @@ class Mol:
 							node_index = node.node_index
 							if node_index not in frag_in_mol:
 								convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms,[1])) # use hydrogen capping
-								H_coords = self.coords[dangling_index_in_mol] + (atomic_radius[self.atoms[dangling_index_in_mol]]+atomic_radius[1])/(atomic_radius[self.atoms[dangling_index_in_mol]]+atomic_radius[self.atoms[node_index]])*(self.coords[node_index] - self.coords[dangling_index_in_mol]) # use the SMF capping scheme
+								H_coords = self.coords[dangling_index_in_mol] + (atomic_radius_cho[self.atoms[dangling_index_in_mol]]+atomic_radius_cho[1])/(atomic_radius_cho[self.atoms[dangling_index_in_mol]]+atomic_radius_cho[self.atoms[node_index]])*(self.coords[node_index] - self.coords[dangling_index_in_mol]) # use the SMF capping scheme
 								convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, H_coords.reshape((1,-1))))
 	#		print convert_to_mol[-1].atoms, convert_to_mol[-1].coords
 		return convert_to_mol
@@ -292,7 +331,7 @@ class Mol:
 			for frag_index in one_type_frags_index:
 				all_frags_index.append(frag_index)
 				frags_type.append(i)
-			one_type_frags_mol = self.Mol_Frag_Index_to_Mol(frags_list[i], one_type_frags_index, capping)
+			one_type_frags_mol = self.Mol_Frag_Index_to_Mol(one_type_frags_index, capping)
 			for frag_mol in one_type_frags_mol:
 				all_frags_mol.append(frag_mol)
 
@@ -311,19 +350,58 @@ class Mol:
 					if len(overlap_index) == overlap.NAtoms() and self.Find_Frag(overlap, avail_atoms = overlap_index):
 						found = 1
 						overlaps_type.append(i)
-						tmp_mol = self.Mol_Frag_Index_to_Mol(overlap, [overlap_index], capping)
-						all_overlaps_mol.append(tmp_mol)
+						tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
+						all_overlaps_mol.append(tmp_mol[0])
 						break   # assuming the overlap can only belong to one kind of overlap fragment	 
 				if not found:
 					print "Warning! Overlap: ", overlap_index," is not found in the provided list"
 			
 		else:   # determine the type of overlaps after generate, this has not been implemented yet. KY
 			raise Exception("needs to provide the possible overlaps")
-
+		self.all_frags_index = all_frags_index
+		self.overlap_index_list = overlap_index_list
+		self.frags_type = frags_type
+		self.overlaps_type = overlaps_type
+		self.all_frags_mol = all_frags_mol
+		self.all_overlaps_mol = all_overlaps_mol
 		return	all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
 				
+	def MOB_Monomer(self):
+		self.mob_monomer_index = []
+		self.mob_monomer_type = []
+		self.mob_monomer_mol = []
+		for i in range (0, len(self.all_frags_index)):
+			self.mob_monomer_index.append(self.all_frags_index[i])
+			self.mob_monomer_type.append(self.frags_type[i])  # if it is frag,the type is the Nth frag in frag_list
+			self.mob_monomer_mol.append(self.all_frags_mol[i])
+		for i in range (0, len(self.overlap_index_list)):
+			self.mob_monomer_index.append(self.overlap_index_list[i])
+			self.mob_monomer_type.append(int(-1-self.overlaps_type[i]))  # if it is overlap, the type is the (abs(N)-1)th overlap in overlap_list
+			self.mob_monomer_mol.append(self.all_overlaps_mol[i])
+		print self.mob_monomer_index, self.mob_monomer_type, self.mob_monomer_mol
+		return 	
 
-
+	def Connected_MOB_Dimer(self):
+		connected_dimers_index = []
+		pair_index = []
+		for i in range (0, len(self.mob_monomer_index)):
+			for j in range (i+1, len(self.mob_monomer_index)):
+				for atom_index in self.mob_monomer_index[i]:
+					is_connected = False
+					for node in self.atom_nodes[atom_index].connected_nodes:
+						if node.node_index in self.mob_monomer_index[j]:
+							pair_index.append([i,j])
+							connected_dimers_index.append(list(set(self.mob_monomer_index[i]+self.mob_monomer_index[j])))
+							is_connected = True
+							break
+					if is_connected:
+						break
+		connected_dimers_mol = self.Mol_Frag_Index_to_Mol(connected_dimers_index, True)
+		for mol in connected_dimers_mol:
+			mol.WriteXYZfile()
+		return connected_dimers_index, pair_index	
+							
+		
 
 
 	def Pick_Not_Allowed_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
