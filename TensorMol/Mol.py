@@ -54,6 +54,9 @@ class Mol:
 		self.mob_monomer_mol = None
 		self.mob_monomer_type = None
 		self.mob_dimer = None
+		self.connected_dimers_index = None
+                self.connected_dimers_type = None
+		self.connected_dimers_mol = None
 		return
 
 
@@ -291,7 +294,6 @@ class Mol:
 			
 
 	def Frag_Overlaps(self, frags_index_list, order=2):  #   decide the Nth order overlap of fragment
-		#print self.Check_Frags_Is_Complete(frags_index_list)
 		overlap_list = []
 		frag_pair_list = []
 		if order < 2:
@@ -301,7 +303,6 @@ class Mol:
 				for j in range (i+1, len(frags_index_list)):
 					overlap=list(set(frags_index_list[i]).intersection(frags_index_list[j]))
 					if overlap:
-						#print "overlap:", overlap, " frags: ", frags_index_list[i], frags_index_list[j]
 						overlap_list.append(overlap)
 						frag_pair_list.append([i,j])
 			return overlap_list, frag_pair_list
@@ -322,7 +323,7 @@ class Mol:
 			return new_index_list, new_pair_list 
 
 
-	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True, Order=2):
+	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True, Order=4):   # Order should be chosen as the max possible number of frags that has comon overlap
 		all_frags_index  = []
 		frags_type = []
 		all_frags_mol = []
@@ -341,6 +342,7 @@ class Mol:
 			tmp_index_list, tmp_pair_list = self.Frag_Overlaps(all_frags_index, order)
 			overlap_index_list += tmp_index_list
 			frag_pair_list += tmp_pair_list
+			print "order:", order, tmp_pair_list
 		all_overlaps_mol = []
 		overlaps_type = []
 		if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
@@ -378,30 +380,42 @@ class Mol:
 			self.mob_monomer_index.append(self.overlap_index_list[i])
 			self.mob_monomer_type.append(int(-1-self.overlaps_type[i]))  # if it is overlap, the type is the (abs(N)-1)th overlap in overlap_list
 			self.mob_monomer_mol.append(self.all_overlaps_mol[i])
-		print self.mob_monomer_index, self.mob_monomer_type, self.mob_monomer_mol
 		return 	
 
 	def Connected_MOB_Dimer(self):
-		connected_dimers_index = []
-		pair_index = []
+		self.connected_dimers_index = []
+		self.connected_dimers_type = []
 		for i in range (0, len(self.mob_monomer_index)):
 			for j in range (i+1, len(self.mob_monomer_index)):
 				for atom_index in self.mob_monomer_index[i]:
 					is_connected = False
 					for node in self.atom_nodes[atom_index].connected_nodes:
 						if node.node_index in self.mob_monomer_index[j]:
-							pair_index.append([i,j])
-							connected_dimers_index.append(list(set(self.mob_monomer_index[i]+self.mob_monomer_index[j])))
+							self.connected_dimers_type.append([i,j])
+							self.connected_dimers_index.append(list(set(self.mob_monomer_index[i]+self.mob_monomer_index[j])))
 							is_connected = True
 							break
 					if is_connected:
 						break
-		connected_dimers_mol = self.Mol_Frag_Index_to_Mol(connected_dimers_index, True)
-		for mol in connected_dimers_mol:
-			mol.WriteXYZfile()
-		return connected_dimers_index, pair_index	
+		self.connected_dimers_mol = self.Mol_Frag_Index_to_Mol(self.connected_dimers_index, True)
+		return self.connected_dimers_index,  self.connected_dimers_type, self.connected_dimers_mol	
 							
 		
+	def Calculate_MOB_Frags(self, method='pyscf'):
+		if method=="pyscf":
+			for mol in self.mob_monomer_mol:
+				mol.PySCF_Energy("cc-pvtz")
+				print mol.energy
+			for mol	in self.connected_dimers_mol:
+				mol.PySCF_Energy("cc-pvtz")
+				print mol.energy
+		else:
+			raise Exception("Other method is not supported yet") 
+
+
+	def MOB_Energy(self):
+		Mono_Cp = []
+		return		
 
 
 	def Pick_Not_Allowed_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
