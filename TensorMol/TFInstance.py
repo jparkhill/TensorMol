@@ -83,6 +83,7 @@ class Instance:
 			self.Prepare(eval_input,eval_input.shape[0])
 		return
 
+	#Seems like train_prepare is used instead of this, is this function deprecated?
 	def Prepare(self, eval_input, Ncase=1250):
 		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
@@ -316,7 +317,7 @@ class Instance:
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
@@ -332,15 +333,11 @@ class Instance:
 				if (len(metafiles)>0):
 					most_recent_meta_file=metafiles[0]
 					print("Restoring training from Metafile: ",most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
 					config = tf.ConfigProto(allow_soft_placement=True)
 					self.sess = tf.Session(config=config)
 					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
 					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
-					all_vars = tf.get_collection('vars')
-					for v in all_vars:
-						v_ = sess.run(v)
-						print(v_)
-					# self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 			except Exception as Ex:
 				print("Restore Failed 2341325",Ex)
 				pass
