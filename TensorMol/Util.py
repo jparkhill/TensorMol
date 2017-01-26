@@ -2,19 +2,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import gc
-import random
+import gc, random
 import numpy as np
 import os,sys,pickle,re
-import math
-import time
+import math, time
 from math import pi as Pi
 import scipy.special
-import itertools
-import warnings
+import itertools, warnings
 from scipy.weave import inline
 from collections import defaultdict
 from collections import Counter
+from TensorMol.TMParams import *
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 #
@@ -22,19 +20,21 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #	Any global variables of the code must be put here, and must be in all caps.
 #	Global variables are almost never acceptable except in these few cases
 
-
 # PARAMETERS
-#  TODO: have some type of param file.
+#  TODO: Migrate these to PARAMS
+PARAMS=TMParams()
 MAX_ATOMIC_NUMBER = 10
-GRIDS = None
 MBE_ORDER = 2
-HAS_GRIDS=True
 
 # Derived Quantities and useful things.
+N_CORES = 1
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
-N_CORES = 1
+GRIDS = None
+HAS_GRIDS=True
+
+# KUN PLEASE MAKE THESE ALL CAPS FOLLOWING OUR CONVENTION.
 ele_roomT_H = {1:-0.497912, 6:-37.844411, 7:-54.581501, 8:-75.062219, 9:-99.716370}     # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
 atoi = {'H':1,'He':2,'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,'K':19,'Ca':20,'Sc':21,'Ti':22,'Si':23,'V':24,'Cr':25,'Br':35, 'Cs':55, 'Pb':82}
 atoc = {1: 40, 6: 100, 7: 150, 8: 200, 9:240}
@@ -231,13 +231,13 @@ def Subset(A, B): # check whether B is subset of A
 	for value in B:
 		for i in range (0, len(A)):
 			if value==A[i] and i not in checked_index:
-				checked_index.append(i)	
+				checked_index.append(i)
 				found += 1
 				break
 	if found == len(B):
 		return True
 	else:
-		return False 
+		return False
 
 def Setdiff(A, B): # return the element of A that not included in B
 	diff = []

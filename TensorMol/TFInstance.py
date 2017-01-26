@@ -50,10 +50,12 @@ class Instance:
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
 		self.chk_file = ''
-		self.learning_rate = 0.0001
-		self.momentum = 0.9
-		self.max_steps = 100000
-		self.batch_size = 8000
+
+		self.learning_rate = PARAMS["learning_rate"]
+		self.momentum = PARAMS["momentum"]
+		self.max_steps = PARAMS["max_steps"]
+		self.batch_size = PARAMS["batch_size"]
+
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
@@ -224,7 +226,7 @@ class Instance:
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
 
-	def inference(self, images, hidden1_units, hidden2_units, hidden3_units):
+	def inference(self, images):
 		"""Build the MNIST model up to where it may be used for inference.
 		Args:
 		images: Images placeholder, from inputs().
@@ -234,6 +236,9 @@ class Instance:
 		softmax_linear: Output tensor with the computed logits.
 		"""
 		# Hidden 1
+		hidden1_units = PARAMS["hidden1"]
+		hidden2_units = PARAMS["hidden2"]
+		hidden3_units = PARAMS["hidden3"]
 		with tf.name_scope('hidden1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
 				biases = tf.Variable(tf.zeros([hidden1_units]),
@@ -318,7 +323,7 @@ class Instance:
 		"""Train for a number of steps."""
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.output = self.inference(self.embeds_placeholder)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -413,7 +418,7 @@ class Instance_fc_classify(Instance):
 		eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
-			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.output = self.inference(self.embeds_placeholder)
 			self.correct = self.evaluation(self.output, self.labels_placeholder)
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
