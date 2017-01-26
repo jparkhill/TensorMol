@@ -125,7 +125,7 @@ class Optimizer:
 			# print "Hess", HessD
 			# print m.NumericLJHessDiag()
 			# print "velco", veloc
-			#print m.LJEnergy(m.coords)
+			#print m.properties["LJE"]nergy(m.coords)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)

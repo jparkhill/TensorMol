@@ -26,10 +26,10 @@ class MBE_Optimizer:
 		force_err = 100
 		energy_his = []
 		self.nn_mbe.NN_Energy(m)
-		force = np.array(m.mbe_deri,copy=True)
+		force = np.array(m.properties["mbe_deri"],copy=True)
 		while( ( force_err >self.force_thresh or energy_err > self.energy_thresh) and  step < self.max_opt_step ):
 			coords = np.array(m.coords,copy=True)
-			force = np.array(m.mbe_deri,copy=True)
+			force = np.array(m.properties["mbe_deri"],copy=True)
 			if step==0:
 				old_force =force
 			force = (1-self.momentum)*force + self.momentum*old_force
@@ -57,7 +57,7 @@ class MBE_Optimizer:
                 energy_err = 100
                 force_err = 100
                 self.nn_mbe.NN_Energy(m)
-                force = np.array(m.mbe_deri,copy=True)
+                force = np.array(m.properties["mbe_deri"],copy=True)
 		force_his = []
 		coord_his = []
 		energy_his = []
@@ -65,7 +65,7 @@ class MBE_Optimizer:
 
 
                         coords = np.array(m.coords,copy=True)
-                        force = np.array(m.mbe_deri,copy=True)
+                        force = np.array(m.properties["mbe_deri"],copy=True)
 
 			if step < self.m_max:
 				force_his.append(force.reshape(force.shape[0]*force.shape[1]))

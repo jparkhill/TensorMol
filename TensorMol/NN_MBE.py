@@ -24,7 +24,7 @@ class NN_MBE:
 		mol.Set_MBE_Force()
 		mol.nn_energy = nn_energy
 		print "coords of mol:", mol.coords
-		print "force of mol:", mol.mbe_deri
+		print "force of mol:", mol.properties["mbe_deri"]
 		print "energy of mol:", nn_energy
 		return 
 

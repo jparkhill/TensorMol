@@ -14,6 +14,7 @@ class TMParams(dict):
 		self["MBE_ORDER"] = 2
 		self["NDistort"] = 100
 		self["NModePts"] = 20
+		self["GoK"] = 0.05
 
 		# DATA usage parameters
 		self["NormalizeInputs"] = True

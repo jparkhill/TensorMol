@@ -1,3 +1,9 @@
+"""
+TODO: All these eff'n derived parameters should be moved into properties.
+Mol should get a derived class FragmentableMol(Mol) and all the fragmentation routines should be
+moved there.
+"""
+
 from Util import *
 import numpy as np
 import random, math
@@ -14,59 +20,33 @@ class Mol:
 			self.coords = coords_
 		else:
 			self.coords=np.zeros(shape=(1,1),dtype=np.float)
-		self.properties = {"MW":0}
+		self.properties = {}
 		self.name=None
 		#things below here are sometimes populated if it is useful.
 		self.PESSamples = [] # a list of tuples (atom, new coordinates, energy) for storage.
 		self.ecoords = None # equilibrium coordinates.
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
-		self.LJE = None #Lennard-Jones Well-Depths.
-		self.GoK = 0.05
+
 		self.mbe_order = MBE_ORDER
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
 		self.type_of_frags_dict = {}
+		# I'm glad you're commenting but the above is unacceptably redundant ... -JAP
+		# at the very least you should make a derived class FragmentableMol or something that gets all this shite
 		self.atoms_of_frags = [] # store the index of atoms of each frag
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
 		self.mbe_frags_deri=dict()
 		self.mbe_permute_frags=dict() # list of all the permuted frags
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
-		self.energy=None
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
-		self.roomT_H = None
-		self.atomization = None
-		self.mbe_deri =None
-		self.nn_energy=None
-		self.ngroup=None
-		self.qchem_data_path = None
-		self.atom_nodes = None
-		self.J_coupling = None
-		self.Bonds_Between  = None
-		self.H_Bonds_Between = None
-		# all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
-		self.all_frags_index = None
-		self.overlap_index_list = None
-		self.frags_type = None
-		self.overlaps_type = None
-		self.all_frags_mol = None
-		self.all_overlaps_mol = None
-		self.mob_monomer_index = None
-		self.mob_monomer_type = None
-		self.mob_dimer = None
-		self.connected_dimers_index = None
-                self.connected_dimers_type = None
-		self.frag_pair_list = None
 		self.mob_all_frags = dict() # dictionary that stores all the necessary frags in mol format  for MOB dic[LtoS([list])] = mol
-		self.mob_energy = None
 		return
-
-
 
 	def Make_AtomNodes(self):
 		atom_nodes = []
 		for i in range (0, self.NAtoms()):
 			atom_nodes.append(AtomNode(self.atoms[i], i))
-		self.atom_nodes = atom_nodes
+		self.properties["atom_nodes"] = atom_nodes
 
 	def Connect_AtomNodes(self):
 		dist_mat = MolEmb.Make_DistMat(self.coords)
@@ -77,8 +57,8 @@ class Mol:
 				atom_pair.sort()
 				bond_name = self.AtomName_From_List(atom_pair)
 				if dist <= bond_length_thresh[bond_name]:
-					(self.atom_nodes[i]).Append(self.atom_nodes[j])
-					(self.atom_nodes[j]).Append(self.atom_nodes[i])
+					(self.properties["atom_nodes"][i]).Append(self.properties["atom_nodes"][j])
+					(self.properties["atom_nodes"][j]).Append(self.properties["atom_nodes"][i])
 		return
 
 	def Make_Mol_Graph(self):
@@ -94,16 +74,16 @@ class Mol:
 		for atom_1 in range (0, self.NAtoms()):
 			for atom_2 in range (0, self.NAtoms()):
 				total_bonds[atom_1][atom_2], H_bonds[atom_1][atom_2] = self.Shortest_Path_DP(atom_1, atom_2, self.NAtoms()-1, memory_total, memory_H)
-		self.Bonds_Between = total_bonds
-		self.H_Bonds_Between = H_bonds
-		return 
+		self.properties["Bonds_Between"] = total_bonds
+		self.properties["H_Bonds_Between"] = H_bonds
+		return
 
 	def Bonds_Between(self, atom_1, atom_2, ignore_Hbond = False):  # number of bonds between to atoms, ignore H-? or not.
 		memory_total=dict()
 		memory_H = dict()
 		bonds, H_bonds = self.Shortest_Path_DP(atom_1, atom_2, self.NAtoms()-1, memory_total, memory_H)
 		return  bonds, H_bonds
-					
+
 
 
 	def Shortest_Path_DP(self, a, b, k, memory_total, memory_H):
@@ -120,12 +100,12 @@ class Mol:
 		elif a == b:
 			memory_total[index_string] = 0
 			memory_H[index_string] = 0
-			return  memory_total[index_string],  memory_H[index_string] 
+			return  memory_total[index_string],  memory_H[index_string]
 		else:
 			mini_bond  = float('inf')
 			mini_H_bond = float('inf')
 			save_index = None
-			for node in self.atom_nodes[b].connected_nodes:
+			for node in self.properties["atom_nodes"][b].connected_nodes:
 				index = node.node_index
 				num_bond, H_bond = self.Shortest_Path_DP(a, index, k-1, memory_total, memory_H)
 				if num_bond < mini_bond:
@@ -133,14 +113,14 @@ class Mol:
 					mini_H_bond = H_bond
 					save_index = index
 			if save_index !=None:
-				if self.atom_nodes[b].node_type == 1 or self.atom_nodes[save_index].node_type==1 : 
+				if self.properties["atom_nodes"][b].node_type == 1 or self.properties["atom_nodes"][save_index].node_type==1 :
 					mini_H_bond += 1
 			mini_bond = mini_bond + 1
 			memory_total[index_string] = mini_bond
 			memory_H [index_string] = mini_H_bond
-			return mini_bond, mini_H_bond 
-				
-			 
+			return mini_bond, mini_H_bond
+
+
 
 	def GetNextNode_DFS(self, visited_list, node_stack):
 		node = node_stack.pop()
@@ -204,7 +184,7 @@ class Mol:
 	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0, avail_atoms=None):   # ignore all the H for assigment
 		if avail_atoms==None:
 			avail_atoms = range(0, self.NAtoms())
-		frag_head_node = frag.atom_nodes[frag_head]
+		frag_head_node = frag.properties["atom_nodes"][frag_head]
 		frag_node_stack = [frag_head_node]
                 frag_visited_list = []
 		all_mol_visited_list = [[]]
@@ -214,7 +194,7 @@ class Mol:
 			for mol_visited_list in all_mol_visited_list:
 				possible_node = []
 				if mol_visited_list ==[]:
-                                                possible_node = [self.atom_nodes[i] for i in avail_atoms]
+                                                possible_node = [self.properties["atom_nodes"][i] for i in avail_atoms]
 						for mol_node in possible_node:
 							if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
 								updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
@@ -226,7 +206,7 @@ class Mol:
                         	                if connected_node_in_frag.node_index in frag_visited_list:
 							connected_node_index_in_frag.append(frag_visited_list.index(connected_node_in_frag.node_index))
 					for connected_node_index in connected_node_index_in_frag:
-						connected_node_in_mol = self.atom_nodes[mol_visited_list[connected_node_index]]
+						connected_node_in_mol = self.properties["atom_nodes"][mol_visited_list[connected_node_index]]
 						for target_node in connected_node_in_mol.connected_nodes:
 							if target_node.node_index not in mol_visited_list and self.Compare_Node(target_node, current_frag_node) and self.Check_Connection(target_node, current_frag_node, mol_visited_list, frag_visited_list) and target_node.node_index in avail_atoms:
 								updated_all_mol_visited_list.append(mol_visited_list+[target_node.node_index])
@@ -260,7 +240,7 @@ class Mol:
 		cap_atoms = []
 		cap_coords = []
 		for atom_index in frag_index:
-			for node in self.atom_nodes[atom_index].connected_nodes:
+			for node in self.properties["atom_nodes"][atom_index].connected_nodes:
 				if node.node_index not in frag_index:
 					node_index = node.node_index
 					cap_atoms.append(capping_atom)
@@ -268,13 +248,13 @@ class Mol:
 		cap_atoms = np.array(cap_atoms)
 		cap_coords = np.array(cap_coords)
 		return cap_atoms, cap_coords
-		
-		
 
-	def Mol_Frag_Index_to_Mol_Old(self, frag, frags_in_mol=None, capping=False):  
+
+
+	def Mol_Frag_Index_to_Mol_Old(self, frag, frags_in_mol=None, capping=False):
 		convert_to_mol = []
 		if frags_in_mol == None:
-			frags_in_mol = self.Find_Frag(frag)	
+			frags_in_mol = self.Find_Frag(frag)
 		for frag_in_mol in frags_in_mol:
 			convert_to_mol.append(Mol())
 			convert_to_mol[-1].atoms = self.atoms[frag_in_mol].copy()
@@ -284,7 +264,7 @@ class Mol:
 				for dangling_atom in frag.undefined_bonds.keys():
 					if isinstance(dangling_atom, int):
 						dangling_index_in_mol = frag_in_mol[dangling_atom]
-						for node in self.atom_nodes[dangling_index_in_mol].connected_nodes:
+						for node in self.properties["atom_nodes"][dangling_index_in_mol].connected_nodes:
 							node_index = node.node_index
 							if node_index not in frag_in_mol:
 								convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms,[1])) # use hydrogen capping
@@ -292,7 +272,7 @@ class Mol:
 								convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, H_coords.reshape((1,-1))))
 	#		print convert_to_mol[-1].atoms, convert_to_mol[-1].coords
 		return convert_to_mol
-			
+
 
 	def Frag_Overlaps(self, frags_index_list, order=2):  #   decide the Nth order overlap of fragment
 		overlap_list = []
@@ -321,7 +301,7 @@ class Mol:
 							if tmp_pair not in new_pair_list:
 								new_index_list.append(overlap)
 								new_pair_list.append(tmp_pair)
-			return new_index_list, new_pair_list 
+			return new_index_list, new_pair_list
 
 
 	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True, Order=8):   # Order should be chosen as the max possible number of frags that has comon overlap
@@ -345,7 +325,7 @@ class Mol:
 			frag_pair_list += tmp_pair_list
 		all_overlaps_mol = []
 		overlaps_type = []
-		
+
 		for i, overlap_index in enumerate(overlap_index_list):
 			overlap_index.sort()
 			tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
@@ -360,44 +340,44 @@ class Mol:
 	#					overlaps_type.append(i)
 	#					tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
 	#					all_overlaps_mol.append(tmp_mol[0])
-	#					break   # assuming the overlap can only belong to one kind of overlap fragment	 
+	#					break   # assuming the overlap can only belong to one kind of overlap fragment
 	#			if not found:
 	#				print "Warning! Overlap: ", overlap_index," is not found in the provided list"
-	#		
+	#
 	#	else:   # determine the type of overlaps after generate, this has not been implemented yet. KY
 	#		raise Exception("needs to provide the possible overlaps")
 
-		self.all_frags_index = all_frags_index
-		self.overlap_index_list = overlap_index_list
-		self.frags_type = frags_type
-		self.overlaps_type = overlaps_type
-		self.all_frags_mol = all_frags_mol
-		self.all_overlaps_mol = all_overlaps_mol
-		self.frag_pair_list = frag_pair_list
+		self.properties["all_frags_index"] = all_frags_index
+		self.properties["overlap_index_list"] = overlap_index_list
+		self.properties["frags_type"] = frags_type
+		self.properties["overlaps_type"] = overlaps_type
+		self.properties["all_frags_mol"] = all_frags_mol
+		self.properties["all_overlaps_mol"] = all_overlaps_mol
+		self.properties["frag_pair_list"] = frag_pair_list
 		return	all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
-				
+
 	def MOB_Monomer(self):
-		self.mob_monomer_index = []
-		self.mob_monomer_type = []
-		for i in range (0, len(self.all_frags_index)):
-			self.mob_monomer_index.append(self.all_frags_index[i])
-			self.mob_monomer_type.append(self.frags_type[i])  # if it is frag,the type is the Nth frag in frag_list
-		for i in range (0, len(self.overlap_index_list)):
-			self.mob_monomer_index.append(self.overlap_index_list[i])
-			self.mob_monomer_type.append(int(-1-self.overlaps_type[i]))  # if it is overlap, the type is the (abs(N)-1)th overlap in overlap_list
-		for monomer_index in self.mob_monomer_index:
+		self.properties["mob_monomer_index"] = []
+		self.properties["mob_monomer_type"] = []
+		for i in range (0, len(self.properties["all_frags_index"])):
+			self.properties["mob_monomer_index"].append(self.properties["all_frags_index"][i])
+			self.properties["mob_monomer_type"].append(self.properties["frags_type"][i])  # if it is frag,the type is the Nth frag in frag_list
+		for i in range (0, len(self.properties["overlap_index_list"])):
+			self.properties["mob_monomer_index"].append(self.properties["overlap_index_list"][i])
+			self.properties["mob_monomer_type"].append(int(-1-self.properties["overlaps_type"][i]))  # if it is overlap, the type is the (abs(N)-1)th overlap in overlap_list
+		for monomer_index in self.properties["mob_monomer_index"]:
 			monomer_index.sort()
 			harsh_string = LtoS(monomer_index)
-			if harsh_string not in self.mob_all_frags.keys():	
-				self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([monomer_index],True))[0]  
-		return 
-	
+			if harsh_string not in self.mob_all_frags.keys():
+				self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([monomer_index],True))[0]
+		return
+
 	def MOB_Monomer_Overlap(self):
 		self.mob_monomer_overlap_index = []
 		self.mob_monomer_overlap_type = []
-		for i in range (0, len(self.mob_monomer_index)):
-			for j in range (i+1, len(self.mob_monomer_index)):
-				mob_monomer_overlap_index=list(set(self.mob_monomer_index[i]).intersection(self.mob_monomer_index[j]))
+		for i in range (0, len(self.properties["mob_monomer_index"])):
+			for j in range (i+1, len(self.properties["mob_monomer_index"])):
+				mob_monomer_overlap_index=list(set(self.properties["mob_monomer_index"][i]).intersection(self.properties["mob_monomer_index"][j]))
 				if mob_monomer_overlap_index:
 					self.mob_monomer_overlap_index.append(mob_monomer_overlap_index)
 					self.mob_monomer_overlap_type.append([i,j])
@@ -408,33 +388,33 @@ class Mol:
                         harsh_string = LtoS(overlap_index)
                         if harsh_string not in self.mob_all_frags.keys():
                                 self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([overlap_index],True))[0]
-		return	
+		return
 
 	def Connected_MOB_Dimer(self):
-		self.connected_dimers_index = []
-		self.connected_dimers_type = []
-		for i in range (0, len(self.mob_monomer_index)):
-			for j in range (i+1, len(self.mob_monomer_index)):
-				for atom_index in self.mob_monomer_index[i]:
+		self.properties["connected_dimers_index"] = []
+		self.properties["connected_dimers_type"] = []
+		for i in range (0, len(self.properties["mob_monomer_index"])):
+			for j in range (i+1, len(self.properties["mob_monomer_index"])):
+				for atom_index in self.properties["mob_monomer_index"][i]:
 					is_connected = False
-					for node in self.atom_nodes[atom_index].connected_nodes:
-						if node.node_index in self.mob_monomer_index[j]:
-							self.connected_dimers_type.append([i,j])
-							self.connected_dimers_index.append(list(set(self.mob_monomer_index[i]+self.mob_monomer_index[j])))
+					for node in self.properties["atom_nodes"][atom_index].connected_nodes:
+						if node.node_index in self.properties["mob_monomer_index"][j]:
+							self.properties["connected_dimers_type"].append([i,j])
+							self.properties["connected_dimers_index"].append(list(set(self.properties["mob_monomer_index"][i]+self.properties["mob_monomer_index"][j])))
 							is_connected = True
 							break
 					if is_connected:
 						break
-		for dimer_type in self.connected_dimers_type:
+		for dimer_type in self.properties["connected_dimers_type"]:
 			dimer_type.sort()
-		for dimer_index in self.connected_dimers_index:
+		for dimer_index in self.properties["connected_dimers_index"]:
                         dimer_index.sort()
                         harsh_string = LtoS(dimer_index)
                         if harsh_string not in self.mob_all_frags.keys():
                                 self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([dimer_index],True))[0]
-		return 	
-							
-		
+		return
+
+
 	def Calculate_MOB_Frags(self, method='pyscf'):
 		if method=="pyscf":
 			for key in self.mob_all_frags.keys():
@@ -442,40 +422,40 @@ class Mol:
 				if mol.energy == None:
 					mol.PySCF_Energy("cc-pvdz")
 		else:
-			raise Exception("Other method is not supported yet") 
+			raise Exception("Other method is not supported yet")
 
 
 	def MOB_Energy(self):
 		Mono_Cp = []
-		for i in range (0, len(self.mob_monomer_index)):
-			if self.mob_monomer_type[i] >= 0:  # monomer is from frag
-				Mono_Cp.append(1) 
+		for i in range (0, len(self.properties["mob_monomer_index"])):
+			if self.properties["mob_monomer_type"][i] >= 0:  # monomer is from frag
+				Mono_Cp.append(1)
 			else:   #momer is from overlap
-				for j in self.frag_pair_list[abs(self.mob_monomer_type[i])-1]:
-					print self.all_frags_index[j]
-				overlap_order = len(self.frag_pair_list[abs(self.mob_monomer_type[i])-1])
+				for j in self.properties["frag_pair_list"][abs(self.properties["mob_monomer_type"][i])-1]:
+					print self.properties["all_frags_index"][j]
+				overlap_order = len(self.properties["frag_pair_list"][abs(self.properties["mob_monomer_type"][i])-1])
 				Mono_Cp.append(pow(-1, overlap_order-1))
 		first_order_energy = 0
-		for i in range (0, len(self.mob_monomer_index)):
-			first_order_energy += Mono_Cp[i]*self.mob_all_frags[LtoS(self.mob_monomer_index[i])].energy
+		for i in range (0, len(self.properties["mob_monomer_index"])):
+			first_order_energy += Mono_Cp[i]*self.mob_all_frags[LtoS(self.properties["mob_monomer_index"][i])].energy
 		second_order_energy = 0
-		for i in range (0, len(self.connected_dimers_index)):
-			p_index = self.connected_dimers_type[i][0]
-			q_index = self.connected_dimers_type[i][1]
-			Epandq = self.mob_all_frags[LtoS(self.connected_dimers_index[i])].energy
-			Ep = self.mob_all_frags[LtoS(self.mob_monomer_index[p_index])].energy
-			Eq = self.mob_all_frags[LtoS(self.mob_monomer_index[q_index])].energy
-			if self.connected_dimers_type[i] in self.mob_monomer_overlap_type:  #overlap
-				index = self.mob_monomer_overlap_type.index(self.connected_dimers_type[i])
+		for i in range (0, len(self.properties["connected_dimers_index"])):
+			p_index = self.properties["connected_dimers_type"][i][0]
+			q_index = self.properties["connected_dimers_type"][i][1]
+			Epandq = self.mob_all_frags[LtoS(self.properties["connected_dimers_index"][i])].energy
+			Ep = self.mob_all_frags[LtoS(self.properties["mob_monomer_index"][p_index])].energy
+			Eq = self.mob_all_frags[LtoS(self.properties["mob_monomer_index"][q_index])].energy
+			if self.properties["connected_dimers_type"][i] in self.mob_monomer_overlap_type:  #overlap
+				index = self.mob_monomer_overlap_type.index(self.properties["connected_dimers_type"][i])
 				Epnotq = self.mob_all_frags[LtoS(self.mob_monomer_overlap_index[index])].energy
 			else:
 				Epnotq = 0.0  #not overlap
 			deltaEpq = Epandq - (Ep + Eq - Epnotq)
 			second_order_energy += Mono_Cp[p_index]*Mono_Cp[q_index]*deltaEpq
 
-		self.mob_energy = first_order_energy + second_order_energy
-		print "MOB_energy", self.mob_energy
-		return		
+		self.properties["mob_energy"] = first_order_energy + second_order_energy
+		print "MOB_energy", self.properties["mob_energy"]
+		return
 
 
 	def Pick_Not_Allowed_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
@@ -651,9 +631,9 @@ class Mol:
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Calculate_Atomization(self):
-		self.atomization = self.roomT_H
+		self.properties["atomization"] = self.properties["roomT_H"]
 		for i in range (0, self.atoms.shape[0]):
-			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
+			self.properties["atomization"] = self.properties["atomization"] - ele_roomT_H[self.atoms[i]]
 		return
 
 	def AtomsWithin(self,rad, pt):
@@ -706,7 +686,7 @@ class Mol:
 						# mindist = None
 						# if (self.DistMatrix != None):
 						# 	if((self.GoEnergy(tmp)-e0) < 0.005):
-						# 		#print "LJE: ", self.LJEnergy(tmp)
+						# 		#print "LJE: ", self.properties["LJE"]nergy(tmp)
 						# 		#print self.coords
 						# 		accepted = True
 						# 		self.coords = tmp
@@ -736,9 +716,9 @@ class Mol:
 							self.coords = np.asarray(coords)
 							break
 				if "SCF Done:"  in lines[i]:
-					self.energy = float(lines[i].split()[4])
+					self.properties["energy"] = float(lines[i].split()[4])
 				if "Total nuclear spin-spin coupling J (Hz):" in lines[i]:
-					self.J_coupling = np.zeros((self.NAtoms(), self.NAtoms()))
+					self.properties["J_coupling"] = np.zeros((self.NAtoms(), self.NAtoms()))
 					number_per_line  = len(lines[i+1].split())
 					block_num = 0
 					for j in range (i+1, len(lines)):
@@ -747,19 +727,19 @@ class Mol:
 								J_value = list(lines[j].split()[k])
 								J_value[J_value.index("D")]="E"
                                                         	J_value="".join(J_value)
-								self.J_coupling[int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
+								self.properties["J_coupling"][int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
 						elif "End of" in lines[j]:
 							break
-						else:	
+						else:
 							block_num += 1
 			for i in range (0, self.NAtoms()):
 				for j in range (i+1, self.NAtoms()):
-					self.J_coupling[i][j] = self.J_coupling[j][i]
-	
+					self.properties["J_coupling"][i][j] = self.properties["J_coupling"][j][i]
+
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		return 
+		return
 
 	def ReadGDB9(self,path,filename, set_name):
                 try:
@@ -771,8 +751,8 @@ class Mol:
                         self.atoms.resize((natoms))
                         self.coords.resize((natoms,3))
 			try:
-				self.energy = float((lines[1].split())[12])
-				self.roomT_H = float((lines[1].split())[14])
+				self.properties["energy"] = float((lines[1].split())[12])
+				self.properties["roomT_H"] = float((lines[1].split())[14])
 			except:
 				pass
 			for i in range(natoms):
@@ -794,7 +774,7 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		if (self.energy!=None and self.roomT_H!=None):
+		if (self.properties["energy"]!=None and self.properties["roomT_H"]!=None):
 			self.Calculate_Atomization()
 		return
 
@@ -803,7 +783,7 @@ class Mol:
 		natoms=int(lines[0])
 		if (len(lines[1].split())>1):
 			try:
-				self.energy=float(lines[1].split()[1])
+				self.properties["energy"]=float(lines[1].split()[1])
 			except:
 				pass
 		self.atoms.resize((natoms))
@@ -1019,50 +999,50 @@ class Mol:
 	def BuildDistanceMatrix(self):
 		import MolEmb
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
-		self.LJEFromDist()
+		self.properties["LJE"]FromDist()
 
 	def LJEFromDist(self):
 		" Assigns lennard jones depth matrix "
-		self.LJE = np.zeros((len(self.coords),len(self.coords)))
-		self.LJE += 0.1
+		self.properties["LJE"] = np.zeros((len(self.coords),len(self.coords)))
+		self.properties["LJE"] += 0.1
 		return
 		for i in range(len(self.coords)):
 			for j in range(i+1,len(self.coords)):
 				if (self.DistMatrix[i,j] < 2.8): # is covalent
 					if (self.atoms[i]==6 and self.atoms[j]==6):
 						if ( self.DistMatrix[i,j] <1.3):
-							self.LJE[i,j] = 0.319558 # Bond energies in hartree
+							self.properties["LJE"][i,j] = 0.319558 # Bond energies in hartree
 						elif ( self.DistMatrix[i,j]<1.44):
-							self.LJE[i,j] = 0.23386
+							self.properties["LJE"][i,j] = 0.23386
 						else:
-							self.LJE[i,j] = 0.132546
+							self.properties["LJE"][i,j] = 0.132546
 					elif ((self.atoms[i]==1 and self.atoms[j]==6) or (self.atoms[i]==6 and self.atoms[j]==1)):
-						self.LJE[i,j] = 0.157
+						self.properties["LJE"][i,j] = 0.157
 					elif ((self.atoms[i]==1 and self.atoms[j]==7) or (self.atoms[i]==7 and self.atoms[j]==1)):
-						self.LJE[i,j] = 0.148924
+						self.properties["LJE"][i,j] = 0.148924
 					elif ((self.atoms[i]==1 and self.atoms[j]==8) or (self.atoms[i]==8 and self.atoms[j]==1)):
-						self.LJE[i,j] = 0.139402
+						self.properties["LJE"][i,j] = 0.139402
 					elif ((self.atoms[i]==6 and self.atoms[j]==7) or (self.atoms[i]==7 and self.atoms[j]==6)):
-						self.LJE[i,j] = 0.0559894
+						self.properties["LJE"][i,j] = 0.0559894
 					elif ((self.atoms[i]==6 and self.atoms[j]==8) or (self.atoms[i]==8 and self.atoms[j]==6)):
-						self.LJE[i,j] = 0.0544658
+						self.properties["LJE"][i,j] = 0.0544658
 					elif (self.atoms[i]==8 and self.atoms[j]==8):
 						if( self.DistMatrix[i,j]<1.40):
-							self.LJE[i,j] = 0.189678
+							self.properties["LJE"][i,j] = 0.189678
 						else:
-							self.LJE[i,j] = 0.0552276
+							self.properties["LJE"][i,j] = 0.0552276
 					elif (self.atoms[i]==7 and self.atoms[j]==7):
 						if ( self.DistMatrix[i,j] <1.2):
-							self.LJE[i,j] = 0.359932 # Bond energies in hartree
+							self.properties["LJE"][i,j] = 0.359932 # Bond energies in hartree
 						elif ( self.DistMatrix[i,j]<1.4):
-							self.LJE[i,j] = 0.23386
+							self.properties["LJE"][i,j] = 0.23386
 						else:
-							self.LJE[i,j] = 0.0552276
+							self.properties["LJE"][i,j] = 0.0552276
 					else:
-						self.LJE[i,j] = 0.1
+						self.properties["LJE"][i,j] = 0.1
 				else:
-					self.LJE[i,j] = 0.005 # Non covalent interactions
-		self.LJE += self.LJE.T
+					self.properties["LJE"][i,j] = 0.005 # Non covalent interactions
+		self.properties["LJE"] += self.properties["LJE"].T
 
 	def LJEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths with Lennard Jones Forces.'''
@@ -1071,7 +1051,7 @@ class Mol:
 		np.fill_diagonal(dmat,1.0)
 		term2 = np.power(self.DistMatrix/dmat,6.0)
 		term1 = np.power(term2,2.0)
-		return np.sum(self.LJE*(term1-2.0*term2))
+		return np.sum(self.properties["LJE"]*(term1-2.0*term2))
 
 	def GoEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
@@ -1082,7 +1062,7 @@ class Mol:
 		newd = MolEmb.Make_DistMat(xmat)
 		newd -= self.DistMatrix
 		newd = newd*newd
-		return self.GoK*np.sum(newd)
+		return PARAMS["GoK"]*np.sum(newd)
 
 	def GoEnergyAfterAtomMove(self,s,ii):
 		''' The GO potential enforces equilibrium bond lengths. '''
@@ -1091,21 +1071,21 @@ class Mol:
 	def GoForce(self, at_=-1):
 		'''
 			The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
-			Args: at_ an atom index, if at_ = -1 it returns an array for each atom. 
+			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
-		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
+		return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
 
 	def GoForceLocal(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
-		return self.GoK*MolEmb.Make_GoForceLocal(self.coords,self.DistMatrix,at_)
+		return PARAMS["GoK"]*MolEmb.Make_GoForceLocal(self.coords,self.DistMatrix,at_)
 
 	def LJForce(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
-		return MolEmb.Make_LJForce(self.coords,self.DistMatrix,self.LJE,at_)
+		return MolEmb.Make_LJForce(self.coords,self.DistMatrix,self.properties["LJE"],at_)
 
 	def NumericLJForce(self):
 		disp = 0.00000001
@@ -1114,10 +1094,10 @@ class Mol:
 			for ip in range(3):
 				tmp = self.coords
 				tmp[i,ip] += disp
-				e1 = self.LJEnergy(tmp)
+				e1 = self.properties["LJE"]nergy(tmp)
 				tmp = self.coords
 				tmp[i,ip] -= disp
-				e2 = self.LJEnergy(tmp)
+				e2 = self.properties["LJE"]nergy(tmp)
 				frc[i,ip] = (e1-e2)/(2.0*disp)
 		return frc
 
@@ -1132,19 +1112,19 @@ class Mol:
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] += disp
 				tmp[i*3+ip] += disp
-				f1 = self.LJEnergy(tmp)
+				f1 = self.properties["LJE"]nergy(tmp)
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] += disp
 				tmp[i*3+ip] -= disp
-				f2 = self.LJEnergy(tmp)
+				f2 = self.properties["LJE"]nergy(tmp)
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] -= disp
 				tmp[i*3+ip] += disp
-				f3 = self.LJEnergy(tmp)
+				f3 = self.properties["LJE"]nergy(tmp)
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] -= disp
 				tmp[i*3+ip] -= disp
-				f4 = self.LJEnergy(tmp)
+				f4 = self.properties["LJE"]nergy(tmp)
 				hessd[i, ip] = (f1-f2-f3+f4)/(4.0*disp*disp)
 		return hessd
 
@@ -1162,19 +1142,19 @@ class Mol:
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] += disp
 							tmp[j*3+jp] += disp
-							f1 = self.LJEnergy(tmp)
+							f1 = self.properties["LJE"]nergy(tmp)
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] += disp
 							tmp[j*3+jp] -= disp
-							f2 = self.LJEnergy(tmp)
+							f2 = self.properties["LJE"]nergy(tmp)
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] -= disp
 							tmp[j*3+jp] += disp
-							f3 = self.LJEnergy(tmp)
+							f3 = self.properties["LJE"]nergy(tmp)
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] -= disp
 							tmp[j*3+jp] -= disp
-							f4 = self.LJEnergy(tmp)
+							f4 = self.properties["LJE"]nergy(tmp)
 							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
 		return (hess+hess.T-np.diag(np.diag(hess)))
 
@@ -1209,7 +1189,7 @@ class Mol:
 		return (hess+hess.T-np.diag(np.diag(hess)))
 
 	def GoHessian(self):
-		return self.GoK*MolEmb.Make_GoHess(self.coords,self.DistMatrix)
+		return PARAMS["GoK"]*MolEmb.Make_GoHess(self.coords,self.DistMatrix)
 
 	def ScanNormalModes(self,npts=11,disp=0.2):
 		"These modes are normal"
@@ -1229,7 +1209,7 @@ class Mol:
 				for d in range(npts):
 					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0+0.37)/npts)*eigv
 					#print disp*(self.NAtoms()*(d-npts/2.0+0.37)/npts)*eigv
-					#print d, self.GoEnergy(tore[nout,d,:,:].flatten())#, self.GoK*MolEmb.Make_GoForce(tore[nout,d,:,:],self.DistMatrix,-1)
+					#print d, self.GoEnergy(tore[nout,d,:,:].flatten())#, PARAMS["GoK"]*MolEmb.Make_GoForce(tore[nout,d,:,:],self.DistMatrix,-1)
 				nout = nout+1
 		return tore
 
@@ -1396,7 +1376,7 @@ class Mol:
 		return np.array([self.PySCFEnergyAfterAtomMove(s,i) for s in samps])
 
 	def EnergiesOfAtomMoves(self,samps,i):
-		return np.array([self.EnergyAfterAtomMove(s,i) for s in samps])
+		return np.array([self.properties["energy"]AfterAtomMove(s,i) for s in samps])
 
 	def POfAtomMoves(self,samps,i):
 		''' Arguments are given relative to the coordinate of i'''
@@ -1420,10 +1400,10 @@ class Mol:
 		self.mbe_frags_deri=dict()
 		self.mbe_permute_frags=dict() # list of all the permuted frags
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
-		self.energy=None
+		self.properties["energy"]=None
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
-		self.mbe_deri =None
-		self.nn_energy=None
+		self.properties["mbe_deri"] =None
+		self.properties["nn_energy"]=None
 		return
 
 	def AtomName(self, i):
@@ -1818,7 +1798,7 @@ class Mol:
                 time_log=time.time()
                 print "length of order ", order, ":",len(self.mbe_frags[order])
                 if method == "qchem":
-                        order_path = self.qchem_data_path+"/"+str(order)
+                        order_path = self.properties["qchem_data_path"]+"/"+str(order)
                         if not os.path.isdir(order_path):
                                 os.mkdir(order_path)
                         os.chdir(order_path)
@@ -1846,7 +1826,7 @@ class Mol:
 		time_log=time.time()
 		print "length of order ", order, ":",len(self.mbe_frags[order])
 		if method == "qchem":
-			order_path = self.qchem_data_path+"/"+str(order)
+			order_path = self.properties["qchem_data_path"]+"/"+str(order)
 			if not os.path.isdir(order_path):
 				os.mkdir(order_path)
 			os.chdir(order_path)
@@ -1871,7 +1851,7 @@ class Mol:
 
 	def Get_Qchem_Frag_Energy(self, order):
 		fragnum = 0
-		path = self.qchem_data_path+"/"+str(order)
+		path = self.properties["qchem_data_path"]+"/"+str(order)
 		mbe_frags_energy = 0.0
 		for frag in self.mbe_frags[order]:
 			fragnum += 1
@@ -1896,7 +1876,7 @@ class Mol:
 		return
 
 	def Set_Qchem_Data_Path(self):
-		self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+		self.properties["qchem_data_path"]="./qchem"+"/"+self.set_name+"/"+self.name
 		return
 
 	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
@@ -1905,9 +1885,9 @@ class Mol:
                                 os.mkdir("./qchem")
                         if not os.path.isdir("./qchem"+"/"+self.set_name):
                                 os.mkdir("./qchem"+"/"+self.set_name)
-                        self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
-                        if not os.path.isdir(self.qchem_data_path):
-                                os.mkdir(self.qchem_data_path)
+                        self.properties["qchem_data_path"]="./qchem"+"/"+self.set_name+"/"+self.name
+                        if not os.path.isdir(self.properties["qchem_data_path"]):
+                                os.mkdir(self.properties["qchem_data_path"])
                 for i in range (1, self.mbe_order+1):
                         print "calculating for MBE order", i
                         self.Calculate_Frag_Energy_General(i, method)
@@ -1922,9 +1902,9 @@ class Mol:
                                 os.mkdir("./qchem")
 			if not os.path.isdir("./qchem"+"/"+self.set_name):
                                 os.mkdir("./qchem"+"/"+self.set_name)
-                        self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
-			if not os.path.isdir(self.qchem_data_path):
-                                os.mkdir(self.qchem_data_path)
+                        self.properties["qchem_data_path"]="./qchem"+"/"+self.set_name+"/"+self.name
+			if not os.path.isdir(self.properties["qchem_data_path"]):
+                                os.mkdir(self.properties["qchem_data_path"])
 		for i in range (1, self.mbe_order+1):
 			print "calculating for MBE order", i
 			self.Calculate_Frag_Energy(i, method)
@@ -1938,10 +1918,10 @@ class Mol:
 			os.mkdir("./qchem")
 			if not os.path.isdir("./qchem"+"/"+self.set_name):
 				os.mkdir("./qchem"+"/"+self.set_name)
-                self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
-		if not os.path.isdir(self.qchem_data_path):
-			os.mkdir(self.qchem_data_path)
-		os.chdir(self.qchem_data_path)
+                self.properties["qchem_data_path"]="./qchem"+"/"+self.set_name+"/"+self.name
+		if not os.path.isdir(self.properties["qchem_data_path"]):
+			os.mkdir(self.properties["qchem_data_path"])
+		os.chdir(self.properties["qchem_data_path"])
 		for i in range (1, self.mbe_order+1):
 			num_frag = len(self.mbe_frags[i])
 			for j in range (1, i+1):
@@ -1964,14 +1944,14 @@ class Mol:
 			self.mbe_energy[i] = 0.0
 			for j in range (1, i+1):
 				self.mbe_energy[i] += self.mbe_frags_energy[j]
-		return 
+		return
 
 	def MBE(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
 		self.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
 		self.Calculate_All_Frag_Energy()
 		self.Set_MBE_Energy()
 		print self.mbe_frags_energy
-		return 
+		return
 
 	def PySCF_Energy(self, basis_='cc-pvqz'):
 		mol = gto.Mole()
@@ -1989,7 +1969,7 @@ class Mol:
 			mp2 = mp.MP2(mf)
 			mp2_en = mp2.kernel()
 			en = hf_en + mp2_en[0]
-			self.energy = en
+			self.properties["energy"] = en
 			return en
 		except Exception as Ex:
 				print "PYSCF Calculation error... :",Ex
@@ -1997,7 +1977,7 @@ class Mol:
 				print "Pyscf string:", pyscfatomstring
 				return 0.0
 				#raise Ex
-		return 
+		return
 
 	def Get_Permute_Frags(self, indis=[0]):
 		self.mbe_permute_frags=dict()
@@ -2021,11 +2001,11 @@ class Mol:
 		return
 
 	def Set_MBE_Force(self):
-		self.mbe_deri = np.zeros((self.NAtoms(), 3))
+		self.properties["mbe_deri"] = np.zeros((self.NAtoms(), 3))
 		for order in range (1, self.mbe_order+1): # we ignore the 1st order term since we are dealing with helium, debug
 			if order in self.mbe_frags_deri.keys():
-				self.mbe_deri += self.mbe_frags_deri[order]
-		return self.mbe_deri
+				self.properties["mbe_deri"] += self.mbe_frags_deri[order]
+		return self.properties["mbe_deri"]
 
 class Frag(Mol):
         """ Provides a MBE frag of  general purpose molecule"""
@@ -2392,7 +2372,7 @@ class Frag_of_Mol(Mol):
                         	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
 			else:
 				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
-                self.atom_nodes = atom_nodes
+                self.properties["atom_nodes"] = atom_nodes
 		return
 
 
