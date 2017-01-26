@@ -324,7 +324,6 @@ class Instance:
 		raise Exception("Cannot Train base...")
 		return
 
-
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():
@@ -580,8 +579,7 @@ class Instance_fc_sqdiff(Instance):
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
-		diff  = tf.slice(tf.sub(output, labels),[0,self.outshape[0]-3],[-1,-1])
-		# this only compares direct displacement predictions.
+		diff  = tf.sub(output, labels)
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
