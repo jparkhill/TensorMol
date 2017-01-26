@@ -97,7 +97,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 
 # Tests to run.
 #TestBP("GauInv")
-TestGoForceAtom("GauSH", True, "KRR_sqdiff")
+TestGoForceAtom("GauSH", True, "fc_sqdiff")
 
 # Kun's tests.
 if (0):
