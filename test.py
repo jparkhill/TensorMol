@@ -47,33 +47,34 @@ def TestAlign():
 	b.AlignAtoms(a)
 	return
 
-def TestGoForceAtom(dig_ = "GauSH",net_ = "fc_sqdiff"):
+def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 	"""
 	A Network trained on Go-Force
 	"""
-	print "Testing a Network learning Go-Atom Force..."
-	a=MSet("OptMols")
-	a.ReadXYZ("OptMols")
-	print "nmols:",len(a.mols)
-	c=a.DistortedClone(5)
-	b=a.DistortAlongNormals(2, True, 1.2)
-	c.Statistics()
-	b.Statistics()
-	print len(b.mols)
-	#b.Save()
-	#b.WriteXYZ()
-	TreatedAtoms = b.AtomTypes()
-	# 2 - Choose Digester
-	d = Digester(TreatedAtoms, name_=dig_,OType_ ="Force")
-	# 4 - Generate training set samples.
-	tset = TensorData(b,d)
-	tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-	tset2 = TensorData(c,d)
-	tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
+	if (BuildTrain_):
+		print "Testing a Network learning Go-Atom Force..."
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		print "nmols:",len(a.mols)
+		c=a.DistortedClone(300,0.25) # number of distortions, displacement
+		b=a.DistortAlongNormals(30, True, 0.7)
+		c.Statistics()
+		b.Statistics()
+		print len(b.mols)
+		#b.Save()
+		# b.WriteXYZ()
+		TreatedAtoms = b.AtomTypes()
+		# 2 - Choose Digester
+		d = Digester(TreatedAtoms, name_=dig_,OType_ ="Force")
+		# 4 - Generate training set samples.
+		tset = TensorData(b,d)
+		tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
+		tset2 = TensorData(c,d)
+		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
-	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,6000)
-	manager=TFManage("",tset,True,net_) # True indicates train all atoms
-	# If doing KRR, just use this manager for the optimization.
+	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
+	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	# This Tests the optimizer.
 	if (net_ == "KRR_sqdiff"):
 			a=MSet("OptMols")
 			a.ReadXYZ("OptMols")
@@ -82,7 +83,6 @@ def TestGoForceAtom(dig_ = "GauSH",net_ = "fc_sqdiff"):
 			test_mol.Distort()
 			optimizer  = Optimizer(manager)
 			optimizer.Opt(test_mol)
-	# This Tests the optimizer.
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	test_mol = a.mols[11]
@@ -97,7 +97,7 @@ def TestGoForceAtom(dig_ = "GauSH",net_ = "fc_sqdiff"):
 
 # Tests to run.
 #TestBP("GauInv")
-TestGoForceAtom("GauSH", "KRR_sqdiff")
+TestGoForceAtom("GauSH", True, "KRR_sqdiff")
 
 # Kun's tests.
 if (0):
