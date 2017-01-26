@@ -34,8 +34,6 @@ class MolInstance(Instance):
 		self.TData.LoadDataToScratch(True)
 		self.TData.PrintStatus()
 		self.normalize= True
-		#if (self.normalize):
-                #        self.TData.NormalizeOutputs()
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 		self.outshape = self.TData.dig.lshape    # use the flatted version
 		print ("inshape", self.inshape, "outshape", self.outshape)
