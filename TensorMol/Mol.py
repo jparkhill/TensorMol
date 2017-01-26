@@ -60,8 +60,6 @@ class Mol:
 		self.mob_energy = None
 		return
 
-
-
 	def Make_AtomNodes(self):
 		atom_nodes = []
 		for i in range (0, self.NAtoms()):
@@ -96,15 +94,13 @@ class Mol:
 				total_bonds[atom_1][atom_2], H_bonds[atom_1][atom_2] = self.Shortest_Path_DP(atom_1, atom_2, self.NAtoms()-1, memory_total, memory_H)
 		self.Bonds_Between = total_bonds
 		self.H_Bonds_Between = H_bonds
-		return 
+		return
 
 	def Bonds_Between(self, atom_1, atom_2, ignore_Hbond = False):  # number of bonds between to atoms, ignore H-? or not.
 		memory_total=dict()
 		memory_H = dict()
 		bonds, H_bonds = self.Shortest_Path_DP(atom_1, atom_2, self.NAtoms()-1, memory_total, memory_H)
 		return  bonds, H_bonds
-					
-
 
 	def Shortest_Path_DP(self, a, b, k, memory_total, memory_H):
 		index = [a, b]
@@ -120,7 +116,7 @@ class Mol:
 		elif a == b:
 			memory_total[index_string] = 0
 			memory_H[index_string] = 0
-			return  memory_total[index_string],  memory_H[index_string] 
+			return  memory_total[index_string],  memory_H[index_string]
 		else:
 			mini_bond  = float('inf')
 			mini_H_bond = float('inf')
@@ -133,14 +129,12 @@ class Mol:
 					mini_H_bond = H_bond
 					save_index = index
 			if save_index !=None:
-				if self.atom_nodes[b].node_type == 1 or self.atom_nodes[save_index].node_type==1 : 
+				if self.atom_nodes[b].node_type == 1 or self.atom_nodes[save_index].node_type==1 :
 					mini_H_bond += 1
 			mini_bond = mini_bond + 1
 			memory_total[index_string] = mini_bond
 			memory_H [index_string] = mini_H_bond
-			return mini_bond, mini_H_bond 
-				
-			 
+			return mini_bond, mini_H_bond
 
 	def GetNextNode_DFS(self, visited_list, node_stack):
 		node = node_stack.pop()
@@ -156,7 +150,6 @@ class Mol:
 		while(node_stack):   # if node stack is not empty
 			node, visited_list, node_stack  = self.GetNextNode_DFS(visited_list, node_stack)
 			print "node.node_index", node.node_index,  visited_list
-
 
 	def DFS_recursive(self, node, visited_list):
 		print node.node_index
@@ -242,7 +235,6 @@ class Mol:
 				frags_in_mol.append(sorted_mol_visited_list)
 		return frags_in_mol
 
-
 	def Mol_Frag_Index_to_Mol(self, frags_index, capping=True):
 		convert_to_mol = []
 		for frag_index in frags_index:
@@ -254,7 +246,6 @@ class Mol:
 				convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms, cap_atoms))
 				convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, cap_coords))
 		return convert_to_mol
-
 
 	def Frag_Caps(self, frag_index, capping_atom = 1):  # 1 stand for H, used H capping by default
 		cap_atoms = []
@@ -268,13 +259,11 @@ class Mol:
 		cap_atoms = np.array(cap_atoms)
 		cap_coords = np.array(cap_coords)
 		return cap_atoms, cap_coords
-		
-		
 
-	def Mol_Frag_Index_to_Mol_Old(self, frag, frags_in_mol=None, capping=False):  
+	def Mol_Frag_Index_to_Mol_Old(self, frag, frags_in_mol=None, capping=False):
 		convert_to_mol = []
 		if frags_in_mol == None:
-			frags_in_mol = self.Find_Frag(frag)	
+			frags_in_mol = self.Find_Frag(frag)
 		for frag_in_mol in frags_in_mol:
 			convert_to_mol.append(Mol())
 			convert_to_mol[-1].atoms = self.atoms[frag_in_mol].copy()
@@ -290,9 +279,8 @@ class Mol:
 								convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms,[1])) # use hydrogen capping
 								H_coords = self.coords[dangling_index_in_mol] + (atomic_radius_cho[self.atoms[dangling_index_in_mol]]+atomic_radius_cho[1])/(atomic_radius_cho[self.atoms[dangling_index_in_mol]]+atomic_radius_cho[self.atoms[node_index]])*(self.coords[node_index] - self.coords[dangling_index_in_mol]) # use the SMF capping scheme
 								convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, H_coords.reshape((1,-1))))
-	#		print convert_to_mol[-1].atoms, convert_to_mol[-1].coords
+			# print convert_to_mol[-1].atoms, convert_to_mol[-1].coords
 		return convert_to_mol
-			
 
 	def Frag_Overlaps(self, frags_index_list, order=2):  #   decide the Nth order overlap of fragment
 		overlap_list = []
@@ -321,8 +309,7 @@ class Mol:
 							if tmp_pair not in new_pair_list:
 								new_index_list.append(overlap)
 								new_pair_list.append(tmp_pair)
-			return new_index_list, new_pair_list 
-
+			return new_index_list, new_pair_list
 
 	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True, Order=8):   # Order should be chosen as the max possible number of frags that has comon overlap
 		all_frags_index  = []
@@ -345,28 +332,27 @@ class Mol:
 			frag_pair_list += tmp_pair_list
 		all_overlaps_mol = []
 		overlaps_type = []
-		
+
 		for i, overlap_index in enumerate(overlap_index_list):
 			overlap_index.sort()
 			tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
 			all_overlaps_mol.append(tmp_mol[0])
 			overlaps_type.append(i)
-	#	if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
-	#		for overlap_index in overlap_index_list:
-	#			found = 0
-	#			for i, overlap in enumerate(frag_overlap_list):
-	#				if len(overlap_index) == overlap.NAtoms() and self.Find_Frag(overlap, avail_atoms = overlap_index):
-	#					found = 1
-	#					overlaps_type.append(i)
-	#					tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
-	#					all_overlaps_mol.append(tmp_mol[0])
-	#					break   # assuming the overlap can only belong to one kind of overlap fragment	 
-	#			if not found:
-	#				print "Warning! Overlap: ", overlap_index," is not found in the provided list"
-	#		
-	#	else:   # determine the type of overlaps after generate, this has not been implemented yet. KY
-	#		raise Exception("needs to provide the possible overlaps")
-
+		# if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
+		# 	for overlap_index in overlap_index_list:
+		# 		found = 0
+		# 		for i, overlap in enumerate(frag_overlap_list):
+		# 			if len(overlap_index) == overlap.NAtoms() and self.Find_Frag(overlap, avail_atoms = overlap_index):
+		# 				found = 1
+		# 				overlaps_type.append(i)
+		# 				tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
+		# 				all_overlaps_mol.append(tmp_mol[0])
+		# 				break   # assuming the overlap can only belong to one kind of overlap fragment
+		# 		if not found:
+		# 			print "Warning! Overlap: ", overlap_index," is not found in the provided list"
+		#
+		# else:   # determine the type of overlaps after generate, this has not been implemented yet. KY
+		# 	raise Exception("needs to provide the possible overlaps")
 		self.all_frags_index = all_frags_index
 		self.overlap_index_list = overlap_index_list
 		self.frags_type = frags_type
@@ -375,7 +361,7 @@ class Mol:
 		self.all_overlaps_mol = all_overlaps_mol
 		self.frag_pair_list = frag_pair_list
 		return	all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
-				
+
 	def MOB_Monomer(self):
 		self.mob_monomer_index = []
 		self.mob_monomer_type = []
@@ -388,10 +374,10 @@ class Mol:
 		for monomer_index in self.mob_monomer_index:
 			monomer_index.sort()
 			harsh_string = LtoS(monomer_index)
-			if harsh_string not in self.mob_all_frags.keys():	
-				self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([monomer_index],True))[0]  
-		return 
-	
+			if harsh_string not in self.mob_all_frags.keys():
+				self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([monomer_index],True))[0]
+		return
+
 	def MOB_Monomer_Overlap(self):
 		self.mob_monomer_overlap_index = []
 		self.mob_monomer_overlap_type = []
@@ -408,7 +394,7 @@ class Mol:
                         harsh_string = LtoS(overlap_index)
                         if harsh_string not in self.mob_all_frags.keys():
                                 self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([overlap_index],True))[0]
-		return	
+		return
 
 	def Connected_MOB_Dimer(self):
 		self.connected_dimers_index = []
@@ -432,9 +418,8 @@ class Mol:
                         harsh_string = LtoS(dimer_index)
                         if harsh_string not in self.mob_all_frags.keys():
                                 self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([dimer_index],True))[0]
-		return 	
-							
-		
+		return
+
 	def Calculate_MOB_Frags(self, method='pyscf'):
 		if method=="pyscf":
 			for key in self.mob_all_frags.keys():
@@ -442,14 +427,13 @@ class Mol:
 				if mol.energy == None:
 					mol.PySCF_Energy("cc-pvdz")
 		else:
-			raise Exception("Other method is not supported yet") 
-
+			raise Exception("Other method is not supported yet")
 
 	def MOB_Energy(self):
 		Mono_Cp = []
 		for i in range (0, len(self.mob_monomer_index)):
 			if self.mob_monomer_type[i] >= 0:  # monomer is from frag
-				Mono_Cp.append(1) 
+				Mono_Cp.append(1)
 			else:   #momer is from overlap
 				for j in self.frag_pair_list[abs(self.mob_monomer_type[i])-1]:
 					print self.all_frags_index[j]
@@ -475,8 +459,7 @@ class Mol:
 
 		self.mob_energy = first_order_energy + second_order_energy
 		print "MOB_energy", self.mob_energy
-		return		
-
+		return
 
 	def Pick_Not_Allowed_Overlaps(self,  frags_index_list, allowed_overlap_list, overlap_list=None, frag_pair_list = None):   # check whether overlap of frags is allowed
 		if overlap_list == None or frag_pair_list == None:
@@ -488,7 +471,6 @@ class Mol:
 					not_allowed_overlap_index.append(overlap_index)
 
 		return not_allowed_overlap_index
-
 
 	def Optimize_Overlap(self, frags_index_list, allowed_overlap_list, not_allowed_overlap_index=None):         #delete the frags that generate the not allowed overlaps
 		overlap_list, frag_pair_list = self.Frag_Overlaps(frags_index_list)
@@ -517,7 +499,6 @@ class Mol:
 			del frag_freq[deleted_frag]
 		return	deleted_frag_list
 
-
 	def Check_Frags_Is_Complete(self, frags_index_list):  # check the frags contains all the heavy atoms
 		visited = []
 		heavy_atoms = 0
@@ -530,7 +511,6 @@ class Mol:
 			return True
 		else:
 			return False
-
 
 	def Num_of_Heavy_Atom(self):
 		num = 0
@@ -554,8 +534,6 @@ class Mol:
 			return True
 		else:
 			return False
-
-
 
 	def Compare_Node(self, mol_node, frag_node):
 		if mol_node.node_type == frag_node.node_type and mol_node.num_of_bonds == frag_node.num_of_bonds  and Subset(mol_node.connected_atoms, frag_node.connected_atoms):
@@ -582,7 +560,6 @@ class Mol:
 		print "penalty:", penalty, "opt_frags", opt_frags
 		return
 
-
 	def Partition(self, suffix_atoms, frag_list): # recursive partition
 		possible_frags = []
 		#print suffix_atoms
@@ -602,7 +579,6 @@ class Mol:
                         return [mini_penalty, opt_frags]
              	else:   # could not partition anymore
                 	return [(len(suffix_atoms))*(len(suffix_atoms)), [["left"]+suffix_atoms]]  # return penalty and what is left
-
 
 	def DP_Partition(self, suffix_atoms, frag_list, memory):    # non-overlapping partition using dynamic programming
 		#print "suffix_atoms", suffix_atoms
@@ -717,7 +693,6 @@ class Mol:
 							self.coords = tmp
 						maxiter=maxiter-1
 
-
 	def Read_Gaussian_Output(self, path, filename, set_name):
 		try:
 			f = open(path, "r+")
@@ -750,26 +725,26 @@ class Mol:
 								self.J_coupling[int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
 						elif "End of" in lines[j]:
 							break
-						else:	
+						else:
 							block_num += 1
 			for i in range (0, self.NAtoms()):
 				for j in range (i+1, self.NAtoms()):
 					self.J_coupling[i][j] = self.J_coupling[j][i]
-	
+
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		return 
+		return
 
 	def ReadGDB9(self,path,filename, set_name):
-                try:
-                        f=open(path,"r")
-                        lines=f.readlines()
-                        natoms=int(lines[0])
-                        self.set_name = set_name
-                        self.name = filename[0:-4]
-                        self.atoms.resize((natoms))
-                        self.coords.resize((natoms,3))
+		try:
+			f=open(path,"r")
+			lines=f.readlines()
+			natoms=int(lines[0])
+			self.set_name = set_name
+			self.name = filename[0:-4]
+			self.atoms.resize((natoms))
+			self.coords.resize((natoms,3))
 			try:
 				self.energy = float((lines[1].split())[12])
 				self.roomT_H = float((lines[1].split())[14])
@@ -1091,7 +1066,7 @@ class Mol:
 	def GoForce(self, at_=-1):
 		'''
 			The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
-			Args: at_ an atom index, if at_ = -1 it returns an array for each atom. 
+			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
 		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
 
@@ -1411,6 +1386,21 @@ class Mol:
 		Z = np.sum(Ps)
 		return Ps/Z
 
+	def Force_from_xyz(self, path):
+		try:
+			f = open(path, 'r')
+			lines = f.readlines()
+			natoms = int(lines[0])
+			forces=np.zeros((natoms,3))
+			read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
+			for j in range(natoms):
+				for k in range(3):
+					forces[j,k] = float(read_forces[j*3+k])
+			self.properties['forces'] = forces
+		except Exception as Ex:
+			print "Read Failed.", Ex
+
+
 ## ----------------------------------------------
 ## MBE routines:
 ## ----------------------------------------------
@@ -1428,7 +1418,6 @@ class Mol:
 
 	def AtomName(self, i):
 		return atoi.keys()[atoi.values().index(self.atoms[i])]
-
 
 	def AtomName_From_List(self, atom_list):
 		name = ""
@@ -1964,14 +1953,14 @@ class Mol:
 			self.mbe_energy[i] = 0.0
 			for j in range (1, i+1):
 				self.mbe_energy[i] += self.mbe_frags_energy[j]
-		return 
+		return
 
 	def MBE(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
 		self.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
 		self.Calculate_All_Frag_Energy()
 		self.Set_MBE_Energy()
 		print self.mbe_frags_energy
-		return 
+		return
 
 	def PySCF_Energy(self, basis_='cc-pvqz'):
 		mol = gto.Mole()
@@ -1997,7 +1986,7 @@ class Mol:
 				print "Pyscf string:", pyscfatomstring
 				return 0.0
 				#raise Ex
-		return 
+		return
 
 	def Get_Permute_Frags(self, indis=[0]):
 		self.mbe_permute_frags=dict()
@@ -2028,8 +2017,8 @@ class Mol:
 		return self.mbe_deri
 
 class Frag(Mol):
-        """ Provides a MBE frag of  general purpose molecule"""
-        def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, frag_type_index_=None, FragOrder_=None):
+	""" Provides a MBE frag of  general purpose molecule"""
+	def __init__(self, atoms_ =  None, coords_ = None, index_=None, dist_=None, atom_group_=1, frag_type_=None, frag_type_index_=None, FragOrder_=None):
 		Mol.__init__(self, atoms_, coords_)
 		self.atom_group = atom_group_
 		if FragOrder_==None:
@@ -2145,7 +2134,6 @@ class Frag(Mol):
 				raise Exception("Qchem Error")
 		return
 
-
 	def Write_Qchem_Frag_MBE_Input_General(self,order):   # calculate the MBE of order N of each frag
                 inner_index = range(0, self.FragOrder)
                 real_frag_index=list(itertools.combinations(inner_index,order))
@@ -2184,7 +2172,6 @@ class Frag(Mol):
                         i = i+1
                 #gc.collect()  # speed up the function by 1000 times just deleting this single line!
                 return
-
 
 	def Write_Qchem_Frag_MBE_Input(self,order):   # calculate the MBE of order N of each frag
 		inner_index = range(0, self.FragOrder)
@@ -2346,7 +2333,6 @@ class Frag(Mol):
 		return frag_deri
 
 
-
 class Frag_of_Mol(Mol):
 	def __init__(self, atoms_=None, coords_=None):
 		Mol.__init__(self, atoms_, coords_)
@@ -2383,7 +2369,6 @@ class Frag_of_Mol(Mol):
 		else:
 			self.undefined_bond_type = "any"
                 return
-
 
 	def Make_AtomNodes(self):
                 atom_nodes = []

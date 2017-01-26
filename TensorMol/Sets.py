@@ -93,7 +93,7 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
-	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/"):
+	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/", has_force=False):
 		""" Reads the GDB9 dataset as a pickled list of molecules"""
 		from os import listdir
 		from os.path import isfile, join
@@ -104,6 +104,8 @@ class MSet:
 					continue
 			self.mols.append(Mol())
 			self.mols[-1].ReadGDB9(path+file, file, self.name)
+			if has_force:
+				self.mols[-1].Force_from_xyz(path+file)
 		return
 
 	def ReadXYZ(self,filename, xyz_type = 'mol'):
@@ -136,12 +138,12 @@ class MSet:
 				continue
 			else:
 				self.mols.append(Mol())
-				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)	
-		return 
+				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)
+		return
 
 	def Analysis_Jcoupling(self):
-		
-		J_value = [] 
+
+		J_value = []
 		for i in range (0, self.mols[0].NAtoms()):
 			for j in range (i+1, self.mols[0].NAtoms()):
 					J_value.append([])
@@ -152,15 +154,15 @@ class MSet:
 		for i in range (0, self.mols[0].NAtoms()):
 			for j in range (i+1, self.mols[0].NAtoms()):
 				Bonds_Between.append(self.mols[0].Bonds_Between[i][j])
-				H_Bonds_Between.append(self.mols[0].H_Bonds_Between[i][j])	
+				H_Bonds_Between.append(self.mols[0].H_Bonds_Between[i][j])
 				paris.append([self.mols[0].atoms[i], self.mols[0].atoms[j]])
-	
+
 
 		for mol in self.mols:
 			index = 0
                         for i in range (0, mol.NAtoms()):
                                 for j in range (i+1, mol.NAtoms()):
-					J_value[index].append(mol.J_coupling[i][j])						
+					J_value[index].append(mol.J_coupling[i][j])
 					index += 1
 
 		for i in range(0,len(J_value)):
