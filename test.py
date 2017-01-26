@@ -73,7 +73,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
 	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	manager=TFManage("",tset,True, net_) # True indicates train all atoms
 	# This Tests the optimizer.
 	if (net_ == "KRR_sqdiff"):
 			a=MSet("OptMols")
@@ -90,7 +90,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 	test_mol.Distort()
 	print test_mol.coords
 	print test_mol.atoms
-	manager=TFManage("OptMols_NEQ_"+dig_+"_fc_sqdiff",None,False)
+	manager=TFManage("OptMols_NEQ_"+dig_+"_"+net_,None,False)
 	optimizer  = Optimizer(manager)
 	optimizer.Opt(test_mol)
 	return

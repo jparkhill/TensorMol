@@ -1,14 +1,3 @@
-#
-# An Embedding gives some chemical description of a molecular
-# Environment around a point
-#
-# A Digester samples a molecule using an embedding.
-# Because the embedding is evaluated so much, it's written in C. please refer to /C_API/setup.py
-#
-# The Default is Coulomb, but this is also the gen. interface
-# The embedding does not provide labels.
-#
-
 from Mol import *
 from Util import *
 import numpy,os,sys,pickle,re
@@ -16,7 +5,21 @@ if (HAS_EMB):
 	import MolEmb
 
 class Digester:
+	"""
+	 An Embedding gives some chemical description of a molecular
+	 Environment around a point
+
+	 A Digester samples a molecule using an embedding.# Because the embedding is evaluated so much, it's written in C. please refer to /C_API/setup.py
+	 The Default is Coulomb, but this is also the gen. interface
+	 The embedding does not provide labels.
+	"""
 	def __init__(self, eles_, name_="GauSH", OType_="Disp", SamplingType_="", BlurRadius_ = 0.05 ):
+		"""
+		Args:
+			eles_ : a list of elements in the Tensordata that I'll digest
+			name_: type of digester to reduce molecules to NN inputs.
+			OType_: property of the molecule which will be learned (energy, force, etc)
+		"""
 
 		 # In Atomic units at 300K
 		# These are the key variables which determine the type of digestion.

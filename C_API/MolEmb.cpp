@@ -384,7 +384,7 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 
 //
 // Embed molecule using Gaussian X Spherical Harmonic basis
-// Does all atoms... just for debug really.
+// Does all atoms if theatom argument < 0
 // These vectors are flattened [gau,l,m] arrays
 //
 static PyObject* Make_SH(PyObject *self, PyObject  *args)
@@ -412,7 +412,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	double *SH_data, *xyz_data, *grids_data;
 	double center[3]; // x y z of the center
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
-	// Note that Grids are currently unused... 
+	// Note that Grids are currently unused...
 	//grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
 
