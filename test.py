@@ -1,8 +1,6 @@
 """
-
 Various tests of tensormol's functionality.
 Many of these tests take a pretty significant amount of time and memory to complete.
-
 """
 from TensorMol import *
 
@@ -49,7 +47,7 @@ def TestAlign():
 	b.AlignAtoms(a)
 	return
 
-def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False):
+def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 	"""
 	A Network trained on Go-Force
 	"""
@@ -75,8 +73,16 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False):
 		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
 	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	manager=TFManage("",tset,True, net_) # True indicates train all atoms
 	# This Tests the optimizer.
+	if (net_ == "KRR_sqdiff"):
+			a=MSet("OptMols")
+			a.ReadXYZ("OptMols")
+			test_mol = a.mols[11]
+			print "Orig Coords", test_mol.coords
+			test_mol.Distort()
+			optimizer  = Optimizer(manager)
+			optimizer.Opt(test_mol)
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	test_mol = a.mols[11]
@@ -84,15 +90,14 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False):
 	test_mol.Distort()
 	print test_mol.coords
 	print test_mol.atoms
-	manager=TFManage("OptMols_NEQ_"+dig_+"_fc_sqdiff",None,False)
+	manager=TFManage("OptMols_NEQ_"+dig_+"_"+net_,None,False)
 	optimizer  = Optimizer(manager)
 	optimizer.Opt(test_mol)
 	return
 
 # Tests to run.
-#TestGoForceAtom()
 #TestBP("GauInv")
-TestGoForceAtom("GauSH",True)
+TestGoForceAtom("GauSH", True, "KRR_sqdiff")
 
 # Kun's tests.
 if (0):
