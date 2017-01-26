@@ -324,7 +324,7 @@ class Mol:
 			return new_index_list, new_pair_list 
 
 
-	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True, Order=4):   # Order should be chosen as the max possible number of frags that has comon overlap
+	def Overlap_Partition(self, frags_list, frag_overlap_list=None, capping=True, Order=8):   # Order should be chosen as the max possible number of frags that has comon overlap
 		all_frags_index  = []
 		frags_type = []
 		all_frags_mol = []
@@ -345,21 +345,28 @@ class Mol:
 			frag_pair_list += tmp_pair_list
 		all_overlaps_mol = []
 		overlaps_type = []
-		if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
-			for overlap_index in overlap_index_list:
-				found = 0
-				for i, overlap in enumerate(frag_overlap_list):
-					if len(overlap_index) == overlap.NAtoms() and self.Find_Frag(overlap, avail_atoms = overlap_index):
-						found = 1
-						overlaps_type.append(i)
-						tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
-						all_overlaps_mol.append(tmp_mol[0])
-						break   # assuming the overlap can only belong to one kind of overlap fragment	 
-				if not found:
-					print "Warning! Overlap: ", overlap_index," is not found in the provided list"
-			
-		else:   # determine the type of overlaps after generate, this has not been implemented yet. KY
-			raise Exception("needs to provide the possible overlaps")
+		
+		for i, overlap_index in enumerate(overlap_index_list):
+			overlap_index.sort()
+			tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
+			all_overlaps_mol.append(tmp_mol[0])
+			overlaps_type.append(i)
+	#	if frag_overlap_list !=None :  # already provide possible type of overlaps in advance.
+	#		for overlap_index in overlap_index_list:
+	#			found = 0
+	#			for i, overlap in enumerate(frag_overlap_list):
+	#				if len(overlap_index) == overlap.NAtoms() and self.Find_Frag(overlap, avail_atoms = overlap_index):
+	#					found = 1
+	#					overlaps_type.append(i)
+	#					tmp_mol = self.Mol_Frag_Index_to_Mol([overlap_index], capping)
+	#					all_overlaps_mol.append(tmp_mol[0])
+	#					break   # assuming the overlap can only belong to one kind of overlap fragment	 
+	#			if not found:
+	#				print "Warning! Overlap: ", overlap_index," is not found in the provided list"
+	#		
+	#	else:   # determine the type of overlaps after generate, this has not been implemented yet. KY
+	#		raise Exception("needs to provide the possible overlaps")
+
 		self.all_frags_index = all_frags_index
 		self.overlap_index_list = overlap_index_list
 		self.frags_type = frags_type
@@ -444,6 +451,8 @@ class Mol:
 			if self.mob_monomer_type[i] >= 0:  # monomer is from frag
 				Mono_Cp.append(1) 
 			else:   #momer is from overlap
+				for j in self.frag_pair_list[abs(self.mob_monomer_type[i])-1]:
+					print self.all_frags_index[j]
 				overlap_order = len(self.frag_pair_list[abs(self.mob_monomer_type[i])-1])
 				Mono_Cp.append(pow(-1, overlap_order-1))
 		first_order_energy = 0
