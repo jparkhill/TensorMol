@@ -57,6 +57,9 @@ class Instance:
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
 
+		print("self.learning_rate", self.learning_rate)
+		print("self.batch_size", self.batch_size)
+
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name

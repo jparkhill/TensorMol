@@ -4,19 +4,20 @@
 ### Authors:
 	Kun Yao (kyao@nd.edu), John Herr
 	John Parkhill (john.parkhill@gmail.com)
-### License: GPLv3, By using this software
-	you agree to the terms in COPYING
-### Acknowledgements: Google Inc. (for TensorFlow),
-	Vol Lillenfeld Group (for GBD9),
-	Chan Group (for PySCF)
+### License: GPLv3
+- By using this software you agree to the terms in COPYING
+### Acknowledgements: 
+ - Google Inc. (for TensorFlow),
+ - Vol Lillenfeld Group (for GBD9),
+ - Chan Group (for PySCF)
 -------------------------------------------
 ## INSTALLATION:
- cd C_API/
- sudo python setup.py install
+  """ cd C_API/
+  sudo python setup.py install """
 -------------------------------------------
 ## USAGE:
  - Refer to commented examples in test.py
- - python test.py
+ - """python test.py"""
 -------------------------------------------
 ## REQUIREMENTS:
  - Minimum Pre-Requisites: Python2.7x, TensorFlow
@@ -26,7 +27,7 @@
  - To Evaluate: Normal CPU and 10GB Mem
 ### FOR VOLUME RENDERING:
  - Req: CUDA 7.5+ or Mathematica
- - cd volumeRender; make
+ - """ cd volumeRender; make """
  - or Open /densities/*.nb
 -------------------------------------------
 ## COMMON ISSUES

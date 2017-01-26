@@ -20,11 +20,9 @@ class TMParams(dict):
 		self["NormalizeOutputs"] = True
 		self["batch_size"] = 8000
 
-		# NETWORK parameters
-		self["learning_rate"] = 0.00001
+		self["learning_rate"] = 0.0001
 		self["momentum"] = 0.9
-		self["max_steps"] = 100000
-		self["learning_rate"] = 8000
+		self["max_steps"] = 10000
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
