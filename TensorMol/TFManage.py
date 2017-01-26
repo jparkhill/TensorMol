@@ -14,11 +14,11 @@ class TFManage:
 	"""
 	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True, ntrain_=2000):
 		"""
-			Args: 
+			Args:
 				Name_: If not blank, will try to load a network with that name using Prepare()
 				TData_: A TensorData instance to provide and process data.
-				Train_: Whether to train the instances raised. 
-				NetType_: Choices of Various network architectures. 
+				Train_: Whether to train the instances raised.
+				NetType_: Choices of Various network architectures.
 				RandomTData_: Modifes the preparation of training batches.
 				ntrain_: Number of steps to train an element.
 		"""
@@ -50,7 +50,7 @@ class TFManage:
 	def Print(self):
 		print "-- TensorMol, Tensorflow Manager Status--"
 		return
-	
+
 	def Train(self):
 		print "Will train a NNetwork for each element in: ", self.TData.name
 		for i in range(len(self.TData.AvailableElements)):
@@ -87,6 +87,8 @@ class TFManage:
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "3conv_sqdiff"):
 			self.Instances[ele] = Instance_3dconv_sqdiff(self.TData, ele, None)
+		elif (self.NetType == "KRR_sqdiff"):
+			self.Instances[ele] = Instance_KRR(self.TData, ele, None)
 		else:
 			raise Exception("Unknown Network Type!")
 		#self.Instances[ele].train_prepare()
@@ -118,7 +120,7 @@ class TFManage:
 			elif (self.NetType == "3conv_sqdiff"):
 				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			else:
-				raise Exception("Unknown Network Type!")	
+				raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.
 		return
 
@@ -127,7 +129,7 @@ class TFManage:
 		return  self.TData.dig.UniformDigest(mol,atom,maxstep,ngrid)
 
 	def SmoothPOneAtom(self, mol_, atom_):
-		''' 
+		'''
 			Uses smooth fitting of Go probability to pick the next point as predicted by the network
 			This should eventually be made faster by doing all atoms of an element type at once.
 		'''
@@ -153,7 +155,7 @@ class TFManage:
 			p.fill(1.0)
 		#Check finite-ness or throw
 		if(not np.all(np.isfinite(p))):
-			print p 
+			print p
 			raise Exception("BadTFOutput")
 		return xyz, p
 
@@ -166,7 +168,7 @@ class TFManage:
 			p.fill(1.0)
 		#Check finite-ness or throw
 		if(not np.all(np.isfinite(p))):
-			print p 
+			print p
 			raise Exception("BadTFOutput")
 		return xyz, p
 

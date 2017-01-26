@@ -304,7 +304,7 @@ class TensorMolData_BP(TensorMolData):
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
 			if (mols_done%10000==0):
-				print "Mol:", mols_done 
+				print "Mol:", mols_done
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
@@ -317,7 +317,7 @@ class TensorMolData_BP(TensorMolData):
 			casep += nat
 			mols_done = mols_done + 1
 			if (mols_done>=max_nmols_):
-				break 
+				break
 		inf = open(insname,"wb")
 		ouf = open(outsname,"wb")
 		mef = open(metasname,"wb")
@@ -548,25 +548,6 @@ class TensorMolData_BP(TensorMolData):
 			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]-self.scratch_test_meta[0,0]]
 			offsets[ei] += 1
 		return [inputs, matrices, outputs]
-
-	def KRR(self):
-		from sklearn.kernel_ridge import KernelRidge
-		ti, to, atom_index = self.LoadData(True)
-		ti = ti.reshape(( to.shape[0], -1 ))
-		print "KRR: input shape", ti.shape, " output shape", to.shape, " input", ti
-		#krr = KernelRidge()
-		krr = KernelRidge(alpha=0.0001, kernel='rbf')
-		trainsize = int(ti.shape[0]*0.5)
-		krr.fit(ti[0:trainsize,:], to[0:trainsize])
-		predict  = krr.predict(ti[trainsize:, : ])
-		print predict.shape
-		krr_acc_pred  = np.zeros((predict.shape[0],2))
-		krr_acc_pred[:,0] = to[trainsize:].reshape(to[trainsize:].shape[0])
-		krr_acc_pred[:,1] = predict.reshape(predict.shape[0])
-		np.savetxt("krr_acc_pred.dat", krr_acc_pred)
-		print "KRR train R^2:", krr.score(ti[0:trainsize, : ], to[0:trainsize])
-		print "KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:])
-		return
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
