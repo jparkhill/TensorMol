@@ -93,7 +93,7 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
-	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/"):
+	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/", has_force=False):
 		""" Reads the GDB9 dataset as a pickled list of molecules"""
 		from os import listdir
 		from os.path import isfile, join
@@ -104,6 +104,8 @@ class MSet:
 					continue
 			self.mols.append(Mol())
 			self.mols[-1].ReadGDB9(path+file, file, self.name)
+			if has_force:
+				self.mols[-1].Force_from_xyz(path+file)
 		return
 
 	def ReadXYZ(self,filename, xyz_type = 'mol'):
@@ -154,8 +156,6 @@ class MSet:
 				Bonds_Between.append(self.mols[0].properties["Bonds_Between"][i][j])
 				H_Bonds_Between.append(self.mols[0].properties["H_Bonds_Between"][i][j])
 				paris.append([self.mols[0].atoms[i], self.mols[0].atoms[j]])
-
-
 		for mol in self.mols:
 			index = 0
                         for i in range (0, mol.NAtoms()):
