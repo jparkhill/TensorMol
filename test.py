@@ -53,13 +53,13 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False):
 	"""
 	A Network trained on Go-Force
 	"""
-	if (BuildTrain_): 
+	if (BuildTrain_):
 		print "Testing a Network learning Go-Atom Force..."
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		print "nmols:",len(a.mols)
-		c=a.DistortedClone(200,0.3) # number of distortions, displacement
-		b=a.DistortAlongNormals(20, True, 0.8)
+		c=a.DistortedClone(300,0.25) # number of distortions, displacement
+		b=a.DistortAlongNormals(30, True, 0.7)
 		c.Statistics()
 		b.Statistics()
 		print len(b.mols)
@@ -74,7 +74,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False):
 		tset2 = TensorData(c,d)
 		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
-	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,6000)
+	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# This Tests the optimizer.
 	a=MSet("OptMols")
@@ -92,7 +92,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False):
 # Tests to run.
 #TestGoForceAtom()
 #TestBP("GauInv")
-TestGoForceAtom("GauSH")
+TestGoForceAtom("GauSH",True)
 
 # Kun's tests.
 if (0):
