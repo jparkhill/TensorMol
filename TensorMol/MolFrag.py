@@ -204,7 +204,11 @@ class FragableMol(Mol):
 	def Mol_Frag_Index_to_Mol(self, frags_index, capping=True):
 		convert_to_mol = []
 		for frag_index in frags_index:
+<<<<<<< HEAD
 			convert_to_mol.append(FragableMol())
+=======
+			convert_to_mol.append(Mol())
+>>>>>>> 24a9df971eba60fdd0c2ab6e3f357cd359113fa8
 			convert_to_mol[-1].atoms = self.atoms[frag_index].copy()
 			convert_to_mol[-1].coords =  self.coords[frag_index].copy()
 			if capping:
@@ -1516,28 +1520,28 @@ class Frag_of_Mol(FragableMol):
 		self.undefined_bond_type =  None # whether the dangling bond can be connected  to H or not
 		self.undefined_bonds = None  # capture the undefined bonds of each atom
 
-        def FromXYZString(self,string):
-                lines = string.split("\n")
-                natoms=int(lines[0])
-                self.atoms.resize((natoms))
-                self.coords.resize((natoms,3))
-                for i in range(natoms):
-                        line = lines[i+2].split()
-                        if len(line)==0:
-                                return
-                        self.atoms[i]=AtomicNumber(line[0])
-                        try:
-                                self.coords[i,0]=float(line[1])
-                        except:
-                                self.coords[i,0]=scitodeci(line[1])
-                        try:
-                                self.coords[i,1]=float(line[2])
-                        except:
-                                self.coords[i,1]=scitodeci(line[2])
-                        try:
-                                self.coords[i,2]=float(line[3])
-                        except:
-                                self.coords[i,2]=scitodeci(line[3])
+	def FromXYZString(self,string):
+		lines = string.split("\n")
+		natoms=int(lines[0])
+		self.atoms.resize((natoms))
+		self.coords.resize((natoms,3))
+		for i in range(natoms):
+			line = lines[i+2].split()
+			if len(line)==0:
+			        return
+			self.atoms[i]=AtomicNumber(line[0])
+			try:
+			        self.coords[i,0]=float(line[1])
+			except:
+			        self.coords[i,0]=scitodeci(line[1])
+			try:
+			        self.coords[i,1]=float(line[2])
+			except:
+			        self.coords[i,1]=scitodeci(line[2])
+			try:
+			        self.coords[i,2]=float(line[3])
+			except:
+			    self.coords[i,2]=scitodeci(line[3])
 		import ast
 		self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
 		if "type" in self.undefined_bonds.keys():

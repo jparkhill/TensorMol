@@ -106,7 +106,7 @@ class Instance:
 				most_recent_meta_file=metafiles[0]
 				print("Restoring training from Meta file: ",most_recent_meta_file)
 				self.sess = tf.Session()
-				self.saver = tf.train.import_meta_graph(self.train_dir+most_recent_meta_file)
+				self.saver = tf.train.import_meta_graph(self.train_dir+"/"+most_recent_meta_file)
 				self.saver.restore(sess, tf.train.latest_checkpoint(self.train_dir))
 				# self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
@@ -820,7 +820,7 @@ class Instance_KRR(Instance):
 
 	def train(self,n_step):
 		from sklearn.kernel_ridge import KernelRidge
-		self.krr = KernelRidge(alpha=0.0001, kernel='rbf')
+		self.krr = KernelRidge(alpha=0.001, kernel='rbf')
 		# Here we should use as much data as the kernel method can actually take.
 		# probly on the order of 100k cases.
 		ti,to = self.TData.GetTrainBatch(self.element,  10000)

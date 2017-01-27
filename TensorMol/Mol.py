@@ -1,8 +1,3 @@
-"""
-Mol should get a derived class FragmentableMol(Mol) and all the fragmentation routines should be
-moved there.
-"""
-
 from Util import *
 import numpy as np
 import random, math
@@ -27,6 +22,12 @@ class Mol:
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
 		return
 
+	def AtomTypes(self):
+		return np.unique(self.atoms)
+
+	def NEles(self):
+		return len(self.AtomTypes())
+
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
 
@@ -43,9 +44,9 @@ class Mol:
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Calculate_Atomization(self):
-		self.properties["atomization"] = self.properties["roomT_H"]
+		self.atomization = self.roomT_H
 		for i in range (0, self.atoms.shape[0]):
-			self.properties["atomization"] = self.properties["atomization"] - ele_roomT_H[self.atoms[i]]
+			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
 		return
 
 	def AtomsWithin(self,rad, pt):
@@ -98,7 +99,7 @@ class Mol:
 						# mindist = None
 						# if (self.DistMatrix != None):
 						# 	if((self.GoEnergy(tmp)-e0) < 0.005):
-						# 		#print "LJE: ", self.properties["LJE"]nergy(tmp)
+						# 		#print "LJE: ", self.LJEnergy(tmp)
 						# 		#print self.coords
 						# 		accepted = True
 						# 		self.coords = tmp
@@ -127,9 +128,9 @@ class Mol:
 							self.coords = np.asarray(coords)
 							break
 				if "SCF Done:"  in lines[i]:
-					self.properties["energy"] = float(lines[i].split()[4])
+					self.energy = float(lines[i].split()[4])
 				if "Total nuclear spin-spin coupling J (Hz):" in lines[i]:
-					self.properties["J_coupling"] = np.zeros((self.NAtoms(), self.NAtoms()))
+					self.J_coupling = np.zeros((self.NAtoms(), self.NAtoms()))
 					number_per_line  = len(lines[i+1].split())
 					block_num = 0
 					for j in range (i+1, len(lines)):
@@ -138,14 +139,15 @@ class Mol:
 								J_value = list(lines[j].split()[k])
 								J_value[J_value.index("D")]="E"
                                                         	J_value="".join(J_value)
-								self.properties["J_coupling"][int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
+								self.J_coupling[int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
 						elif "End of" in lines[j]:
 							break
 						else:
 							block_num += 1
 			for i in range (0, self.NAtoms()):
 				for j in range (i+1, self.NAtoms()):
-					self.properties["J_coupling"][i][j] = self.properties["J_coupling"][j][i]
+					self.J_coupling[i][j] = self.J_coupling[j][i]
+
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
@@ -161,8 +163,8 @@ class Mol:
 			self.atoms.resize((natoms))
 			self.coords.resize((natoms,3))
 			try:
-				self.properties["energy"] = float((lines[1].split())[12])
-				self.properties["roomT_H"] = float((lines[1].split())[14])
+				self.energy = float((lines[1].split())[12])
+				self.roomT_H = float((lines[1].split())[14])
 			except:
 				pass
 			for i in range(natoms):
@@ -184,7 +186,7 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		if (self.properties["energy"]!=None and self.properties["roomT_H"]!=None):
+		if (self.energy!=None and self.roomT_H!=None):
 			self.Calculate_Atomization()
 		return
 
@@ -193,7 +195,7 @@ class Mol:
 		natoms=int(lines[0])
 		if (len(lines[1].split())>1):
 			try:
-				self.properties["energy"]=float(lines[1].split()[1])
+				self.energy=float(lines[1].split()[1])
 			except:
 				pass
 		self.atoms.resize((natoms))
@@ -419,7 +421,7 @@ class Mol:
 		newd = MolEmb.Make_DistMat(xmat)
 		newd -= self.DistMatrix
 		newd = newd*newd
-		return PARAMS["GoK"]*np.sum(newd)
+		return self.GoK*np.sum(newd)
 
 	def GoEnergyAfterAtomMove(self,s,ii):
 		''' The GO potential enforces equilibrium bond lengths. '''
@@ -430,13 +432,13 @@ class Mol:
 			The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
-		return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
+		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
 
 	def GoForceLocal(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
-		return PARAMS["GoK"]*MolEmb.Make_GoForceLocal(self.coords,self.DistMatrix,at_)
+		return self.GoK*MolEmb.Make_GoForceLocal(self.coords,self.DistMatrix,at_)
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
@@ -469,7 +471,7 @@ class Mol:
 		return (hess+hess.T-np.diag(np.diag(hess)))
 
 	def GoHessian(self):
-		return PARAMS["GoK"]*MolEmb.Make_GoHess(self.coords,self.DistMatrix)
+		return self.GoK*MolEmb.Make_GoHess(self.coords,self.DistMatrix)
 
 	def ScanNormalModes(self,npts=11,disp=0.2):
 		"These modes are normal"
@@ -489,7 +491,7 @@ class Mol:
 				for d in range(npts):
 					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0+0.37)/npts)*eigv
 					#print disp*(self.NAtoms()*(d-npts/2.0+0.37)/npts)*eigv
-					#print d, self.GoEnergy(tore[nout,d,:,:].flatten())#, PARAMS["GoK"]*MolEmb.Make_GoForce(tore[nout,d,:,:],self.DistMatrix,-1)
+					#print d, self.GoEnergy(tore[nout,d,:,:].flatten())#, self.GoK*MolEmb.Make_GoForce(tore[nout,d,:,:],self.DistMatrix,-1)
 				nout = nout+1
 		return tore
 
@@ -656,7 +658,7 @@ class Mol:
 		return np.array([self.PySCFEnergyAfterAtomMove(s,i) for s in samps])
 
 	def EnergiesOfAtomMoves(self,samps,i):
-		return np.array([self.GoEnergyAfterAtomMove(s,i) for s in samps])
+		return np.array([self.EnergyAfterAtomMove(s,i) for s in samps])
 
 	def POfAtomMoves(self,samps,i):
 		''' Arguments are given relative to the coordinate of i'''
