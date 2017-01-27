@@ -51,10 +51,15 @@ class Instance:
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
 		self.chk_file = ''
-		self.learning_rate = 0.0001
-		self.momentum = 0.9
-		self.max_steps = 100000
-		self.batch_size = 8000
+
+		self.learning_rate = PARAMS["learning_rate"]
+		self.momentum = PARAMS["momentum"]
+		self.max_steps = PARAMS["max_steps"]
+		self.batch_size = PARAMS["batch_size"]
+
+		print("self.learning_rate", self.learning_rate)
+		print("self.batch_size", self.batch_size)
+
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
@@ -87,6 +92,9 @@ class Instance:
 
 	#Seems like train_prepare is used instead of this, is this function deprecated?
 	def Prepare(self, eval_input, Ncase=1250):
+		"""
+		Called if only evaluations are being done, by Evaluate()
+		"""
 		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
@@ -100,12 +108,41 @@ class Instance:
 			if (len(metafiles)>0):
 				most_recent_meta_file=metafiles[0]
 				print("Restoring training from Meta file: ",most_recent_meta_file)
-				self.sess = tf.Session()
-				self.saver = tf.train.import_meta_graph(most_recent_meta_file)
-				self.saver.restore(sess, tf.train.latest_checkpoint(self.train_dir))
-				# self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+				config = tf.ConfigProto(allow_soft_placement=True)
+				self.sess = tf.Session(config=config)
+				self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+				self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
 		self.PreparedFor = Ncase
 		return
+
+	def train_prepare(self,  continue_training =False):
+		""" Builds the graphs by calling inference """
+		with tf.Graph().as_default():
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.output = self.inference(self.embeds_placeholder)
+			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.sess.run(init)
+			try: # I think this may be broken
+				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					print("Restoring training from Metafile: ",most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+			except Exception as Ex:
+				print("Restore Failed 2341325",Ex)
+				pass
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			return
 
 	def Clean(self):
 		if (self.sess != None):
@@ -227,7 +264,7 @@ class Instance:
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
 
-	def inference(self, images, hidden1_units, hidden2_units, hidden3_units):
+	def inference(self, images):
 		"""Build the MNIST model up to where it may be used for inference.
 		Args:
 		images: Images placeholder, from inputs().
@@ -237,6 +274,9 @@ class Instance:
 		softmax_linear: Output tensor with the computed logits.
 		"""
 		# Hidden 1
+		hidden1_units = PARAMS["hidden1"]
+		hidden2_units = PARAMS["hidden2"]
+		hidden3_units = PARAMS["hidden3"]
 		with tf.name_scope('hidden1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
 				biases = tf.Variable(tf.zeros([hidden1_units]),
@@ -316,36 +356,6 @@ class Instance:
 		raise Exception("Cannot Train base...")
 		return
 
-
-	def train_prepare(self,  continue_training =False):
-		"""Train for a number of steps."""
-		with tf.Graph().as_default():
-			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
-			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.sess.run(init)
-			try: # I think this may be broken
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
-				if (len(metafiles)>0):
-					most_recent_meta_file=metafiles[0]
-					print("Restoring training from Metafile: ",most_recent_meta_file)
-					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
-					config = tf.ConfigProto(allow_soft_placement=True)
-					self.sess = tf.Session(config=config)
-					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
-					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
-			except Exception as Ex:
-				print("Restore Failed 2341325",Ex)
-				pass
-			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			return
-
 	def test(self,step):
 		raise Exception("Base Test")
 		return
@@ -412,7 +422,7 @@ class Instance_fc_classify(Instance):
 		eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
-			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.output = self.inference(self.embeds_placeholder)
 			self.correct = self.evaluation(self.output, self.labels_placeholder)
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -572,8 +582,7 @@ class Instance_fc_sqdiff(Instance):
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
-		diff  = tf.slice(tf.sub(output, labels),[0,self.outshape[0]-3],[-1,-1])
-		# this only compares direct displacement predictions.
+		diff  = tf.sub(output, labels)
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
@@ -814,7 +823,7 @@ class Instance_KRR(Instance):
 
 	def train(self,n_step):
 		from sklearn.kernel_ridge import KernelRidge
-		self.krr = KernelRidge(alpha=0.0001, kernel='rbf')
+		self.krr = KernelRidge(alpha=0.001, kernel='rbf')
 		# Here we should use as much data as the kernel method can actually take.
 		# probly on the order of 100k cases.
 		ti,to = self.TData.GetTrainBatch(self.element,  10000)

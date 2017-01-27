@@ -47,7 +47,7 @@ def TestAlign():
 	b.AlignAtoms(a)
 	return
 
-def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
+def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True):
 	"""
 	A Network trained on Go-Force
 	"""
@@ -72,8 +72,9 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 		tset2 = TensorData(c,d)
 		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
-	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
-	manager=TFManage("",tset,True, net_) # True indicates train all atoms
+	if (Train_):
+		tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
+		manager=TFManage("",tset,True, net_) # True indicates train all atoms
 	# This Tests the optimizer.
 	if (net_ == "KRR_sqdiff"):
 			a=MSet("OptMols")
@@ -97,7 +98,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 
 # Tests to run.
 #TestBP("GauInv")
-TestGoForceAtom("GauSH", True, "KRR_sqdiff")
+TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False, net_ = "fc_sqdiff", Train_=False)
 
 # Kun's tests.
 if (0):

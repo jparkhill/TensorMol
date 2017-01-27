@@ -1,7 +1,7 @@
 from TensorMol import *
 
 #jeherr tests
-if (1):
+if (0):
 	# Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
 	if (0):
 		a=MSet('cspbbr3_tess')
@@ -100,3 +100,68 @@ if (1):
 		# manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
 		# optimizer  = Optimizer(manager)
 		# optimizer.Opt(test_mol)
+
+def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
+	"""
+	A Network trained on Go-Force
+	"""
+	if (BuildTrain_):
+		print "Testing a Network learning Go-Atom Force..."
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		print "nmols:",len(a.mols)
+		c=a.DistortedClone(300,0.25) # number of distortions, displacement
+		b=a.DistortAlongNormals(30, True, 0.7)
+		c.Statistics()
+		b.Statistics()
+		print len(b.mols)
+		b.Save()
+		b.WriteXYZ()
+		b=MSet("OptMols_NEQ")
+		b.Load()
+		TreatedAtoms = b.AtomTypes()
+		# 2 - Choose Digester
+		d = Digester(TreatedAtoms, name_=dig_,OType_ ="Force")
+		# 4 - Generate training set samples.
+		tset = TensorData(b,d)
+		tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
+		tset2 = TensorData(c,d)
+		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
+	#Train
+	tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
+	manager=TFManage("",tset,True,net_) # True indicates train all atoms
+	# This Tests the optimizer.
+	if (net_ == "KRR_sqdiff"):
+			a=MSet("OptMols")
+			a.ReadXYZ("OptMols")
+			test_mol = a.mols[11]
+			print "Orig Coords", test_mol.coords
+			test_mol.Distort()
+			optimizer = Optimizer(manager)
+			optimizer.Opt(test_mol)
+	a=MSet("OptMols")
+	a.ReadXYZ("OptMols")
+	test_mol = a.mols[11]
+	print "Orig Coords", test_mol.coords
+	test_mol.Distort()
+	print test_mol.coords
+	print test_mol.atoms
+	manager=TFManage("OptMols_NEQ_"+dig_+"_fc_sqdiff",None,False)
+	optimizer  = Optimizer(manager)
+	optimizer.Opt(test_mol)
+	return
+
+# TestGoForceAtom("GauSH", True, "KRR_sqdiff")
+
+# a=MSet('toluene_tmp')
+# a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', has_force=True)
+# a.Save()
+# a.WriteXYZ()
+# #a.Load()
+# print "nmols:",len(a.mols)
+# TreatedAtoms = a.AtomTypes()
+# d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+# tset = TensorData(a,d)
+# tset.BuildTrainMolwise("toluene_NEQ",TreatedAtoms)
+tset = TensorData(None,None,"toluene_NEQ_"+"GauSH",None,2000)
+manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms

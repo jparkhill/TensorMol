@@ -139,8 +139,16 @@ class Digester:
 				Outs = mol_.FitGoProb(at_)
 			elif (self.OType=="Disp"):
 				Outs = mol_.GoDisp(at_)
-			elif (self.OType=="Force"):
+			elif (self.OType=="GoForce"):
 				Outs = mol_.GoForce(at_)
+			elif (self.OType=="Force"):
+				if ( "forces" in mol_.properties):
+					if (at_<0):
+						Outs = mol_.properties['forces']
+					else:
+						Outs = mol_.properties['forces'][at_].reshape((1,3))
+				else:
+					raise Exception("Mol Is missing force. ")
 			elif (self.OType=="StoP"):
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):
@@ -157,10 +165,10 @@ class Digester:
 				E0=np.min(ens_)
 				Es=ens_-E0
 				Outs = Es
-			elif (self.OType=="Force"):
-				ens_ = mol_.ForcesAfterAtomMove(xyz_,at_)
-				if (ens_==None):
-					raise Exception("Empty energies...")
+			# elif (self.OType=="Force"):
+			# 	ens_ = mol_.ForcesAfterAtomMove(xyz_,at_)
+			# 	if (ens_==None):
+			# 		raise Exception("Empty energies...")
 			elif (self.OType=="GoForce_old_version"): # python version is fine for here
 				ens_ = mol_.SoftCutGoForceOneAtom(at_)
 				Outs = ens_

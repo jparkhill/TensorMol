@@ -163,7 +163,7 @@ class MolDigester:
 			self.eshape=Ins.shape[1:] # The first dimension is atoms. eshape is per-atom.
 		if (MakeOutputs):
 			if (self.OType == "Energy"):
-				Outs = np.array([mol_.energy])
+				Outs = np.array([mol_.properties["energy"]])
 			elif (self.OType == "FragEnergy"):
 				Outs = np.array([mol_.frag_mbe_energy])
 			elif (self.OType == "GoEnergy"):
