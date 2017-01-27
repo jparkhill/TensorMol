@@ -774,8 +774,8 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		if (self.properties["energy"]!=None and self.properties["roomT_H"]!=None):
-			self.Calculate_Atomization()
+		# if (self.properties["energy"]!=None and self.properties["roomT_H"]!=None):
+		# 	self.Calculate_Atomization()
 		return
 
 	def FromXYZString(self,string):
@@ -1097,7 +1097,7 @@ class Mol:
 				e1 = self.properties["LJE"] = LJEnergy(tmp)
 				tmp = self.coords
 				tmp[i,ip] -= disp
-				e2 = self.properties["LJE"]nergy(tmp)
+				e2 = self.properties["LJE"] = LJEnergy(tmp)
 				frc[i,ip] = (e1-e2)/(2.0*disp)
 		return frc
 
@@ -1112,19 +1112,19 @@ class Mol:
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] += disp
 				tmp[i*3+ip] += disp
-				f1 = self.properties["LJE"]nergy(tmp)
+				f1 = self.properties["LJE"] = LJEnergy(tmp)
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] += disp
 				tmp[i*3+ip] -= disp
-				f2 = self.properties["LJE"]nergy(tmp)
+				f2 = self.properties["LJE"] = LJEnergy(tmp)
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] -= disp
 				tmp[i*3+ip] += disp
-				f3 = self.properties["LJE"]nergy(tmp)
+				f3 = self.properties["LJE"] = LJEnergy(tmp)
 				tmp = self.coords.flatten()
 				tmp[i*3+ip] -= disp
 				tmp[i*3+ip] -= disp
-				f4 = self.properties["LJE"]nergy(tmp)
+				f4 = self.properties["LJE"] = LJEnergy(tmp)
 				hessd[i, ip] = (f1-f2-f3+f4)/(4.0*disp*disp)
 		return hessd
 
@@ -1142,19 +1142,19 @@ class Mol:
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] += disp
 							tmp[j*3+jp] += disp
-							f1 = self.properties["LJE"]nergy(tmp)
+							f1 = self.properties["LJE"] = LJEnergy(tmp)
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] += disp
 							tmp[j*3+jp] -= disp
-							f2 = self.properties["LJE"]nergy(tmp)
+							f2 = self.properties["LJE"] = LJEnergy(tmp)
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] -= disp
 							tmp[j*3+jp] += disp
-							f3 = self.properties["LJE"]nergy(tmp)
+							f3 = self.properties["LJE"] = LJEnergy(tmp)
 							tmp = self.coords.flatten()
 							tmp[i*3+ip] -= disp
 							tmp[j*3+jp] -= disp
-							f4 = self.properties["LJE"]nergy(tmp)
+							f4 = self.properties["LJE"] = LJEnergy(tmp)
 							hess[i*3+ip,j*3+jp] = (f1-f2-f3+f4)/(4.0*disp*disp)
 		return (hess+hess.T-np.diag(np.diag(hess)))
 
@@ -1374,9 +1374,9 @@ class Mol:
 		if (len(samps)>40):
 			print "sampling ",len(samps)," points about atom ",i,"..."
 		return np.array([self.PySCFEnergyAfterAtomMove(s,i) for s in samps])
-
-	def EnergiesOfAtomMoves(self,samps,i):
-		return np.array([self.properties["energy"]AfterAtomMove(s,i) for s in samps])
+	#Still broken from Mol mess
+	# def EnergiesOfAtomMoves(self,samps,i):
+	# 	return np.array([self.properties["energy"] = EnergyAfterAtomMove(s,i) for s in samps])
 
 	def POfAtomMoves(self,samps,i):
 		''' Arguments are given relative to the coordinate of i'''
@@ -1390,6 +1390,21 @@ class Mol:
 		Ps=np.nan_to_num(Ps)
 		Z = np.sum(Ps)
 		return Ps/Z
+
+	def Force_from_xyz(self, path):
+		try:
+			f = open(path, 'r')
+			lines = f.readlines()
+			natoms = int(lines[0])
+			forces=np.zeros((natoms,3))
+			read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
+			for j in range(natoms):
+				for k in range(3):
+					forces[j,k] = float(read_forces[j*3+k])
+			self.properties['forces'] = forces
+		except Exception as Ex:
+			print "Read Failed.", Ex
+
 
 ## ----------------------------------------------
 ## MBE routines:
