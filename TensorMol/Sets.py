@@ -153,11 +153,9 @@ class MSet:
 		paris = []
 		for i in range (0, self.mols[0].NAtoms()):
 			for j in range (i+1, self.mols[0].NAtoms()):
-				Bonds_Between.append(self.mols[0].Bonds_Between[i][j])
-				H_Bonds_Between.append(self.mols[0].H_Bonds_Between[i][j])
+				Bonds_Between.append(self.mols[0].properties["Bonds_Between"][i][j])
+				H_Bonds_Between.append(self.mols[0].properties["H_Bonds_Between"][i][j])
 				paris.append([self.mols[0].atoms[i], self.mols[0].atoms[j]])
-
-
 		for mol in self.mols:
 			index = 0
                         for i in range (0, mol.NAtoms()):
@@ -221,8 +219,8 @@ class MSet:
 		rmsd = np.zeros(len(ord))
 		n=0
 		for j in ord:
-			if (self.mols[j].energy != None):
-				ens[n] = self.mols[j].energy
+			if (self.mols[j].properties["energy"] != None):
+				ens[n] = self.mols[j].properties["energy"]
 			else :
 				ens[n] = self.mols[j].GoEnergy(self.mols[j].coords.flatten())
 				tmp = MolEmb.Make_DistMat(self.mols[j].coords) - self.mols[j].DistMatrix
@@ -245,8 +243,8 @@ class MSet:
 
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
 		for mol in self.mols:
-                	mol.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
-                return
+			mol.Generate_All_MBE_term(atom_group, cutoff, center_atom, max_case)
+		return
 
 	def Generate_All_MBE_term_General(self, frag_list=[], cutoff=10, center_atom=0):
 		for mol in self.mols:

@@ -22,8 +22,8 @@ using namespace std;
 using namespace std;
 #define PI 3.14159265358979
 
-#define SH_NRAD 10
-#define SH_LMAX 6
+#define SH_NRAD 11
+#define SH_LMAX 7
 // r0, sigma
 // if you want to sense beyond 15A, you need to fix this grid.
 const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {1.3, 1.3}, {2.2,
