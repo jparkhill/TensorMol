@@ -421,7 +421,7 @@ class Mol:
 		newd = MolEmb.Make_DistMat(xmat)
 		newd -= self.DistMatrix
 		newd = newd*newd
-		return self.GoK*np.sum(newd)
+		return PARAMS["GoK"]*np.sum(newd)
 
 	def GoEnergyAfterAtomMove(self,s,ii):
 		''' The GO potential enforces equilibrium bond lengths. '''
@@ -432,13 +432,13 @@ class Mol:
 			The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
-		return self.GoK*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
+		return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
 
 	def GoForceLocal(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			A MUCH FASTER VERSION OF THIS ROUTINE IS NOW AVAILABLE, see MolEmb::Make_Go
 		'''
-		return self.GoK*MolEmb.Make_GoForceLocal(self.coords,self.DistMatrix,at_)
+		return PARAMS["GoK"]*MolEmb.Make_GoForceLocal(self.coords,self.DistMatrix,at_)
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
@@ -471,7 +471,7 @@ class Mol:
 		return (hess+hess.T-np.diag(np.diag(hess)))
 
 	def GoHessian(self):
-		return self.GoK*MolEmb.Make_GoHess(self.coords,self.DistMatrix)
+		return PARAMS["GoK"]*MolEmb.Make_GoHess(self.coords,self.DistMatrix)
 
 	def ScanNormalModes(self,npts=11,disp=0.2):
 		"These modes are normal"
@@ -491,7 +491,7 @@ class Mol:
 				for d in range(npts):
 					tore[nout,d,:,:] = self.coords+disp*(self.NAtoms()*(d-npts/2.0+0.37)/npts)*eigv
 					#print disp*(self.NAtoms()*(d-npts/2.0+0.37)/npts)*eigv
-					#print d, self.GoEnergy(tore[nout,d,:,:].flatten())#, self.GoK*MolEmb.Make_GoForce(tore[nout,d,:,:],self.DistMatrix,-1)
+					#print d, self.GoEnergy(tore[nout,d,:,:].flatten())#, PARAMS["GoK"]*MolEmb.Make_GoForce(tore[nout,d,:,:],self.DistMatrix,-1)
 				nout = nout+1
 		return tore
 
