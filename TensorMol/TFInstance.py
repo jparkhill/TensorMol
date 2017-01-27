@@ -106,7 +106,7 @@ class Instance:
 				most_recent_meta_file=metafiles[0]
 				print("Restoring training from Meta file: ",most_recent_meta_file)
 				self.sess = tf.Session()
-				self.saver = tf.train.import_meta_graph(most_recent_meta_file)
+				self.saver = tf.train.import_meta_graph(self.train_dir+most_recent_meta_file)
 				self.saver.restore(sess, tf.train.latest_checkpoint(self.train_dir))
 				# self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
