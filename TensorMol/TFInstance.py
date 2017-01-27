@@ -820,7 +820,7 @@ class Instance_KRR(Instance):
 
 	def train(self,n_step):
 		from sklearn.kernel_ridge import KernelRidge
-		self.krr = KernelRidge(alpha=0.0001, kernel='rbf')
+		self.krr = KernelRidge(alpha=0.001, kernel='rbf')
 		# Here we should use as much data as the kernel method can actually take.
 		# probly on the order of 100k cases.
 		ti,to = self.TData.GetTrainBatch(self.element,  10000)

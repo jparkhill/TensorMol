@@ -153,7 +153,15 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff"):
 
 # TestGoForceAtom("GauSH", True, "KRR_sqdiff")
 
-a=MSet('toluene')
-a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', has_force=True)
-tmp_mol = a.mols[0]
-print tmp_mol.properties
+#a=MSet('toluene_tmp')
+#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', has_force=True)
+#a.Save()
+#a.WriteXYZ()
+##a.Load()
+#print "nmols:",len(a.mols)
+#TreatedAtoms = a.AtomTypes()
+#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+#tset = TensorData(a,d)
+#tset.BuildTrainMolwise("toluene_NEQ",TreatedAtoms)
+tset = TensorData(None,None,"toluene_NEQ_"+"GauSH",None,2000)
+manager=TFManage("",tset,True,"KRR_sqdiff") # True indicates train all atoms
