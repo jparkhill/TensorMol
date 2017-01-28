@@ -17,7 +17,7 @@ class MSet:
 		self.suffix=".pdb" #Pickle Database? Poor choice.
 
 	def Save(self):
-		LOGGING.info("Saving set to: ", self.path+self.name+self.suffix)
+		LOGGER.info("Saving set to: ", self.path+self.name+self.suffix)
 		#print "Saving set to: ", self.path+self.name+self.suffix
 		f=open(self.path+self.name+self.suffix,"wb")
 		pickle.dump(self.__dict__, f, protocol=1)
@@ -29,10 +29,7 @@ class MSet:
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()
-		#LOGGING.info("Saving set to: ", self.path+self.name+self.suffix)
-		print "Loaded, ", len(self.mols), " molecules "
-		print self.NAtoms(), " Atoms total"
-		print self.AtomTypes(), " Types "
+		LOGGER.info("Loaded, "+str(len(self.mols))+" molecules "+str(self.NAtoms())+" Atoms total "+str(self.AtomTypes())+" Types ")
 		return
 
 	def DistortAlongNormals(self, npts=8, random=True, disp=.2):
@@ -125,6 +122,7 @@ class MSet:
 				else:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+		LOGGER.info("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 
 	def Read_Jcoupling(self, path):
@@ -171,7 +169,7 @@ class MSet:
 			print  '{:10}{:12}'.format("mean:", np.mean(J)), '{:10}{:12}'.format("ratio:", np.std(J)/np.mean(J)), paris[i], Bonds_Between[i]-H_Bonds_Between[i]
 
 	def WriteXYZ(self,filename=None):
-		LOGGING.info('Wrote '+filename)
+		LOGGER.info('Wrote '+filename)
 		if filename == None:
 			filename = self.name
 		for mol in self.mols:

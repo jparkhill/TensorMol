@@ -70,7 +70,7 @@ except:
 
 try:
 	import tensorflow as tf
-	tf.logging.set_verbosity(tf.logging.DEBUG)
+	tf.LOGGER.set_verbosity(tf.LOGGER.DEBUG)
 	HAS_TF = True
 	print("Tensorflow version "+tf.__version__+" has been found")
 except:

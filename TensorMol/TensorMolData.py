@@ -283,7 +283,7 @@ class TensorMolData_BP(TensorMolData):
 	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
 		self.CheckShapes()
 		self.name=name_
-		print "self.type:", self.type
+		LOGGER.info("TensorMolData, self.type:"+self.type)
 		if self.type=="frag":
 			raise Exception("No BP frags now")
 		nmols  = len(self.set.mols)
