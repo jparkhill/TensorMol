@@ -5,7 +5,7 @@ Many of these tests take a pretty significant amount of time and memory to compl
 from TensorMol import *
 
 # John's tests
-def TestBP(set_= "gdb9", dig_ = "Coulomb"):
+def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 	"""
 	General Behler Parinello using ab-initio energies.
 	Args:
@@ -13,13 +13,14 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb"):
 		dig_: the digester string
 	"""
 	print "Testing General Behler-Parrinello using ab-initio energies...."
-	a=MSet(set_)
-	a.ReadXYZ(set_)
-	TreatedAtoms = a.AtomTypes()
-	print "TreatedAtoms ", TreatedAtoms
-	d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="Energy")
-	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
-	tset.BuildTrain(set_)
+	if (BuildTrain_):
+		a=MSet(set_)
+		a.ReadXYZ(set_)
+		TreatedAtoms = a.AtomTypes()
+		print "TreatedAtoms ", TreatedAtoms
+		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="Energy")
+		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain(set_)
 	tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 	manager.Train(maxstep=500)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
@@ -88,7 +89,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 	return
 
 # Tests to run.
-TestBP(set_="gdb9", dig_="GauInv")
+TestBP(set_="gdb9", dig_="GauInv", BuildTrain_=True)
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False, net_ = "fc_sqdiff", Train_=False)
 
 # Kun's tests.

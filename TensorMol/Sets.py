@@ -17,7 +17,8 @@ class MSet:
 		self.suffix=".pdb" #Pickle Database? Poor choice.
 
 	def Save(self):
-		print "Saving set to: ", self.path+self.name+self.suffix
+		LOGGING.info("Saving set to: ", self.path+self.name+self.suffix)
+		#print "Saving set to: ", self.path+self.name+self.suffix
 		f=open(self.path+self.name+self.suffix,"wb")
 		pickle.dump(self.__dict__, f, protocol=1)
 		f.close()
@@ -28,6 +29,7 @@ class MSet:
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()
+		#LOGGING.info("Saving set to: ", self.path+self.name+self.suffix)
 		print "Loaded, ", len(self.mols), " molecules "
 		print self.NAtoms(), " Atoms total"
 		print self.AtomTypes(), " Types "
@@ -169,6 +171,7 @@ class MSet:
 			print  '{:10}{:12}'.format("mean:", np.mean(J)), '{:10}{:12}'.format("ratio:", np.std(J)/np.mean(J)), paris[i], Bonds_Between[i]-H_Bonds_Between[i]
 
 	def WriteXYZ(self,filename=None):
+		LOGGING.info('Wrote '+filename)
 		if filename == None:
 			filename = self.name
 		for mol in self.mols:

@@ -134,7 +134,7 @@ class Optimizer:
 			old_veloc = self.momentum_decay*c_veloc
 			err = m.rms(prev_m)
 			mol_hist.append(prev_m)
-			prev_m.WriteXYZfile("./results/", "OptLog")
+			prev_m.WriteXYZfile(PARAMS["results_dir"], "OptLog")
 			step+=1
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
