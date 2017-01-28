@@ -159,6 +159,11 @@ class Digester:
 				rnds = np.random.rand(len(xyz_))
 				Outs = np.array([1 if rnds[i]<Boltz[i] else 0 for i in range(len(ens_))])
 			elif (self.OType=="Energy"):
+				if ("energy" in mol_.properties):
+					ens_ = mol_.properties["energy"]
+				else:
+					raise Exception("Empty energies...")
+			elif (self.OType=="CalcEnergy"):
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):
 					raise Exception("Empty energies...")

@@ -44,7 +44,7 @@ class Mol:
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Calculate_Atomization(self):
-		self.atomization = self.roomT_H
+		self.atomization = self.properties["roomT_H"]
 		for i in range (0, self.atoms.shape[0]):
 			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
 		return
@@ -128,7 +128,7 @@ class Mol:
 							self.coords = np.asarray(coords)
 							break
 				if "SCF Done:"  in lines[i]:
-					self.energy = float(lines[i].split()[4])
+					self.properties["energy"]= float(lines[i].split()[4])
 				if "Total nuclear spin-spin coupling J (Hz):" in lines[i]:
 					self.J_coupling = np.zeros((self.NAtoms(), self.NAtoms()))
 					number_per_line  = len(lines[i+1].split())
@@ -163,8 +163,8 @@ class Mol:
 			self.atoms.resize((natoms))
 			self.coords.resize((natoms,3))
 			try:
-				self.energy = float((lines[1].split())[12])
-				self.roomT_H = float((lines[1].split())[14])
+				self.properties["energy"] = float((lines[1].split())[12])
+				self.properties["roomT_H"] = float((lines[1].split())[14])
 			except:
 				pass
 			for i in range(natoms):
@@ -186,7 +186,7 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		if (self.energy!=None and self.roomT_H!=None):
+		if (("energy" in self.properties) and ("roomT_H" in self.properties)):
 			self.Calculate_Atomization()
 		return
 
@@ -195,7 +195,7 @@ class Mol:
 		natoms=int(lines[0])
 		if (len(lines[1].split())>1):
 			try:
-				self.energy=float(lines[1].split()[1])
+				self.properties["energy"]=float(lines[1].split()[1])
 			except:
 				pass
 		self.atoms.resize((natoms))
@@ -228,7 +228,10 @@ class Mol:
 					raise
 		with open(fpath+"/"+fname+".xyz", mode) as f:
 			natom = self.atoms.shape[0]
-			f.write(str(natom)+"\nComment:\n")
+			if ("energy" in self.properties.keys()):
+				f.write(str(natom)+"\nComment: "+str(self.properties["energy"])+"\n")
+			else:
+				f.write(str(natom)+"\nComment:\n")
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
@@ -409,7 +412,6 @@ class Mol:
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):
-		import MolEmb
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 
 	def GoEnergy(self,x):
@@ -658,7 +660,7 @@ class Mol:
 		return np.array([self.PySCFEnergyAfterAtomMove(s,i) for s in samps])
 
 	def EnergiesOfAtomMoves(self,samps,i):
-		return np.array([self.EnergyAfterAtomMove(s,i) for s in samps])
+		return np.array([self.energyAfterAtomMove(s,i) for s in samps])
 
 	def POfAtomMoves(self,samps,i):
 		''' Arguments are given relative to the coordinate of i'''

@@ -8,7 +8,7 @@
 - By using this software you agree to the terms in COPYING
 ### Acknowledgements: 
  - Google Inc. (for TensorFlow),
- - Vol Lillenfeld Group (for GBD9),
+ - Vol Lillenfeld Group (for GBD9)
  - Chan Group (for PySCF)
 -------------------------------------------
 ## INSTALLATION:
@@ -17,7 +17,7 @@
 -------------------------------------------
 ## USAGE:
  - Refer to commented examples in test.py
- - """python test.py"""
+ - "python test.py"
 -------------------------------------------
 ## REQUIREMENTS:
  - Minimum Pre-Requisites: Python2.7x, TensorFlow
@@ -27,9 +27,9 @@
  - To Evaluate: Normal CPU and 10GB Mem
 ### FOR VOLUME RENDERING:
  - Req: CUDA 7.5+ or Mathematica
- - """ cd volumeRender; make """
- - or Open /densities/*.nb
+ - " cd volumeRender; make "
+ - or open /densities/*.nb
 -------------------------------------------
 ## COMMON ISSUES
-- "nan" during training due to bad checkpoints in /networks (clean.sh)
+- nan during training due to bad checkpoints in /networks (clean.sh)
 - Also crashes when reviving networks from disk. 
