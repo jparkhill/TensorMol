@@ -12,7 +12,6 @@ from scipy.weave import inline
 #from collections import Counter
 from TensorMol.TMParams import *
 
-
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 #
 # GLOBALS
@@ -23,6 +22,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #  TODO: Migrate these to PARAMS
 PARAMS = TMParams()
 LOGGER = TMLogger(PARAMS["results_dir"])
+LOGGER.info(PARAMS)
 MAX_ATOMIC_NUMBER = 10
 MBE_ORDER = 2
 # Derived Quantities and useful things.
@@ -48,43 +48,42 @@ Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES
 #
 
 TMBanner()
-print("Searching for Installed Optional Packages...")
+LOGGER.info("Searching for Installed Optional Packages...")
 try:
 	from pyscf import scf
 	from pyscf import gto
 	from pyscf import dft
 	from pyscf import mp
 	HAS_PYSCF = True
-	print("Pyscf has been found")
+	LOGGER.debug("Pyscf has been found")
 except Exception as Ex:
-	print("Pyscf is not installed -- no ab-initio sampling",Ex)
+	LOGGER.info("Pyscf is not installed -- no ab-initio sampling",Ex)
 	pass
 
 try:
 	import MolEmb
 	HAS_EMB = True
-	print("MolEmb has been found")
+	LOGGER.debug("MolEmb has been found")
 except:
 	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install")
 	pass
 
 try:
 	import tensorflow as tf
-	tf.LOGGER.set_verbosity(tf.LOGGER.DEBUG)
+	LOGGER.debug("Tensorflow version "+tf.__version__+" has been found")
 	HAS_TF = True
-	print("Tensorflow version "+tf.__version__+" has been found")
 except:
-	print("Tensorflow not Installed, very limited functionality")
+	LOGGER.info("Tensorflow not Installed, very limited functionality")
 	pass
 
 try:
 	import multiprocessing
 	N_CORES=multiprocessing.cpu_count()
-	print("Found "+str(N_CORES)+" CPUs to thread over... ")
+	LOGGER.debug("Found "+str(N_CORES)+" CPUs to thread over... ")
 except:
-	print("Only a single CPU, :( did you lose a war?")
+	LOGGER.info("Only a single CPU, :( did you lose a war?")
 	pass
-print("TensorMol ready...")
+LOGGER.debug("TensorMol ready...")
 
 TOTAL_SENSORY_BASIS=None
 SENSORY_BASIS=None

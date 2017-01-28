@@ -122,7 +122,7 @@ class MSet:
 				else:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
-		LOGGER.info("Read "+str(len(self.mols))+" molecules from XYZ")
+		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 
 	def Read_Jcoupling(self, path):

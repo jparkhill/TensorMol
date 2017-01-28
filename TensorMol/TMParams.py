@@ -33,6 +33,12 @@ class TMParams(dict):
         self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
         # This just sets defaults.
 
+    def __str__():
+        tore=""
+        for k in self.keys():
+            tore = tore +k+":"+str(self[k])
+        return tore
+
 def TMBanner():
 	print("--------------------------\n")
 	print("         /\\______________")
