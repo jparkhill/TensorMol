@@ -30,9 +30,9 @@
  - To Train Realistically: 1TB Disk, GTX1070++
  - To Evaluate: Normal CPU and 10GB Mem
 ### FOR VOLUME RENDERING:
- - Req: CUDA 7.5+ or Mathematica
- - " cd volumeRender; make "
- - or open /densities/*.nb
+- Req: CUDA 7.5+ or Mathematica
+- " cd volumeRender; make "
+- Or open /densities/PlotDens.nb
 -------------------------------------------
 ## COMMON ISSUES
 - nan during training due to bad checkpoints in /networks (clean.sh)
