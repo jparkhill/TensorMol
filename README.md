@@ -1,19 +1,23 @@
 -------------------------------------------
 # TensorMol 0.0
 ##A Statistical Model of Molecular Structure
+
 ### Authors:
 	Kun Yao (kyao@nd.edu), John Herr
 	John Parkhill (john.parkhill@gmail.com)
+
 ### License: GPLv3
 - By using this software you agree to the terms in COPYING
+
 ### Acknowledgements: 
  - Google Inc. (for TensorFlow),
  - Vol Lillenfeld Group (for GBD9)
  - Chan Group (for PySCF)
+
 -------------------------------------------
 ## INSTALLATION:
-  """ cd C_API/
-  sudo python setup.py install """
+  " 	cd C_API/
+	sudo python setup.py install "
 -------------------------------------------
 ## USAGE:
  - Refer to commented examples in test.py
@@ -26,9 +30,9 @@
  - To Train Realistically: 1TB Disk, GTX1070++
  - To Evaluate: Normal CPU and 10GB Mem
 ### FOR VOLUME RENDERING:
- - Req: CUDA 7.5+ or Mathematica
- - " cd volumeRender; make "
- - or open /densities/*.nb
+- Req: CUDA 7.5+ or Mathematica
+- " cd volumeRender; make "
+- Or open /densities/PlotDens.nb
 -------------------------------------------
 ## COMMON ISSUES
 - nan during training due to bad checkpoints in /networks (clean.sh)

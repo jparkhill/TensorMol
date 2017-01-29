@@ -338,7 +338,7 @@ class Mol:
 	def WriteInterpolation(self,b,n=0):
 		for i in range(10): # Check the interpolation.
 			m=Mol(self.atoms,self.coords*((9.-i)/9.)+b.coords*((i)/9.))
-			m.WriteXYZfile("./results/", "Interp"+str(n))
+			m.WriteXYZfile(PARAMS["results_dir"], "Interp"+str(n))
 
 	def AlignAtoms(self, m):
 		""" So looking at some interpolations I figured out why this wasn't working The problem was the outside can get permuted and then it can't be fixed by pairwise permutations because it takes all-atom moves to drag the system through itself Ie: local minima

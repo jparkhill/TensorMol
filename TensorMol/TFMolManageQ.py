@@ -2,6 +2,7 @@
 An asynchronous re-write of TFMolManage.
 The manager will now direct the training set to generate batches
 and manage a random queue to accept those batches.
+ THIS WHOLE THING IS BASICALLY NOT WORKING AND UNAPPROACHED
 """
 from TFManage import *
 from TensorMolData import *
