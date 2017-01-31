@@ -22,7 +22,9 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #  TODO: Migrate these to PARAMS
 PARAMS = TMParams()
 LOGGER = TMLogger(PARAMS["results_dir"])
-LOGGER.info(PARAMS)
+LOGGER.debug("TMPARAMS---")
+LOGGER.debug(PARAMS)
+LOGGER.debug("~~~TMPARAMS")
 MAX_ATOMIC_NUMBER = 10
 MBE_ORDER = 2
 # Derived Quantities and useful things.
@@ -57,7 +59,7 @@ try:
 	HAS_PYSCF = True
 	LOGGER.debug("Pyscf has been found")
 except Exception as Ex:
-	LOGGER.info("Pyscf is not installed -- no ab-initio sampling",Ex)
+	LOGGER.info("Pyscf is not installed -- no ab-initio sampling")
 	pass
 
 try:

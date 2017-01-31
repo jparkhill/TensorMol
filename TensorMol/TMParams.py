@@ -11,6 +11,8 @@ class TMParams(dict):
         myparam = kwargs.pop('myparam', '')
         dict.__init__(self, *args, **kwargs )
 
+        self["check_level"] = 1 # whether to test the consistency of several things...
+
         # SET GENERATION parameters
         self["MAX_ATOMIC_NUMBER"] = 10
         self["MBE_ORDER"] = 2
@@ -33,10 +35,10 @@ class TMParams(dict):
         self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
         # This just sets defaults.
 
-    def __str__():
+    def __str__(self):
         tore=""
         for k in self.keys():
-            tore = tore +k+":"+str(self[k])
+            tore = tore+k+":"+str(self[k])+"\n"
         return tore
 
 def TMBanner():
