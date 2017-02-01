@@ -5,34 +5,26 @@ Many of these tests take a pretty significant amount of time and memory to compl
 from TensorMol import *
 
 # John's tests
-def TestBP(dig_ = "Coulomb"):
+def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 	"""
 	General Behler Parinello using ab-initio energies.
 	Args:
+		set_: A dataset ("gdb9 or alcohol are available")
 		dig_: the digester string
-		must have datasets/alchohol.xyz
 	"""
 	print "Testing General Behler-Parrinello using ab-initio energies...."
-	a=MSet("alcohol")
-	a.ReadXYZ("alcohol")
-	TreatedAtoms = a.AtomTypes()
-	print "TreatedAtoms ", TreatedAtoms
-	d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="Energy")
-	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
-	tset.BuildTrain("alcohol")
-	tset = TensorMolData_BP(MSet(),MolDigester([]),"alcohol_"+dig_+"_BP")
+	if (BuildTrain_):
+		a=MSet(set_)
+		a.ReadXYZ(set_)
+		TreatedAtoms = a.AtomTypes()
+		print "TreatedAtoms ", TreatedAtoms
+		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="Energy")
+		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain(set_)
+	tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 	manager.Train(maxstep=500)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
-	# Now check that the network can be revived and even used for optimizations...
-	optmanager=TFMolManage("Mol_alcohol_"+dig_+"_BP_fc_sqdiff_BP_3",tset,False,"fc_sqdiff_BP")
-	m = a.mols[0] # Try to optimize the first water.
-	test_mol = a.mols[0]
-	print "Orig Coords", test_mol.coords
-	test_mol.Distort()
-	print test_mol.coords
-	print test_mol.atoms
-	optimizer  = Optimizer(manager)
-	optimizer.Opt(test_mol)
+	# We should try to get optimizations working too...
 	return
 
 def TestAlign():
@@ -97,8 +89,8 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 	return
 
 # Tests to run.
-#TestBP("GauInv")
-TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False, net_ = "fc_sqdiff", Train_=False)
+TestBP(set_="gdb9", dig_="GauInv", BuildTrain_=False)
+#TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False, net_ = "fc_sqdiff", Train_=False)
 
 # Kun's tests.
 if (0):
