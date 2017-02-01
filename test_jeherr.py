@@ -167,40 +167,40 @@ if (0):
 	tset = TensorData(None,None,"toluene_tmp_"+"GauSH",None,2000)
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 
-if (1):
-	a=MSet('OptMols')
-	a.ReadXYZ("OptMols")
-	test_mol=a.mols[0]
-	b=MSet("test_mol")
-	b.mols.append(test_mol)
-	TreatedAtoms = b.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	tset = TensorData(b,d)
-	tset.BuildTrainMolwise("test_mol",TreatedAtoms)
+# if (1):
+# 	a=MSet('OptMols')
+# 	a.ReadXYZ("OptMols")
+# 	test_mol=a.mols[0]
+# 	b=MSet("test_mol")
+# 	b.mols.append(test_mol)
+# 	TreatedAtoms = b.AtomTypes()
+# 	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+# 	tset = TensorData(b,d)
+# 	tset.BuildTrainMolwise("test_mol",TreatedAtoms)
 
-#a=MSet('benzene')
-# a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', has_force=True)
-# a.Save()
-# a.WriteXYZ()
-#a.Load()
-# print "nmols:",len(a.mols)
-#TreatedAtoms = a.AtomTypes()
-#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-#tset = TensorData(a,d)
-#tset.BuildTrainMolwise("benzene_NEQ",TreatedAtoms)
-#tset = TensorData(None,None,"benzene_NEQ_"+"GauSH",None,2000)
-#manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-
-a=MSet("toluene")
-# # a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/benzene/', has_force=True)
+# a=MSet('toluene_tmp')
+# # a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', has_force=True)
 # # a.Save()
 # # a.WriteXYZ()
-# # a.ReadXYZ("benzene")
-a.Load()
-test_mol = a.mols[11]
-test_mol.Distort()
-print "Orig Coords", test_mol.coords
-print test_mol.atoms
-manager=TFManage("benzene_NEQ_GauSH_fc_sqdiff",None,False)
-optimizer = Optimizer(manager)
-optimizer.OptRealForce(test_mol)
+# a.Load()
+# print "nmols:",len(a.mols)
+# TreatedAtoms = a.AtomTypes()
+# d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+# tset = TensorData(a,d)
+# tset.BuildTrainMolwise("toluene_tmp",TreatedAtoms)
+tset = TensorData(None,None,"toluene_tmp_"+"GauSH",None,2000)
+manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+
+# a=MSet("toluene")
+# a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/benzene/', has_force=True)
+# a.Save()
+# a.WriteXYZ()
+# a.ReadXYZ("benzene")
+# a.Load()
+# test_mol = a.mols[11]
+# test_mol.Distort()
+# print "Orig Coords", test_mol.coords
+# print test_mol.atoms
+# manager=TFManage("benzene_NEQ_GauSH_fc_sqdiff",None,False)
+# optimizer = Optimizer(manager)
+# optimizer.OptRealForce(test_mol)
