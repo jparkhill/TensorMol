@@ -22,13 +22,14 @@ using namespace std;
 using namespace std;
 #define PI 3.14159265358979
 
-#define SH_NRAD 11
-#define SH_LMAX 7
+#define SH_NRAD 10
+#define SH_LMAX 6
 // r0, sigma
 // if you want to sense beyond 15A, you need to fix this grid.
 const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {1.3, 1.3}, {2.2,
 	2.4}, {4.4, 2.4}, {6.6, 2.4}, {8.8, 2.4}, {11., 2.4}, {13.2,
 		2.4}, {15.4, 2.4}};
+
 
 		//
 		// Real Spherical Harmonics...
@@ -777,13 +778,35 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 		}
 
 
+
+
 		//
 		// Projects a delta function at x,y,z onto
 		//  Exp[-(x-r)^2/(2 sigma^2)]*Y_{LM}(theta,phi)
 		//
 		// which will occupy a vector of length Nrad*(1+lmax)**2
 
-		void RadSHProjection(double x, double y, double z, double* output, double fac=1.0)
+		void Orthogonalize_SH(double* outs, int natom)
+		{
+			double S[SH_NRAD*((SH_LMAX+1)*(SH_LMAX+1)) + (SH_LMAX)*(SH_LMAX) + 2*(SH_LMAX)][SH_NRAD*((SH_LMAX+1)*(SH_LMAX+1)) + (SH_LMAX)*(SH_LMAX) + 2*(SH_LMAX)];
+			for (int i=0; i<(SH_NRAD*((SH_LMAX+1)*(SH_LMAX+1)) + (SH_LMAX)*(SH_LMAX) + 2*(SH_LMAX)); ++i)
+				for (int j=0; j<(SH_NRAD*((SH_LMAX+1)*(SH_LMAX+1)) + (SH_LMAX)*(SH_LMAX) + 2*(SH_LMAX)); ++j)
+				{
+					if ((i % ((SH_LMAX+1)*(SH_LMAX+1))) != (j % ((SH_LMAX+1)*(SH_LMAX+1))))
+						S[i][j] = 0;
+					else
+					{
+						S[i][j] = GOverlap(RBFS[1+i/((SH_LMAX+1)*(SH_LMAX+1))][0],RBFS[1+j/((SH_LMAX+1)*(SH_LMAX+1))][0],RBFS[1+i/((SH_LMAX+1)*(SH_LMAX+1))][1],RBFS[1+j/((SH_LMAX+1)*(SH_LMAX+1))][1]);
+						//cout << "i  " << i<< "  " << "j  " << j << "  " << (i % ((SH_LMAX+1)*(SH_LMAX+1))) << "    " << (j % ((SH_LMAX+1)*(SH_LMAX+1))) << "   " << S[i][j] << endl;
+					}
+				}
+			npy_intp outdim[2] = {natom,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
+			PyObject* new_output = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+
+
+		}
+
+		void RadSHProjection(double x, double y, double z, double* output, int natom, double fac=1.0)
 		{
 			double rnotinv = sqrt(x*x+y*y+z*z);
 			double r = 1.0/rnotinv;
@@ -810,7 +833,7 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 			// double theta = acos(z/r);
 			// double theta = acos(z*r);
 			// double phi = atan2(y,x);
-			#pragma omp parallel for
+			//#pragma omp parallel for
 			for (int i=0; i<SH_NRAD ; ++i)
 			{
 				//cout << "Num Thread: " << omp_get_num_threads() << endl;
@@ -820,12 +843,15 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 					for (int m=-l; m<l+1 ; ++m)
 					{
 						output[i*((SH_LMAX+1)*(SH_LMAX+1)) + (l)*(l) + m+l] += Gv*CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_)*fac;
+						Orthogonalize_SH(output, natom);
+
 						// if ((RealSphericalHarmonic(l,m,theta,phi) - CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_))>0.0000001)
 						// 	cout << "Real vs. Cart: " << RealSphericalHarmonic(l,m,theta,phi) << " " << CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_) << endl;
 					}
 				}
 			}
 		}
+
 
 		void RadSHProjection_Spherical(double x, double y, double z, double* output, double fac=1.0)
 		{

@@ -9,7 +9,6 @@
 
 //Make_AM (center_m, ele_index, molxyz_data, Nxyz, AM_data);
 
-
 #define PI 3.14159265358979
 
 inline double fc(const double &dist, const double &dist_cut) {
@@ -418,7 +417,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 
 	if (theatom<0)
 	{
-		#pragma omp parallel for
+		//#pragma omp parallel for
 		for (int i=0; i<natom; ++i)
 		{
 			double xc = xyz_data[i*Nxyz[1]+0];
@@ -429,7 +428,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double x = xyz_data[j*Nxyz[1]+0];
 				double y = xyz_data[j*Nxyz[1]+1];
 				double z = xyz_data[j*Nxyz[1]+2];
-				RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+				RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
 			}
 		}
 	}
@@ -446,12 +445,13 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 			double x = xyz_data[j*Nxyz[1]+0];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
-			RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+			RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
 		}
 	}
 	//	}
 	return SH;
 }
+
 
 //
 // Embed molecule using Gaussian X Spherical Harmonic basis
