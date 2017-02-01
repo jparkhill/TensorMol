@@ -51,16 +51,30 @@ class MolDigester:
 		ngrids = 10
 		for i in range (0, mol.NAtoms()):
 			cm_bp = MolEmb.Make_CM(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, i,  0.0 )
-			#print "before: ", cm_bp, len(cm_bp)
 			cm_bp = np.asarray(cm_bp[0], dtype=np.float32)
 			cm_bp.flatten()
-			#print "SHAPE", cm_bp.shape
-			#cm_bp = cm_bp.reshape(-1)
-			#cm_bp = cm_bp[np.nonzero(cm_bp)] #Kun: what were you trying to do here...
 			CM_BP.append(cm_bp)
-		CM_BP = np.array(CM_BP)[0,:,:]
+		CM_BP = np.array(CM_BP)
 		CM_BP_deri = np.zeros((CM_BP.shape[0], CM_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
 		return 	CM_BP, CM_BP_deri
+
+        def make_cm_bond_bp(self, mol):
+                CM_Bond_BP = []
+                ngrids = 10
+                for i in range (0, mol.NBonds()):
+                        cm_bp_1 = MolEmb.Make_CM(mol.coords, mol.coords[int(mol.bonds[i][2])].reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, int(mol.bonds[i][2]),  0.0 )
+			cm_bp_2 = MolEmb.Make_CM(mol.coords, mol.coords[int(mol.bonds[i][3])].reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, int(mol.bonds[i][3]),  0.0 )
+			dist = mol.bonds[i][1]
+			cm_bp_1  = cm_bp_1[0][0].reshape(-1)
+			cm_bp_2  = cm_bp_2[0][0].reshape(-1)
+			#print list(cm_bp_1), list(cm_bp_2), dist
+                        cm_bond_bp = np.asarray(list(cm_bp_1)+list(cm_bp_2)+[1.0/dist], dtype=np.float32)
+			#print  "cm_bond_bp:", cm_bond_bp
+                        cm_bond_bp.flatten()
+                        CM_Bond_BP.append(cm_bond_bp)
+                CM_Bond_BP = np.array(CM_Bond_BP)
+                CM_Bond_BP_deri = np.zeros((CM_Bond_BP.shape[0], CM_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
+                return  CM_Bond_BP, CM_Bond_BP_deri
 
 	def make_gauinv(self, mol):
 		""" This is a totally inefficient way of doing this
@@ -152,6 +166,9 @@ class MolDigester:
 		elif(self.name == "Coulomb_BP"):
 			Ins, deri_CM_BP =  self.make_cm_bp(mol_)
 			Ins = Ins.reshape([Ins.shape[0],-1])
+		elif(self.name == "Coulomb_Bond_BP"):
+                        Ins, deri_CM_Bond_BP =  self.make_cm_bond_bp(mol_)
+                        Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "SymFunc"):
 			Ins, SYM_deri = self.make_sym(mol_)
 		elif(self.name == "GauInv_BP"):
@@ -168,6 +185,8 @@ class MolDigester:
 				Outs = np.array([mol_.frag_mbe_energy])
 			elif (self.OType == "GoEnergy"):
 				Outs = np.array([mol_.GoEnergy()])
+			elif (self.OType == "Atomization"):
+				Outs = np.array([mol_.atomization])
 			else:
 				raise Exception("Unknown Output Type... "+self.OType)
 			if (self.lshape == None):
@@ -206,6 +225,8 @@ class MolDigester:
 				print "Desired: ",i,self.unscld(desired[i])," Predicted ",self.unscld(predicted[i])
 			print "MAE ", np.average(self.StdNorm*np.abs(desired-predicted)+self.MeanNorm)
 			print "std ", self.StdNorm*np.std(desired-predicted)+self.MeanNorm
+		elif (self.OType=="Atomization"):
+			pass
 		else:
 			raise Exception("Unknown Digester Output Type.")
 		return

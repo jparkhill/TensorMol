@@ -41,6 +41,7 @@ class Mol:
 		self.qchem_data_path = None
 		self.atom_nodes = None
 		self.J_coupling = None
+		self.bonds = None  #{bond_type, length, atom_index_1, atom_index_2}
 		self.Bonds_Between  = None
 		self.H_Bonds_Between = None
 		# all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
@@ -60,6 +61,27 @@ class Mol:
 		self.mob_energy = None
 		return
 
+	
+	def Make_Bonds(self):
+		self.bonds = []
+		visited_pairs = []
+		for i in range (0, self.NAtoms()):
+			for node in self.atom_nodes[i].connected_nodes:
+				j  = node.node_index
+				pair_index =  [i, j]
+				atom_pair=[self.atoms[i], self.atoms[j]]
+				pair_index = [x for (y, x) in sorted(zip(atom_pair, pair_index))]
+				if pair_index not in visited_pairs:
+					visited_pairs.append(pair_index)
+                                	atom_pair.sort()
+                                	bond_name = self.AtomName_From_List(atom_pair)
+					bond_type = bond_index[bond_name]
+					dist = self.DistMatrix[i][j]
+					self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
+					#print np.array([bond_type, dist, pair_index[0], pair_index[1]]), " atom type:", self.atoms[pair_index[0]], self.atoms[pair_index[1]]
+		self.bonds = np.asarray(self.bonds)
+		return
+			
 
 
 	def Make_AtomNodes(self):
@@ -70,6 +92,7 @@ class Mol:
 
 	def Connect_AtomNodes(self):
 		dist_mat = MolEmb.Make_DistMat(self.coords)
+		self.DistMatrix = dist_mat
 		for i in range (0, self.NAtoms()):
 			for j in range (i+1, self.NAtoms()):
 				dist = dist_mat[i][j]
@@ -84,6 +107,7 @@ class Mol:
 	def Make_Mol_Graph(self):
 		self.Make_AtomNodes()
 		self.Connect_AtomNodes()
+		self.Make_Bonds()
 		return
 
 	def Bonds_Between_All(self):
@@ -235,9 +259,11 @@ class Mol:
 			all_mol_visited_list = list(updated_all_mol_visited_list)
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
 		frags_in_mol = []
+		already_included = []
 		for mol_visited_list in all_mol_visited_list:
 			mol_visited_list.sort()
-			if mol_visited_list not in frags_in_mol:
+			if mol_visited_list not in already_included:
+				already_included.append(mol_visited_list)
 				sorted_mol_visited_list = [x for (y, x) in sorted(zip(frag_visited_list,mol_visited_list))]## sort the index order of frags in mol to the same as the frag
 				frags_in_mol.append(sorted_mol_visited_list)
 		return frags_in_mol
@@ -251,8 +277,9 @@ class Mol:
 			convert_to_mol[-1].coords =  self.coords[frag_index].copy()
 			if capping:
 				cap_atoms, cap_coords = self.Frag_Caps(frag_index)
-				convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms, cap_atoms))
-				convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, cap_coords))
+				if cap_atoms.size:
+					convert_to_mol[-1].atoms = np.concatenate((convert_to_mol[-1].atoms, cap_atoms))
+					convert_to_mol[-1].coords = np.concatenate((convert_to_mol[-1].coords, cap_coords))
 		return convert_to_mol
 
 
@@ -413,10 +440,12 @@ class Mol:
 	def Connected_MOB_Dimer(self):
 		self.connected_dimers_index = []
 		self.connected_dimers_type = []
+		self.not_connected_dimers_index = []
+		self.not_connected_dimers_type = []
 		for i in range (0, len(self.mob_monomer_index)):
 			for j in range (i+1, len(self.mob_monomer_index)):
+				is_connected = False
 				for atom_index in self.mob_monomer_index[i]:
-					is_connected = False
 					for node in self.atom_nodes[atom_index].connected_nodes:
 						if node.node_index in self.mob_monomer_index[j]:
 							self.connected_dimers_type.append([i,j])
@@ -425,9 +454,35 @@ class Mol:
 							break
 					if is_connected:
 						break
+				if not is_connected:
+					too_close_H = 1.2 # check whether there are two close Hydrogen in the two frag
+					mol1 = self.mob_all_frags[LtoS(self.mob_monomer_index[i])]
+					mol2 = self.mob_all_frags[LtoS(self.mob_monomer_index[j])]
+					is_close = False
+					for atom1 in range (0, mol1.NAtoms()):
+						for atom2 in range (0, mol2.NAtoms()):
+							if mol1.atoms[atom1] == 1 and mol2.atoms[atom2] == 1:
+								if (np.sum(np.square(mol1.coords[atom1] - mol2.coords[atom2])))**0.5 <= too_close_H:
+									is_close = True
+									break
+						if is_close:
+							break
+					if not is_close:
+						self.not_connected_dimers_type.append([i,j])
+						self.not_connected_dimers_index.append(list(set(self.mob_monomer_index[i]+self.mob_monomer_index[j])))
+					
+
 		for dimer_type in self.connected_dimers_type:
 			dimer_type.sort()
+		for dimer_type in self.not_connected_dimers_type:
+                        dimer_type.sort()
+
 		for dimer_index in self.connected_dimers_index:
+                        dimer_index.sort()
+                        harsh_string = LtoS(dimer_index)
+                        if harsh_string not in self.mob_all_frags.keys():
+                                self.mob_all_frags[harsh_string] = (self.Mol_Frag_Index_to_Mol([dimer_index],True))[0]
+		for dimer_index in self.not_connected_dimers_index:
                         dimer_index.sort()
                         harsh_string = LtoS(dimer_index)
                         if harsh_string not in self.mob_all_frags.keys():
@@ -435,12 +490,12 @@ class Mol:
 		return 	
 							
 		
-	def Calculate_MOB_Frags(self, method='pyscf'):
+	def Calculate_MOB_Frags(self, method='pyscf', basis="cc-pvdz"):
 		if method=="pyscf":
 			for key in self.mob_all_frags.keys():
 				mol = self.mob_all_frags[key]
 				if mol.energy == None:
-					mol.PySCF_Energy("cc-pvdz")
+					mol.PySCF_Energy(basis)
 		else:
 			raise Exception("Other method is not supported yet") 
 
@@ -448,17 +503,17 @@ class Mol:
 	def MOB_Energy(self):
 		Mono_Cp = []
 		for i in range (0, len(self.mob_monomer_index)):
+			print "monomer:",self.mob_monomer_type[i], self.mob_monomer_index[i]
 			if self.mob_monomer_type[i] >= 0:  # monomer is from frag
 				Mono_Cp.append(1) 
 			else:   #momer is from overlap
-				for j in self.frag_pair_list[abs(self.mob_monomer_type[i])-1]:
-					print self.all_frags_index[j]
 				overlap_order = len(self.frag_pair_list[abs(self.mob_monomer_type[i])-1])
 				Mono_Cp.append(pow(-1, overlap_order-1))
 		first_order_energy = 0
 		for i in range (0, len(self.mob_monomer_index)):
 			first_order_energy += Mono_Cp[i]*self.mob_all_frags[LtoS(self.mob_monomer_index[i])].energy
-		second_order_energy = 0
+
+		second_order_energy_connected = 0
 		for i in range (0, len(self.connected_dimers_index)):
 			p_index = self.connected_dimers_type[i][0]
 			q_index = self.connected_dimers_type[i][1]
@@ -471,9 +526,20 @@ class Mol:
 			else:
 				Epnotq = 0.0  #not overlap
 			deltaEpq = Epandq - (Ep + Eq - Epnotq)
-			second_order_energy += Mono_Cp[p_index]*Mono_Cp[q_index]*deltaEpq
+			second_order_energy_connected += Mono_Cp[p_index]*Mono_Cp[q_index]*deltaEpq
 
-		self.mob_energy = first_order_energy + second_order_energy
+		second_order_energy_not_connected = 0
+		for i in range (0, len(self.not_connected_dimers_index)):
+			p_index = self.not_connected_dimers_type[i][0]
+                        q_index = self.not_connected_dimers_type[i][1]
+			Epandq = self.mob_all_frags[LtoS(self.not_connected_dimers_index[i])].energy
+			Ep = self.mob_all_frags[LtoS(self.mob_monomer_index[p_index])].energy
+                        Eq = self.mob_all_frags[LtoS(self.mob_monomer_index[q_index])].energy
+			deltaEpq = Epandq - (Ep + Eq)
+			second_order_energy_not_connected  += Mono_Cp[p_index]*Mono_Cp[q_index]*deltaEpq
+		self.mob_energy = first_order_energy + second_order_energy_connected + second_order_energy_not_connected 
+		print "One Body:", first_order_energy
+		print "connected two + one:", first_order_energy + second_order_energy_connected 
 		print "MOB_energy", self.mob_energy
 		return		
 
@@ -641,8 +707,14 @@ class Mol:
 	def NAtoms(self):
 		return self.atoms.shape[0]
 
+	def NBonds(self):
+                return self.bonds.shape[0]
+	
 	def AtomTypes(self):
 		return np.unique(self.atoms)
+
+	def BondTypes(self):
+                return np.unique(self.bonds[:,0]).astype(int)
 
 	def NEles(self):
 		return len(self.AtomTypes())

@@ -37,6 +37,8 @@ if (1):
                 c.ReadXYZ("sugar_overlap", "frag_of_mol")
 		for mol in a.mols:
                         mol.Make_Mol_Graph()
+			mol.Make_Bonds()
+			print mol.BondTypes()
                 for mol in b.mols:
                         mol.Make_Mol_Graph()
 		for mol in c.mols:
@@ -46,22 +48,36 @@ if (1):
 		#a.mols[0].Frag_Overlaps(frag_index_list)
 		#a.mols[0].Optimize_Overlap(frag_index_list, [b.mols[1]])
 		#frag_index_list  =  a.mols[0].Find_Frag(b.mols[1])  # CO frag
-		a.mols[2].Overlap_Partition([b.mols[0]])
-		a.mols[2].MOB_Monomer()
-		a.mols[2].MOB_Monomer_Overlap()
-		a.mols[2].Connected_MOB_Dimer()
-		a.mols[2].Calculate_MOB_Frags()
-		a.mols[2].MOB_Energy()
-		
-		a.mols[3].Overlap_Partition([b.mols[0]])
-                a.mols[3].MOB_Monomer()
-                a.mols[3].MOB_Monomer_Overlap()
-                a.mols[3].Connected_MOB_Dimer()
-                a.mols[3].Calculate_MOB_Frags()
-                a.mols[3].MOB_Energy()
+#		a.mols[2].Overlap_Partition([b.mols[1]])
+#		a.mols[2].MOB_Monomer()
+#		a.mols[2].MOB_Monomer_Overlap()
+#		a.mols[2].Connected_MOB_Dimer()
+#		a.mols[2].Calculate_MOB_Frags(basis="cc-pvtz")
+#		a.mols[2].MOB_Energy()
+#		
+#		a.mols[3].Overlap_Partition([b.mols[1]])
+#                a.mols[3].MOB_Monomer()
+#                a.mols[3].MOB_Monomer_Overlap()
+#                a.mols[3].Connected_MOB_Dimer()
+#                a.mols[3].Calculate_MOB_Frags(basis="cc-pvtz")
+#                a.mols[3].MOB_Energy()
+#	
+#                a.mols[4].Overlap_Partition([b.mols[1]])
+#                a.mols[4].MOB_Monomer()
+#                a.mols[4].MOB_Monomer_Overlap()
+#                a.mols[4].Connected_MOB_Dimer()
+#                a.mols[4].Calculate_MOB_Frags(basis="cc-pvtz")
+#                a.mols[4].MOB_Energy()
+#
+		a.mols[5].Overlap_Partition([b.mols[1]])
+		a.mols[5].MOB_Monomer()
+		a.mols[5].MOB_Monomer_Overlap()
+		a.mols[5].Connected_MOB_Dimer()
+		a.mols[5].Calculate_MOB_Frags(basis="cc-pvtz")
+		a.mols[5].MOB_Energy()
 
 		#print "pyscf energy first:", a.mols[2].PySCF_Energy("cc-pvdz")
-		#print "pyscf energy second:", a.mols[3].PySCF_Energy("cc-pvdz")
+		#print "pyscf energy second:", a.mols[4].PySCF_Energy("cc-pvdz")
 		#a.mols[0].Mol_Frag_Index_to_Mol(b.mols[1],capping=True)
 		#print frag_index_list
 		#a.mols[0].Optimize_Overlap(frag_index_list, [b.mols[2]])

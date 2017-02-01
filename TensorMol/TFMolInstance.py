@@ -81,7 +81,8 @@ class MolInstance(Instance):
 				test_loss, feed_dict = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					if (step > 500):
+						self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
 
@@ -448,10 +449,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.label_pl=None
 
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 3000
+		self.batch_size = 50000
 		self.batch_size_output = 0
-		self.hidden1 = 200
-		self.hidden2 = 100
+		self.hidden1 = 1000
+		self.hidden2 = 1000
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -467,7 +468,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
-		self.batch_size_output = int(2.3*self.batch_size/self.MeanNumAtoms)
+		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
+		print ("self.batch_size_output:", self.batch_size_output)
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
 		print("Assigned batch input size: ",self.batch_size)
 		print("Assigned batch output size: ",self.batch_size_output)
@@ -584,7 +586,12 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit4")
 			raise Exception("DontEatShit")
+		#for data in batch_data[0]:
+		#	print ("batch_data[0] shape:", data.shape)
+		#for data in batch_data[1]:
+                #        print ("batch_data[1] shape:", data.shape)
 		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+[self.label_pl], batch_data[0]+batch_data[1]+[batch_data[2]])}
+		#print ("feed_dict\n\n", feed_dict)
 		return feed_dict
 
 	def train_step(self, step):
@@ -597,13 +604,20 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
 		train_loss =  0.0
+		num_of_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			actual_mols  = np.count_nonzero(batch_data[2])
 			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
+			#print ("train pred:", mol_output, " accurate:", batch_data[2])
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
-		self.print_training(step, train_loss, Ncase_train, duration)
+			num_of_mols += actual_mols
+		#print("train diff:", (mol_output[0]-batch_data[2])[:actual_mols], np.sum(np.square((mol_output[0]-batch_data[2])[:actual_mols])))
+		#print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
+		#print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
+		self.print_training(step, train_loss, num_of_mols, duration)
 		return
 
 	def test(self, step):
@@ -614,11 +628,21 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			step: the index of this step.
 		"""
 		test_loss =  0.0
-		test_start_time = time.time()
-		batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
-		feed_dict=self.fill_feed_dict(batch_data)
-		preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
-		duration = time.time() - test_start_time
-		self.print_training(step, test_loss, self.TData.NTest , duration)
-		self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
+		start_time = time.time()
+		Ncase_test = self.TData.NTest
+		num_of_mols = 0
+		for ministep in range (0, int(Ncase_test/self.batch_size)):
+			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
+			feed_dict=self.fill_feed_dict(batch_data)
+			actual_mols  = np.count_nonzero(batch_data[2])
+			preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
+			test_loss += loss_value
+			num_of_mols += actual_mols
+		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
+		duration = time.time() - start_time
+		#print ("preds:", preds, " label:", batch_data[2])
+		#print ("diff:", preds - batch_data[2])
+		print( "testing...")
+		self.print_training(step, test_loss, num_of_mols, duration)
+		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict

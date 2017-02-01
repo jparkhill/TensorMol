@@ -87,11 +87,24 @@ class MSet:
 			nat += m.NAtoms()
 		return nat
 
+	def NBonds(self):
+		nbonds=0
+                for m in self.mols:
+                        nbonds += m.NBonds()
+                return nbonds
+
+
 	def AtomTypes(self):
 		types = np.array([],dtype=np.uint8)
 		for m in self.mols:
 			types = np.union1d(types,m.AtomTypes())
 		return types
+
+	def BondTypes(self):
+                types = np.array([],dtype=np.uint8)
+                for m in self.mols:
+                        types = np.union1d(types,m.BondTypes())
+                return types
 
 	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/"):
 		""" Reads the GDB9 dataset as a pickled list of molecules"""
@@ -287,3 +300,16 @@ class MSet:
 		for mol in self.mols:
 			mol.Set_Qchem_Data_Path()
 		return
+
+	def Make_Graphs(self):
+		for i, mol in enumerate(self.mols):
+			print "making graph of mol:", i
+			mol.Make_Mol_Graph()
+		return
+	
+	def Bonds_Between_All(self):
+		for i, mol in enumerate(self.mols):
+                        print "calculating the bonds:", i
+                        mol.Bonds_Between_All()
+			#print "bonds matrix:", mol.Bonds_Between
+                return
