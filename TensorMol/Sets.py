@@ -169,11 +169,11 @@ class MSet:
 			print  '{:10}{:12}'.format("mean:", np.mean(J)), '{:10}{:12}'.format("ratio:", np.std(J)/np.mean(J)), paris[i], Bonds_Between[i]-H_Bonds_Between[i]
 
 	def WriteXYZ(self,filename=None):
-		LOGGER.info('Wrote '+filename)
 		if filename == None:
 			filename = self.name
 		for mol in self.mols:
 			mol.WriteXYZfile(self.path,filename)
+		LOGGER.info('Wrote %s ', filename)
 		return
 
 	def pop(self, ntopop):
