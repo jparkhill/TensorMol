@@ -17,7 +17,7 @@ class MSet:
 		self.suffix=".pdb" #Pickle Database? Poor choice.
 
 	def Save(self):
-		LOGGER.info("Saving set to: ", self.path+self.name+self.suffix)
+		LOGGER.info("Saving set to: %s ", self.path+self.name+self.suffix)
 		#print "Saving set to: ", self.path+self.name+self.suffix
 		f=open(self.path+self.name+self.suffix,"wb")
 		pickle.dump(self.__dict__, f, protocol=1)

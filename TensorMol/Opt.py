@@ -185,8 +185,8 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		print "Orig Coords", m.coords
-		for i in range(m.NAtoms()):
-			print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		#for i in range(m.NAtoms()):
+		#	print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):

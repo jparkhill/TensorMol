@@ -23,7 +23,7 @@ using namespace std;
 #define PI 3.14159265358979
 
 #define SH_NRAD 10
-#define SH_LMAX 6
+#define SH_LMAX 8 
 // r0, sigma
 // if you want to sense beyond 15A, you need to fix this grid.
 const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {1.3, 1.3}, {2.2,
@@ -833,7 +833,7 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 			// double theta = acos(z/r);
 			// double theta = acos(z*r);
 			// double phi = atan2(y,x);
-			//#pragma omp parallel for
+			#pragma omp parallel for
 			for (int i=0; i<SH_NRAD ; ++i)
 			{
 				//cout << "Num Thread: " << omp_get_num_threads() << endl;
@@ -843,7 +843,7 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 					for (int m=-l; m<l+1 ; ++m)
 					{
 						output[i*((SH_LMAX+1)*(SH_LMAX+1)) + (l)*(l) + m+l] += Gv*CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_)*fac;
-						Orthogonalize_SH(output, natom);
+						//Orthogonalize_SH(output, natom);
 
 						// if ((RealSphericalHarmonic(l,m,theta,phi) - CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_))>0.0000001)
 						// 	cout << "Real vs. Cart: " << RealSphericalHarmonic(l,m,theta,phi) << " " << CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_) << endl;

@@ -417,7 +417,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 
 	if (theatom<0)
 	{
-		//#pragma omp parallel for
+		#pragma omp parallel for
 		for (int i=0; i<natom; ++i)
 		{
 			double xc = xyz_data[i*Nxyz[1]+0];
