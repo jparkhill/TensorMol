@@ -152,7 +152,7 @@ class TFManage:
 		pi = np.zeros((3,10,mol.NAtoms(),3))
 		for ax in range(3):
 			axis = np.zeros(3)
-			axis[ax] = 1.0	
+			axis[ax] = 1.0
 			t = 0
 			for theta in np.linspace(-Pi, Pi, RotAv):
 				for atom in range(mol.NAtoms()):
@@ -173,7 +173,6 @@ class TFManage:
 					print atom,ax,theta,":",pi[ax,theta,atom]
 				t=t+1
 		return p/(3.0*RotAv)
-
 
 	def evaluate(self, mol, atom, RotAv=10):
 		input = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
