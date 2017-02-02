@@ -390,7 +390,7 @@ class TensorMolData_BP(TensorMolData):
 		# Figure out the number of atoms in training and test.
 		for i in range(len(tm)):
 			if (tm[i,0] == self.LastTrainMol):
-				LastTrainCase = tm[i,3] # exclusive
+				LastTrainCase = tm[i,2] # exclusive
 				break
 		print "last train atom: ", LastTrainCase
 		print "Num Test atoms: ", len(tm)-LastTrainCase
