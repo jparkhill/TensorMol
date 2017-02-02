@@ -333,10 +333,6 @@ class Mol:
 			self.coords[self.ElementBounds[e][0]:self.ElementBounds[e][1],:] = blk[inds]
 		return
 
-	def RotateX(self):
-		self.coords[:,1] = self.Center()[1] + np.cos(np.pi)*(self.coords[:,1]-self.Center()[1]) - np.sin(np.pi)*(self.coords[:,2]-self.Center()[2])
-		self.coords[:,2] = self.Center()[2] + np.sin(np.pi)*(self.coords[:,1]-self.Center()[1]) + np.cos(np.pi)*(self.coords[:,2]-self.Center()[2])
-
 	def WriteInterpolation(self,b,n=0):
 		for i in range(10): # Check the interpolation.
 			m=Mol(self.atoms,self.coords*((9.-i)/9.)+b.coords*((i)/9.))
@@ -678,6 +674,11 @@ class Mol:
 		return Ps/Z
 
 	def Force_from_xyz(self, path):
+		"""
+		Reads the forces from the comment line in the md_dataset,
+		and if no forces exist sets them to zero. Switched on by
+		has_force=True in the ReadGDB9Unpacked routine
+		"""
 		try:
 			f = open(path, 'r')
 			lines = f.readlines()
