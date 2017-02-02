@@ -10,16 +10,16 @@ import gc
 
 class TFMolManage(TFManage):
 	"""
-		A manager of tensorflow instances which perform molecule-wise predictions 
+		A manager of tensorflow instances which perform molecule-wise predictions
 		including Many Body and Behler-Parinello
 	"""
 	def __init__(self, Name_="", TData_=None, Train_=False, NetType_="fc_sqdiff", RandomTData_=True):
 		"""
-			Args: 
+			Args:
 				Name_: If not blank, will try to load a network with that name using Prepare()
-				TData_: A TensorMolData instance to provide and process data. 
-				Train_: Whether to train the instances raised. 
-				NetType_: Choices of Various network architectures. 
+				TData_: A TensorMolData instance to provide and process data.
+				Train_: Whether to train the instances raised.
+				NetType_: Choices of Various network architectures.
 				RandomTData_: Modifes the preparation of training batches.
 		"""
 		TFManage.__init__(self, "", TData_, False, NetType_, RandomTData_)
@@ -39,7 +39,7 @@ class TFMolManage(TFManage):
 	def Train(self, maxstep=3000):
 		"""
 		Instantiates and trains a Molecular network.
-		
+
 		Args:
 			maxstep: The number of training steps.
 		"""
@@ -64,7 +64,7 @@ class TFMolManage(TFManage):
 		return
 
 	def Eval(self, test_input):
-		return self.Instances.evaluate(test_input)   
+		return self.Instances.evaluate(test_input)
 
 	def Eval_Mol(self, mol):
 		total_case = len(mol.mbe_frags[self.TData.order])
@@ -73,7 +73,7 @@ class TFMolManage(TFManage):
 		natom = mol.mbe_frags[self.TData.order][0].NAtoms()
 		cases = np.zeros((total_case, self.TData.dig.eshape))
 		cases_deri = np.zeros((total_case, natom, natom, 6)) # x1,y1,z1,x2,y2,z2
-		casep = 0 
+		casep = 0
 		for frag in mol.mbe_frags[self.TData.order]:
 			ins, embed_deri =  self.TData.dig.EvalDigest(frag)
 			cases[casep:casep+1] += ins
@@ -98,7 +98,7 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "fc_sqdiff_BP"):
 			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0],None)
 		else:
-			raise Exception("Unknown Network Type!")	
+			raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.
 		return
 
@@ -115,9 +115,8 @@ class TFMolManage(TFManage):
 		nn, gradient=self.Eval(ti)
 		acc_nn[:,0]=acc.reshape(acc.shape[0])
 		acc_nn[:,1]=nn.reshape(nn.shape[0])
-		mean, std = self.TData.Get_Mean_Std()	
+		mean, std = self.TData.Get_Mean_Std()
 		acc_nn = acc_nn*std+mean
 		np.savetxt(save_file,acc_nn)
 		np.savetxt("dist_2b.dat", ti[:,1])
 		return
-

@@ -141,7 +141,29 @@ class TFManage:
 		p = mol_.UseGoProb(atom_, output)
 		return p
 
-	def evaluate(self, mol, atom):
+    def EvalRotAvForce(self, mol, atom, RotAv=10):
+        """
+        Goes without saying we should do this in batches for each element.
+        If it actually improves accuracy.
+        But for the time being I'm doing this sloppily.
+        """
+        if(self.TData.dig.name != "GauSH"):
+            raise Exception("Don't average this...")
+        p = np.zeros((mol.NAtoms,3))
+        i=0
+        for ax in range(3):
+            for theta in np.linspace(-Pi, Pi, RotAv):
+                mol_t.coords =
+                for atom in range(mol.NAtoms()):
+                    mol_t = Mol(mol.atoms, mol.coords)
+                    mol_t.Rotate(ax, theta, mol.coords[atom])
+                    inputs = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+                    tmp = self.Instances[mol_t.atoms[atom]].evaluate(input)[0]
+                    p[i] = np.dot(RotationMatrix(ax, -1.0*theta),tmp)
+        return p
+
+
+	def evaluate(self, mol, atom, RotAv=10):
 		input = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		p = self.Instances[mol.atoms[atom]].evaluate(input)
 		return p[0]

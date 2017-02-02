@@ -54,11 +54,13 @@ class Mol:
 		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
 		return [i for i in range(self.NAtoms()) if dists[i]<rad]
 
-	def Rotate(self,axis,ang):
-		rm=RotationMatrix(axis,ang)
-		crds=np.copy(self.coords)
+	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
+		rm = RotationMatrix(axis,ang)
+		crds = np.copy(self.coords)
+		crds -= origin
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(rm,crds[i])
+		crds += origin
 
 	def Transform(self,ltransf,center=np.array([0.0,0.0,0.0])):
 		crds=np.copy(self.coords)

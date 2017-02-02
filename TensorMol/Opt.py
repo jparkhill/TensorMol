@@ -175,6 +175,7 @@ class Optimizer:
 	def OptRealForce(self,m,IfDebug=True):
 		"""
 		Optimize using force output of an atomwise network.
+		now also averages over rotations...
 		Args:
 			m: A distorted molecule to optimize
 		"""
@@ -190,8 +191,8 @@ class Optimizer:
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
+			veloc = 0.0001*self.tfm.EvalRotAvForce(m, i, RotAv=10)
 			for i in range(m.NAtoms()):
-				veloc[i] = 0.0001*self.tfm.evaluate(m, i)
 				if (IfDebug):
 					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::"
 			# c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
