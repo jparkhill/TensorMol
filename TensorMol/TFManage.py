@@ -151,16 +151,16 @@ class TFManage:
 		p = np.zeros((mol.NAtoms(),3))
 		pi = np.zeros((3,10,mol.NAtoms(),3))
 		for ax in range(3):
-			axis = np.zeros(3)
-			axis[ax] = 1.0
+			axis = [0,0,0] 
+			axis[ax] = 1
 			t = 0
 			for theta in np.linspace(-Pi, Pi, RotAv):
 				for atom in range(mol.NAtoms()):
 					mol_t = Mol(mol.atoms, mol.coords)
-					mol_t.Rotate(ax, theta, mol.coords[atom])
+					mol_t.Rotate(axis, theta, mol.coords[atom])
 					inputs = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-					tmp = self.Instances[mol_t.atoms[atom]].evaluate(input)[0]
-					p[atom] = np.dot(RotationMatrix(ax, -1.0*theta),tmp)
+					tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
+					p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),tmp.T).reshape(3)
 					pi[ax,theta,atom] = p[atom]
 				t=t+1
 		# Just to debug and see how much the forces vary with rotation:
