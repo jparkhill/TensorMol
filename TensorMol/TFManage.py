@@ -278,9 +278,9 @@ class TFManage:
 			tmp_mol = Mol(mol.atoms[0:i+1], mol.coords[0:i+1])
 			inputs = (self.TData.dig.Emb(i, tmp_mol.atoms, tmp_mol.coords,  ((tmp_mol.coords)[i]).reshape((1,3))))[0]
 			inputs = np.array(inputs)
-	                    inputs = inputs.reshape((1,-1))
-		        p = float(self.Instances[tmp_mol.atoms[i]].evaluate(inputs))
+			inputs = inputs.reshape((1,-1))
+			p = float(self.Instances[tmp_mol.atoms[i]].evaluate(inputs))
 			print ("i:",i, "p:", p, "logp:", math.log10(p))
-	                    logP += math.log10(p)
+			logP += math.log10(p)
 		print ("logP:", logP)
 		return logP
