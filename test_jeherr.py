@@ -178,33 +178,31 @@ if (0):
 	tset = TensorData(b,d)
 	tset.BuildTrainMolwise("test_mol",TreatedAtoms)
 
-a=MSet('md_set_gdb9')
-a.ReadGDB9Unpacked(path='/data/jeherr/TensorMol/datasets/md_datasets/md_set/', has_force=True)
-a.ReadGDB9Unpacked(path='/data/jeherr/TensorMol/datasets/gdb9/', has_force=True)
-a.Save()
-a.WriteXYZ()
+#a=MSet('md_set_gdb9')
+##a.ReadGDB9Unpacked(path='/data/jeherr/TensorMol/datasets/md_datasets/md_set/', has_force=True)
+##a.ReadGDB9Unpacked(path='/data/jeherr/TensorMol/datasets/gdb9/', has_force=True)
+##a.Save()
+##a.WriteXYZ()
 #a.Load()
-print "nmols:",len(a.mols)
-TreatedAtoms = a.AtomTypes()
-d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-tset = TensorData(a,d)
-tset.BuildTrainMolwise("md_gdb9",TreatedAtoms)
-tset = TensorData(None,None,"md_gdb9_"+"GauSH",None,2000)
-manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+#print "nmols:",len(a.mols)
+#TreatedAtoms = a.AtomTypes()
+#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+#tset = TensorData(a,d)
+#tset.BuildTrainMolwise("md_gdb9",TreatedAtoms)
+##tset = TensorData(None,None,"md_gdb9_"+"GauSH",None,2000)
+##manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 
-#a=MSet("o-xylene")
-#a.ReadXYZ("o-xylene")
+a=MSet("o-xylene")
+a.ReadXYZ("o-xylene")
 ## # a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/benzene/', has_force=True)
 ## # a.Save()
 ## # a.WriteXYZ()
 ## # a.ReadXYZ("benzene")
 ##a.Load()
-#print a.mols
-#test_mol = a.mols[0]
-#test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
+print a.mols
+test_mol = a.mols[0]
+test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
 ##test_mol.Distort(0.1)
-#print "Orig Coords", test_mol.coords
-#print test_mol.atoms
-#manager=TFManage("md_set_GauSH_fc_sqdiff",None,False)
-#optimizer = Optimizer(manager)
-#optimizer.OptRealForce(test_mol)
+manager=TFManage("md_set_GauSH_fc_sqdiff",None,False)
+optimizer = Optimizer(manager)
+optimizer.OptRealForce(test_mol)
