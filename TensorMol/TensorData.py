@@ -124,22 +124,25 @@ class TensorData():
     	t0 = time.time()
     	ord=np.random.permutation(len(self.set.mols))
     	mols_done = 0
-    	for mi in ord:
-    		m = self.set.mols[mi]
-    		ins,outs = self.dig.TrainDigestMolwise(m)
-    		for i in range(m.NAtoms()):
-                	# Route all the inputs and outputs to the appropriate place...
-    			ai = atypes.tolist().index(m.atoms[i])
-    			cases_list[ai][casep_list[ai]] = ins[i]
-    			labels_list[ai][casep_list[ai]] = outs[i]
-    			casep_list[ai] = casep_list[ai]+1
-    		if (mols_done%10000==0 and mols_done>0):
-    			gc.collect()
-    		if (mols_done%10000==0 and mols_done>0):
-    			print mols_done
-    		if (mols_done==400):
-    			print "Seconds to process 400 molecules: ", time.time()-t0
-    		mols_done = mols_done + 1
+		try:
+	    	for mi in ord:
+	    		m = self.set.mols[mi]
+	    		ins,outs = self.dig.TrainDigestMolwise(m)
+	    		for i in range(m.NAtoms()):
+	                	# Route all the inputs and outputs to the appropriate place...
+	    			ai = atypes.tolist().index(m.atoms[i])
+	    			cases_list[ai][casep_list[ai]] = ins[i]
+	    			labels_list[ai][casep_list[ai]] = outs[i]
+	    			casep_list[ai] = casep_list[ai]+1
+	    		if (mols_done%10000==0 and mols_done>0):
+	    			gc.collect()
+	    		if (mols_done%10000==0 and mols_done>0):
+	    			print mols_done
+	    		if (mols_done==400):
+	    			print "Seconds to process 400 molecules: ", time.time()-t0
+	    		mols_done = mols_done + 1
+		except Exception as Ex:
+				print "Likely you need to re-install MolEmb.", Ex
     	for element in atypes:
     		# Write the numpy arrays for this element.
     		ai = atypes.tolist().index(element)
@@ -155,8 +158,11 @@ class TensorData():
     			to = np.load(ouf)
     			inf.close()
     			ouf.close()
-    			cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
-    			labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
+				try:
+	    			cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
+	    			labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
+				except Exception as Ex:
+					 print "Size mismatch with old training data, clear out trainsets"
     			inf = open(insname,"wb")
     			ouf = open(outsname,"wb")
     			np.save(inf,cases)
