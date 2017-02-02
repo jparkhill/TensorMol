@@ -530,7 +530,12 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			inputs = inp_pl[e]
 			mats = mats_pl[e]
 			shp_in = tf.shape(inputs)
-			#tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="This is inputs: ",first_n=10000000,summarize=100000000)
+			if (PARAMS["check_level"]>2):
+				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
+				mats_shape = tf.shape(mats)
+				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
+			if (PARAMS["check_level"]>3):
+				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
@@ -546,9 +551,11 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 				biases = tf.Variable(tf.zeros([1]), name='biases')
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
 				shp_out = tf.shape(branches[-1][-1])
-				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
+				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1]) # Why is this here...
+				if (PARAMS["check_level"]>2):
+					tf.Print(tf.to_float(shp_out), [tf.to_float(shp_out)], message="Element "+str(e)+"Output shape ",first_n=10000000,summarize=100000000)
 				#tf.Print(tf.to_float(shp_out), [tf.to_float(shp_out)], message="This is outshape: ",first_n=10000000,summarize=100000000)
-				rshp = tf.reshape(cut,[1,shp_out[0]])
+				rshp = tf.reshape(branches[-1][-1],[1,shp_out[0]])
 				tmp = tf.matmul(rshp,mats)
 				output = tf.add(output,tmp)
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")

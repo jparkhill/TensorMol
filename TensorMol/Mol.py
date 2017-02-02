@@ -44,7 +44,7 @@ class Mol:
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Calculate_Atomization(self):
-		self.atomization = self.roomT_H
+		self.atomization = self.properties["roomT_H"]
 		for i in range (0, self.atoms.shape[0]):
 			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
 		return
@@ -54,11 +54,13 @@ class Mol:
 		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
 		return [i for i in range(self.NAtoms()) if dists[i]<rad]
 
-	def Rotate(self,axis,ang):
-		rm=RotationMatrix(axis,ang)
-		crds=np.copy(self.coords)
+	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
+		rm = RotationMatrix(axis,ang)
+		crds = np.copy(self.coords)
+		crds -= origin
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(rm,crds[i])
+		crds += origin
 
 	def Transform(self,ltransf,center=np.array([0.0,0.0,0.0])):
 		crds=np.copy(self.coords)
@@ -128,7 +130,7 @@ class Mol:
 							self.coords = np.asarray(coords)
 							break
 				if "SCF Done:"  in lines[i]:
-					self.energy = float(lines[i].split()[4])
+					self.properties["energy"]= float(lines[i].split()[4])
 				if "Total nuclear spin-spin coupling J (Hz):" in lines[i]:
 					self.J_coupling = np.zeros((self.NAtoms(), self.NAtoms()))
 					number_per_line  = len(lines[i+1].split())
@@ -163,8 +165,8 @@ class Mol:
 			self.atoms.resize((natoms))
 			self.coords.resize((natoms,3))
 			try:
-				self.energy = float((lines[1].split())[12])
-				self.roomT_H = float((lines[1].split())[14])
+				self.properties["energy"] = float((lines[1].split())[12])
+				self.properties["roomT_H"] = float((lines[1].split())[14])
 			except:
 				pass
 			for i in range(natoms):
@@ -186,7 +188,7 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		if (self.energy!=None and self.roomT_H!=None):
+		if (("energy" in self.properties) and ("roomT_H" in self.properties)):
 			self.Calculate_Atomization()
 		return
 
@@ -195,7 +197,7 @@ class Mol:
 		natoms=int(lines[0])
 		if (len(lines[1].split())>1):
 			try:
-				self.energy=float(lines[1].split()[1])
+				self.properties["energy"]=float(lines[1].split()[1])
 			except:
 				pass
 		self.atoms.resize((natoms))
@@ -228,7 +230,10 @@ class Mol:
 					raise
 		with open(fpath+"/"+fname+".xyz", mode) as f:
 			natom = self.atoms.shape[0]
-			f.write(str(natom)+"\nComment:\n")
+			if ("energy" in self.properties.keys()):
+				f.write(str(natom)+"\nComment: "+str(self.properties["energy"])+"\n")
+			else:
+				f.write(str(natom)+"\nComment:\n")
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
@@ -328,14 +333,10 @@ class Mol:
 			self.coords[self.ElementBounds[e][0]:self.ElementBounds[e][1],:] = blk[inds]
 		return
 
-	def RotateX(self):
-		self.coords[:,1] = self.Center()[1] + np.cos(np.pi)*(self.coords[:,1]-self.Center()[1]) - np.sin(np.pi)*(self.coords[:,2]-self.Center()[2])
-		self.coords[:,2] = self.Center()[2] + np.sin(np.pi)*(self.coords[:,1]-self.Center()[1]) + np.cos(np.pi)*(self.coords[:,2]-self.Center()[2])
-
 	def WriteInterpolation(self,b,n=0):
 		for i in range(10): # Check the interpolation.
 			m=Mol(self.atoms,self.coords*((9.-i)/9.)+b.coords*((i)/9.))
-			m.WriteXYZfile("./results/", "Interp"+str(n))
+			m.WriteXYZfile(PARAMS["results_dir"], "Interp"+str(n))
 
 	def AlignAtoms(self, m):
 		""" So looking at some interpolations I figured out why this wasn't working The problem was the outside can get permuted and then it can't be fixed by pairwise permutations because it takes all-atom moves to drag the system through itself Ie: local minima
@@ -409,7 +410,6 @@ class Mol:
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):
-		import MolEmb
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 
 	def GoEnergy(self,x):
@@ -658,7 +658,7 @@ class Mol:
 		return np.array([self.PySCFEnergyAfterAtomMove(s,i) for s in samps])
 
 	def EnergiesOfAtomMoves(self,samps,i):
-		return np.array([self.EnergyAfterAtomMove(s,i) for s in samps])
+		return np.array([self.energyAfterAtomMove(s,i) for s in samps])
 
 	def POfAtomMoves(self,samps,i):
 		''' Arguments are given relative to the coordinate of i'''
@@ -674,15 +674,26 @@ class Mol:
 		return Ps/Z
 
 	def Force_from_xyz(self, path):
+		"""
+		Reads the forces from the comment line in the md_dataset,
+		and if no forces exist sets them to zero. Switched on by
+		has_force=True in the ReadGDB9Unpacked routine
+		"""
 		try:
 			f = open(path, 'r')
 			lines = f.readlines()
 			natoms = int(lines[0])
 			forces=np.zeros((natoms,3))
-			read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
-			for j in range(natoms):
-				for k in range(3):
-					forces[j,k] = float(read_forces[j*3+k])
+			try:
+				read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
+			except:
+				self.properties['forces'] = forces
+				pass
+				return
+			if read_forces:
+				for j in range(natoms):
+					for k in range(3):
+						forces[j,k] = float(read_forces[j*3+k])
 			self.properties['forces'] = forces
 		except Exception as Ex:
 			print "Read Failed.", Ex

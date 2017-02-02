@@ -76,7 +76,7 @@ class TensorMolData(TensorData):
 		elif self.type=="mol":
 			for mi in range(len(self.set.mols)):
 				if (mi%10000==0):
-					print "Mol: ", mi
+					LOGGER.debug("Mol: "+str(mi))
 				ins,outs = self.dig.TrainDigest(mi)
 				cases[casep:casep+1] += ins
 				labels[casep:casep+1] += outs
@@ -283,14 +283,14 @@ class TensorMolData_BP(TensorMolData):
 	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
 		self.CheckShapes()
 		self.name=name_
-		print "self.type:", self.type
+		LOGGER.info("TensorMolData, self.type:"+self.type)
 		if self.type=="frag":
 			raise Exception("No BP frags now")
 		nmols  = len(self.set.mols)
 		natoms = self.set.NAtoms()
-		print "self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape
+		LOGGER.info( "self.dig.eshape"+str(self.dig.eshape)+" self.dig.lshape"+str(self.dig.lshape))
 		cases = np.zeros(tuple([natoms]+list(self.dig.eshape)))
-		print "cases:", cases.shape
+		LOGGER.info( "cases:"+str(cases.shape))
 		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
 		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
@@ -304,7 +304,7 @@ class TensorMolData_BP(TensorMolData):
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
 			if (mols_done%10000==0):
-				print "Mol:", mols_done
+				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
@@ -390,7 +390,7 @@ class TensorMolData_BP(TensorMolData):
 		# Figure out the number of atoms in training and test.
 		for i in range(len(tm)):
 			if (tm[i,0] == self.LastTrainMol):
-				LastTrainCase = tm[i,3] # exclusive
+				LastTrainCase = tm[i,2] # exclusive
 				break
 		print "last train atom: ", LastTrainCase
 		print "Num Test atoms: ", len(tm)-LastTrainCase

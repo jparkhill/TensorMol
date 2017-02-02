@@ -43,7 +43,7 @@ class Instance:
 			self.name = Name_
 			#self.QueryAvailable() # Should be a sanity check on the data files.
 			self.Load() # Network still cannot be used until it is prepared.
-			print("raised network: ", self.train_dir)
+			LOGGER.info("raised network: "+self.train_dir)
 			return
 
 		self.element = ele_
@@ -57,8 +57,8 @@ class Instance:
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
 
-		print("self.learning_rate", self.learning_rate)
-		print("self.batch_size", self.batch_size)
+		LOGGER.info("self.learning_rate"+str(self.learning_rate))
+		LOGGER.info("self.batch_size"+str(self.batch_size))
 
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
@@ -84,7 +84,7 @@ class Instance:
 		if (self.normalize):
 			eval_input=self.TData.ApplyNormalize(eval_input, self.element)
 		if (not np.all(np.isfinite(eval_input))):
-			print("WTF, you trying to feed me, garbage?")
+			LOGGER.error("WTF, you trying to feed me, garbage?")
 			raise Exception("bad digest.")
 		if (self.PreparedFor<eval_input.shape[0]):
 			self.Prepare(eval_input,eval_input.shape[0])
@@ -107,7 +107,7 @@ class Instance:
 			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 			if (len(metafiles)>0):
 				most_recent_meta_file=metafiles[0]
-				print("Restoring training from Meta file: ",most_recent_meta_file)
+				LOGGER.info("Restoring training from Meta file: "+most_recent_meta_file)
 				config = tf.ConfigProto(allow_soft_placement=True)
 				self.sess = tf.Session(config=config)
 				self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
@@ -132,14 +132,14 @@ class Instance:
 				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 				if (len(metafiles)>0):
 					most_recent_meta_file=metafiles[0]
-					print("Restoring training from Metafile: ",most_recent_meta_file)
+					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
 					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
 					config = tf.ConfigProto(allow_soft_placement=True)
 					self.sess = tf.Session(config=config)
 					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
 					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
 			except Exception as Ex:
-				print("Restore Failed 2341325",Ex)
+				LOGGER.error("Restore Failed")
 				pass
 			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			return
@@ -174,30 +174,30 @@ class Instance:
 		return
 
 	def variable_summaries(var):
-	  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-	  with tf.name_scope('summaries'):
-		mean = tf.reduce_mean(var)
-		tf.summary.scalar('mean', mean)
+		"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+		with tf.name_scope('summaries'):
+			mean = tf.reduce_mean(var)
+			tf.summary.scalar('mean', mean)
 		with tf.name_scope('stddev'):
-		  stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-		tf.summary.scalar('stddev', stddev)
-		tf.summary.scalar('max', tf.reduce_max(var))
-		tf.summary.scalar('min', tf.reduce_min(var))
-		tf.summary.histogram('histogram', var)
+			stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+			tf.summary.scalar('stddev', stddev)
+			tf.summary.scalar('max', tf.reduce_max(var))
+			tf.summary.scalar('min', tf.reduce_min(var))
+			tf.summary.histogram('histogram', var)
 
 	# one of these two routines need to be removed I think. -JAP
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
 		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
-		print("Saving Checkpoint file, ",checkpoint_file_mini)
+		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)
 		return
 
 #this isn't really the correct way to load()
 # only the local class members (not any TF objects should be unpickled.)
 	def Load(self):
-		print ("Unpickling TFInstance...")
+		LOGGER.info("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")
 		tmp=pickle.load(f)
 		# This is just to use an updated version of evaluate and should be removed after I re-train...
@@ -210,8 +210,8 @@ class Instance:
 		if (len(chkfiles)>0):
 			self.chk_file = chkfiles[0]
 		else:
-			print("Network not found... Traindir:", self.train_dir)
-			print("Traindir contents: ", os.listdir(self.train_dir))
+			LOGGER.error("Network not found... Traindir:"+self.train_dir)
+			LOGGER.error("Traindir contents: "+str(os.listdir(self.train_dir)))
 		return
 
 	def _variable_with_weight_decay(self, var_name, var_shape, var_stddev, var_wd):
@@ -256,10 +256,10 @@ class Instance:
 		"""
 		# Don't eat shit.
 		if (not np.all(np.isfinite(batch_data[0]))):
-			print("I was fed shit")
+			LOGGER.error("I was fed shit")
 			raise Exception("DontEatShit")
 		if (not np.all(np.isfinite(batch_data[1]))):
-			print("I was fed shit")
+			LOGGER.error("I was fed shit")
 			raise Exception("DontEatShit")
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
@@ -278,32 +278,28 @@ class Instance:
 		hidden2_units = PARAMS["hidden2"]
 		hidden3_units = PARAMS["hidden3"]
 		with tf.name_scope('hidden1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden1_units]),
-				name='biases')
-				hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
-				#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
-				#tf.summary.histogram(weights.name, weights)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
+			hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
+			#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
+			#tf.summary.histogram(weights.name, weights)
 		# Hidden 2
 		with tf.name_scope('hidden2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden2_units]),
-				name='biases')
-				hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden2_units]),name='biases')
+			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
 
 		# Hidden 3
 		with tf.name_scope('hidden3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([hidden3_units]),
-				name='biases')
-				hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
+			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
 
 		# Linear
 		with tf.name_scope('regression_linear'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros(self.outshape),
-				name='biases')
-				output = tf.matmul(hidden3, weights) + biases
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
+			output = tf.matmul(hidden3, weights) + biases
 		return output
 
 	def loss_op(self, output, labels):
@@ -363,9 +359,9 @@ class Instance:
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		denom = max((int(Ncase/self.batch_size)),1)
 		if Train:
-			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
+			LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
 		else:
-			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(denom*self.batch_size)))
+			LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
 		return
 
 class Instance_fc_classify(Instance):
@@ -378,7 +374,7 @@ class Instance_fc_classify(Instance):
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
 		self.prob = None
-#		self.inshape = self.TData.scratch_inputs.shape[1]
+		#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
@@ -407,15 +403,16 @@ class Instance_fc_classify(Instance):
 		feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder,self.labels_placeholder)
 		tmp = (np.array(self.sess.run([self.prob], feed_dict=feed_dict))[0,:eval_input.shape[0],1])
 		if (not np.all(np.isfinite(tmp))):
-			print("TFsession returned garbage")
-			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
+			LOGGER.error("TFsession returned garbage")
+			LOGGER.error("TFInputs: "+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
+			raise Exception("Garbage...")
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
 
 	def Prepare(self, eval_input, Ncase=1250):
 		Instance.Prepare(self)
-		print("Preparing a ",self.NetType,"Instance")
+		LOGGER.info("Preparing a "+self.NetType+"Instance")
 		self.prob = None
 		self.correct = None
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
@@ -430,7 +427,7 @@ class Instance_fc_classify(Instance):
 			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 			if (len(chkfiles)>0):
 				most_recent_chk_file=chkfiles[0]
-				print("Restoring training from Checkpoint: ",most_recent_chk_file)
+				LOGGER.info("Restoring training from Checkpoint: "+most_recent_chk_file)
 				self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
 		self.PreparedFor = Ncase
 		return
@@ -521,7 +518,7 @@ class Instance_fc_classify(Instance):
 			test_loss = test_loss + loss_value
 			test_correct = test_correct + test_correct_num
 			duration = time.time() - test_start_time
-			print("testing...")
+			LOGGER.info("testing...")
 			self.print_training(step, test_loss, test_correct, Ncase_test, duration)
 		return test_loss, feed_dict
 
@@ -552,8 +549,8 @@ class Instance_fc_sqdiff(Instance):
 		feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder, self.labels_placeholder)
 		tmp = np.array(self.sess.run([self.output], feed_dict=feed_dict))
 		if (not np.all(np.isfinite(tmp))):
-			print("TFsession returned garbage")
-			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
+			LOGGER.error("TFsession returned garbage")
+			LOGGER.error("TFInputs"+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
@@ -732,8 +729,8 @@ class Instance_3dconv_sqdiff(Instance):
 		feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder, self.labels_placeholder)
 		tmp = np.array(self.sess.run([self.output], feed_dict=feed_dict))
 		if (not np.all(np.isfinite(tmp))):
-			print("TFsession returned garbage")
-			print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
+			LOGGER.error("TFsession returned garbage")
+			LOGGER.error("TFInputs"+str(eval_input)) #If it's still a problem here use tf.Print version of the graph.
 		if (self.PreparedFor>eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
@@ -777,7 +774,7 @@ class Instance_3dconv_sqdiff(Instance):
 		self.TData.EvaluateTestBatch(batch_data[1],preds)
 		test_loss = test_loss + loss_value
 		duration = time.time() - test_start_time
-		print("testing...")
+		LOGGER.info("testing...")
 		self.print_training(step, test_loss,  Ncase_test, duration)
 		return test_loss, feed_dict
 
@@ -790,7 +787,7 @@ class Instance_3dconv_sqdiff(Instance):
 		if (batch_data[0].shape[0]==self.batch_size):
 			batch_data=[batch_data[0].reshape(batch_data[0].shape[0],GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1), batch_data[1]]
 		elif (batch_data[0].shape[0] < self.batch_size):
-			print("Resizing... ")
+			LOGGER.info("Resizing... ")
 			batch_data=[batch_data[0].resize(self.batch_size,GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1), batch_data[1].resize((self.batch_size,  batch_data[1].shape[1]))]
 #			batch_data=[batch_data[0], batch_data[1].reshape((batch_data[1].shape[0],1))]
 #			tmp_input = np.copy(batch_data[0])

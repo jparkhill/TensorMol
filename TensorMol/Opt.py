@@ -13,7 +13,7 @@ class Optimizer:
 		Args:
 			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
 		"""
-		self.thresh = 0.0001
+		self.thresh = 0.001
 		self.maxstep = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
@@ -134,7 +134,7 @@ class Optimizer:
 			old_veloc = self.momentum_decay*c_veloc
 			err = m.rms(prev_m)
 			mol_hist.append(prev_m)
-			prev_m.WriteXYZfile("./results/", "OptLog")
+			prev_m.WriteXYZfile(PARAMS["results_dir"], "OptLog")
 			step+=1
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
@@ -165,6 +165,42 @@ class Optimizer:
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords = m.coords + c_veloc
 			old_veloc = self.momentum_decay*c_veloc
+			err = m.rms(prev_m)
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			step+=1
+			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+		return
+
+	def OptRealForce(self,m,IfDebug=True):
+		"""
+		Optimize using force output of an atomwise network.
+		now also averages over rotations...
+		Args:
+			m: A distorted molecule to optimize
+		"""
+		# Sweeps one at a time
+		err=10.0
+		lasterr=10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		print "Orig Coords", m.coords
+		#for i in range(m.NAtoms()):
+		#	print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
+		while(err>self.thresh and step < self.max_opt_step):
+			veloc = 0.0001*self.tfm.EvalRotAvForce(m, RotAv=10)
+			for i in range(m.NAtoms()):
+				if (IfDebug):
+					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::"
+			# c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
+			# Remove translation.
+			c_veloc = veloc - np.average(veloc,axis=0)
+			prev_m = Mol(m.atoms, m.coords)
+			m.coords = m.coords + c_veloc
+			# old_veloc = self.momentum_decay*c_veloc
 			err = m.rms(prev_m)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./datasets/", "OptLog")

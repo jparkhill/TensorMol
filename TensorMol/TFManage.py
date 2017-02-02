@@ -6,7 +6,6 @@ from TFInstance import *
 import numpy as np
 import gc
 
-
 class TFManage:
 	"""
 		A manager of tensorflow instances which perform atom-wise predictions
@@ -125,8 +124,8 @@ class TFManage:
 		return
 
 	def SampleAtomGrid(self, mol, atom, maxstep, ngrid):
-		# use TF instances for each atom.
-		return  self.TData.dig.UniformDigest(mol,atom,maxstep,ngrid)
+	    # use TF instances for each atom.
+	    return  self.TData.dig.UniformDigest(mol,atom,maxstep,ngrid)
 
 	def SmoothPOneAtom(self, mol_, atom_):
 		'''
@@ -141,7 +140,41 @@ class TFManage:
 		p = mol_.UseGoProb(atom_, output)
 		return p
 
-	def evaluate(self, mol, atom):
+	def EvalRotAvForce(self, mol, RotAv=10):
+		"""
+		Goes without saying we should do this in batches for each element,
+		if it actually improves accuracy. And improve rotational sampling.
+		But for the time being I'm doing this sloppily.
+		"""
+		if(self.TData.dig.name != "GauSH"):
+		    raise Exception("Don't average this...")
+		p = np.zeros((mol.NAtoms(),3))
+		pi = np.zeros((3,10,mol.NAtoms(),3))
+		for ax in range(3):
+			axis = np.zeros(3)
+			axis[ax] = 1.0
+			t = 0
+			for theta in np.linspace(-Pi, Pi, RotAv):
+				for atom in range(mol.NAtoms()):
+					mol_t = Mol(mol.atoms, mol.coords)
+					mol_t.Rotate(ax, theta, mol.coords[atom])
+					inputs = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+					tmp = self.Instances[mol_t.atoms[atom]].evaluate(input)[0]
+					p[atom] = np.dot(RotationMatrix(ax, -1.0*theta),tmp)
+					pi[ax,theta,atom] = p[atom]
+				t=t+1
+		# Just to debug and see how much the forces vary with rotation:
+		print "Checking Rotations... "
+		for atom in range(mol.NAtoms()):
+			print "Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1))
+			for ax in range(3):
+				t = 0
+				for theta in np.linspace(-Pi, Pi, RotAv):
+					print atom,ax,theta,":",pi[ax,theta,atom]
+				t=t+1
+		return p/(3.0*RotAv)
+
+	def evaluate(self, mol, atom, RotAv=10):
 		input = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		p = self.Instances[mol.atoms[atom]].evaluate(input)
 		return p[0]
@@ -198,7 +231,7 @@ class TFManage:
 			p.fill(1.0)
 		for i in satoms:
 			if (i == atom ):
-#			if (i == atom or mol.atoms[i] == 1):  # we ignore the hyrodgen here
+		#			if (i == atom or mol.atoms[i] == 1):  # we ignore the hyrodgen here
 				continue
 			ele = mol.atoms[i]
 			# The conditional digest moves the coordinates of catom to all points in the grid, and then evaluates
@@ -211,7 +244,7 @@ class TFManage:
 				tmp_p = tmp_p/(np.sum(tmp_p**2))**0.5  #just normlized it...
 			else:
 				tmp_p.fill(1.0)
-#			tmp_p = np.log10(p)  # take the log..
+		#			tmp_p = np.log10(p)  # take the log..
 			p *=  tmp_p  # small p is what we want
 		p = np.absolute(p)
 		return xyz, p
@@ -245,9 +278,9 @@ class TFManage:
 			tmp_mol = Mol(mol.atoms[0:i+1], mol.coords[0:i+1])
 			inputs = (self.TData.dig.Emb(i, tmp_mol.atoms, tmp_mol.coords,  ((tmp_mol.coords)[i]).reshape((1,3))))[0]
 			inputs = np.array(inputs)
-                        inputs = inputs.reshape((1,-1))
-		        p = float(self.Instances[tmp_mol.atoms[i]].evaluate(inputs))
+			inputs = inputs.reshape((1,-1))
+			p = float(self.Instances[tmp_mol.atoms[i]].evaluate(inputs))
 			print ("i:",i, "p:", p, "logp:", math.log10(p))
-                        logP += math.log10(p)
+			logP += math.log10(p)
 		print ("logP:", logP)
 		return logP

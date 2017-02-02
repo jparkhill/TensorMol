@@ -2,19 +2,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import gc, random
 import numpy as np
-import os,sys,pickle,re
-import math, time
+import gc, random, os, sys, pickle, re, atexit
+import math, time, itertools, warnings
 from math import pi as Pi
 import scipy.special
-import itertools, warnings
 from scipy.weave import inline
-from collections import defaultdict
-from collections import Counter
+#from collections import defaultdict
+#from collections import Counter
 from TensorMol.TMParams import *
-warnings.simplefilter(action = "ignore", category = FutureWarning)
 
+warnings.simplefilter(action = "ignore", category = FutureWarning)
 #
 # GLOBALS
 #	Any global variables of the code must be put here, and must be in all caps.
@@ -22,10 +20,13 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 
 # PARAMETERS
 #  TODO: Migrate these to PARAMS
-PARAMS=TMParams()
+PARAMS = TMParams()
+LOGGER = TMLogger(PARAMS["results_dir"])
+LOGGER.debug("TMPARAMS---")
+LOGGER.debug(PARAMS)
+LOGGER.debug("~~~TMPARAMS")
 MAX_ATOMIC_NUMBER = 10
 MBE_ORDER = 2
-
 # Derived Quantities and useful things.
 N_CORES = 1
 HAS_PYSCF = False
@@ -33,7 +34,6 @@ HAS_EMB = False
 HAS_TF = False
 GRIDS = None
 HAS_GRIDS=True
-
 # KUN PLEASE MAKE THESE ALL CAPS FOLLOWING OUR CONVENTION.
 ele_roomT_H = {1:-0.497912, 6:-37.844411, 7:-54.581501, 8:-75.062219, 9:-99.716370}     # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
 atoi = {'H':1,'He':2,'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,'K':19,'Ca':20,'Sc':21,'Ti':22,'Si':23,'V':24,'Cr':25,'Br':35, 'Cs':55, 'Pb':82}
@@ -45,62 +45,47 @@ atomic_raidus_cho = {1:0.328, 6:0.754, 8:0.630} # roughly statisfy mp2 cc-pvtz e
 KAYBEETEE = 0.000950048 # At 300K
 BOHRPERA = 1.889725989
 Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
-
 #
 # -- begin Environment set up.
 #
-print("--------------------------\n")
-print("         /\\______________")
-print("      __/  \\   \\_________")
-print("    _/  \\   \\            ")
-print("___/\_TensorMol_0.0______")
-print("   \\_/\\______  __________")
-print("     \\/      \\/          ")
-print("      \\______/\\__________\n")
-print("--------------------------")
-print("By using this software you accept the terms of the GNU public license in ")
-print("COPYING, and agree to attribute the use of this software in publications as: \n")
-print("K.Yao, J. E. Herr, J. Parkhill. TensorMol0.0 (2016)")
-print("Depending on Usage, please also acknowledge, TensorFlow, PySCF, or your training sets.")
-print("--------------------------")
-print("Searching for Installed Optional Packages...")
+
+TMBanner()
+LOGGER.info("Searching for Installed Optional Packages...")
 try:
 	from pyscf import scf
 	from pyscf import gto
 	from pyscf import dft
 	from pyscf import mp
 	HAS_PYSCF = True
-	print("Pyscf has been found")
+	LOGGER.debug("Pyscf has been found")
 except Exception as Ex:
-	print("Pyscf is not installed -- no ab-initio sampling",Ex)
+	LOGGER.info("Pyscf is not installed -- no ab-initio sampling")
 	pass
 
 try:
 	import MolEmb
 	HAS_EMB = True
-	print("MolEmb has been found")
+	LOGGER.debug("MolEmb has been found")
 except:
 	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install")
 	pass
 
 try:
 	import tensorflow as tf
-	tf.logging.set_verbosity(tf.logging.DEBUG)
+	LOGGER.debug("Tensorflow version "+tf.__version__+" has been found")
 	HAS_TF = True
-	print("Tensorflow version "+tf.__version__+" has been found")
 except:
-	print("Tensorflow not Installed, very limited functionality")
+	LOGGER.info("Tensorflow not Installed, very limited functionality")
 	pass
 
 try:
 	import multiprocessing
 	N_CORES=multiprocessing.cpu_count()
-	print("Found "+str(N_CORES)+" CPUs to thread over... ")
+	LOGGER.debug("Found "+str(N_CORES)+" CPUs to thread over... ")
 except:
-	print("Only a single CPU, :( did you lose a war?")
+	LOGGER.info("Only a single CPU, :( did you lose a war?")
 	pass
-
-print("TensorMol ready...")
+LOGGER.debug("TensorMol ready...")
 
 TOTAL_SENSORY_BASIS=None
 SENSORY_BASIS=None
@@ -112,6 +97,10 @@ print("--------------------------")
 #
 # -- end Environment set up.
 #
+
+@atexit.register
+def exitTensorMol():
+	LOGGER.info("~ Adios Homeshake ~")
 
 def complement(a,b):
 	return [i for i in a if b.count(i)==0]
@@ -177,6 +166,21 @@ def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase =
 	lines += "module load gcc/5.2.0\nsetenv  QC /afs/crc.nd.edu/group/parkhill/qchem85\nsetenv  QCAUX /afs/crc.nd.edu/group/parkhill/QCAUX_1022\nsetenv  QCPLATFORM LINUX_Ix86\n\n\n"
 	lines += "/afs/crc.nd.edu/group/parkhill/qchem85/bin/qchem  -nt "+ncore+"   "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".in  "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".out\n\nrm MBE*.o*"
 	return lines
+
+def RotationMatrix(axis, theta):
+    """
+    Return the rotation matrix associated with counterclockwise rotation about
+    the given axis by theta radians.
+    """
+    axis = np.asarray(axis)
+    axis = axis/np.linalg.norm(axis)
+    a = math.cos(theta/2.0)
+    b, c, d = -axis*math.sin(theta/2.0)
+    aa, bb, cc, dd = a*a, b*b, c*c, d*d
+    bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
+    return np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
+                     [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
+                     [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
 def Binominal_Combination(indis=[0,1,2], group=3):
 	if (group==1):

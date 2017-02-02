@@ -429,7 +429,8 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double x = xyz_data[j*Nxyz[1]+0];
 				double y = xyz_data[j*Nxyz[1]+1];
 				double z = xyz_data[j*Nxyz[1]+2];
-				RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
+				RadSHProjection_Orth(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
 			}
 		}
 	}
@@ -446,12 +447,13 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 			double x = xyz_data[j*Nxyz[1]+0];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
-			RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX));
+			RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
 		}
 	}
 	//	}
 	return SH;
 }
+
 
 //
 // Embed molecule using Gaussian X Spherical Harmonic basis
