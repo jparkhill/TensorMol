@@ -681,10 +681,16 @@ class Mol:
 			lines = f.readlines()
 			natoms = int(lines[0])
 			forces=np.zeros((natoms,3))
-			read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
-			for j in range(natoms):
-				for k in range(3):
-					forces[j,k] = float(read_forces[j*3+k])
+			try:
+				read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
+			except:
+				self.properties['forces'] = forces
+				pass
+				return
+			if read_forces:
+				for j in range(natoms):
+					for k in range(3):
+						forces[j,k] = float(read_forces[j*3+k])
 			self.properties['forces'] = forces
 		except Exception as Ex:
 			print "Read Failed.", Ex

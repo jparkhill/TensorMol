@@ -22,13 +22,34 @@ using namespace std;
 using namespace std;
 #define PI 3.14159265358979
 
-#define SH_NRAD 11
-#define SH_LMAX 7
+#define SH_NRAD 10
+#define SH_LMAX 8 
 // r0, sigma
 // if you want to sense beyond 15A, you need to fix this grid.
 const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {1.3, 1.3}, {2.2,
 	2.4}, {4.4, 2.4}, {6.6, 2.4}, {8.8, 2.4}, {11., 2.4}, {13.2,
 		2.4}, {15.4, 2.4}};
+
+const double ORBFS[10][10]={{3.20618, -1.60277, 0.790409, -0.432138, 0.417111, -0.638171,
+  0.609988, -0.375213, 0.166349, -0.0433641}, {-1.60277,
+  4.44097, -3.43358, 1.343, -0.284226, 0.105937, -0.0488488,
+  0.0127932, -0.00114006, -0.000627306}, {0.790409, -3.43358,
+  7.67335, -5.02843, 1.95789, -1.8237, 1.43882, -0.739663,
+  0.280038, -0.0639054}, {-0.432138, 1.343, -5.02843,
+  5.87383, -2.84369, 1.71789, -1.07652, 0.42326, -0.116602,
+  0.0179782}, {0.417111, -0.284226, 1.95789, -2.84369,
+  5.18751, -5.32127, 4.1098, -2.10599, 0.8189, -0.196566}, {-0.638171,
+   0.105937, -1.8237, 1.71789, -5.32127, 8.42044, -7.51659,
+  4.3658, -1.86549, 0.477365}, {0.609988, -0.0488488,
+  1.43882, -1.07652, 4.1098, -7.51659, 8.50161, -5.66743,
+  2.63924, -0.712669}, {-0.375213, 0.0127932, -0.739663,
+  0.42326, -2.10599, 4.3658, -5.66743, 5.29959, -2.96864,
+  0.888365}, {0.166349, -0.00114006, 0.280038, -0.116602,
+  0.8189, -1.86549, 2.63924, -2.96864,
+  2.75794, -1.06479}, {-0.0433641, -0.000627306, -0.0639054,
+  0.0179782, -0.196566, 0.477365, -0.712669, 0.888365, -1.06479,
+  0.996182}};
+
 
 		//
 		// Real Spherical Harmonics...
@@ -777,13 +798,16 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 		}
 
 
+
+
 		//
 		// Projects a delta function at x,y,z onto
 		//  Exp[-(x-r)^2/(2 sigma^2)]*Y_{LM}(theta,phi)
 		//
 		// which will occupy a vector of length Nrad*(1+lmax)**2
 
-		void RadSHProjection(double x, double y, double z, double* output, double fac=1.0)
+
+		void RadSHProjection(double x, double y, double z, double* output, int natom, double fac=1.0)
 		{
 			double rnotinv = sqrt(x*x+y*y+z*z);
 			double r = 1.0/rnotinv;
@@ -820,12 +844,61 @@ const double RBFS[12][2]={{0.1, 0.156787}, {0.3, 0.3}, {0.5, 0.5}, {0.7, 0.7}, {
 					for (int m=-l; m<l+1 ; ++m)
 					{
 						output[i*((SH_LMAX+1)*(SH_LMAX+1)) + (l)*(l) + m+l] += Gv*CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_)*fac;
+
 						// if ((RealSphericalHarmonic(l,m,theta,phi) - CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_))>0.0000001)
 						// 	cout << "Real vs. Cart: " << RealSphericalHarmonic(l,m,theta,phi) << " " << CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_) << endl;
 					}
 				}
 			}
 		}
+
+		void RadSHProjection_Orth(double x, double y, double z, double* output, int natom, double fac=1.0)
+		{
+			double rnotinv = sqrt(x*x+y*y+z*z);
+			double r = 1.0/rnotinv;
+			// Populate tables...
+			double x_[SH_LMAX-1];
+			double y_[SH_LMAX-1];
+			double z_[SH_LMAX-1];
+			double r_[SH_LMAX-1];
+			x_[0] = x*x;
+			y_[0] = y*y;
+			z_[0] = z*z;
+			r_[0] = r*r;
+			for (int i=2; i<(SH_LMAX-1) ; i+=2)
+			{
+				x_[i] = x_[i-2]*x*x;
+				y_[i] = y_[i-2]*y*y;
+				z_[i] = z_[i-2]*z*z;
+			}
+			for (int i=1; i<(SH_LMAX-1) ; ++i)
+				r_[i] = r_[i-1]*r;
+
+			if (r>pow(10.0,9))
+				return;
+			// double theta = acos(z/r);
+			// double theta = acos(z*r);
+			// double phi = atan2(y,x);
+			#pragma omp parallel for
+			for (int i=0; i<SH_NRAD ; ++i)
+			{
+				//cout << "Num Thread: " << omp_get_num_threads() << endl;
+				double Gv = 0;
+				for (int j=0; j<SH_NRAD ; ++j)
+					Gv += ORBFS[i][j]*Gau(rnotinv, RBFS[j][0],RBFS[j][1]);
+				for (int l=0; l<SH_LMAX+1 ; ++l)
+				{
+					for (int m=-l; m<l+1 ; ++m)
+					{
+						output[i*((SH_LMAX+1)*(SH_LMAX+1)) + (l)*(l) + m+l] += Gv*CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_)*fac;
+
+						// if ((RealSphericalHarmonic(l,m,theta,phi) - CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_))>0.0000001)
+						// 	cout << "Real vs. Cart: " << RealSphericalHarmonic(l,m,theta,phi) << " " << CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_) << endl;
+					}
+				}
+			}
+		}
+
 
 		void RadSHProjection_Spherical(double x, double y, double z, double* output, double fac=1.0)
 		{

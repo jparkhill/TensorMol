@@ -139,7 +139,7 @@ class Instance:
 					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
 					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
 			except Exception as Ex:
-				LOGGER.error("Restore Failed"+Ex)
+				LOGGER.error("Restore Failed")
 				pass
 			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			return
