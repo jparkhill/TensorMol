@@ -103,7 +103,7 @@ class TensorData():
     	"""
     	self.CheckShapes()
     	self.name=name_
-    	LOGGER.info("Generating Train set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules")
+    	LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
     	if (len(self.set.mols[0].PESSamples)==0):
     		print "--- using a Go model of the PES ---"
     	else:
