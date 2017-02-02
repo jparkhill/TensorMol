@@ -2,7 +2,6 @@ from Util import *
 import numpy as np
 import random, math
 import MolEmb
-from Grids import RotationMatrix
 
 class Mol:
 	""" Provides a general purpose molecule"""
