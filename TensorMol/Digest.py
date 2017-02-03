@@ -191,44 +191,48 @@ class Digester:
 	    return (a*self.StdNorm+self.MeanNorm)
 
 	def EvaluateTestOutputs(self, desired, predicted):
-		print "Evaluating, ", len(desired), " predictions... "
-		#print desired.shape, predicted.shape
-		if (self.OType=="HardP"):
-			raise Exception("Unknown Digester Output Type.")
-		elif (self.OType=="Disp" or self.OType=="Force" or self.OType == "GoForce"):
-			ders=np.zeros(len(desired))
-			#comp=np.zeros(len(desired))
-			for i in range(len(desired)):
-				ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
-			LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
-			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
-			for i in range(100):
-				print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
-		elif (self.OType=="SmoothP"):
-			ders=np.zeros(len(desired))
-			iers=np.zeros(len(desired))
-			comp=np.zeros(len(desired))
-			for i in range(len(desired)):
-				#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
-				Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
-				Pr /= np.sum(Pr)
-				p=np.dot(GRIDS.MyGrid().T,Pr)
-				#print "fit disp: ", p
-				ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
-				iers[i] = np.linalg.norm(p-desired[i,-3:])
-				comp[i] = np.linalg.norm(p-predicted[i,-3:])
-			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
-			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
-			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
-		elif (self.OType=="StoP"):
-			raise Exception("Unknown Digester Output Type.")
-		elif (self.OType=="Energy"):
-			raise Exception("Unknown Digester Output Type.")
-		elif (self.OType=="GoForce_old_version"): # python version is fine for here
-			raise Exception("Unknown Digester Output Type.")
-		else:
-			raise Exception("Unknown Digester Output Type.")
+		try:
+			print "Evaluating, ", len(desired), " predictions... "
+			#print desired.shape, predicted.shape
+			if (self.OType=="HardP"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.OType=="Disp" or self.OType=="Force" or self.OType == "GoForce"):
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("Average learning target: %f, Average output (direct) %f", np.average(desired[:,-3:],axis=0),np.average(predicted[:,-3:],axis=0))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+				for i in range(100):
+					print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
+			elif (self.OType=="SmoothP"):
+				ders=np.zeros(len(desired))
+				iers=np.zeros(len(desired))
+				comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
+					Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
+					Pr /= np.sum(Pr)
+					p=np.dot(GRIDS.MyGrid().T,Pr)
+					#print "fit disp: ", p
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+					iers[i] = np.linalg.norm(p-desired[i,-3:])
+					comp[i] = np.linalg.norm(p-predicted[i,-3:])
+				print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
+				print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+			elif (self.OType=="StoP"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.OType=="Energy"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.OType=="GoForce_old_version"): # python version is fine for here
+				raise Exception("Unknown Digester Output Type.")
+			else:
+				raise Exception("Unknown Digester Output Type.")
+		except Exception as Ex:
+			print "Something went wrong"
+			pass
 		return
 
 #
