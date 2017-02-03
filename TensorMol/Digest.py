@@ -195,12 +195,12 @@ class Digester:
 		#print desired.shape, predicted.shape
 		if (self.OType=="HardP"):
 			raise Exception("Unknown Digester Output Type.")
-		elif (self.OType=="Disp" or self.OType=="Force"):
+		elif (self.OType=="Disp" or self.OType=="Force" or self.OType == "GoForce"):
 			ders=np.zeros(len(desired))
 			#comp=np.zeros(len(desired))
 			for i in range(len(desired)):
 				ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
-			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders)
+			LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
 			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 			for i in range(100):
