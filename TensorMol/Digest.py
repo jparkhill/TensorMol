@@ -195,7 +195,7 @@ class Digester:
 		#print desired.shape, predicted.shape
 		if (self.OType=="HardP"):
 			raise Exception("Unknown Digester Output Type.")
-		elif (self.OType=="Disp" or self.OType=="Force"):
+		elif (self.OType=="Disp" or self.OType=="Force" or self.OType == "GoForce"):
 			ders=np.zeros(len(desired))
 			#comp=np.zeros(len(desired))
 			for i in range(len(desired)):
@@ -252,7 +252,7 @@ class Digester:
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
 			self.eshape = list(tinps[0].shape)
 			self.lshape = list(touts[0].shape)
-			print "Assigned Digester shapes: ",self.eshape,self.lshape
+			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
 		return self.Emb(mol_,-1,mol_.coords[0]) # will deal with getting energies if it's needed.
 
 	def TrainDigest(self, mol_, ele_, MakeDebug=False):
@@ -268,8 +268,7 @@ class Digester:
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
 			self.eshape = list(tinps[0].shape)
 			self.lshape = list(touts[0].shape)
-			print "Assigned Digester shapes: ",self.eshape,self.lshape
-
+			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
 		ncase = mol_.NumOfAtomsE(ele_)*self.NTrainSamples
 		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float32)
 		outs = np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
