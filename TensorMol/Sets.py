@@ -5,7 +5,8 @@
 from Mol import *
 from Util import *
 import numpy as np
-import os,sys,pickle,re,copy,time
+import os,sys,re,copy,time
+import cPickle as pickle
 
 class MSet:
 	""" A molecular database which
