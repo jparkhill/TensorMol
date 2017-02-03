@@ -56,6 +56,21 @@ class MSet:
 					s.mols[-1].DistMatrix = self.mols[j].DistMatrix
 		return s
 
+	def RotatedClone(self, NRots=3):
+		""" Rotate every molecule NRots Times. """
+		print "Making Rotated clone of:", self.name
+		s = MSet(self.name)
+		ord = range(len(self.mols))
+		if(random):
+			np.random.seed(int(time.time()))
+			ord=np.random.permutation(len(self.mols))
+		for j in ord:
+			for i in range (0, NRots):
+				s.mols.append(copy.deepcopy(self.mols[j]))
+				s.mols[-1].coords -= s.mols[-1].Center()
+				s.mols[-1].Rotate(np.random.normal(0.,1.0,3),np.random.uniform(-Pi,Pi))
+		return s
+
 	def DistortedClone(self, NDistorts=1, random=True):
 			''' Create a distorted copy of a set'''
 			print "Making distorted clone of:", self.name

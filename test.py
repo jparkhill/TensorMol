@@ -47,22 +47,18 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 		print "Testing a Network learning Go-Atom Force..."
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
-		print "nmols:",len(a.mols)
-		c=a.DistortedClone(300,0.25) # number of distortions, displacement
-		b=a.DistortAlongNormals(30, True, 0.7)
+		b = a.RotatedClone(3)
+		print "nmols:",len(b.mols)
+		c=b.DistortedClone(300,0.25) # number of distortions, displacement
+		d=b.DistortAlongNormals(30, True, 0.7)
+		c.AppendSet(d)
 		c.Statistics()
-		b.Statistics()
-		print len(b.mols)
-		#b.Save()
-		# b.WriteXYZ()
-		TreatedAtoms = b.AtomTypes()
+		TreatedAtoms = c.AtomTypes()
 		# 2 - Choose Digester
-		d = Digester(TreatedAtoms, name_=dig_,OType_ ="Force")
+		d = Digester(TreatedAtoms, name_=dig_,OType_ ="GoForce")
 		# 4 - Generate training set samples.
-		tset = TensorData(b,d)
+		tset = TensorData(c,d)
 		tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-		tset2 = TensorData(c,d)
-		tset2.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
 	#Train
 	if (Train_):
 		tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
@@ -89,8 +85,8 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 	return
 
 # Tests to run.
-TestBP(set_="gdb9", dig_="GauInv", BuildTrain_=False)
-#TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False, net_ = "fc_sqdiff", Train_=False)
+#TestBP(set_="gdb9", dig_="GauInv", BuildTrain_=False)
+TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 
 # Kun's tests.
 if (0):

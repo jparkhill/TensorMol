@@ -7,11 +7,11 @@ class Mol:
 	""" Provides a general purpose molecule"""
 	def __init__(self, atoms_ =  None, coords_ = None):
 		if (atoms_!=None):
-			self.atoms = atoms_
+			self.atoms = atoms_.copy()
 		else:
 			self.atoms = np.zeros(1,dtype=np.uint8)
 		if (coords_!=None):
-			self.coords = coords_
+			self.coords = coords_.copy()
 		else:
 			self.coords=np.zeros(shape=(1,1),dtype=np.float)
 		self.properties = {}
@@ -55,22 +55,32 @@ class Mol:
 		return [i for i in range(self.NAtoms()) if dists[i]<rad]
 
 	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
+		"""
+		Rotate atomic coordinates and forces if present.
+		Args:
+			axis: vector for rotation axis
+			ang: radians of rotation
+			origin: origin of rotation axis.
+		"""
 		rm = RotationMatrix(axis,ang)
 		crds = np.copy(self.coords)
 		crds -= origin
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(rm,crds[i])
-		crds += origin
+		if ("forces" in self.properties.keys()):
+			# Must also rotate the force vectors
+			old_endpoints = crds+self.properties["forces"]
+			new_forces = np.zeros(crds.shape)
+			for i in range(len(self.coords)):
+				new_endpoint = np.dot(rm,old_endpoints[i])
+				new_forces[i] = new_endpoint - self.coords[i]
+			self.properties["forces"] = new_forces
+		self.coords += origin
 
 	def Transform(self,ltransf,center=np.array([0.0,0.0,0.0])):
 		crds=np.copy(self.coords)
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(ltransf,crds[i]-center) + center
-
-	def MoveToCenter(self):
-		first_atom = (self.coords[0]).copy()
-		for i in range (0, self.NAtoms()):
-			self.coords[i] = self.coords[i] - first_atom
 
 	def AtomsWithin(self, SensRadius, coord):
 		''' Returns atoms within the sensory radius in sorted order. '''
