@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 from TensorMol.TensorData import *
 import numpy as np
-import math, pickle
+import cPickle as pickle
+import math
 import time, os, sys
 import os.path
 if (HAS_TF):

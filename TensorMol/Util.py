@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import gc, random, os, sys, pickle, re, atexit
+import cPickle as pickle
+import gc, random, os, sys, re, atexit
 import math, time, itertools, warnings
 from math import pi as Pi
 import scipy.special

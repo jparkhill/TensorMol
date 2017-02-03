@@ -5,7 +5,8 @@ from __future__ import print_function
 from TensorMol.TFInstance import *
 from TensorMol.TensorMolData import *
 import numpy as np
-import math,pickle
+import cPickle as pickle
+import math
 import time
 import os.path
 if (HAS_TF):

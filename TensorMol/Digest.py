@@ -1,6 +1,7 @@
 from Mol import *
 from Util import *
-import numpy,os,sys,pickle,re
+import numpy,os,sys,re
+import cPickle as pickle
 if (HAS_EMB):
 	import MolEmb
 
