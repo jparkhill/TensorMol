@@ -98,20 +98,25 @@ class MolInstance(Instance):
 
 class MolInstance_fc_classify(MolInstance):
 	def __init__(self, TData_,  Name_=None):
+		"""
+		Translation of the outputs to meaningful numbers is handled by the digester and Tensordata
+		"""
 		self.NetType = "fc_classify"
 		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.hidden1 = 200
-		self.hidden2 = 200
-		self.hidden3 = 200
+		self.hidden1 = PARAMS["hidden1"]
+		self.hidden2 = PARAMS["hidden2"]
+		self.hidden3 = PARAMS["hidden3"]
 		self.prob = None
-#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.correct = None
 		self.summary_op =None
 		self.summary_writer=None
 
-	def evaluation(self, output, labels):
+	def n_correct(self, output, labels):
+		"""
+		This should average over the classifier output.
+		"""
 		# For a classifier model, we can use the in_top_k Op.
 		# It returns a bool tensor with shape [batch_size] that is true for
 		# the examples where the label is in the top k (here k=1)
@@ -151,7 +156,7 @@ class MolInstance_fc_classify(MolInstance):
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
-			self.correct = self.evaluation(self.output, self.labels_placeholder)
+			self.correct = self.n_correct(self.output, self.labels_placeholder)
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
@@ -264,15 +269,13 @@ class MolInstance_fc_sqdiff(MolInstance):
 		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.hidden1 = 500
-		self.hidden2 = 500
-		self.hidden3 = 500
+		self.hidden1 = PARAMS["hidden1"]
+		self.hidden2 = PARAMS["hidden2"]
+		self.hidden3 = PARAMS["hidden3"]
 		self.inshape = np.prod(self.TData.dig.eshape)
 		self.outshape = np.prod(self.TData.dig.lshape)
-#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.summary_op =None
 		self.summary_writer=None
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def evaluate(self, eval_input):
 		# Check sanity of input

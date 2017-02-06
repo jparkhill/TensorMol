@@ -42,6 +42,8 @@ def TestAlign():
 def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True):
 	"""
 	A Network trained on Go-Force
+	Args:
+		dig_ : type of digester to be used (GauSH, etc.)
 	"""
 	if (BuildTrain_):
 		print "Testing a Network learning Go-Atom Force..."
@@ -61,7 +63,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 		tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
 	#Train
 	if (Train_):
-		tset = TensorData(None,None,"OptMols_NEQ_"+dig_,None,10000)
+		tset = TensorData(None,None,"OptMols_NEQ_"+dig_)
 		manager=TFManage("",tset,True, net_) # True indicates train all atoms
 	# This Tests the optimizer.
 	if (net_ == "KRR_sqdiff"):

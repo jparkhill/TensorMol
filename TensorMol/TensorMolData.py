@@ -8,7 +8,7 @@
 #
 import os, gc
 from Sets import *
-from MolDigest import *
+from DigestMol import *
 from TensorData import *
 #import tables should go to hdf5 soon...
 
@@ -266,8 +266,8 @@ class TensorMolData_BP(TensorMolData):
 		self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
-		self.NormalizeInputs = True
-		self.NormalizeOutputs = True
+		self.NormalizeInputs = PARAMS["NormInputs"]
+		self.NormalizeOutputs = PARAMS["NormOutputs"]
 		print "TensorMolData_BP.eles", self.eles
 		print "TensorMolData_BP.MeanStoich", self.MeanStoich
 		print "TensorMolData_BP.MeanNAtoms", self.MeanStoich
@@ -379,6 +379,7 @@ class TensorMolData_BP(TensorMolData):
 		if (self.ScratchState == 1):
 			return
 		ti, to, tm = self.LoadData(random)
+
 		ti, to = self.Normalize(ti,to)
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
