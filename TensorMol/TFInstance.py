@@ -57,9 +57,15 @@ class Instance:
 		self.momentum = PARAMS["momentum"]
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
+		hidden1_units = PARAMS["hidden1"]
+		hidden2_units = PARAMS["hidden2"]
+		hidden3_units = PARAMS["hidden3"]
 
-		LOGGER.info("self.learning_rate"+str(self.learning_rate))
-		LOGGER.info("self.batch_size"+str(self.batch_size))
+		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
+		LOGGER.info("self.batch_size: "+str(self.batch_size))
+		LOGGER.info("hidden1_units: "+str(hidden1_units))
+		LOGGER.info("hidden2_units: "+str(hidden2_units))
+		LOGGER.info("hidden3_units: "+str(hidden3_units))
 
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
@@ -91,10 +97,9 @@ class Instance:
 			self.Prepare(eval_input,eval_input.shape[0])
 		return
 
-	#Seems like train_prepare is used instead of this, is this function deprecated?
 	def Prepare(self, eval_input, Ncase=1250):
 		"""
-		Called if only evaluations are being done, by Evaluate()
+		Called if only evaluations are being done, by evaluate()
 		"""
 		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
@@ -274,10 +279,10 @@ class Instance:
 		Returns:
 		softmax_linear: Output tensor with the computed logits.
 		"""
-		# Hidden 1
 		hidden1_units = PARAMS["hidden1"]
 		hidden2_units = PARAMS["hidden2"]
 		hidden3_units = PARAMS["hidden3"]
+		# Hidden 1
 		with tf.name_scope('hidden1'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
