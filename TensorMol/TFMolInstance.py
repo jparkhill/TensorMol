@@ -73,7 +73,7 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 10
+		test_freq = 1
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -81,7 +81,7 @@ class MolInstance(Instance):
 				test_loss, feed_dict = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					if (step > 500):
+					if (step > 0):
 						self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
@@ -279,6 +279,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 #		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.summary_op =None
 		self.summary_writer=None
+		self.check=None 
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 
 	def evaluate(self, eval_input):
@@ -306,13 +307,13 @@ class MolInstance_fc_sqdiff(MolInstance):
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
-				self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
-				self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
-				print ("type of self.embeds_placeholder:", type(self.embeds_placeholder))
-				self.gradient = tf.gradients(self.output, self.embeds_placeholder)[0]
-				self.saver = tf.train.Saver()
-				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-				self.saver.restore(self.sess, self.chk_file)
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
+			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			print ("type of self.embeds_placeholder:", type(self.embeds_placeholder))
+			self.gradient = tf.gradients(self.output, self.embeds_placeholder)[0]
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver.restore(self.sess, self.chk_file)
 		self.PreparedFor = Ncase
 		return
 
@@ -455,6 +456,19 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.hidden2 = 1000
 		self.summary_op =None
 		self.summary_writer=None
+
+        def Clean(self):
+		Instance.Clean(self)
+		self.summary_op =None
+                self.summary_writer=None
+		self.inp_pl=None
+		self.check = None
+                self.mats_pl=None
+                self.label_pl=None
+		self.summary_op =None
+                self.summary_writer=None
+                return
+
 
 	def train_prepare(self,  continue_training =False):
 		"""
@@ -646,3 +660,50 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
+
+
+        def evaluate(self, eval_input):
+                # Check sanity of input
+                MolInstance.evaluate(self, eval_input)
+                eval_input_ = eval_input
+                if (self.PreparedFor>eval_input.shape[0]):
+                        eval_input_ =np.copy(eval_input)
+                        eval_input_.resize((self.PreparedFor,eval_input.shape[1]))
+                        # pad with zeros
+                eval_labels = np.zeros((self.PreparedFor,1))  # dummy labels
+                batch_data = [eval_input_, eval_labels]
+                #images_placeholder, labels_placeholder = self.placeholder_inputs(Ncase) Made by Prepare()
+                feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder,self.labels_placeholder)
+                tmp, gradient =  (self.sess.run([self.output, self.gradient], feed_dict=feed_dict))
+                if (not np.all(np.isfinite(tmp))):
+                        print("TFsession returned garbage")
+                        print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
+                if (self.PreparedFor>eval_input.shape[0]):
+                        return tmp[:eval_input.shape[0]], gradient[:eval_input.shape[0]]
+                return tmp, gradient
+
+        def Prepare(self, eval_input, Ncase=125000):
+                self.Clean()
+                # Always prepare for at least 125,000 cases which is a 50x50x50 grid.
+                eval_labels = np.zeros(Ncase)  # dummy labels
+		self.TData.LoadDataToScratch()
+                self.MeanNumAtoms = self.TData.MeanNumAtoms
+                self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
+                with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+                        self.inp_pl=[]
+                        self.mats_pl=[]
+                        for e in range(len(self.eles)):
+                                self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
+                                self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
+                        self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+                        self.output = self.inference(self.inp_pl, self.mats_pl)
+                        self.check = tf.add_check_numerics_ops()
+                        self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+                        self.summary_op = tf.summary.merge_all()
+                        init = tf.global_variables_initializer()
+                        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+                        self.saver.restore(self.sess, self.chk_file)
+                self.PreparedFor = Ncase
+                return
+

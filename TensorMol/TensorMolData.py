@@ -449,7 +449,20 @@ class TensorMolData_BP(TensorMolData):
 					atomcount[j]=atomcount[j]+1
 		self.MeanStoich=atomcount/len(to)
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
+		#self.NormalizeIns()
 		return
+
+
+        def NormalizeIns(self):
+                mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))
+                std = (np.std(self.scratch_inputs, axis=0)).reshape((1, -1))
+                self.scratch_inputs = (self.scratch_inputs-mean)/std
+                self.scratch_test_inputs = (self.scratch_test_inputs-mean)/std
+                np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in_MEAN.npy", mean)
+                np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in_STD.npy",std)
+                return
+
+
 
 	def GetTrainBatch(self,ncases,noutputs):
 		"""
@@ -484,15 +497,11 @@ class TensorMolData_BP(TensorMolData):
 		# and the number of element cases.
 		# metadata contains: molecule index, atom type, mol start, mol stop
 		bmols=np.unique(self.scratch_meta[self.ScratchPointer:self.ScratchPointer+ncases,0])
-		#print "meta data +- 20:", self.scratch_meta[self.ScratchPointer-20:self.ScratchPointer+20], "meta data +40", self.scratch_meta[self.ScratchPointer:self.ScratchPointer+40]
-		#print "meta data last 40",  self.scratch_meta[self.ScratchPointer+ncases-40:self.ScratchPointer+ncases]
 		nmols_out=len(bmols[1:-1])
-		#print "batch contains",nmols_out, "Molecules in ",ncases
 		if (nmols_out > noutputs):
 			raise Exception("Insufficent Padding. "+str(nmols_out)+" is greater than "+str(noutputs))
 		inputpointer = 0
 		outputpointer = 0
-		#print "ScratchPointer",self.ScratchPointer,self.NTrain
 		#currentmol=self.scratch_meta[self.ScratchPointer,0]
 		sto = np.zeros(len(self.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
@@ -532,13 +541,6 @@ class TensorMolData_BP(TensorMolData):
 		#print "matrices",matrices
 		#print "outputs",outputs
 		self.ScratchPointer += ncases
-		#print "noutputs:", noutputs
-		#for matrice in matrices:
-		#	print "matrice:", matrice[:20,:10], " matice shape:", matrice.shape
-		#	print "matrice:", matrice[-20:,-10:], " matice shape:", matrice.shape
-		#for input in inputs:
-		#	print "input shape:", input.shape
-		#print "inputs:",inputs, "matrices", matrices, "outputs:", outputs
 		return [inputs, matrices, outputs]
 	
 	def GetTestBatch(self, ncases, noutputs):
@@ -554,15 +556,12 @@ class TensorMolData_BP(TensorMolData):
 		# and the number of element cases.
 		# metadata contains: molecule index, atom type, mol start, mol stop
 		bmols=np.unique(self.scratch_test_meta[self.test_ScratchPointer:self.test_ScratchPointer+ncases,0])
-		#print "meta data +- 20:", self.scratch_meta[self.ScratchPointer-20:self.ScratchPointer+20], "meta data +40", self.scratch_meta[self.ScratchPointer:self.ScratchPointer+40]
-		#print "meta data last 40",  self.scratch_meta[self.ScratchPointer+ncases-40:self.ScratchPointer+ncases]
 		nmols_out=len(bmols[1:-1])
 		#print "batch contains",nmols_out, "Molecules in ",ncases
 		if (nmols_out > noutputs):
 			raise Exception("Insufficent Padding. "+str(nmols_out)+" is greater than "+str(noutputs))
 		inputpointer = 0
 		outputpointer = 0
-		#print "ScratchPointer",self.ScratchPointer,self.NTrain
 		#currentmol=self.scratch_meta[self.ScratchPointer,0]
 		sto = np.zeros(len(self.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
@@ -570,7 +569,6 @@ class TensorMolData_BP(TensorMolData):
 		ignore_first_mol = 0
 		for i in range(self.test_ScratchPointer,self.test_ScratchPointer+ncases):
 			if (self.scratch_test_meta[i,0] == bmols[-1]):
-				#print "this one is not included:", self.scratch_meta[i]
 				break
 			elif (self.scratch_test_meta[i,0] == bmols[0]):
 				ignore_first_mol += 1
@@ -587,7 +585,6 @@ class TensorMolData_BP(TensorMolData):
 			if (currentmol != self.scratch_test_meta[i,0]):
 				outputpointer = outputpointer+1
 				currentmol = self.scratch_test_meta[i,0]
-			#print "testing...  outputpointer:", outputpointer, " currentmol:", currentmol
 			# metadata contains: molecule index, atom type, mol start, mol stop
 			e = (self.scratch_test_meta[i,1])
 			ei = self.eles.index(e)
@@ -601,67 +598,8 @@ class TensorMolData_BP(TensorMolData):
 		#print "matrices",matrices
 		#print "outputs",outputs
 		self.test_ScratchPointer += ncases
-		#for matrice in matrices:
-		#	print "matrice:", matrice[:20,:10], " matice shape:", matrice.shape
-		#for input in inputs:
-		#	print "input shape:", input.shape
-		#print "inputs:",inputs, "matrices", matrices, "outputs:", outputs
 		return [inputs, matrices, outputs]
 
-
-#	def GetTestBatch(self,ncases,noutputs):
-#		start_time = time.time()
-#		if (self.ScratchState == 0):
-#			self.LoadDataToScratch()
-#		reset = False
-#		if (ncases > len(self.scratch_test_inputs)):
-#			raise Exception("Insufficent test data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
-#		inputs = []#np.zeros((ncases, np.prod(self.dig.eshape)))
-#		matrices = []#np.zeros((len(self.eles), ncases, noutputs))
-#		offsets=[]
-#		# outputs = np.zeros((noutputs, np.prod(self.dig.lshape)))
-#		# Get the number of molecules which would be contained in the desired batch size
-#		# and the number of element cases.
-#		# metadata contains: molecule index, atom type, mol start, mol stop
-#		bmols=np.unique(self.scratch_test_meta[:ncases,0])
-#		nmols_out=len(bmols[1:-1])
-#		#print "batch contains",nmols_out, "Molecules in ",ncases
-#		if (nmols_out > noutputs):
-#			raise Exception("Insufficent Padding. "+str(nmols_out)+" is greater than "+str(noutputs))
-#		inputpointer = 0
-#		outputpointer = 0
-#		#print "ScratchPointer",self.ScratchPointer,self.NTrain
-#		sto = np.zeros(len(self.eles),dtype = np.int32)
-#		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
-#		destinations = np.zeros(ncases) # The index in the output of each case in the scratch.
-#		ignore_first_mol = 0
-#		for i in range(0,ncases):
-#			if (self.scratch_test_meta[i,0] == bmols[-1]):
-#				break
-#			elif(self.scratch_test_meta[i,0] == bmols[0]):
-#				ignore_first_mol += 1
-#			else:
-#				sto[self.eles.index(self.scratch_test_meta[i,1])]+=1
-#		currentmol=self.scratch_test_meta[ignore_first_mol,0]
-#		outputs = np.zeros((noutputs))
-#		for e in range(len(self.eles)):
-#			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
-#			matrices.append(np.zeros((sto[e],noutputs)))
-#		for i in range(ignore_first_mol, ncases):
-#			if (self.scratch_test_meta[i,0] == bmols[-1]):
-#				break
-#			if (currentmol != self.scratch_test_meta[i,0]):
-#				outputpointer = outputpointer+1
-#				currentmol = self.scratch_test_meta[i,0]
-#			# metadata contains: molecule index, atom type, mol start, mol stop
-#			e = (self.scratch_test_meta[i,1])
-#			ei = self.eles.index(e)
-#			# The offset for this element should be within the bounds or something is wrong...
-#			inputs[ei][offsets[ei],:] = self.scratch_test_inputs[i]
-#			matrices[ei][offsets[ei],outputpointer] = 1.0
-#			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]-self.scratch_test_meta[0,0]]
-#			offsets[ei] += 1
-#		return [inputs, matrices, outputs]
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState

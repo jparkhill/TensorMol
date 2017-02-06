@@ -81,8 +81,7 @@ class Instance:
 		if (not np.all(np.isfinite(eval_input))):
 			print("WTF, you trying to feed me, garbage?")
 			raise Exception("bad digest.")
-		if (self.PreparedFor<eval_input.shape[0]):
-			self.Prepare(eval_input,eval_input.shape[0])
+		self.Prepare(eval_input,eval_input.shape[0])  # Prepare is the place where we actually load the network  
 		return
 
 	#Seems like train_prepare is used instead of this, is this function deprecated?
@@ -122,6 +121,7 @@ class Instance:
 		self.summary_writer = None
 		self.PreparedFor = 0
 		self.summary_op = None
+		self.TData = None
 		return
 
 	def SaveAndClose(self):
