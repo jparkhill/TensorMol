@@ -5,7 +5,8 @@
 from Mol import *
 from Util import *
 import numpy as np
-import os,sys,pickle,re,copy,time
+import os,sys,re,copy,time
+import cPickle as pickle
 
 class MSet:
 	""" A molecular database which
@@ -235,7 +236,7 @@ class MSet:
 		rmsd = np.zeros(len(ord))
 		n=0
 		for j in ord:
-			if (self.mols[j].properties["energy"] != None):
+			if ("energy" in self.mols[j].properties.keys()):
 				ens[n] = self.mols[j].properties["energy"]
 			else :
 				ens[n] = self.mols[j].GoEnergy(self.mols[j].coords.flatten())

@@ -10,22 +10,24 @@ class TMParams(dict):
     def __init__(self, *args, **kwargs ):
         myparam = kwargs.pop('myparam', '')
         dict.__init__(self, *args, **kwargs )
-
         self["check_level"] = 1 # whether to test the consistency of several things...
-
         # SET GENERATION parameters
         self["MAX_ATOMIC_NUMBER"] = 10
         self["MBE_ORDER"] = 2
         self["NDistort"] = 100
         self["NModePts"] = 20
         self["GoK"] = 0.05
-
+        self["Classify"] = True # Whether to use a classifier histogram scheme rather than normal output.
         # DATA usage parameters
-        self["NormalizeInputs"] = True
+        self["NormalizeInputs"] = False
         self["NormalizeOutputs"] = True
         self["batch_size"] = 8000
+        self["MxTimePerElement"] = 36000
+        self["MxMemPerElement"]=16000 # Max Array for an element in MB
+        self["ChopTo"] = None
         self["results_dir"] = "./results/"
-
+        self["RotAvOutputs"] = 10 # Rotational averaging of force outputs.
+		# Training Parameters
         self["learning_rate"] = 0.0001
         self["momentum"] = 0.9
         self["max_steps"] = 10000

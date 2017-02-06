@@ -80,7 +80,7 @@ class TFManage:
 		if (self.TData.dig.eshape==None):
 			raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.
-		if (self.NetType == "fc_classify"):
+		if (self.NetType == "fc_classify" or PARAMS["Classify"]):
 			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None)
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
