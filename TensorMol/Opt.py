@@ -191,9 +191,9 @@ class Optimizer:
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
-			veloc = 0.0001*self.tfm.EvalRotAvForce(m, RotAv=10)
-			for i in range(m.NAtoms()):
-				if (IfDebug):
+			veloc = 0.01*self.tfm.EvalRotAvForce(m, RotAv=10)
+			if (IfDebug):
+				for i in range(m.NAtoms()):
 					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::"
 			# c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
