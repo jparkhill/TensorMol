@@ -1,3 +1,8 @@
+"""
+For the sake of modularity, all direct access to dig
+needs to be phased out... 
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -368,9 +373,9 @@ class Instance:
 class Instance_fc_classify(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		self.hidden1 = 500
-		self.hidden2 = 500
-		self.hidden3 = 500
+		self.hidden1 = PARAMS["hidden1"]
+		self.hidden2 = PARAMS["hidden2"]
+		self.hidden3 = PARAMS["hidden3"]
 		self.NetType = "fc_classify"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
@@ -380,7 +385,7 @@ class Instance_fc_classify(Instance):
 		self.summary_op =None
 		self.summary_writer=None
 
-	def evaluation(self, output, labels):
+	def n_correct(self, output, labels):
 		# For a classifier model, we can use the in_top_k Op.
 		# It returns a bool tensor with shape [batch_size] that is true for
 		# the examples where the label is in the top k (here k=1)
@@ -421,7 +426,7 @@ class Instance_fc_classify(Instance):
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder)
-			self.correct = self.evaluation(self.output, self.labels_placeholder)
+			self.correct = self.n_correct(self.output, self.labels_placeholder)
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
@@ -526,10 +531,9 @@ class Instance_fc_classify(Instance):
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		# 256*512*512 gives [-0.01215208 -0.0064384   0.00562539] Average output (direct) [-0.01867021 -0.00484998  0.01150864] after 2k epochs.
-		self.hidden1 = 512
-		self.hidden2 = 512
-		self.hidden3 = 512
+		self.hidden1 = PARAMS["hidden1"]
+		self.hidden2 = PARAMS["hidden2"]
+		self.hidden3 = PARAMS["hidden3"]
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
