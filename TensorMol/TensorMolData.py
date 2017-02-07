@@ -604,7 +604,7 @@ class TensorMolData_BP(TensorMolData):
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
 		print "self.ScratchPointer",self.ScratchPointer
-		print "self.test_ScratchPointer",self.test_ScratchPointer
+		#print "self.test_ScratchPointer",self.test_ScratchPointer
 
 
 	def Save(self):

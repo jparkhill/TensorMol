@@ -34,9 +34,9 @@ class TFManage:
 		self.NetType = NetType_
 		self.n_train = ntrain_
 		# All done if you're doing molecular calculations
-		print self.TData.AvailableElements
-		print self.TData.AvailableDataFiles
-		print self.TData.SamplesPerElement
+		#print self.TData.AvailableElements
+		#print self.TData.AvailableDataFiles
+		#print self.TData.SamplesPerElement
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		print "--- TF will be fed by ---",self.TData.name
 		self.TrainedAtoms=[] # In order of the elements in TData

@@ -126,7 +126,7 @@ class Instance:
 
 	def SaveAndClose(self):
 		print("Saving TFInstance...")
-		self.save_chk(99999)
+		#self.save_chk(99999)
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
@@ -152,9 +152,9 @@ class Instance:
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
-		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
-		print("Saving Checkpoint file, ",checkpoint_file_mini)
-		self.saver.save(self.sess, checkpoint_file_mini)
+		self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+		print("Saving Checkpoint file, ", self.chk_file)
+		self.saver.save(self.sess,  self.chk_file)
 		return
 
 #this isn't really the correct way to load()
@@ -169,12 +169,14 @@ class Instance:
 		# All this shit should be deleteable after re-training.
 		self.__dict__.update(tmp)
 		f.close()
-		chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-		if (len(chkfiles)>0):
-			self.chk_file = chkfiles[0]
-		else:
-			print("Network not found... Traindir:", self.train_dir)
-			print("Traindir contents: ", os.listdir(self.train_dir))
+		print("self.chk_file:", self.chk_file)
+		#chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+		#if (len(chkfiles)>0):
+		#	self.chk_file = chkfiles[0]
+		#	print("self.chk_file:", self.chk_file)
+		#else:
+		#	print("Network not found... Traindir:", self.train_dir)
+		#	print("Traindir contents: ", os.listdir(self.train_dir))
 		return
 
 	def _variable_with_weight_decay(self, var_name, var_shape, var_stddev, var_wd):

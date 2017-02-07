@@ -37,20 +37,23 @@ if (1):
         # To generate training data for all the atoms in the GDB 9
         if (0):
                 # 1 - Get molecules into memory
-                a=MSet("gdb9_1_6_8")
+                a=MSet("gdb9_1_6_7_8")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
                 print "TreatedAtoms ", TreatedAtoms
                 d = MolDigester(TreatedAtoms, name_="Coulomb_Bond_BP", OType_="Atomization")  # Initialize a digester that apply descriptor for the fragments.
                 tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-                tset.BuildTrain("gdb9_1_6_8")
+                tset.BuildTrain("gdb9_1_6_7_8")
 
         if (1):
-                tset = TensorMolData_BP(MSet(),MolDigester([]),"gdb9_1_6_8_Coulomb_Bond_BP")
+                tset = TensorMolData_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_Coulomb_Bond_BP")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-                manager.Train(maxstep=2)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+                manager.Train(maxstep=500)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 
 
+	if (0):
+		manager= TFMolManage("Mol_gdb9_1_6_8_Coulomb_Bond_BP_fc_sqdiff_BP_1" , None, False)
+		manager.Test()
 
 # Kun's tests.
 if (0):

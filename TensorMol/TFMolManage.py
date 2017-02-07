@@ -22,7 +22,7 @@ class TFMolManage(TFManage):
 				NetType_: Choices of Various network architectures. 
 				RandomTData_: Modifes the preparation of training batches.
 		"""
-		TFManage.__init__(self, "", TData_, False, NetType_, RandomTData_)
+		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		if (Name_!=""):
 			self.name = Name_
@@ -96,7 +96,7 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances = MolInstance_fc_sqdiff(None, self.TrainedNetworks[0], None)
 		elif (self.NetType == "fc_sqdiff_BP"):
-			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0],None)
+			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0])
 		else:
 			raise Exception("Unknown Network Type!")	
 		# Raise TF instances for each atom which have already been trained.
@@ -105,19 +105,27 @@ class TFMolManage(TFManage):
 # This has to be totally re-written to be more like the
 # testing in TFInstance.
 
-	def Test(self, save_file="mbe_test.dat"):
-		ti, to = self.TData.LoadData( True)
-		NTest = int(self.TData.TestRatio * ti.shape[0])
-		ti= ti[ti.shape[0]-NTest:]
-		to = to[to.shape[0]-NTest:]
-		acc_nn = np.zeros((to.shape[0],2))
-		acc=self.TData.ApplyNormalize(to)
-		nn, gradient=self.Eval(ti)
-		acc_nn[:,0]=acc.reshape(acc.shape[0])
-		acc_nn[:,1]=nn.reshape(nn.shape[0])
-		mean, std = self.TData.Get_Mean_Std()	
-		acc_nn = acc_nn*std+mean
-		np.savetxt(save_file,acc_nn)
-		np.savetxt("dist_2b.dat", ti[:,1])
+	def Test(self):   # test a pretrained network
+		self.Instances.TData = self.TData
+		self.Instances.TData.LoadDataToScratch()
+		self.Instances.Prepare()
+		self.Instances.test(-1)
 		return
+
+
+        def Test_MBE(self, save_file="mbe_test.dat"):
+                ti, to = self.TData.LoadData( True)
+                NTest = int(self.TData.TestRatio * ti.shape[0])
+                ti= ti[ti.shape[0]-NTest:]
+                to = to[to.shape[0]-NTest:]
+                acc_nn = np.zeros((to.shape[0],2))
+                acc=self.TData.ApplyNormalize(to)
+                nn, gradient=self.Eval(ti)
+                acc_nn[:,0]=acc.reshape(acc.shape[0])
+                acc_nn[:,1]=nn.reshape(nn.shape[0])
+                mean, std = self.TData.Get_Mean_Std()
+                acc_nn = acc_nn*std+mean
+                np.savetxt(save_file,acc_nn)
+                np.savetxt("dist_2b.dat", ti[:,1])
+                return
 

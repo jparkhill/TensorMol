@@ -21,6 +21,9 @@ import sys
 class MolInstance(Instance):
 	def __init__(self, TData_,  Name_=None):
 		Instance.__init__(self, TData_, 0, Name_)
+		if Name_:   # it already been Loaded in the instance.__init__
+			return
+		self.TData.LoadDataToScratch()
 		self.learning_rate = 0.0001
 		#self.learning_rate = 0.0001 # for adam
 		#self.learning_rate = 0.00001 # for adadelta
@@ -31,7 +34,6 @@ class MolInstance(Instance):
 		self.batch_size = 1000 # This is just the train batch size.
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.TData.LoadDataToScratch(True)
 		self.TData.PrintStatus()
 		self.normalize= True
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
@@ -73,15 +75,15 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 1
-		mini_test_loss = 100000000 # some big numbers
+		test_freq = 10
+		mini_test_loss = float('inf') # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
 				test_loss, feed_dict = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					if (step > 0):
+					if (step > 100):
 						self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
@@ -155,7 +157,7 @@ class MolInstance_fc_classify(MolInstance):
 		self.correct = None
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.correct = self.evaluation(self.output, self.labels_placeholder)
@@ -306,7 +308,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			print ("type of self.embeds_placeholder:", type(self.embeds_placeholder))
@@ -431,11 +433,12 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		"""
 		self.NetType = "fc_sqdiff_BP"
 		MolInstance.__init__(self, TData_,  Name_)
+		if Name_:  # already loaded 
+			return
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
 		self.momentum = 0.95
-		self.TData.LoadDataToScratch()
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
 		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
@@ -448,12 +451,14 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.inp_pl=None
 		self.mats_pl=None
 		self.label_pl=None
+		self.atom_outputs = None
 
 		# self.batch_size is still the number of inputs in a batch.
 		self.batch_size = 50000
 		self.batch_size_output = 0
 		self.hidden1 = 1000
 		self.hidden2 = 1000
+		self.hidden3 = 1000
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -467,6 +472,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
                 self.label_pl=None
 		self.summary_op =None
                 self.summary_writer=None
+		self.atom_outputs = None
                 return
 
 
@@ -494,7 +500,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
 				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
-			self.output = self.inference(self.inp_pl, self.mats_pl)
+			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -537,12 +543,15 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		"""
 		# convert the index matrix from bool to float
 		branches=[]
+		atom_outputs = []
 		hidden1_units=self.hidden1
 		hidden2_units=self.hidden2
+		hidden3_units=self.hidden3
 		output = tf.zeros([self.batch_size_output])
 		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
 		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
 		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
+		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
 		print("Norms:", nrm1,nrm2,nrm3)
 		#print(inp_pl)
 		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
@@ -562,21 +571,27 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
+			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
+                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
+                                biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
+                                branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, 1], var_stddev=nrm3, var_wd=None)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units, 1], var_stddev=nrm4, var_wd=None)
 				biases = tf.Variable(tf.zeros([1]), name='biases')
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
 				shp_out = tf.shape(branches[-1][-1])
 				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
 				#tf.Print(tf.to_float(shp_out), [tf.to_float(shp_out)], message="This is outshape: ",first_n=10000000,summarize=100000000)
 				rshp = tf.reshape(cut,[1,shp_out[0]])
+				atom_outputs.append(rshp)
 				tmp = tf.matmul(rshp,mats)
+				#self.atom_outputs[e] = tmp
 				output = tf.add(output,tmp)
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
-		return output
+		return output, atom_outputs
 
 	def fill_feed_dict(self, batch_data):
 		"""
@@ -628,13 +643,15 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
+			#print ("atom_outputs:", atom_outputs, " mol outputs:", mol_output)
+			#print ("atom_outputs shape:", atom_outputs[0].shape, " mol outputs", mol_output.shape)
 		#print("train diff:", (mol_output[0]-batch_data[2])[:actual_mols], np.sum(np.square((mol_output[0]-batch_data[2])[:actual_mols])))
 		#print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
 		#print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
 		self.print_training(step, train_loss, num_of_mols, duration)
 		return
 
-	def test(self, step):
+	def test(self, step):   # testing in the training
 		"""
 		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
 
@@ -649,7 +666,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
 			feed_dict=self.fill_feed_dict(batch_data)
 			actual_mols  = np.count_nonzero(batch_data[2])
-			preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
+			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
@@ -662,7 +679,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return test_loss, feed_dict
 
 
-        def evaluate(self, eval_input):
+        def evaluate(self, eval_input):   #this need to be modified 
                 # Check sanity of input
                 MolInstance.evaluate(self, eval_input)
                 eval_input_ = eval_input
@@ -682,11 +699,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
                         return tmp[:eval_input.shape[0]], gradient[:eval_input.shape[0]]
                 return tmp, gradient
 
-        def Prepare(self, eval_input, Ncase=125000):
-                self.Clean()
-                # Always prepare for at least 125,000 cases which is a 50x50x50 grid.
-                eval_labels = np.zeros(Ncase)  # dummy labels
-		self.TData.LoadDataToScratch()
+        def Prepare(self):
+                #eval_labels = np.zeros(Ncase)  # dummy labels
                 self.MeanNumAtoms = self.TData.MeanNumAtoms
                 self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
                 with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
@@ -696,14 +710,14 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
                                 self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
                                 self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
                         self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
-                        self.output = self.inference(self.inp_pl, self.mats_pl)
+                        self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
                         self.check = tf.add_check_numerics_ops()
                         self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
                         self.summary_op = tf.summary.merge_all()
                         init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver()
                         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
                         self.saver.restore(self.sess, self.chk_file)
-                self.PreparedFor = Ncase
                 return
 
