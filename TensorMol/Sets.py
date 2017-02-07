@@ -17,10 +17,12 @@ class MSet:
 		self.name=name_
 		self.suffix=".pdb" #Pickle Database? Poor choice.
 
-	def Save(self):
-		LOGGER.info("Saving set to: %s ", self.path+self.name+self.suffix)
+	)def Save(self, filename=None):
+		if filename == None:
+			filename = self.name
+		LOGGER.info("Saving set to: %s ", self.path+filename+self.suffix)
 		#print "Saving set to: ", self.path+self.name+self.suffix
-		f=open(self.path+self.name+self.suffix,"wb")
+		f=open(self.path+filename+self.suffix,"wb")
 		pickle.dump(self.__dict__, f, protocol=1)
 		f.close()
 		return
