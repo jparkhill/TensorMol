@@ -62,7 +62,7 @@ class Mol:
 			ang: radians of rotation
 			origin: origin of rotation axis.
 		"""
-		rm = RotationMatrix(axis,ang)
+		rm = RotationMatrix_v2()
 		crds = np.copy(self.coords)
 		crds -= origin
 		for i in range(len(self.coords)):

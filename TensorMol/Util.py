@@ -183,6 +183,22 @@ def RotationMatrix(axis, theta):
                      [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
                      [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
+def RotationMatrix_v2(randnums=None, deflection=1.0):
+	"""
+	Creates a uniformly random rotation matrix
+	Args:
+		randnums: theta, phi, and z for rotation, if None then chosen uniformly random
+		deflection: magnitude of rotation, 0 is no rotation, 1 is completely random rotation, inbetween are perturbations
+	"""
+	if randnums is None:
+		randnums = np.random.uniform(size=(3,))
+	theta, phi, z = randnums[0]*2.0*deflection*np.pi, randnums[1]*2.0*np.pi, randnums[2]*2.0*deflection
+	r = np.sqrt(z)
+	v = np.array((np.sin(phi)*r, np.cos(phi)*r, np.sqrt(2.0-z)))
+	R = np.array(((np.cos(theta),np.sin(theta),0.),(-np.sin(theta),np.cos(theta),0.),(0.,0.,1.)))
+	M = (np.outer(v,v) - np.eye(3)).dot(R)
+	return M
+
 def Binominal_Combination(indis=[0,1,2], group=3):
 	if (group==1):
 		index=list(itertools.permutations(indis))
