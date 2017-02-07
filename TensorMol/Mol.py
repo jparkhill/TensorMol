@@ -707,3 +707,17 @@ class Mol:
 			self.properties['forces'] = forces
 		except Exception as Ex:
 			print "Read Failed.", Ex
+
+	def Energy_from_xyz(self, path):
+		"""
+		Reads the forces from the comment line in the md_dataset,
+		and if no forces exist sets them to zero. Switched on by
+		has_force=True in the ReadGDB9Unpacked routine
+		"""
+		try:
+			f = open(path, 'r')
+			lines = f.readlines()
+			energy = (lines[1].strip().split(';'))[0]
+			self.properties['energy'] = energy
+		except Exception as Ex:
+			print "Read Failed.", Ex

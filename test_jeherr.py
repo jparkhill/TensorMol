@@ -223,7 +223,6 @@ if (0):
 #optimizer.OptRealForce(test_mol)
 
 a=MSet("toluene_tmp")
-a.Load()
-b=MSet("toluene_tmp_rotated")
-b=a.RotatedClone(3)
-b.WriteXYZ()
+a.ReadXYZUnpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', has_energy=True)
+test_mol = a.mols[0]
+print test_mol.properties['energy']
