@@ -17,7 +17,7 @@ class MSet:
 		self.name=name_
 		self.suffix=".pdb" #Pickle Database? Poor choice.
 
-	)def Save(self, filename=None):
+	def Save(self, filename=None):
 		if filename == None:
 			filename = self.name
 		LOGGER.info("Saving set to: %s ", self.path+filename+self.suffix)
