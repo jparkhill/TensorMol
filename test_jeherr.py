@@ -192,12 +192,14 @@ if (0):
 ##tset = TensorData(None,None,"md_gdb9_"+"GauSH",None,2000)
 ##manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 
-#a=MSet("md_set")
-#a.ReadXYZ("benzene")
-## # a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/benzene/', has_force=True)
-## # a.Save()
-## # a.WriteXYZ()
-## # a.ReadXYZ("benzene")
+a=MSet("md_set")
+#a.ReadGDB9Unpacked(path='/data/jeherr/TensorMol/datasets/md_datasets/md_set/', has_force=True)
+#a.Save()
+#a.WriteXYZ()
+a.Load()
+b=a.RotatedClone(3)
+b.WriteXYZ("md_set_rot")
+b.Save("md_set_rot")
 #a.Load()
 #print "nmols:",len(a.mols)
 #b=MSet("md_set_rotated")
@@ -221,8 +223,3 @@ if (0):
 #manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
 #optimizer=Optimizer(manager)
 #optimizer.OptRealForce(test_mol)
-
-a=MSet("toluene_tmp")
-a.ReadXYZUnpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', has_energy=True)
-test_mol = a.mols[0]
-print test_mol.properties['energy']
