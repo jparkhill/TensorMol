@@ -82,7 +82,7 @@ if(1):
 	a.Save()
 	a.WriteXYZ()
 	##a.Load()
-	b=a.RotatedClone(3)
+	b=a.RotatedClone(5)
 	b.WriteXYZ("md_set_rot")
 	b.Save("md_set_rot")
 	#b=MSet("md_set_rot")

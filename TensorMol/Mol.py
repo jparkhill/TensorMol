@@ -78,15 +78,14 @@ class Mol:
 			self.properties["forces"] = new_forces
 		self.coords += origin
 
-	def RotateRandomUniform(self, origin=np.array([0.0, 0.0, 0.0])):
+	def RotateRandomUniform(self, randnums=None, origin=np.array([0.0, 0.0, 0.0])):
 		"""
 		Rotate atomic coordinates and forces if present.
 		Args:
-			axis: vector for rotation axis
-			ang: radians of rotation
+			randnums: theta, phi, and z for rotation, if None then rotation is random
 			origin: origin of rotation axis.
 		"""
-		rm = RotationMatrix_v2()
+		rm = RotationMatrix_v2(randnums)
 		crds = np.copy(self.coords)
 		crds -= origin
 		for i in range(len(self.coords)):

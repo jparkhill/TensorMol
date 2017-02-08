@@ -18,19 +18,12 @@ static SHParams ParseParams(PyObject *Pdict)
 	tore.SH_NRAD = (RBFa->dimensions)[0];
 	tore.SH_LMAX = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
 	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
+	tore.SH_ORTH = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
 	//cout << "tore.SH_LMAX: " << tore.SH_LMAX << endl;
 	for (int i=0; i<tore.SH_NRAD; ++i)
 	{
-		  //      cout << RBFd[i*2] << RBFd[i*2+1] << endl;
 			tore.RBFS[i][0] = RBFd[i*2];
 			tore.RBFS[i][1] = RBFd[i*2+1];
-			/*
-			for (int j=i; j<tore.SH_NRAD; ++j)
-			{
-				tore.SRBF[i][j] = GOverlap(RBFd[i*2],RBFd[j*2],RBFd[i*2+1],RBFd[j*2+1]);
-				tore.SRBF[j][i] = tore.SRBF[i][j];
-			}
-			*/
 	}
 	return tore;
 }
@@ -616,9 +609,7 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 	return SH;
 }
 
-//
 // Gives the projection of a delta function at xyz
-//
 static PyObject* Project_SH(PyObject *self, PyObject  *args)
 {
 	double x,y,z;
@@ -741,6 +732,9 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 				frc_data[i*3+2] += -2*(dij-d_data[i*nat+j])*u[2];
 			}
 		}
+		if (spherical)
+			for (int i=0; i < nat; ++i)
+				CartToSphere(frc_data+i*3);
 	}
 	else
 	{
@@ -758,6 +752,8 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 			frc_data[1] += -2*(dij-d_data[i*nat+j])*u[1];
 			frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
 		}
+		if (spherical)
+				CartToSphere(frc_data+i*3);
 	}
 	return hess;
 }
