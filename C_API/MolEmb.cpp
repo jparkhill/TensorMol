@@ -710,9 +710,9 @@ static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *EqDistMat;
-	int at;
-	if (!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at))
-	return NULL;
+	int at, spherical;
+	if (!PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at, &spherical))
+		return NULL;
 	const int nat = (xyz->dimensions)[0];
 	npy_intp outdim[2] = {nat,3};
 	if (at>=0)

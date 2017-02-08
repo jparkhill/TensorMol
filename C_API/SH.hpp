@@ -810,9 +810,6 @@ public:
 
 			if (r>pow(10.0,9))
 				return;
-			// double theta = acos(z/r);
-			// double theta = acos(z*r);
-			// double phi = atan2(y,x);
 			#pragma omp parallel for
 			for (int i=0; i<Prm->SH_NRAD ; ++i)
 			{

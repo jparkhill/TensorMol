@@ -145,6 +145,8 @@ class Digester:
 				Outs = mol_.GoDisp(at_)
 			elif (self.OType=="GoForce"):
 				Outs = mol_.GoForce(at_)
+			elif (self.OType=="GoForceSphere"):
+				Outs = mol_.GoForce(at_) # See if the network is better at doing spherical=>spherical
 			elif (self.OType=="Force"):
 				if ( "forces" in mol_.properties):
 					if (at_<0):
