@@ -23,9 +23,6 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #  TODO: Migrate these to PARAMS
 PARAMS = TMParams()
 LOGGER = TMLogger(PARAMS["results_dir"])
-LOGGER.debug("TMPARAMS---")
-LOGGER.debug(PARAMS)
-LOGGER.debug("~~~TMPARAMS")
 MAX_ATOMIC_NUMBER = 10
 MBE_ORDER = 2
 # Derived Quantities and useful things.
@@ -66,9 +63,15 @@ except Exception as Ex:
 try:
 	import MolEmb
 	HAS_EMB = True
-	LOGGER.debug("MolEmb has been found")
-except:
-	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install")
+	LOGGER.debug("MolEmb has been found, Orthogonalizing Radial Basis.")
+	S = MolEmb.Overlap_SH(PARAMS)
+	from TensorMol.LinearOperations import MatrixPower
+	SOrth = MatrixPower(S,-1./2)
+	PARAMS["GauSHSm12"] = SOrth
+	# THIS SHOULD BE IMPLEMENTED TOO. 
+	#PARAMS["GauInvSm12"] = MatrixPower(S,-1./2)
+except Exception as Ex:
+	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install",Ex)
 	pass
 
 try:
@@ -87,6 +90,10 @@ except:
 	LOGGER.info("Only a single CPU, :( did you lose a war?")
 	pass
 LOGGER.debug("TensorMol ready...")
+
+LOGGER.debug("TMPARAMS----------")
+LOGGER.debug(PARAMS)
+LOGGER.debug("TMPARAMS~~~~~~~~~~")
 
 TOTAL_SENSORY_BASIS=None
 SENSORY_BASIS=None

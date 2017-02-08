@@ -23,7 +23,7 @@ class TMParams(dict):
         self["NDistort"] = 100
         self["NModePts"] = 20
         self["GoK"] = 0.05
-        self["Classify"] = True # Whether to use a classifier histogram scheme rather than normal output.
+        self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
         # DATA usage parameters
         self["NormalizeInputs"] = False
         self["NormalizeOutputs"] = True
@@ -33,6 +33,7 @@ class TMParams(dict):
         self["ChopTo"] = None
         self["results_dir"] = "./results/"
         self["RotAvOutputs"] = 10 # Rotational averaging of force outputs.
+        self["OctahedralAveraging"] = True # Octahedrally Average Outputs
 		# Training Parameters
         self["learning_rate"] = 0.0001
         self["momentum"] = 0.9
