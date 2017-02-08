@@ -23,7 +23,7 @@ class TMParams(dict):
         self["NDistort"] = 100
         self["NModePts"] = 20
         self["GoK"] = 0.05
-        self["Classify"] = True # Whether to use a classifier histogram scheme rather than normal output.
+        self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
         # DATA usage parameters
         self["NormalizeInputs"] = False
         self["NormalizeOutputs"] = True

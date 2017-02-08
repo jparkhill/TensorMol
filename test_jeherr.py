@@ -76,7 +76,24 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-a=MSet("toluene_tmp")
-a.ReadXYZUnpacked(path='/media/sdb2/jeherr/TensorMol/datasets/tmp_toluene/', center=True)
-for i in range(10):
-	print i, a.mols[i].Center()
+if(1):
+	a=MSet("md_set")
+	a.ReadXYZUnpacked(path='/data/jeherr/TensorMol/datasets/md_datasets/md_set/', has_force=True, center=True)
+	a.Save()
+	a.WriteXYZ()
+	##a.Load()
+	b=a.RotatedClone(3)
+	b.WriteXYZ("md_set_rot")
+	b.Save("md_set_rot")
+	#b=MSet("md_set_rot")
+	#b.Load()
+	##print "nmols:",len(a.mols)
+	print "nmols:",len(b.mols)
+	TreatedAtoms = b.AtomTypes()
+	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+	tset = TensorData(b,d)
+	tset.BuildTrainMolwise("md_set_rotated",TreatedAtoms)
+	tset = TensorData(None,None,"md_set_rotated_"+"GauSH")
+	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	#optimizer = Optimizer(manager)
+	#optimizer.OptRealForce(test_mol)
