@@ -60,7 +60,10 @@ class MSet:
 		return s
 
 	def RotatedClone(self, NRots=3):
-		""" Rotate every molecule NRots Times. """
+		"""
+		Rotate every molecule NRots Times.
+		We should toss some reflections in the mix too...
+		"""
 		print "Making Rotated clone of:", self.name
 		s = MSet(self.name)
 		ord = range(len(self.mols))

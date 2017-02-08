@@ -30,6 +30,7 @@ public:
 	// Read by ParseParams()
 	int SH_NRAD;
 	int SH_LMAX;
+	int SH_ORTH; // 0 => Linearly Dependent 1 => Orthogonal
 	double RBFS[100][2]; // Radial basis.
 	double SRBF[100][100]; // Overlap of the radial basis.
 	double ORBFS[100][100]; // Orthogonalized matrix.
@@ -781,6 +782,53 @@ public:
 		return exp(toexp);
 	}
 
+	void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* output, int natom, double fac=1.0)
+	{
+		double rnotinv = sqrt(x*x+y*y+z*z);
+		double r = 1.0/rnotinv;
+		// Populate tables...
+		double x_[Prm->SH_LMAX-1];
+		double y_[Prm->SH_LMAX-1];
+		double z_[Prm->SH_LMAX-1];
+		double r_[Prm->SH_LMAX-1];
+		x_[0] = x*x;
+		y_[0] = y*y;
+		z_[0] = z*z;
+		r_[0] = r*r;
+		for (int i=2; i<(Prm->SH_LMAX-1) ; i+=2)
+		{
+			x_[i] = x_[i-2]*x*x;
+			y_[i] = y_[i-2]*y*y;
+			z_[i] = z_[i-2]*z*z;
+		}
+		for (int i=1; i<(Prm->SH_LMAX-1) ; ++i)
+			r_[i] = r_[i-1]*r;
+
+		if (r>pow(10.0,9))
+			return;
+		// double theta = acos(z/r);
+		// double theta = acos(z*r);
+		// double phi = atan2(y,x);
+		#pragma omp parallel for
+		for (int i=0; i<Prm->SH_NRAD ; ++i)
+		{
+			//cout << "Num Thread: " << omp_get_num_threads() << endl;
+			double Gv = 0;
+			for (int j=0; j<Prm->SH_NRAD ; ++j)
+				Gv += Prm->ORBFS[i][j]*Gau(rnotinv, Prm->RBFS[j][0],Prm->RBFS[j][1]);
+			for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
+			{
+				for (int m=-l; m<l+1 ; ++m)
+				{
+					output[i*((Prm->SH_LMAX+1)*(Prm->SH_LMAX+1)) + (l)*(l) + m+l] += Gv*CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_)*fac;
+
+					// if ((RealSphericalHarmonic(l,m,theta,phi) - CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_))>0.0000001)
+					// 	cout << "Real vs. Cart: " << RealSphericalHarmonic(l,m,theta,phi) << " " << CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_) << endl;
+				}
+			}
+		}
+	}
+
 		//
 		// Projects a delta function at x,y,z onto
 		//  Exp[-(x-r)^2/(2 sigma^2)]*Y_{LM}(theta,phi)
@@ -788,6 +836,9 @@ public:
 		// which will occupy a vector of length Nrad*(1+lmax)**2
 		void RadSHProjection(SHParams* Prm, double x, double y, double z, double* output, int natom, double fac=1.0)
 		{
+			if (Prm->SH_ORTH)
+				return RadSHProjection_Orth(Prm,  x,  y,  z,  output,  natom,  fac);
+
 			double rnotinv = sqrt(x*x+y*y+z*z);
 			double r = 1.0/rnotinv;
 			// Populate tables...
@@ -818,53 +869,6 @@ public:
 			{
 				//cout << "Num Thread: " << omp_get_num_threads() << endl;
 				double Gv = Gau(rnotinv, Prm->RBFS[i][0],Prm->RBFS[i][1]);
-				for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
-				{
-					for (int m=-l; m<l+1 ; ++m)
-					{
-						output[i*((Prm->SH_LMAX+1)*(Prm->SH_LMAX+1)) + (l)*(l) + m+l] += Gv*CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_)*fac;
-
-						// if ((RealSphericalHarmonic(l,m,theta,phi) - CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_))>0.0000001)
-						// 	cout << "Real vs. Cart: " << RealSphericalHarmonic(l,m,theta,phi) << " " << CartSphericalHarmonic(l,m,x,y,z,r,x_,y_,z_,r_) << endl;
-					}
-				}
-			}
-		}
-
-		void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* output, int natom, double fac=1.0)
-		{
-			double rnotinv = sqrt(x*x+y*y+z*z);
-			double r = 1.0/rnotinv;
-			// Populate tables...
-			double x_[Prm->SH_LMAX-1];
-			double y_[Prm->SH_LMAX-1];
-			double z_[Prm->SH_LMAX-1];
-			double r_[Prm->SH_LMAX-1];
-			x_[0] = x*x;
-			y_[0] = y*y;
-			z_[0] = z*z;
-			r_[0] = r*r;
-			for (int i=2; i<(Prm->SH_LMAX-1) ; i+=2)
-			{
-				x_[i] = x_[i-2]*x*x;
-				y_[i] = y_[i-2]*y*y;
-				z_[i] = z_[i-2]*z*z;
-			}
-			for (int i=1; i<(Prm->SH_LMAX-1) ; ++i)
-				r_[i] = r_[i-1]*r;
-
-			if (r>pow(10.0,9))
-				return;
-			// double theta = acos(z/r);
-			// double theta = acos(z*r);
-			// double phi = atan2(y,x);
-			#pragma omp parallel for
-			for (int i=0; i<Prm->SH_NRAD ; ++i)
-			{
-				//cout << "Num Thread: " << omp_get_num_threads() << endl;
-				double Gv = 0;
-				for (int j=0; j<Prm->SH_NRAD ; ++j)
-					Gv += Prm->ORBFS[i][j]*Gau(rnotinv, Prm->RBFS[j][0],Prm->RBFS[j][1]);
 				for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 				{
 					for (int m=-l; m<l+1 ; ++m)

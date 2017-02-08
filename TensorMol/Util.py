@@ -23,9 +23,6 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #  TODO: Migrate these to PARAMS
 PARAMS = TMParams()
 LOGGER = TMLogger(PARAMS["results_dir"])
-LOGGER.debug("TMPARAMS---")
-LOGGER.debug(PARAMS)
-LOGGER.debug("~~~TMPARAMS")
 MAX_ATOMIC_NUMBER = 10
 MBE_ORDER = 2
 # Derived Quantities and useful things.
@@ -66,9 +63,15 @@ except Exception as Ex:
 try:
 	import MolEmb
 	HAS_EMB = True
-	LOGGER.debug("MolEmb has been found")
-except:
-	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install")
+	LOGGER.debug("MolEmb has been found, Orthogonalizing Radial Basis.")
+	S = MolEmb.Overlap_SH(PARAMS)
+	from TensorMol.LinearOperations import MatrixPower
+	SOrth = MatrixPower(S,-1./2)
+	PARAMS["GauSHSm12"] = SOrth
+	# THIS SHOULD BE IMPLEMENTED TOO.
+	#PARAMS["GauInvSm12"] = MatrixPower(S,-1./2)
+except Exception as Ex:
+	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install",Ex)
 	pass
 
 try:
@@ -87,6 +90,10 @@ except:
 	LOGGER.info("Only a single CPU, :( did you lose a war?")
 	pass
 LOGGER.debug("TensorMol ready...")
+
+LOGGER.debug("TMPARAMS----------")
+LOGGER.debug(PARAMS)
+LOGGER.debug("TMPARAMS~~~~~~~~~~")
 
 TOTAL_SENSORY_BASIS=None
 SENSORY_BASIS=None
@@ -155,7 +162,6 @@ def CosSoftCut(dist, x):
 		return 0
 	else:
 		return 0.5*(math.cos(math.pi*x/dist)+1.0)
-
 	return
 
 def nCr(n, r):
@@ -167,52 +173,6 @@ def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase =
 	lines += "module load gcc/5.2.0\nsetenv  QC /afs/crc.nd.edu/group/parkhill/qchem85\nsetenv  QCAUX /afs/crc.nd.edu/group/parkhill/QCAUX_1022\nsetenv  QCPLATFORM LINUX_Ix86\n\n\n"
 	lines += "/afs/crc.nd.edu/group/parkhill/qchem85/bin/qchem  -nt "+ncore+"   "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".in  "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".out\n\nrm MBE*.o*"
 	return lines
-
-def RotationMatrix(axis, theta):
-    """
-    Return the rotation matrix associated with counterclockwise rotation about
-    the given axis by theta radians.
-    """
-    axis = np.asarray(axis)
-    axis = axis/np.linalg.norm(axis)
-    a = math.cos(theta/2.0)
-    b, c, d = -axis*math.sin(theta/2.0)
-    aa, bb, cc, dd = a*a, b*b, c*c, d*d
-    bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
-    return np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
-                     [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
-                     [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
-
-def RotationMatrix_v2(randnums=None, deflection=1.0):
-	"""
-	Creates a uniformly random rotation matrix
-	Args:
-		randnums: theta, phi, and z for rotation, if None then chosen uniformly random
-		deflection: magnitude of rotation, 0 is no rotation, 1 is completely random rotation, inbetween are perturbations
-	"""
-	if randnums is None:
-		randnums = np.random.uniform(size=(3,))
-	theta, phi, z = randnums[0]*2.0*deflection*np.pi, randnums[1]*2.0*np.pi, randnums[2]*2.0*deflection
-	r = np.sqrt(z)
-	v = np.array((np.sin(phi)*r, np.cos(phi)*r, np.sqrt(2.0-z)))
-	R = np.array(((np.cos(theta),np.sin(theta),0.),(-np.sin(theta),np.cos(theta),0.),(0.,0.,1.)))
-	M = (np.outer(v,v) - np.eye(3)).dot(R)
-	return M
-
-def OctahedralOperations():
-	'''
-		Transformation matrices for symmetries of an octahedral shape.
-		Far from the complete set but enough for debugging and seeing if it helps.
-	'''
-	Ident=[np.eye(3)]
-	FaceRotations=[RotationMatrix([1,0,0], Pi/2.0),RotationMatrix([0,1,0], Pi/2.0),RotationMatrix([0,0,1], Pi/2.0),RotationMatrix([-1,0,0], Pi/2.0),RotationMatrix([0,-1,0], Pi/2.0),RotationMatrix([0,0,-1], Pi/2.0)]
-	FaceRotations2=[RotationMatrix([1,0,0], Pi),RotationMatrix([0,1,0], Pi),RotationMatrix([0,0,1], Pi),RotationMatrix([-1,0,0], Pi),RotationMatrix([0,-1,0], Pi),RotationMatrix([0,0,-1], Pi)]
-	FaceRotations3=[RotationMatrix([1,0,0], 3.0*Pi/2.0),RotationMatrix([0,1,0], 3.0*Pi/2.0),RotationMatrix([0,0,1], 3.0*Pi/2.0),RotationMatrix([-1,0,0], 3.0*Pi/2.0),RotationMatrix([0,-1,0], 3.0*Pi/2.0),RotationMatrix([0,0,-1], 3.0*Pi/2.0)]
-	CornerRotations=[RotationMatrix([1,1,1], 2.0*Pi/3.0),RotationMatrix([-1,1,1], 2.0*Pi/3.0),RotationMatrix([-1,-1,1], 2.0*Pi/3.0),RotationMatrix([-1,-1,-1], 2.0*Pi/3.0),RotationMatrix([-1,1,-1], 2.0*Pi/3.0),RotationMatrix([1,-1,-1], 2.0*Pi/3.0),RotationMatrix([1,1,-1], 2.0*Pi/3.0),RotationMatrix([1,-1,1], 2.0*Pi/3.0)]
-	CornerRotations2=[RotationMatrix([1,1,1], 4.0*Pi/3.0),RotationMatrix([-1,1,1], 4.0*Pi/3.0),RotationMatrix([-1,-1,1], 4.0*Pi/3.0),RotationMatrix([-1,-1,-1], 4.0*Pi/3.0),RotationMatrix([-1,1,-1], 4.0*Pi/3.0),RotationMatrix([1,-1,-1], 4.0*Pi/3.0),RotationMatrix([1,1,-1], 4.0*Pi/3.0),RotationMatrix([1,-1,1], 4.0*Pi/3.0)]
-	EdgeRotations=[RotationMatrix([1,1,0], Pi),RotationMatrix([1,0,1], Pi),RotationMatrix([0,1,1], Pi)]
-	EdgeReflections=[ReflectionMatrix([1,0,0],[0,1,0]),ReflectionMatrix([0,0,1],[0,1,0]),ReflectionMatrix([1,0,0],[0,0,1])]
-	return FaceRotations+FaceRotations2+FaceRotations3+CornerRotations+CornerRotations2+EdgeRotations+EdgeReflections
 
 def Binominal_Combination(indis=[0,1,2], group=3):
 	if (group==1):

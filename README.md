@@ -36,3 +36,11 @@ sudo python setup.py install
 ### COMMON ISSUES
 - nan during training due to bad checkpoints in /networks (clean.sh)
 - Also crashes when reviving networks from disk.
+- if you have these issues try: 
+
+```
+cd C_API/
+sudo python setup.py install
+cd .. 
+sh clean.sh 
+```

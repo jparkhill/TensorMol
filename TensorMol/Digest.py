@@ -121,7 +121,7 @@ class Digester:
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):
 			Ins= MolEmb.Make_SH(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
-			print "Ins",Ins
+			#print "Ins",Ins
 		elif (self.name=="GauInv"):
 			Ins= MolEmb.Make_Inv(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, at_)
 		elif (self.name=="RDF"):
@@ -150,7 +150,7 @@ class Digester:
 				if ( "forces" in mol_.properties):
 					if (at_<0):
 						Outs = mol_.properties['forces']
-						print "Outs", Outs
+						#print "Outs", Outs
 					else:
 						Outs = mol_.properties['forces'][at_].reshape((1,3))
 				else:
@@ -208,7 +208,7 @@ class Digester:
 				for i in range(len(desired)):
 					ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				LOGGER.info("Average learning target: %f, Average output (direct) %f", np.average(desired[:,-3:],axis=0),np.average(predicted[:,-3:],axis=0))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
 				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 				for i in range(100):
 					print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])

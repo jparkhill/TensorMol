@@ -18,18 +18,12 @@ static SHParams ParseParams(PyObject *Pdict)
 	tore.SH_NRAD = (RBFa->dimensions)[0];
 	tore.SH_LMAX = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
 	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
+	tore.SH_ORTH = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
 	//cout << "tore.SH_LMAX: " << tore.SH_LMAX << endl;
 	for (int i=0; i<tore.SH_NRAD; ++i)
 	{
-		        //cout << RBFd[i*2] << RBFd[i*2+1] << endl;
-
 			tore.RBFS[i][0] = RBFd[i*2];
 			tore.RBFS[i][1] = RBFd[i*2+1];
-			for (int j=i; j<tore.SH_NRAD; ++j)
-			{
-				tore.SRBF[i][j] = GOverlap(RBFd[i*2],RBFd[j*2],RBFd[i*2+1],RBFd[j*2+1]);
-				tore.SRBF[j][i] = tore.SRBF[i][j];
-			}
 	}
 	return tore;
 }
@@ -457,7 +451,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double y = xyz_data[j*Nxyz[1]+1];
 				double z = xyz_data[j*Nxyz[1]+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
-				RadSHProjection_Orth(Prm,x-xc,y-yc,z-zc,SH_data + i*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
+				RadSHProjection(Prm, x-xc,y-yc,z-zc,SH_data + i*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
 			}
 		}
 	}
