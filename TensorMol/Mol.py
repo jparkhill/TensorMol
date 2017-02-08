@@ -54,15 +54,13 @@ class Mol:
 		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
 		return [i for i in range(self.NAtoms()) if dists[i]<rad]
 
-	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
+	def Rotate(self, origin=np.array([0.0, 0.0, 0.0])):
 		"""
 		Rotate atomic coordinates and forces if present.
 		Args:
-			axis: vector for rotation axis
-			ang: radians of rotation
 			origin: origin of rotation axis.
 		"""
-		rm = RotationMatrix_v2()
+		rm = RotationMatrix()
 		crds = np.copy(self.coords)
 		crds -= origin
 		for i in range(len(self.coords)):
