@@ -120,9 +120,9 @@ class Digester:
 		if (self.name=="Coulomb"):
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):
-			Ins= MolEmb.Make_SH(mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
+			Ins= MolEmb.Make_SH(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauInv"):
-			Ins= MolEmb.Make_Inv(mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, at_)
+			Ins= MolEmb.Make_Inv(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, at_)
 		elif (self.name=="RDF"):
 			Ins= MolEmb.Make_RDF(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="SensoryBasis"):

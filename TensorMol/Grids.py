@@ -63,7 +63,7 @@ def ReflectionMatrix(axis1,axis2):
 	return np.eye(3) - 2.0*np.outer(unitNormal,unitNormal)
 
 def OctahedralOperations():
-	''' 
+	'''
 		Transformation matrices for symmetries of an octahedral shape.
 		Far from the complete set but enough for debugging and seeing if it helps.
 	'''
@@ -172,10 +172,10 @@ H    S
 		}
 
 class Grids:
-	""" 
+	"""
 		Precomputes and stores orthogonalized grids for embedding molecules and potentials.
 		self,NGau_=6, GridRange_=0.6, NPts_=45 is a good choice for a 1 Angstrom potential fit
-		
+
 		Also now has a few
 	"""
 	def __init__(self,NGau_=6, GridRange_=0.8, NPts_=30):
@@ -193,11 +193,11 @@ class Grids:
 		self.dx = 0.0
 		self.dy = 0.0
 		self.dz = 0.0
-		
+
 		self.SH_S = None
 		self.SH_Sinv = None
 		self.SH_C = None
-		
+
 		#
 		# These are for embedding molecular environments.
 		#
@@ -252,12 +252,8 @@ class Grids:
 		self.dx=(np.max(self.Grid[:,0])-np.min(self.Grid[:,0]))/self.NPts*1.889725989
 		self.dy=(np.max(self.Grid[:,1])-np.min(self.Grid[:,1]))/self.NPts*1.889725989
 		self.dz=(np.max(self.Grid[:,2])-np.min(self.Grid[:,2]))/self.NPts*1.889725989
-		import MolEmb
-		self.SH_S = MolEmb.Overlap_SH()
-		self.SH_Sinv = MatrixPower(self.SH_S,-1.0,True)
-		self.SH_C = MatrixPower(self.SH_S,-0.5)
 		return
-		
+
 		mol = gto.Mole()
 		mol.atom = ''.join(["H@0 "+str(self.GauGrid[iii,0])+" "+str(self.GauGrid[iii,1])+" "+str(self.GauGrid[iii,2])+";" for iii in range(len(self.GauGrid))])[:-1]
 		if (self.NGau3%2==0):
@@ -342,10 +338,10 @@ class Grids:
 		return
 
 	def Vectorize(self,input, QualityOfFit=False):
-		''' 
-		Input is rasterized volume information, 
-		output is a vector of NGau3 coefficients fitting that volume. 
-		
+		'''
+		Input is rasterized volume information,
+		output is a vector of NGau3 coefficients fitting that volume.
+
 		The underlying grid is assumed to be MyGrid(), although it can be scaled.
 		'''
 		if self.Grid==None:
@@ -400,7 +396,7 @@ class Grids:
 		else:
 			mol.atom = ''.join("C "+str(p[0])+" "+str(p[1])+" "+str(p[2])+";")
 		mol.spin = 0
-		if (TOTAL_SENSORY_BASIS == None): 
+		if (TOTAL_SENSORY_BASIS == None):
 			raise("missing sensory basis")
 		mol.basis = TOTAL_SENSORY_BASIS
 		mol.build()
@@ -468,7 +464,7 @@ class Grids:
 			mol.spin = 0
 		else:
 			mol.spin = 1
-		if (TOTAL_SENSORY_BASIS == None): 
+		if (TOTAL_SENSORY_BASIS == None):
 			raise("missing sensory basis")
 		mol.basis = TOTAL_SENSORY_BASIS
 		nsaos = 0
@@ -521,7 +517,7 @@ class Grids:
 			mol.spin = 0
 		else:
 			mol.spin = 1
-		if (TOTAL_SENSORY_BASIS == None): 
+		if (TOTAL_SENSORY_BASIS == None):
 			raise("missing sensory basis")
 		mol.basis = TOTAL_SENSORY_BASIS
 		nsaos = 0
@@ -531,7 +527,7 @@ class Grids:
 		except Exception as Ex:
 			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
 			raise Ex
-		
+
 		nsaos = len(GauGrid)
 		nbas = gto.nao_nr(mol)
 		print "nAtoms: ",m.NAtoms()," nsaos: ", nsaos, " nbas ", nbas
@@ -546,7 +542,7 @@ class Grids:
 		return Sd
 
 	def EmbedAtom(self,m,p,i=-1):
-		''' 
+		'''
 			Returns coefficents embedding the environment of atom i, centered at point p.
 		'''
 		mol = gto.Mole()
@@ -576,7 +572,7 @@ class Grids:
 			mol.spin = 0
 		else:
 			mol.spin = 1
-		if (TOTAL_SENSORY_BASIS == None): 
+		if (TOTAL_SENSORY_BASIS == None):
 			raise("missing sensory basis")
 		mol.basis = TOTAL_SENSORY_BASIS
 		nsaos = 0
@@ -644,10 +640,3 @@ class Grids:
 			print "Transformed",np.dot(self.InvIsometries[i],CoP)
 			print "COM:",self.CenterOfP(PCs)
 			#GridstoRaw(PCs,self.NPts,"Atoms"+str(i+1))
-
-
-
-
-
-
-

@@ -5,12 +5,18 @@ PARAMETER CONVENTION:
 - These params should be added to a logfile of results so that we can systematically see how our approximations are doing.
 """
 import logging, time
+import numpy as np
 
 class TMParams(dict):
     def __init__(self, *args, **kwargs ):
         myparam = kwargs.pop('myparam', '')
         dict.__init__(self, *args, **kwargs )
         self["check_level"] = 1 # whether to test the consistency of several things...
+        # Parameters of MolEmb
+        self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
+        	2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+        self["SH_LMAX"]=7
+        self["SH_NRAD"]=10
         # SET GENERATION parameters
         self["MAX_ATOMIC_NUMBER"] = 10
         self["MBE_ORDER"] = 2
@@ -35,7 +41,6 @@ class TMParams(dict):
         self["hidden2"] = 512
         self["hidden3"] = 512
         self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
-        # This just sets defaults.
 
     def __str__(self):
         tore=""

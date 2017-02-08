@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <dictobject.h>
 #include <math.h>
 #include <algorithm>
 #include <cstdlib>
@@ -7,23 +8,44 @@
 #include <vector>
 #include "SH.hpp"
 
-//Make_AM (center_m, ele_index, molxyz_data, Nxyz, AM_data);
+// So that parameters can be dealt with elsewhere.
+static SHParams ParseParams(PyObject *Pdict)
+{
+	SHParams tore;
+	PyObject* RBFo = PyDict_GetItemString(Pdict, "RBFS");
+	PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+	double* RBFd = (double*)RBFa->data;
+	tore.SH_NRAD = (RBFa->dimensions)[0];
+	tore.SH_LMAX = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
+	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
+	cout << "tore.SH_LMAX: " << tore.SH_LMAX << endl; 
+	for (int i=0; i<tore.SH_NRAD; ++i)
+	{	
+		        cout << RBFd[i*2] << RBFd[i*2+1] << endl;
 
-
-#define PI 3.14159265358979
+			tore.RBFS[i][0] = RBFd[i*2];
+			tore.RBFS[i][1] = RBFd[i*2+1];
+			for (int j=i; j<tore.SH_NRAD; ++j)
+			{
+				tore.SRBF[i][j] = GOverlap(RBFd[i*2],RBFd[j*2],RBFd[i*2+1],RBFd[j*2+1]);
+				tore.SRBF[j][i] = tore.SRBF[i][j];
+			}
+	}
+	return tore;
+}
 
 inline double fc(const double &dist, const double &dist_cut) {
 	if (dist > dist_cut)
 	return(0.0);
 	else
 	return (0.5*(cos(PI*dist/dist_cut)+1));
-}
+};
 
 inline double gaussian(const double dist_cut, const int ngrids, double dist, const int j,  const double  width, const double height)  {
 	double position;
 	position = dist_cut / (double)ngrids * (double)j;
 	return height*exp(-((dist - position)*(dist-position))/(2*width*width));
-}
+};
 
 int Make_AM (const double*, const array<std::vector<int>, 100>, const int &, const int &,  const int &, const double*, npy_intp*, double*, const int &);
 int G1(double *, const double *, const double *, int , int , const array<std::vector<int>, 100> , const int, const double *, const double *, const double );
@@ -55,7 +77,8 @@ void rdf(double *data,  const int ngrids,  const array<std::vector<int>, 100> el
 	}
 }
 
-int  PGaussian(double *data, const double *eta,  int dim_eta, const array<std::vector<int>, 100>  ele_index, const int v_index, const double *center, const double *xyz, const double dist_cut) {
+int  PGaussian(double *data, const double *eta,  int dim_eta, const array<std::vector<int>, 100>  ele_index, const int v_index, const double *center, const double *xyz, const double dist_cut)
+{
 	double dist1, fc1,x,y,z;
 	for (int i = 0; i < ele_index[v_index].size(); i++) {
 		x = xyz[ele_index[v_index][i]*3+0] - center[0];
@@ -73,6 +96,7 @@ int  PGaussian(double *data, const double *eta,  int dim_eta, const array<std::v
 			}
 		}
 	}
+	return 0;
 }
 
 int  G1(double *data, const double *Rs, const double *eta, int dim_Rs, int dim_eta, const array<std::vector<int>, 100>  ele_index, const int v_index, const double *center, const double *xyz, const double dist_cut) {
@@ -89,6 +113,7 @@ int  G1(double *data, const double *Rs, const double *eta, int dim_Rs, int dim_e
 			}
 		}
 	}
+	return 0;
 }
 
 double dist(double x0,double y0,double z0,double x1,double y1,double z1)
@@ -392,10 +417,12 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
-	if (!PyArg_ParseTuple(args, "O!O!O!diid",
-	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &ngrids, &theatom, &mask))
+	PyObject *Prm_;
+	if (!PyArg_ParseTuple(args, "O!O!O!O!diid",
+	&PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &ngrids, &theatom, &mask))
 	return NULL;
 
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	const int nele = (elements->dimensions)[0];
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
@@ -404,7 +431,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	natom = Nxyz[0];
 
 	//npy_intp outdim[2] = {natom,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
-	npy_intp outdim[2] = {1,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
+	npy_intp outdim[2] = {1,Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX)};
 	if (theatom<0)
 	outdim[0] = natom;
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
@@ -430,7 +457,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double y = xyz_data[j*Nxyz[1]+1];
 				double z = xyz_data[j*Nxyz[1]+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
-				RadSHProjection_Orth(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
+				RadSHProjection_Orth(Prm,x-xc,y-yc,z-zc,SH_data + i*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
 			}
 		}
 	}
@@ -447,13 +474,12 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 			double x = xyz_data[j*Nxyz[1]+0];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
-			RadSHProjection(x-xc,y-yc,z-zc,SH_data + ai*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
+			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
 		}
 	}
 	//	}
 	return SH;
 }
-
 
 //
 // Embed molecule using Gaussian X Spherical Harmonic basis
@@ -466,10 +492,12 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
-	if (!PyArg_ParseTuple(args, "O!O!O!di",
-	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &theatom))
+	PyObject* Prm_;
+	if (!PyArg_ParseTuple(args, "O!O!O!O!di",
+	&PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &theatom))
 	return NULL;
 
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
 	npy_intp* Nxyz = xyz->dimensions;
@@ -478,10 +506,10 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 
 	npy_intp outdim[2];
 	if (theatom>=0)
-	outdim[0] = 1;
+		outdim[0] = 1;
 	else
-	outdim[0] = natom;
-	outdim[1]=SH_NRAD*(1+SH_LMAX);
+		outdim[0] = natom;
+	outdim[1]=Prm->SH_NRAD*(1+Prm->SH_LMAX);
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 
 	double *SH_data, *xyz_data, *grids_data;
@@ -511,7 +539,7 @@ if (theatom >= 0)
 		double x = xyz_data[j*Nxyz[1]+0];
 		double y = xyz_data[j*Nxyz[1]+1];
 		double z = xyz_data[j*Nxyz[1]+2];
-		RadInvProjection(x-xc,y-yc,z-zc,SH_data,(double)atoms[j]);
+		RadInvProjection(Prm, x-xc,y-yc,z-zc,SH_data,(double)atoms[j]);
 	}
 }
 else
@@ -527,7 +555,7 @@ else
 			double x = xyz_data[j*Nxyz[1]+0];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
-			RadInvProjection(x-xc,y-yc,z-zc,SH_data+i*(outdim[1]),(double)atoms[j]);
+			RadInvProjection(Prm, x-xc,y-yc,z-zc,SH_data+i*(outdim[1]),(double)atoms[j]);
 		}
 	}
 }
@@ -543,11 +571,13 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
-	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
+	PyObject* Prm_;
+	if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &Prm_, &PyArray_Type, &xyz))
 	return NULL;
 
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	const int npts = (xyz->dimensions)[0];
-	int nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
+	int nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	npy_intp outdim[2] = {nbas,npts};
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 
@@ -567,10 +597,10 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 		//		cout << "r" << phi << endl;
 
 		int bi = 0;
-		for (int i=0; i<SH_NRAD ; ++i)
+		for (int i=0; i<Prm->SH_NRAD ; ++i)
 		{
-			double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
-			for (int l=0; l<SH_LMAX+1 ; ++l)
+			double Gv = Gau(r, Prm->RBFS[i][0],Prm->RBFS[i][1]);
+			for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 			{
 				//				cout << "l=" << l << " Gv "<< Gv <<endl;
 				for (int m=-l; m<l+1 ; ++m)
@@ -592,10 +622,12 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 {
 	double x,y,z;
 	PyArrayObject *xyz;
-	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
-	return NULL;
+	PyObject* Prm_;
+	if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &Prm_, &PyArray_Type, &xyz))
+		return NULL;
 
-	int nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
+	int nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	npy_intp outdim[2] = {1,nbas};
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *SH_data,*xyz_data;
@@ -605,24 +637,23 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	y=xyz_data[1];
 	z=xyz_data[2];
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-	int Nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
+	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	//	int Nang = (1+SH_LMAX)*(1+SH_LMAX);
 	double r = sqrt(x*x+y*y+z*z);
 
 	if (r<pow(10.0,-11.0))
-	return SH;
+		return SH;
 	double theta = acos(z/r);
 	double phi = atan2(y,x);
 
 	//	cout << "R,theta,phi" << r << " " << theta << " " <<phi << " " <<endl;
-
 	int bi = 0;
-	for (int i=0; i<SH_NRAD ; ++i)
+	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
-		double Gv = Gau(r, RBFS[i][0],RBFS[i][1]);
-		cout << RBFS[i][0] << " " << Gv << endl;
+		double Gv = Gau(r, Prm->RBFS[i][0],Prm->RBFS[i][1]);
+		cout << Prm->RBFS[i][0] << " " << Gv << endl;
 
-		for (int l=0; l<SH_LMAX+1 ; ++l)
+		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
 			for (int m=-l; m<l+1 ; ++m)
 			{
@@ -894,18 +925,23 @@ static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
 //
 static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 {
-	int nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
+	PyObject* Prm_;
+	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &Prm_))
+		return NULL;
+
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
+	int nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	npy_intp outdim[2] = {nbas,nbas};
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *SH_data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-	int Nbas = SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX);
-	int Nang = (1+SH_LMAX)*(1+SH_LMAX);
-	for (int i=0; i<SH_NRAD ; ++i)
+	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
+	int Nang = (1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
+	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
-		for (int j=i; j<SH_NRAD ; ++j)
+		for (int j=i; j<Prm->SH_NRAD ; ++j)
 		{
-			double S = GOverlap(RBFS[i][0],RBFS[j][0],RBFS[i][1],RBFS[j][1]);
+			double S = GOverlap(Prm->RBFS[i][0],Prm->RBFS[j][0],Prm->RBFS[i][1],Prm->RBFS[j][1]);
 			for (int l=0; l<Nang ; ++l)
 			{
 				int r = i*Nang + l;

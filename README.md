@@ -14,8 +14,11 @@ By using this software you agree to the terms in COPYING
  - Chan Group (for PySCF)
 
 ### INSTALLATION:
-- " cd C_API/ "
-- " sudo python setup.py install "
+
+```
+cd C_API/
+sudo python setup.py install
+```
 
 ### USAGE:
  - Refer to commented examples in test.py
@@ -27,8 +30,8 @@ By using this software you agree to the terms in COPYING
 - To Train Realistically: 1TB Disk, GTX1070++
 - To Evaluate: Normal CPU and 10GB Mem
 - For volume rendering: CUDA 7.5+ or Mathematica
-- " cd volumeRender; make "
-- Or open /densities/PlotDens.nb
+- ` cd volumeRender; make `
+- Or open `/densities/PlotDens.nb`
 
 ### COMMON ISSUES
 - nan during training due to bad checkpoints in /networks (clean.sh)
