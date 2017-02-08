@@ -24,7 +24,7 @@ class MolInstance(Instance):
 		if Name_:   # it already been Loaded in the instance.__init__
 			return
 		self.TData.LoadDataToScratch()
-		self.learning_rate = 0.0001
+		self.learning_rate = 0.001
 		#self.learning_rate = 0.0001 # for adam
 		#self.learning_rate = 0.00001 # for adadelta
 		#self.learning_rate = 0.000001 # 1st sgd
@@ -437,7 +437,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			return
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.00001
+		self.learning_rate = 0.0001
 		self.momentum = 0.95
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
@@ -662,6 +662,15 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		start_time = time.time()
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
+
+		all_atoms = []
+		bond_length = []
+		for i in range (0, len(self.eles)):
+			all_atoms.append([])
+			bond_length.append([])
+		all_mols_nn = []
+		all_mols_acc = []
+
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
 			feed_dict=self.fill_feed_dict(batch_data)
@@ -669,6 +678,23 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
+
+#			all_mols_nn += list(preds[np.nonzero(preds)])
+#			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
+#			print ("length:", len(atom_outputs))
+#			for atom_index in range (0,len(self.eles)):
+#				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
+#				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
+#				print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
+#		test_result = dict()
+#		test_result['atoms'] = all_atoms
+#		test_result['nn'] = all_mols_nn
+#		test_result['acc'] = all_mols_acc
+#		test_result['length'] = bond_length
+#		f = open("test_result_single.dat","wb")
+#		pickle.dump(test_result, f)
+#		f.close()
+ 
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
 		duration = time.time() - start_time
 		#print ("preds:", preds, " label:", batch_data[2])

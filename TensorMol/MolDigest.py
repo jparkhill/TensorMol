@@ -15,7 +15,7 @@ class MolDigester:
 		self.SensRadius = SensRadius_
 		self.eles = eles_
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
-		self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
+		self.ngrid = 3 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
 
 	def AssignNormalization(self,mn,sn):
@@ -75,6 +75,51 @@ class MolDigester:
                 CM_Bond_BP = np.array(CM_Bond_BP)
                 CM_Bond_BP_deri = np.zeros((CM_Bond_BP.shape[0], CM_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
                 return  CM_Bond_BP, CM_Bond_BP_deri
+
+
+        def make_dist_bond_bp(self, mol):
+                Dist_Bond_BP = []
+                for i in range (0, mol.NBonds()):
+                        dist = mol.bonds[i][1]
+                        #print list(cm_bp_1), list(cm_bp_2), dist
+                        dist_bond_bp = np.asarray([1.0/dist], dtype=np.float32)
+                        #print  "cm_bond_bp:", cm_bond_bp
+                        Dist_Bond_BP.append(dist_bond_bp)
+                Dist_Bond_BP = np.array(Dist_Bond_BP)
+                Dist_Bond_BP_deri = np.zeros((Dist_Bond_BP.shape[0], Dist_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
+                return  Dist_Bond_BP, Dist_Bond_BP_deri
+
+	def make_connectedbond_bond_bp(self, mol):
+		ConnectedBond_Bond_BP = []
+		for i in range (0, mol.NBonds()):
+			atom1 = int(mol.bonds[i][2])
+			atom2 = int(mol.bonds[i][3])
+			#print "bond :", i, "index:", atom1, atom2, "ele type:", mol.atoms[atom1], mol.atoms[atom2] 
+			connected_bond1 = [[] for j in range (0, self.neles)]
+			for node in mol.atom_nodes[atom1].connected_nodes:
+				atom_index = node.node_index
+				if atom_index != atom2:
+					dist = mol.DistMatrix[atom1][atom_index]
+					connected_bond1[list(self.eles).index(mol.atoms[atom_index])].append(1.0/dist)
+			connected_bond1 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_bond1 ]
+			connected_bond1 = [item for sublist in connected_bond1 for item in sublist] 			
+
+			connected_bond2 = [[] for j in range (0, self.neles)]
+			for node in mol.atom_nodes[atom2].connected_nodes:
+				atom_index = node.node_index
+				if atom_index != atom1:
+					dist = mol.DistMatrix[atom2][atom_index]
+					connected_bond2[list(self.eles).index(mol.atoms[atom_index])].append(1.0/dist)
+			connected_bond2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_bond2 ]
+			connected_bond2 = [item for sublist in connected_bond2 for item in sublist]
+
+			dist = mol.bonds[i][1]
+			connectedbond_bond_bp = np.asarray(connected_bond1+ connected_bond2 +[1.0/dist], dtype=np.float32)
+			#print "connectedbond_bond_bp", connectedbond_bond_bp
+			ConnectedBond_Bond_BP.append(connectedbond_bond_bp)
+		ConnectedBond_Bond_BP = np.array(ConnectedBond_Bond_BP)
+		ConnectedBond_Bond_BP_deri = np.zeros((ConnectedBond_Bond_BP.shape[0], ConnectedBond_Bond_BP.shape[1]))
+		return  ConnectedBond_Bond_BP, ConnectedBond_Bond_BP_deri
 
 	def make_gauinv(self, mol):
 		""" This is a totally inefficient way of doing this
@@ -169,10 +214,16 @@ class MolDigester:
 		elif(self.name == "Coulomb_Bond_BP"):
                         Ins, deri_CM_Bond_BP =  self.make_cm_bond_bp(mol_)
                         Ins = Ins.reshape([Ins.shape[0],-1])
+		elif(self.name == "Dist_Bond_BP"):
+                        Ins, deri_Dist_Bond_BP =  self.make_dist_bond_bp(mol_)
+                        Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "SymFunc"):
 			Ins, SYM_deri = self.make_sym(mol_)
 		elif(self.name == "GauInv_BP"):
-			Ins =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
+			Ins =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1)
+		elif(self.name == "ConnectedBond_Bond_BP"):
+			Ins, deri_Dist_Bond_BP =  self.make_connectedbond_bond_bp(mol_)
+                        Ins = Ins.reshape([Ins.shape[0],-1])
 		else:
 			raise Exception("Unknown MolDigester Type.", self.name)
 

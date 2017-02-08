@@ -658,7 +658,7 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 		for mi in ord:
 			nbo = self.set.mols[mi].NBonds()
 			#print "casep:", casep
-			if (mols_done%10000==0):
+			if (mols_done%1000==0):
 				print "Mol:", mols_done
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
