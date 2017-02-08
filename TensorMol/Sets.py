@@ -60,7 +60,10 @@ class MSet:
 		return s
 
 	def RotatedClone(self, NRots=3):
-		""" Rotate every molecule NRots Times. """
+		"""
+		Rotate every molecule NRots Times.
+		We should toss some reflections in the mix too...
+		"""
 		print "Making Rotated clone of:", self.name
 		s = MSet(self.name)
 		ord = range(len(self.mols))
@@ -71,7 +74,7 @@ class MSet:
 			for i in range (0, NRots):
 				s.mols.append(copy.deepcopy(self.mols[j]))
 				s.mols[-1].coords -= s.mols[-1].Center()
-				s.mols[-1].RotateRandomUniform(np.random.normal(0.,1.0,3),np.random.uniform(-Pi,Pi))
+				s.mols[-1].RotateRandomUniform()
 		return s
 
 	def DistortedClone(self, NDistorts=1, random=True):
