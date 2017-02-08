@@ -17,10 +17,12 @@ class MSet:
 		self.name=name_
 		self.suffix=".pdb" #Pickle Database? Poor choice.
 
-	def Save(self):
-		LOGGER.info("Saving set to: %s ", self.path+self.name+self.suffix)
+	def Save(self, filename=None):
+		if filename == None:
+			filename = self.name
+		LOGGER.info("Saving set to: %s ", self.path+filename+self.suffix)
 		#print "Saving set to: ", self.path+self.name+self.suffix
-		f=open(self.path+self.name+self.suffix,"wb")
+		f=open(self.path+filename+self.suffix,"wb")
 		pickle.dump(self.__dict__, f, protocol=1)
 		f.close()
 		return
@@ -108,8 +110,14 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
-	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/", has_force=False):
-		""" Reads the GDB9 dataset as a pickled list of molecules"""
+	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False):
+		"""
+		Reads XYZs in distinct files
+		Args:
+			path: the directory which contains the .xyz files to be read
+			has_energy: switch to turn on reading the energy from the comment line as formatted from the md_dataset on quantum-machine.org
+			has_force: switch to turn on reading the force from the comment line as formatted from the md_dataset on quantum-machine.org
+		"""
 		from os import listdir
 		from os.path import isfile, join
 		#onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
@@ -121,6 +129,8 @@ class MSet:
 			self.mols[-1].ReadGDB9(path+file, file, self.name)
 			if has_force:
 				self.mols[-1].Force_from_xyz(path+file)
+			if has_energy:
+				self.mols[-1].Energy_from_xyz(path+file)
 		return
 
 	def ReadXYZ(self,filename, xyz_type = 'mol'):

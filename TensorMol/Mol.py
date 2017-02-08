@@ -62,7 +62,7 @@ class Mol:
 			ang: radians of rotation
 			origin: origin of rotation axis.
 		"""
-		rm = RotationMatrix(axis,ang)
+		rm = RotationMatrix_v2()
 		crds = np.copy(self.coords)
 		crds -= origin
 		for i in range(len(self.coords)):
@@ -705,5 +705,19 @@ class Mol:
 					for k in range(3):
 						forces[j,k] = float(read_forces[j*3+k])
 			self.properties['forces'] = forces
+		except Exception as Ex:
+			print "Read Failed.", Ex
+
+	def Energy_from_xyz(self, path):
+		"""
+		Reads the forces from the comment line in the md_dataset,
+		and if no forces exist sets them to zero. Switched on by
+		has_force=True in the ReadGDB9Unpacked routine
+		"""
+		try:
+			f = open(path, 'r')
+			lines = f.readlines()
+			energy = (lines[1].strip().split(';'))[0]
+			self.properties['energy'] = energy
 		except Exception as Ex:
 			print "Read Failed.", Ex
