@@ -168,7 +168,22 @@ def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase =
 	lines += "/afs/crc.nd.edu/group/parkhill/qchem85/bin/qchem  -nt "+ncore+"   "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".in  "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".out\n\nrm MBE*.o*"
 	return lines
 
-def RotationMatrix(randnums=None, deflection=1.0):
+def RotationMatrix(axis, theta):
+    """
+    Return the rotation matrix associated with counterclockwise rotation about
+    the given axis by theta radians.
+    """
+    axis = np.asarray(axis)
+    axis = axis/np.linalg.norm(axis)
+    a = math.cos(theta/2.0)
+    b, c, d = -axis*math.sin(theta/2.0)
+    aa, bb, cc, dd = a*a, b*b, c*c, d*d
+    bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
+    return np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
+                     [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
+                     [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
+
+def RotationMatrix_v2(randnums=None, deflection=1.0):
 	"""
 	Creates a uniformly random rotation matrix
 	Args:
@@ -179,7 +194,7 @@ def RotationMatrix(randnums=None, deflection=1.0):
 		randnums = np.random.uniform(size=(3,))
 	theta, phi, z = randnums[0]*2.0*deflection*np.pi, randnums[1]*2.0*np.pi, randnums[2]*2.0*deflection
 	r = np.sqrt(z)
-	v = np.array((np.sin(phi)*r, np.cos(phi)*r, np.sqrt(2.0-z)))
+	v = np.array(np.sin(phi)*r, np.cos(phi)*r, np.sqrt(2.0-z))
 	R = np.array(((np.cos(theta),np.sin(theta),0.),(-np.sin(theta),np.cos(theta),0.),(0.,0.,1.)))
 	M = (np.outer(v,v) - np.eye(3)).dot(R)
 	return M
