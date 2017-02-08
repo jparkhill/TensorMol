@@ -62,6 +62,29 @@ class Mol:
 			ang: radians of rotation
 			origin: origin of rotation axis.
 		"""
+		rm = RotationMatrix(axis, ang)
+		crds = np.copy(self.coords)
+		crds -= origin
+		for i in range(len(self.coords)):
+			self.coords[i] = np.dot(rm,crds[i])
+		if ("forces" in self.properties.keys()):
+			# Must also rotate the force vectors
+			old_endpoints = crds+self.properties["forces"]
+			new_forces = np.zeros(crds.shape)
+			for i in range(len(self.coords)):
+				new_endpoint = np.dot(rm,old_endpoints[i])
+				new_forces[i] = new_endpoint - self.coords[i]
+			self.properties["forces"] = new_forces
+		self.coords += origin
+
+	def RotateRandomUniform(self, origin=np.array([0.0, 0.0, 0.0])):
+		"""
+		Rotate atomic coordinates and forces if present.
+		Args:
+			axis: vector for rotation axis
+			ang: radians of rotation
+			origin: origin of rotation axis.
+		"""
 		rm = RotationMatrix_v2()
 		crds = np.copy(self.coords)
 		crds -= origin

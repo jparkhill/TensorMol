@@ -71,7 +71,7 @@ class MSet:
 			for i in range (0, NRots):
 				s.mols.append(copy.deepcopy(self.mols[j]))
 				s.mols[-1].coords -= s.mols[-1].Center()
-				s.mols[-1].Rotate(np.random.normal(0.,1.0,3),np.random.uniform(-Pi,Pi))
+				s.mols[-1].RotateRandomUniform(np.random.normal(0.,1.0,3),np.random.uniform(-Pi,Pi))
 		return s
 
 	def DistortedClone(self, NDistorts=1, random=True):
@@ -110,9 +110,9 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
-	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False):
+	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, center=False):
 		"""
-		Reads XYZs in distinct files
+		Reads XYZs in distinct files in one directory as a molset
 		Args:
 			path: the directory which contains the .xyz files to be read
 			has_energy: switch to turn on reading the energy from the comment line as formatted from the md_dataset on quantum-machine.org
@@ -131,10 +131,14 @@ class MSet:
 				self.mols[-1].Force_from_xyz(path+file)
 			if has_energy:
 				self.mols[-1].Energy_from_xyz(path+file)
+		if (center):
+			ord = range(len(self.mols))
+			for j in ord:
+				self.mols[j].coords -= self.mols[j].Center()
 		return
 
 	def ReadXYZ(self,filename, xyz_type = 'mol'):
-		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """
+		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
 		f = open(self.path+filename+".xyz","r")
 		txts = f.readlines()
 		for line in range(len(txts)):
