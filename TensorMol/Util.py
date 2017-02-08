@@ -194,7 +194,7 @@ def RotationMatrix_v2(randnums=None, deflection=1.0):
 		randnums = np.random.uniform(size=(3,))
 	theta, phi, z = randnums[0]*2.0*deflection*np.pi, randnums[1]*2.0*np.pi, randnums[2]*2.0*deflection
 	r = np.sqrt(z)
-	v = np.array(np.sin(phi)*r, np.cos(phi)*r, np.sqrt(2.0-z))
+	v = np.array((np.sin(phi)*r, np.cos(phi)*r, np.sqrt(2.0-z)))
 	R = np.array(((np.cos(theta),np.sin(theta),0.),(-np.sin(theta),np.cos(theta),0.),(0.,0.,1.)))
 	M = (np.outer(v,v) - np.eye(3)).dot(R)
 	return M

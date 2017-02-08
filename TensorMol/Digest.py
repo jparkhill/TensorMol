@@ -121,6 +121,7 @@ class Digester:
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):
 			Ins= MolEmb.Make_SH(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
+			print "Ins",Ins
 		elif (self.name=="GauInv"):
 			Ins= MolEmb.Make_Inv(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, at_)
 		elif (self.name=="RDF"):
@@ -149,6 +150,7 @@ class Digester:
 				if ( "forces" in mol_.properties):
 					if (at_<0):
 						Outs = mol_.properties['forces']
+						print "Outs", Outs
 					else:
 						Outs = mol_.properties['forces'][at_].reshape((1,3))
 				else:

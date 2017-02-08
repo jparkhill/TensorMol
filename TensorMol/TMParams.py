@@ -15,7 +15,7 @@ class TMParams(dict):
         # Parameters of MolEmb
         self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
         	2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-        self["SH_LMAX"]=7
+        self["SH_LMAX"]=3
         self["SH_NRAD"]=10
         # SET GENERATION parameters
         self["MAX_ATOMIC_NUMBER"] = 10
