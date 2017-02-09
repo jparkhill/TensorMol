@@ -266,8 +266,8 @@ class TensorMolData_BP(TensorMolData):
 		self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
-		self.NormalizeInputs = PARAMS["NormInputs"]
-		self.NormalizeOutputs = PARAMS["NormOutputs"]
+		self.NormalizeInputs = PARAMS["NormalizeInputs"]
+		self.NormalizeOutputs = PARAMS["NormalizeOutputs"]
 		print "TensorMolData_BP.eles", self.eles
 		print "TensorMolData_BP.MeanStoich", self.MeanStoich
 		print "TensorMolData_BP.MeanNAtoms", self.MeanStoich

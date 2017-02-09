@@ -14,6 +14,8 @@ class MolDigester:
     	self.eshape = None
     	self.SensRadius = SensRadius_
     	self.eles = eles_
+        self.MeanNorm=0.0
+    	self.StdNorm=1.0
     	self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
     	self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
     	self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
@@ -155,7 +157,7 @@ class MolDigester:
     	elif(self.name == "SymFunc"):
     		Ins, SYM_deri = self.make_sym(mol_)
     	elif(self.name == "GauInv_BP"):
-    		Ins =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
+    		Ins =  MolEmb.Make_Inv(PARAMS, mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
     	else:
     		raise Exception("Unknown MolDigester Type.", self.name)
 

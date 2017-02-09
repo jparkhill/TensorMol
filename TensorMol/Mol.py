@@ -131,14 +131,6 @@ class Mol:
 					while (not accepted and maxiter>0):
 						tmp = self.coords
 						tmp[i,j] += np.random.normal(0.0, disp)
-						# mindist = None
-						# if (self.DistMatrix != None):
-						# 	if((self.GoEnergy(tmp)-e0) < 0.005):
-						# 		#print "LJE: ", self.LJEnergy(tmp)
-						# 		#print self.coords
-						# 		accepted = True
-						# 		self.coords = tmp
-						# else:
 						mindist = np.min([ np.linalg.norm(tmp[i,:]-tmp[k,:]) if i!=k else 1.0 for k in range(self.NAtoms()) ])
 						if (mindist>0.35):
 							accepted = True

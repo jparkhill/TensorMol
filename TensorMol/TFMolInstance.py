@@ -67,7 +67,7 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 10
+		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -104,6 +104,7 @@ class MolInstance_fc_classify(MolInstance):
 		self.NetType = "fc_classify"
 		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
 		self.hidden1 = PARAMS["hidden1"]
 		self.hidden2 = PARAMS["hidden2"]
@@ -268,6 +269,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.NetType = "fc_sqdiff"
 		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
 		self.hidden1 = PARAMS["hidden1"]
 		self.hidden2 = PARAMS["hidden2"]
@@ -427,6 +429,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.NetType = "fc_sqdiff_BP"
 		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
 		self.momentum = 0.95

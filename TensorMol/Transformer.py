@@ -3,20 +3,11 @@ from Util import *
 import numpy,os,sys,re
 import cPickle as pickle
 import LinearOperations
-if (HAS_EMB):
-	import MolEmb
 
-class Digester:
+class Transformer:
 	"""
-	 An Embedding gives some chemical description of a molecular
-	 Environment around a point. This one is for networks that will embed properties of atoms.
-	 Molecule embeddings and Behler-Parrinello are in DigestMol.
-
-	 A Digester samples a molecule using an embedding.
-	 Because the embedding is evaluated so much, it's written in C.
-	 please refer to /C_API/setup.py
-	 The Default is Coulomb, but this is also the gen. interface
-	 The embedding does not provide labels.
+	 For various reasons it can be better to treat inputs and outputs different for evaluation than in training 
+	 (Ie: run isometries when you )
 	"""
 	def __init__(self, eles_, name_="GauSH", OType_="Disp"):
 		"""
