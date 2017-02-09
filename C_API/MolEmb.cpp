@@ -936,12 +936,11 @@ static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 		return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
-	int nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
-	npy_intp outdim[2] = {nbas,nbas};
+	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
+	npy_intp outdim[2] = {Nbas,Nbas};
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *SH_data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	int Nang = (1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
@@ -958,6 +957,28 @@ static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 		}
 	}
 	return SH;
+}
+
+static PyObject* Overlap_RBF(PyObject *self, PyObject  *args)
+{
+	PyObject* Prm_;
+	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &Prm_))
+		return NULL;
+
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
+	int nbas = Prm->SH_NRAD;
+	npy_intp outdim[2] = {nbas,nbas};
+	PyObject* SRBF = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *SRBF_data;
+	SRBF_data = (double*) ((PyArrayObject*)SRBF)->data;
+	for (int i=0; i<Prm->SH_NRAD ; ++i)
+	{
+		for (int j=0; j<Prm->SH_NRAD ; ++j)
+		{
+			SRBF_data[i*Prm->SH_NRAD+j] = GOverlap(Prm->RBFS[i*2],Prm->RBFS[j*2],Prm->RBFS[i*2+1],Prm->RBFS[j*2+1]);
+		}
+	}
+	return SRBF;
 }
 
 static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
@@ -1264,6 +1285,8 @@ static PyMethodDef EmbMethods[] =
 	"Raster_SH method"},
 	{"Overlap_SH", Overlap_SH, METH_VARARGS,
 	"Overlap_SH method"},
+	{"Overlap_RBF", Overlap_RBF, METH_VARARGS,
+	"Overlap_RBF method"},
 	{"Project_SH", Project_SH, METH_VARARGS,
 	"Project_SH method"},
 	{"Make_PGaussian", Make_PGaussian, METH_VARARGS,

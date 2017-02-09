@@ -68,6 +68,9 @@ try:
 	from TensorMol.LinearOperations import MatrixPower
 	SOrth = MatrixPower(S,-1./2)
 	PARAMS["GauSHSm12"] = SOrth
+	S_Rad = MolEmb.Overlap_RBF(PARAMS)
+	S_RadOrth = MatrixPower(S_Rad,-1./2)
+	PARAMS["SRBF"] = S_RadOrth
 	# THIS SHOULD BE IMPLEMENTED TOO.
 	#PARAMS["GauInvSm12"] = MatrixPower(S,-1./2)
 except Exception as Ex:
