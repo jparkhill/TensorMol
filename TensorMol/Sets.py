@@ -94,7 +94,7 @@ class MSet:
 	def TransformedClone(self, transfs):
 		''' make a linearly transformed copy of a set. '''
 		LOGGER.info("Making Transformed clone of:"+self.name)
-		s = MSet(self.name+"_NEQ")
+		s = MSet(self.name)
 		ord = range(len(self.mols))
 		for j in ord:
 			for k in range(len(transfs)):

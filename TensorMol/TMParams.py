@@ -26,7 +26,7 @@ class TMParams(dict):
         self["MBE_ORDER"] = 2
         self["RotateSet"] = 0
         self["TransformSet"] = 1
-        self["NModePts"] = 10
+        self["NModePts"] = 5
         self["NDistorts"] = 5
         self["GoK"] = 0.05
         self["dig_ngrid"] = 20
