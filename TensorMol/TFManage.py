@@ -186,10 +186,10 @@ class TFManage:
 		if(self.TData.dig.name != "GauSH"):
 		    raise Exception("Don't average this...")
 		p = np.zeros((mol.NAtoms(),3))
-	    ops = OctahedralOperations()
-        invops = map(np.linalg.inv,ops)
+		ops = OctahedralOperations()
+		invops = map(np.linalg.inv,ops)
 		for oi in range(len(ops)):
-            op = ops[i]
+			op = ops[i]
 			for atom in range(mol.NAtoms()):
 				mol_t = Mol(mol.atoms, mol.coords)
 				mol_t.Transform(op, mol.coords[atom])

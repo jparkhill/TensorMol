@@ -201,7 +201,7 @@ class Digester:
 		without changing the digester, redoing training etc...
 		Thinking about how to do this for all elements etc. is tricky.
 		"""
-	    return (a*self.StdNorm+self.MeanNorm)
+		return (a*self.StdNorm+self.MeanNorm)
 
 	def EvaluateTestOutputs(self, desired, predicted):
 		try:

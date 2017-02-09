@@ -51,7 +51,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 		a.ReadXYZ("OptMols")
 		if (PARAMS["RotateSet"]):
 			b = a.RotatedClone(2)
-		if (PARAMS["TransformSet"])
+		if (PARAMS["TransformSet"]):
 			b = a.TransformedClone(OctahedralOperations())
 		print "nmols:",len(b.mols)
 		c=b.DistortedClone(PARAMS["NDistorts"],0.25) # number of distortions, displacement
@@ -91,7 +91,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 
 # Tests to run.
 #TestBP(set_="gdb9", dig_="GauInv", BuildTrain_=False)
-TestGoForceAtom(dig_ = "GauSH", BuildTrain_=False, net_ = "fc_sqdiff", Train_=True)
+TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 
 # Kun's tests.
 if (0):
