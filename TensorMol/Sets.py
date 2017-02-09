@@ -91,14 +91,15 @@ class MSet:
 					s.mols[-1].Distort()
 			return s
 
-	def TransformedClone(self, transf_num):
+	def TransformedClone(self, transfs):
 		''' make a linearly transformed copy of a set. '''
-		print "Making distorted clone of:", self.name
-		s = MSet(self.name+"_transf_"+str(transf_num))
+		LOGGER.info("Making Transformed clone of:"+self.name)
+		s = MSet(self.name)
 		ord = range(len(self.mols))
 		for j in ord:
+			for k in range(len(transfs)):
 				s.mols.append(copy.deepcopy(self.mols[j]))
-				s.mols[-1].Transform(GRIDS.InvIsometries[transf_num])
+				s.mols[-1].Transform(transfs[k])
 		return s
 
 	def NAtoms(self):

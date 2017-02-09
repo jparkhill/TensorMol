@@ -177,6 +177,28 @@ class TFManage:
 				t=t+1
 		return p/(3.0*RotAv)
 
+	def EvalOctAvForce(self, mol):
+		"""
+		Goes without saying we should do this in batches for each element,
+		if it actually improves accuracy. And improve rotational sampling.
+		But for the time being I'm doing this sloppily.
+		"""
+		if(self.TData.dig.name != "GauSH"):
+		    raise Exception("Don't average this...")
+		p = np.zeros((mol.NAtoms(),3))
+		ops = OctahedralOperations()
+		invops = map(np.linalg.inv,ops)
+		for oi in range(len(ops)):
+			op = ops[i]
+			for atom in range(mol.NAtoms()):
+				mol_t = Mol(mol.atoms, mol.coords)
+				mol_t.Transform(op, mol.coords[atom])
+				inputs = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+				tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
+				p[atom] = np.dot(invops,tmp.T).reshape(3)
+			t=t+1
+		return p/(len(ops))
+
 	def evaluate(self, mol, atom, RotAv=10):
 		input = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		p = self.Instances[mol.atoms[atom]].evaluate(input)

@@ -2,6 +2,7 @@ from Mol import *
 from Util import *
 import numpy,os,sys,re
 import cPickle as pickle
+import LinearOperations
 if (HAS_EMB):
 	import MolEmb
 
@@ -17,7 +18,7 @@ class Digester:
 	 The Default is Coulomb, but this is also the gen. interface
 	 The embedding does not provide labels.
 	"""
-	def __init__(self, eles_, name_="GauSH", OType_="Disp", SamplingType_="", BlurRadius_ = 0.05 ):
+	def __init__(self, eles_, name_="GauSH", OType_="Disp"):
 		"""
 		Args:
 			eles_ : a list of elements in the Tensordata that I'll digest
@@ -31,9 +32,6 @@ class Digester:
 		self.eshape=None  #shape of an embedded case
 		self.lshape=None  #shape of the labels of an embedded case.
 		self.OType = OType_ # Output Type: HardP, SmoothP, StoP, Disp, Force, Energy etc. See Emb() for options.
-		self.SamplingType = "Smooth" # No hard cutoff of sampled points, random probabilites of distortion too.
-		if (SamplingType_ != ""):
-			self.SamplingType = SamplingType_
 
 		self.NTrainSamples=1 # Samples per atom. Should be made a parameter.
 		if (self.OType == "SmoothP" or self.OType == "Disp"):
@@ -42,14 +40,14 @@ class Digester:
 		self.eles = np.array(eles_)
 		self.eles.sort() # Consistent list of atoms in the order they are treated.
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
-		self.TrainSampDistance=2.0 #how far in Angs to sample on average.
-
-		self.ngrid = 20 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
 		self.npgaussian = self.neles # channel of PGaussian
 		# Instead self.emb should know it's return shape or it should be testable.
-		self.lshape=None # shape of label array.
-		self.BlurRadius = BlurRadius_ # Stdev of gaussian used as prob of atom
+
+		self.SamplingType = PARAMS["dig_SamplingType"]
+		self.TrainSampDistance=2.0 #how far in Angs to sample on average.
+		self.ngrid = PARAMS["dig_ngrid"] #this is a shitty parameter if we go with anything other than RDF and should be replaced.
+		self.BlurRadius = PARAMS["BlurRadius"] # Stdev of gaussian used as prob of atom
 		self.SensRadius=6.0 # Distance which is used for input.
 
 		# These are used to normalize data.
@@ -146,6 +144,8 @@ class Digester:
 				Outs = mol_.GoDisp(at_)
 			elif (self.OType=="GoForce"):
 				Outs = mol_.GoForce(at_)
+			elif (self.OType=="GoForceSphere"):
+				Outs = mol_.GoForce(at_, 1) # See if the network is better at doing spherical=>spherical
 			elif (self.OType=="Force"):
 				if ( "forces" in mol_.properties):
 					if (at_<0):
@@ -194,7 +194,14 @@ class Digester:
 			return Ins
 
 	def unscld(self,a):
-	    return (a*self.StdNorm+self.MeanNorm)
+		"""
+		I really don't like this routine at all. I think we should give
+		Digesters some sort of Translator object which allows the networks training
+		target to be some simple transformations of the input/output
+		without changing the digester, redoing training etc...
+		Thinking about how to do this for all elements etc. is tricky.
+		"""
+		return (a*self.StdNorm+self.MeanNorm)
 
 	def EvaluateTestOutputs(self, desired, predicted):
 		try:
@@ -212,6 +219,19 @@ class Digester:
 				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 				for i in range(100):
 					print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
+			elif (self.OType == "GoForceSphere"):
+				# Convert them back to cartesian
+				desiredc = SphereToCartV(desired)
+				predictedc = SphereToCartV(predicted)
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
+				for i in range(len(desiredc)):
+					ders[i] = np.linalg.norm(self.unscld(predictedc[i,-3:])-self.unscld(desiredc[i,-3:]))
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
+				for i in range(100):
+					print "Desired: ",i,self.unscld(desiredc[i,-3:])," Predicted: ",self.unscld(predictedc[i,-3:])
 			elif (self.OType=="SmoothP"):
 				ders=np.zeros(len(desired))
 				iers=np.zeros(len(desired))
@@ -256,7 +276,7 @@ class Digester:
 		Returns:
 			Two lists: containing inputs and outputs in order of eles_
 		"""
-		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="Force" )):
+		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" )):
 			raise Exception("Molwise Embedding not supported")
 		if (self.eshape==None or self.lshape==None):
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))

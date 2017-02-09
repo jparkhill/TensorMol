@@ -2,7 +2,7 @@ from Util import *
 import numpy as np
 import random, math
 import MolEmb
-from LinearOperations import * 
+from LinearOperations import *
 
 class Mol:
 	""" Provides a general purpose molecule"""
@@ -460,12 +460,15 @@ class Mol:
 		''' The GO potential enforces equilibrium bond lengths. '''
 		raise Exception("Depreciated.")
 
-	def GoForce(self, at_=-1):
+	def GoForce(self, at_=-1, spherical = 0):
 		'''
 			The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
 			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
-		return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_)
+		if (spherical):
+			return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,0)
+		else:
+			return PARAMS["GoK"]*MolEmb.Make_GoForceSpherical(self.coords,self.DistMatrix,at_,1)
 
 	def GoForceLocal(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
