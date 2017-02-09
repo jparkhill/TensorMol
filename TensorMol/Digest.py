@@ -221,17 +221,17 @@ class Digester:
 					print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
 			elif (self.OType == "GoForceSphere"):
 				# Convert them back to cartesian
-				desired = SphereToCartV(desired)
-				predicted = SphereToCartV(predicted)
+				desiredc = SphereToCartV(desired)
+				predictedc = SphereToCartV(predicted)
 				ders=np.zeros(len(desired))
 				#comp=np.zeros(len(desired))
-				for i in range(len(desired)):
-					ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
+				for i in range(len(desiredc)):
+					ders[i] = np.linalg.norm(self.unscld(predictedc[i,-3:])-self.unscld(desiredc[i,-3:]))
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
 				for i in range(100):
-					print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
+					print "Desired: ",i,self.unscld(desiredc[i,-3:])," Predicted: ",self.unscld(predictedc[i,-3:])
 			elif (self.OType=="SmoothP"):
 				ders=np.zeros(len(desired))
 				iers=np.zeros(len(desired))
