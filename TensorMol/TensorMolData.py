@@ -215,7 +215,7 @@ class TensorMolData(TensorData):
 		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in_STD.npy",std)
 		return
 
-#	We need to figure out a better way of incorporating this with the data.
+	#	We need to figure out a better way of incorporating this with the data.
 	def NormalizeOutputs(self):
 		print self.scratch_outputs
 		mean = (np.mean(self.scratch_outputs, axis=0)).reshape((1,-1))
@@ -225,7 +225,7 @@ class TensorMolData(TensorData):
 		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy", mean)
 		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy",std)
 		print mean, std, self.scratch_outputs
-                return
+		return
 
 	def Get_Mean_Std(self):
 		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy")
@@ -266,8 +266,8 @@ class TensorMolData_BP(TensorMolData):
 		self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
-		self.NormalizeInputs = PARAMS["NormInputs"]
-		self.NormalizeOutputs = PARAMS["NormOutputs"]
+		self.NormalizeInputs = PARAMS["NormalizeInputs"]
+		self.NormalizeOutputs = PARAMS["NormalizeOutputs"]
 		print "TensorMolData_BP.eles", self.eles
 		print "TensorMolData_BP.MeanStoich", self.MeanStoich
 		print "TensorMolData_BP.MeanNAtoms", self.MeanStoich
@@ -379,23 +379,22 @@ class TensorMolData_BP(TensorMolData):
 		if (self.ScratchState == 1):
 			return
 		ti, to, tm = self.LoadData(random)
-
 		ti, to = self.Normalize(ti,to)
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
-		print "LastTrainMol in TensorMolData:", self.LastTrainMol
-		print "NTestMols in TensorMolData:", self.NTestMols
-		print "Number of molecules in meta:", tm[-1,0]+1
+		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
+		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
+		LOGGER.debug("Number of molecules in meta:: %i", tm[-1,0]+1)
 		LastTrainCase=0
-		print tm
+		#print tm
 		# Figure out the number of atoms in training and test.
 		for i in range(len(tm)):
 			if (tm[i,0] == self.LastTrainMol):
 				LastTrainCase = tm[i,2] # exclusive
 				break
-		print "last train atom: ", LastTrainCase
-		print "Num Test atoms: ", len(tm)-LastTrainCase
-		print "Num atoms: ", len(tm)
+		LOGGER.debug("last train atom: %i",LastTrainCase)
+		LOGGER.debug("Num Test atoms: %i",len(tm)-LastTrainCase)
+		LOGGER.debug("Num atoms: %i",len(tm))
 
 		self.NTrain = LastTrainCase
 		self.NTest = len(tm)-LastTrainCase
@@ -440,7 +439,7 @@ class TensorMolData_BP(TensorMolData):
 			ncases: the size of a training cases.
 			noutputs: the maximum number of molecule energies which can be produced.
 		Returns:
-			A an **ordered** list containing
+			A an **ordered** list of length self.eles containing
 				a list of (num_of atom type X flattened input shape) matrix of input cases.
 				a list of (num_of atom type X batchsize) matrices which linearly combines the elements
 				a list of outputs.
@@ -501,6 +500,14 @@ class TensorMolData_BP(TensorMolData):
 		return [inputs, matrices, outputs]
 
 	def GetTestBatch(self,ncases,noutputs):
+		"""
+			Returns:
+			A an **ordered** list of length self.eles containing
+				a list of (num_of atom type X flattened input shape) matrix of input cases.
+				a list of (num_of atom type X batchsize) matrices which linearly combines the elements
+				a list of outputs.
+				the number of output molecules.
+		"""
 		start_time = time.time()
 		if (self.ScratchState == 0):
 			self.LoadDataToScratch()
@@ -548,13 +555,12 @@ class TensorMolData_BP(TensorMolData):
 			matrices[ei][offsets[ei],outputpointer] = 1.0
 			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]-self.scratch_test_meta[0,0]]
 			offsets[ei] += 1
-		return [inputs, matrices, outputs]
+		return [inputs, matrices, outputs, outputpointer]
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
 		print "self.ScratchPointer",self.ScratchPointer
 		print "self.test_ScratchPointer",self.test_ScratchPointer
-
 
 	def Save(self):
 	    self.CleanScratch()

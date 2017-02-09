@@ -344,7 +344,7 @@ class Instance:
 	def train(self, mxsteps, continue_training= False):
 		self.TData.LoadElementToScratch(self.element)
 		self.train_prepare(continue_training)
-		test_freq = 40
+		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)

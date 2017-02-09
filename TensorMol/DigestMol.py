@@ -14,6 +14,8 @@ class MolDigester:
     	self.eshape = None
     	self.SensRadius = SensRadius_
     	self.eles = eles_
+        self.MeanNorm=0.0
+    	self.StdNorm=1.0
     	self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
     	self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
     	self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
@@ -155,27 +157,30 @@ class MolDigester:
     	elif(self.name == "SymFunc"):
     		Ins, SYM_deri = self.make_sym(mol_)
     	elif(self.name == "GauInv_BP"):
-    		Ins =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
+    		Ins =  MolEmb.Make_Inv(PARAMS, mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
     	else:
     		raise Exception("Unknown MolDigester Type.", self.name)
 
     	if (self.eshape == None):
     		self.eshape=Ins.shape[1:] # The first dimension is atoms. eshape is per-atom.
     	if (MakeOutputs):
-    		if (self.OType == "Energy"):
-    			Outs = np.array([mol_.properties["energy"]])
-    		elif (self.OType == "FragEnergy"):
-    			Outs = np.array([mol_.frag_mbe_energy])
-    		elif (self.OType == "GoEnergy"):
-    			Outs = np.array([mol_.GoEnergy()])
-    		else:
-    			raise Exception("Unknown Output Type... "+self.OType)
-    		if (self.lshape == None):
-    			self.lshape=Outs.shape
-    		if (MakeGradients):
-    			return Ins, Grads, Outs
-    		else:
-    			return Ins, Outs
+            if (self.OType == "Energy"):
+            	Outs = np.array([mol_.properties["energy"]])
+            elif (self.OType == "AtomizationEnergy"):
+                Outs = np.array([mol_.properties["atomization"]])
+            elif (self.OType == "FragEnergy"):
+            	Outs = np.array([mol_.frag_mbe_energy])
+            elif (self.OType == "GoEnergy"):
+            	Outs = np.array([mol_.GoEnergy()])
+            else:
+            	raise Exception("Unknown Output Type... "+self.OType)
+
+            if (self.lshape == None):
+            	self.lshape=Outs.shape
+            if (MakeGradients):
+            	return Ins, Grads, Outs
+            else:
+            	return Ins, Outs
     	else:
     		 return Ins
 
@@ -191,18 +196,18 @@ class MolDigester:
     def unscld(self,a):
         return (a*self.StdNorm+self.MeanNorm)
 
-    def EvaluateTestOutputs(self, desired, predicted):
-        LOGGER.info("desired.shape "+str(desired.shape)+" predicted.shape ", predicted.shape)
+    def EvaluateTestOutputs(self, desired, predicted, nmols_=100):
+        LOGGER.info("desired.shape "+str(desired.shape)+" predicted.shape "+str(predicted.shape)+" nmols "+str(nmols_))
         LOGGER.info("Evaluating, "+str(len(desired))+" predictions... ")
-        if (self.OType=="GoEnergy" or self.OType == "Energy"):
-            predicted=predicted.flatten()
-            desired=desired.flatten()
+        if (self.OType=="GoEnergy" or self.OType == "Energy" or self.OType == "AtomizationEnergy"):
+            predicted=predicted.flatten()[:nmols_]
+            desired=desired.flatten()[:nmols_]
             LOGGER.info( "NCases: "+str(len(desired))+"Mean Norm and Std"+str(self.MeanNorm)+" "+str(self.StdNorm))
-            LOGGER.info( "Mean Energy "+str(self.unscld(desired)))
-            LOGGER.info( "Mean Predicted Energy "+str(self.unscld(predicted)))
-            for i in range(100):
+            #LOGGER.info( "Mean Energy "+str(self.unscld(desired)))
+            #LOGGER.info( "Mean Predicted Energy "+str(self.unscld(predicted)))
+            for i in range(min(50,nmols_)):
                 LOGGER.info( "Desired: "+str(i)+" "+str(self.unscld(desired[i]))+" Predicted "+str(self.unscld(predicted[i])))
-            LOGGER.info("MAE "+str(np.average(self.unscld(np.abs(desired-predicted)))))
+            LOGGER.info("MAE "+str(np.average(np.abs(self.unscld(desired)-self.unscld(predicted)))))
             LOGGER.info("STD "+str(np.std(self.unscld(desired-predicted))))
         else:
         	raise Exception("Unknown Digester Output Type.")

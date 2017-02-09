@@ -555,7 +555,7 @@ class TensorData():
     	self.scratch_test_outputs = to[ti.shape[0]-self.NTest:]
     	self.ScratchState = ele
     	self.ScratchPointer=0
-    	print "Element ", ele, " loaded..."
+    	LOGGER.debug("Element "+str(ele)+" loaded...")
     	return
 
     def NTrainCasesInScratch(self):
