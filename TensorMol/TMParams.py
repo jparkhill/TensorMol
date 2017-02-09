@@ -21,9 +21,14 @@ class TMParams(dict):
 		# SET GENERATION parameters
 		self["MAX_ATOMIC_NUMBER"] = 10
 		self["MBE_ORDER"] = 2
-		self["NDistort"] = 100
-		self["NModePts"] = 20
+        self["RotateSet"] = 0
+		self["TransformSet"] = 1
+		self["NModePts"] = 10
+        self["NDistorts"] = 5
 		self["GoK"] = 0.05
+        self["dig_ngrid"] = 20
+        self["dig_SamplingType"]="Smooth"
+        self["BlurRadius"] = 0.05
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# DATA usage parameters
 		self["NormalizeInputs"] = False
