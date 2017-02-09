@@ -31,9 +31,10 @@ public:
 	int SH_NRAD;
 	int SH_LMAX;
 	int SH_ORTH; // 0 => Linearly Dependent 1 => Orthogonal
-	double RBFS[100][2]; // Radial basis.
-	double SRBF[100][100]; // Overlap of the radial basis.
-	double ORBFS[100][100]; // Orthogonalized matrix.
+	int SH_MAXNR;
+	double* RBFS;
+	double* SRBF;
+	double* ORBFS;
 };
 
 //
@@ -837,7 +838,7 @@ void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* o
 		//cout << "Num Thread: " << omp_get_num_threads() << endl;
 		double Gv = 0;
 		for (int j=0; j<Prm->SH_NRAD ; ++j)
-		Gv += Prm->ORBFS[i][j]*Gau(rnotinv, Prm->RBFS[j][0],Prm->RBFS[j][1]);
+		Gv += Prm->ORBFS[i*(Prm->SH_MAXNR)+j]*Gau(rnotinv, Prm->RBFS[j*2],Prm->RBFS[j*2+1]);
 		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
 			for (int m=-l; m<l+1 ; ++m)
@@ -888,7 +889,7 @@ void RadSHProjection(SHParams* Prm, double x, double y, double z, double* output
 	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
 		//cout << "Num Thread: " << omp_get_num_threads() << endl;
-		double Gv = Gau(rnotinv, Prm->RBFS[i][0],Prm->RBFS[i][1]);
+		double Gv = Gau(rnotinv, Prm->RBFS[i*2],Prm->RBFS[i*2+1]);
 		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
 			for (int m=-l; m<l+1 ; ++m)
@@ -912,7 +913,7 @@ void RadSHProjection_Spherical(SHParams* Prm, double x, double y, double z, doub
 	int op=0;
 	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
-		double Gv = Gau(r, Prm->RBFS[i][0],Prm->RBFS[i][1]);
+		double Gv = Gau(r, Prm->RBFS[i*2],Prm->RBFS[i*2+1]);
 		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
 			for (int m=-l; m<l+1 ; ++m)
@@ -958,7 +959,7 @@ void RadInvProjection(SHParams* Prm, double x, double y, double z, double* outpu
 	double tmp,tmp2;
 	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
-		double Gv = Gau(rnotinv, Prm->RBFS[i][0],Prm->RBFS[i][1]);
+		double Gv = Gau(rnotinv, Prm->RBFS[i*2],Prm->RBFS[i*2+1]);
 		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
 			tmp = 0.0;

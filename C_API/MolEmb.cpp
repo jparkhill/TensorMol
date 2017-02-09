@@ -12,19 +12,28 @@
 static SHParams ParseParams(PyObject *Pdict)
 {
 	SHParams tore;
-	PyObject* RBFo = PyDict_GetItemString(Pdict, "RBFS");
-	PyArrayObject* RBFa = (PyArrayObject*) RBFo;
-	double* RBFd = (double*)RBFa->data;
-	tore.SH_NRAD = (RBFa->dimensions)[0];
+	{
+		PyObject* RBFo = PyDict_GetItemString(Pdict, "RBFS");
+		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+		tore.RBFS = (double*)RBFa->data;
+		tore.SH_NRAD = (RBFa->dimensions)[0];
+	}
+	{
+		PyObject* RBFo = PyDict_GetItemString(Pdict, "SRBF");
+		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+		tore.SRBF = (double*)RBFa->data;
+	}
+	{
+		PyObject* RBFo = PyDict_GetItemString(Pdict, "ORBFS");
+		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+		tore.ORBFS = (double*)RBFa->data;
+	}
 	tore.SH_LMAX = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
 	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
 	tore.SH_ORTH = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
-	//cout << "tore.SH_LMAX: " << tore.SH_LMAX << endl;
-	for (int i=0; i<tore.SH_NRAD; ++i)
-	{
-			tore.RBFS[i][0] = RBFd[i*2];
-			tore.RBFS[i][1] = RBFd[i*2+1];
-	}
+	tore.SH_MAXNR = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_MAXNR")));
+	//for (int i=0; i<tore.SH_NRAD; ++i)
+	//	cout << tore.RBFS[i*2] << " " << tore.RBFS[i*2+1] <<  endl;
 	return tore;
 }
 
@@ -593,7 +602,7 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 		int bi = 0;
 		for (int i=0; i<Prm->SH_NRAD ; ++i)
 		{
-			double Gv = Gau(r, Prm->RBFS[i][0],Prm->RBFS[i][1]);
+			double Gv = Gau(r, Prm->RBFS[i*2],Prm->RBFS[i*2+1]);
 			for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 			{
 				//				cout << "l=" << l << " Gv "<< Gv <<endl;
@@ -642,8 +651,8 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	int bi = 0;
 	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
-		double Gv = Gau(r, Prm->RBFS[i][0],Prm->RBFS[i][1]);
-		cout << Prm->RBFS[i][0] << " " << Gv << endl;
+		double Gv = Gau(r, Prm->RBFS[i*2],Prm->RBFS[i*2+1]);
+		cout << Prm->RBFS[i*2] << " " << Gv << endl;
 
 		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
@@ -938,7 +947,7 @@ static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 	{
 		for (int j=i; j<Prm->SH_NRAD ; ++j)
 		{
-			double S = GOverlap(Prm->RBFS[i][0],Prm->RBFS[j][0],Prm->RBFS[i][1],Prm->RBFS[j][1]);
+			double S = GOverlap(Prm->RBFS[i*2],Prm->RBFS[j*2],Prm->RBFS[i*2+1],Prm->RBFS[j*2+1]);
 			for (int l=0; l<Nang ; ++l)
 			{
 				int r = i*Nang + l;
