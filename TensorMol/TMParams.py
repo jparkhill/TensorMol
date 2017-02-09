@@ -4,13 +4,14 @@ PARAMETER CONVENTION:
 - It's NOT okay to put default parameters in __init__() and change them all the time.
 - These params should be added to a logfile of results so that we can systematically see how our approximations are doing.
 """
-import logging, time
+import logging, time, os
 import numpy as np
 
 class TMParams(dict):
     def __init__(self, *args, **kwargs ):
         myparam = kwargs.pop('myparam', '')
         dict.__init__(self, *args, **kwargs )
+        self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
         self["check_level"] = 1 # whether to test the consistency of several things...
         # Parameters of MolEmb
         self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
@@ -51,7 +52,7 @@ class TMParams(dict):
         self["hidden1"] = 64
         self["hidden2"] = 64
         self["hidden3"] = 64
-        # Garbage we're putting here for now. 
+        # Garbage we're putting here for now.
         self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 
     def __str__(self):

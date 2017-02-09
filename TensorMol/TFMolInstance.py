@@ -575,7 +575,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 
 		Args:
 			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
-			and placeholders to be assigned.
+			and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
 
 		Returns:
 			Filled feed dictionary.
@@ -627,5 +627,5 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
 		duration = time.time() - test_start_time
 		self.print_training(step, test_loss, self.TData.NTest , duration)
-		self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
+		self.TData.dig.EvaluateTestOutputs(batch_data[2],preds,batch_data[3]) # Pass the matrices to truncate the output.
 		return test_loss, feed_dict
