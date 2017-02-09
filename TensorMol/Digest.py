@@ -169,6 +169,11 @@ class Digester:
 					ens_ = mol_.properties["energy"]
 				else:
 					raise Exception("Empty energies...")
+			elif (self.OType=="AtomizationEnergy"):
+				if ("atomization" in mol_.properties):
+					ens_ = mol_.properties["atomization"]
+				else:
+					raise Exception("Empty energies...")
 			elif (self.OType=="CalcEnergy"):
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):

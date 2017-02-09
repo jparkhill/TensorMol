@@ -164,20 +164,23 @@ class MolDigester:
     	if (self.eshape == None):
     		self.eshape=Ins.shape[1:] # The first dimension is atoms. eshape is per-atom.
     	if (MakeOutputs):
-    		if (self.OType == "Energy"):
-    			Outs = np.array([mol_.properties["energy"]])
-    		elif (self.OType == "FragEnergy"):
-    			Outs = np.array([mol_.frag_mbe_energy])
-    		elif (self.OType == "GoEnergy"):
-    			Outs = np.array([mol_.GoEnergy()])
-    		else:
-    			raise Exception("Unknown Output Type... "+self.OType)
-    		if (self.lshape == None):
-    			self.lshape=Outs.shape
-    		if (MakeGradients):
-    			return Ins, Grads, Outs
-    		else:
-    			return Ins, Outs
+            if (self.OType == "Energy"):
+            	Outs = np.array([mol_.properties["energy"]])
+            elif (self.OType == "AtomizationEnergy"):
+                Outs = np.array([mol_.properties["atomization"]])
+            elif (self.OType == "FragEnergy"):
+            	Outs = np.array([mol_.frag_mbe_energy])
+            elif (self.OType == "GoEnergy"):
+            	Outs = np.array([mol_.GoEnergy()])
+            else:
+            	raise Exception("Unknown Output Type... "+self.OType)
+
+            if (self.lshape == None):
+            	self.lshape=Outs.shape
+            if (MakeGradients):
+            	return Ins, Grads, Outs
+            else:
+            	return Ins, Outs
     	else:
     		 return Ins
 
@@ -196,7 +199,7 @@ class MolDigester:
     def EvaluateTestOutputs(self, desired, predicted, nmols_=100):
         LOGGER.info("desired.shape "+str(desired.shape)+" predicted.shape "+str(predicted.shape)+" nmols "+str(nmols_))
         LOGGER.info("Evaluating, "+str(len(desired))+" predictions... ")
-        if (self.OType=="GoEnergy" or self.OType == "Energy"):
+        if (self.OType=="GoEnergy" or self.OType == "Energy" or self.OType == "AtomizationEnergy"):
             predicted=predicted.flatten()[:nmols_]
             desired=desired.flatten()[:nmols_]
             LOGGER.info( "NCases: "+str(len(desired))+"Mean Norm and Std"+str(self.MeanNorm)+" "+str(self.StdNorm))

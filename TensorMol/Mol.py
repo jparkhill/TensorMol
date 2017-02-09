@@ -45,9 +45,18 @@ class Mol:
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
 	def Calculate_Atomization(self):
-		self.atomization = self.properties["roomT_H"]
-		for i in range (0, self.atoms.shape[0]):
-			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
+		if ("roomT_H" in self.properties):
+			AE = self.properties["roomT_H"]
+			for i in range (0, self.atoms.shape[0]):
+				if (self.atoms[i] in ELEHEATFORM):
+					AE = AE - ELEHEATFORM[self.atoms[i]]
+			self.properties["atomization"] = AE
+		else:
+			AE = self.properties["energy"]
+			for i in range (0, self.atoms.shape[0]):
+				if (self.atoms[i] in ELEHEATFORM):
+					AE = AE - ELEHEATFORM[self.atoms[i]]
+			self.properties["atomization"] = AE
 		return
 
 	def AtomsWithin(self,rad, pt):
@@ -213,7 +222,7 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 			raise Ex
-		if (("energy" in self.properties) and ("roomT_H" in self.properties)):
+		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
 			self.Calculate_Atomization()
 		return
 
@@ -223,8 +232,9 @@ class Mol:
 		if (len(lines[1].split())>1):
 			try:
 				self.properties["energy"]=float(lines[1].split()[1])
-			except:
-				pass
+			except Exception as Ex:
+				print "Problem with energy", string
+				raise Ex
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
@@ -244,6 +254,8 @@ class Mol:
 				self.coords[i,2]=float(line[3])
 			except:
 				self.coords[i,2]=scitodeci(line[3])
+		if ("energy" in self.properties):
+			self.Calculate_Atomization()
 		return
 
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):

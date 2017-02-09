@@ -19,7 +19,7 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 		a.ReadXYZ(set_)
 		TreatedAtoms = a.AtomTypes()
 		print "TreatedAtoms ", TreatedAtoms
-		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="Energy")
+		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
 		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
 		tset.BuildTrain(set_)
 	tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
@@ -91,7 +91,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 	return
 
 # Tests to run.
-TestBP(set_="gdb9", dig_="GauInv", BuildTrain_=False)
+TestBP(set_="gdb9", dig_="GauInv", BuildTrain_= True)
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 
 # Kun's tests.
