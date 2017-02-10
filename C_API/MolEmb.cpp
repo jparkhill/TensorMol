@@ -418,11 +418,10 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 static PyObject* Make_SH(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
-	double   dist_cut,  mask, mask_prob,dist;
+	double   dist_cut;
 	int  ngrids,  theatom;
 	PyObject *Prm_;
-	if (!PyArg_ParseTuple(args, "O!O!O!O!diid",
-	&PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &ngrids, &theatom, &mask))
+	if (!PyArg_ParseTuple(args, "O!O!O!i", &PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &atoms_ , &theatom))
 	return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
@@ -460,7 +459,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double y = xyz_data[j*Nxyz[1]+1];
 				double z = xyz_data[j*Nxyz[1]+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
-				RadSHProjection_Orth(Prm,x-xc,y-yc,z-zc,SH_data + i*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
+				RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
 			}
 		}
 	}
@@ -489,15 +488,14 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 // Does all atoms... just for debug really.
 // Make invariant embedding of all the atoms.
 // This is not a reversible embedding.
-//
 static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut,  mask, mask_prob,dist;
 	int  ngrids,  theatom;
 	PyObject* Prm_;
-	if (!PyArg_ParseTuple(args, "O!O!O!O!di",
-	&PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_ , &dist_cut, &theatom))
+	if (!PyArg_ParseTuple(args, "O!O!O!i",
+	&PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &atoms_ , &theatom))
 	return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
