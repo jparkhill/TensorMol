@@ -18,8 +18,8 @@ class TMParams(dict):
         	2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
         self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
         self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
-        self["SH_LMAX"]=4
-        self["SH_NRAD"]=10
+        self["SH_LMAX"]=6
+        self["SH_NRAD"]=9
         self["SH_ORTH"]=0
         self["SH_MAXNR"]=self["RBFS"].shape[0]
         # SET GENERATION parameters
@@ -45,13 +45,13 @@ class TMParams(dict):
         self["RotAvOutputs"] = 0 # Rotational averaging of force outputs.
         self["OctahedralAveraging"] = True # Octahedrally Average Outputs
         # Training Parameters
-        self["learning_rate"] = 0.0001
+        self["learning_rate"] = 0.001
         self["momentum"] = 0.9
         self["max_steps"] = 10000
         self["test_freq"] = 10
-        self["hidden1"] = 64
-        self["hidden2"] = 64
-        self["hidden3"] = 64
+        self["hidden1"] = 512
+        self["hidden2"] = 512
+        self["hidden3"] = 512
         # Garbage we're putting here for now.
         self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 

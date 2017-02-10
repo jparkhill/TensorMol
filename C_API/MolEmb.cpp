@@ -762,7 +762,7 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 			frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
 		}
 		if (spherical)
-				CartToSphere(frc_data+i*3);
+				CartToSphere(frc_data);
 	}
 	return hess;
 }
