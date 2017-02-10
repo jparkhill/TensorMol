@@ -838,7 +838,7 @@ void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* o
 		//cout << "Num Thread: " << omp_get_num_threads() << endl;
 		double Gv = 0;
 		for (int j=0; j<Prm->SH_NRAD ; ++j)
-		Gv += Prm->ORBFS[i*(Prm->SH_MAXNR)+j]*Gau(rnotinv, Prm->RBFS[j*2],Prm->RBFS[j*2+1]);
+		Gv += Prm->SRBF[i*(Prm->SH_NRAD)+j]*Gau(rnotinv, Prm->RBFS[j*2],Prm->RBFS[j*2+1]);
 		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
 			for (int m=-l; m<l+1 ; ++m)
@@ -857,9 +857,9 @@ void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* o
 // which will occupy a vector of length Nrad*(1+lmax)**2
 void RadSHProjection(SHParams* Prm, double x, double y, double z, double* output, int natom, double fac=1.0)
 {
-	if (Prm->SH_ORTH)
-	return RadSHProjection_Orth(Prm,  x,  y,  z,  output,  natom,  fac);
-
+	if (Prm->SH_ORTH){
+		return RadSHProjection_Orth(Prm,  x,  y,  z,  output,  natom,  fac);
+	}
 	double rnotinv = sqrt(x*x+y*y+z*z);
 	double r = 1.0/rnotinv;
 	// Populate tables...

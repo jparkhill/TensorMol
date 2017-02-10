@@ -76,7 +76,7 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(1):
+if(0):
 	a=MSet("md_set")
 	a.ReadXYZUnpacked(path='/data/jeherr/TensorMol/datasets/md_datasets/md_set/', has_force=True, center=True)
 	a.Save()
@@ -97,3 +97,13 @@ if(1):
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
+
+a=MSet("toluene_tmp")
+a.Load()
+b=MSet("test_mol")
+b.mols.append(a.mols[0])
+TreatedAtoms = b.AtomTypes()
+d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+tset = TensorData(b,d)
+tset.BuildTrainMolwise("test_mol",TreatedAtoms)
+print PARAMS["SRBF"]

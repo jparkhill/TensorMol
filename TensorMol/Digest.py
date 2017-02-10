@@ -69,10 +69,10 @@ class Digester:
 		LOGGER.info("-------------------- ")
 		LOGGER.info("Digester Information ")
 		LOGGER.info("self.name:"+self.name)
-		LOGGER.info("self.OType", self.OType)
+		LOGGER.info("self.OType"+self.OType)
 		LOGGER.debug("self.NTrainSamples"+str(self.NTrainSamples))
 		LOGGER.debug("self.TrainSampDistance"+str(self.TrainSampDistance))
-		LOGGER.debug("self.OType", self.OType)
+		LOGGER.debug("self.OType"+self.OType)
 		LOGGER.info("-------------------- ")
 		return
 

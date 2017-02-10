@@ -19,8 +19,8 @@ class TMParams(dict):
         self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
         self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
         self["SH_LMAX"]=6
-        self["SH_NRAD"]=9
-        self["SH_ORTH"]=0
+        self["SH_NRAD"]=10
+        self["SH_ORTH"]=1
         self["SH_MAXNR"]=self["RBFS"].shape[0]
         # SET GENERATION parameters
         self["MAX_ATOMIC_NUMBER"] = 10
