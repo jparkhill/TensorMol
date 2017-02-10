@@ -11,7 +11,7 @@ class TFManage:
 		A manager of tensorflow instances which perform atom-wise predictions
 		and parent of the molecular instance mangager.
 	"""
-	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True, ntrain_=2000):
+	def __init__(self, Name_="", TData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True, ntrain_=PARAMS["max_steps"]):
 		"""
 			Args:
 				Name_: If not blank, will try to load a network with that name using Prepare()
