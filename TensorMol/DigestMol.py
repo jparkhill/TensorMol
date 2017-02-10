@@ -157,7 +157,10 @@ class MolDigester:
     	elif(self.name == "SymFunc"):
     		Ins, SYM_deri = self.make_sym(mol_)
     	elif(self.name == "GauInv_BP"):
-    		Ins =  MolEmb.Make_Inv(PARAMS, mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1);
+    		Ins =  MolEmb.Make_Inv(PARAMS, mol_.coords, mol_.atoms, -1);
+    	elif(self.name == "GauSH_BP"):
+            # Here I have to add options to octahedrally average SH
+    		Ins =  MolEmb.Make_SH(PARAMS, mol_.coords, mol_.atoms, -1);
     	else:
     		raise Exception("Unknown MolDigester Type.", self.name)
 
