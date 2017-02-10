@@ -233,11 +233,15 @@ class MolInstance_fc_classify(MolInstance):
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			try: # I think this may be broken
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-					most_recent_chk_file=chkfiles[0]
-					print("Restoring training from Checkpoint: ",most_recent_chk_file)
-					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
 			except Exception as Ex:
 				print("Restore Failed",Ex)
 				pass
@@ -375,11 +379,15 @@ class MolInstance_fc_sqdiff(MolInstance):
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			try: # I think this may be broken
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-					most_recent_chk_file=chkfiles[0]
-					print("Restoring training from Checkpoint: ",most_recent_chk_file)
-					self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
 			except Exception as Ex:
 				print("Restore Failed",Ex)
 				pass
