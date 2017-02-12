@@ -106,10 +106,12 @@ class TFMolManage(TFManage):
 # testing in TFInstance.
 
 	def Test(self):   # test a pretrained network
+		print ("That the fuck type of TData:", self.TData, type(self.TData))
 		self.Instances.TData = self.TData
 		self.Instances.TData.LoadDataToScratch()
 		self.Instances.Prepare()
 		self.Instances.test(-1)
+		self.Instances.TData.Init_TraceBack()
 		return
 
 

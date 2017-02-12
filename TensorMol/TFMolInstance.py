@@ -510,15 +510,15 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken
-				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-				if (len(chkfiles)>0):
-						most_recent_chk_file=chkfiles[0]
-						print("Restoring training from Checkpoint: ",most_recent_chk_file)
-						self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
-			except Exception as Ex:
-				print("Restore Failed",Ex)
-				pass
+#			try: # I think this may be broken
+#				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+#				if (len(chkfiles)>0):
+#						most_recent_chk_file=chkfiles[0]
+#						print("Restoring training from Checkpoint: ",most_recent_chk_file)
+#						self.saver.restore(self.sess, self.train_dir+'/'+most_recent_chk_file)
+#			except Exception as Ex:
+#				print("Restore Failed",Ex)
+#				pass
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
@@ -679,19 +679,20 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			test_loss += loss_value
 			num_of_mols += actual_mols
 
+			print ("actual_mols:", actual_mols)
 #			all_mols_nn += list(preds[np.nonzero(preds)])
 #			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
-#			print ("length:", len(atom_outputs))
+#			#print ("length:", len(atom_outputs))
 #			for atom_index in range (0,len(self.eles)):
 #				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
 #				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
-#				print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
+#				#print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
 #		test_result = dict()
 #		test_result['atoms'] = all_atoms
 #		test_result['nn'] = all_mols_nn
 #		test_result['acc'] = all_mols_acc
 #		test_result['length'] = bond_length
-#		f = open("test_result_single.dat","wb")
+#		f = open("test_result_connectedbond.dat","wb")
 #		pickle.dump(test_result, f)
 #		f.close()
  
