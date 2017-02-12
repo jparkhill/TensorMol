@@ -98,12 +98,11 @@ if(0):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
-a=MSet("toluene_tmp")
+a=MSet("benzene")
 a.Load()
-b=MSet("test_mol")
-b.mols.append(a.mols[0])
-TreatedAtoms = b.AtomTypes()
-d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-tset = TensorData(b,d)
-tset.BuildTrainMolwise("test_mol",TreatedAtoms)
-print PARAMS["SRBF"]
+test_mol = a.mols[100]
+test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
+test_mol.Distort()
+manager=TFManage("benzene_NEQ_GauSH_fc_sqdiff",None,False)
+optimizer=Optimizer(manager)
+optimizer.OptRealForce(test_mol)

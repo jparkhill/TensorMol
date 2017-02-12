@@ -35,12 +35,6 @@ class Mol:
 	def NAtoms(self):
 		return self.atoms.shape[0]
 
-	def AtomTypes(self):
-		return np.unique(self.atoms)
-
-	def NEles(self):
-		return len(self.AtomTypes())
-
 	def NumOfAtomsE(self, e):
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
