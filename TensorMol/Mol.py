@@ -470,9 +470,9 @@ class Mol:
 			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
 		if (spherical):
-			return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,0)
-		else:
 			return PARAMS["GoK"]*MolEmb.Make_GoForceSpherical(self.coords,self.DistMatrix,at_,1)
+		else:
+			return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,0)
 
 	def GoForceLocal(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
