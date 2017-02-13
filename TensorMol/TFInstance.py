@@ -108,7 +108,6 @@ class Instance:
 			self.output = self.inference(self.embeds_placeholder)
 			self.saver = tf.train.Saver()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 			if (len(metafiles)>0):
 				most_recent_meta_file=metafiles[0]
