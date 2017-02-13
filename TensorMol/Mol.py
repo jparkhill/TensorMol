@@ -16,6 +16,7 @@ class Mol:
 			self.coords=np.zeros(shape=(1,1),dtype=np.float)
 		self.properties = {"MW":0}
 		self.name=None
+		self.num_atom_connected = None # connected  atoms of each atom 
 		#things below here are sometimes populated if it is useful.
 		self.PESSamples = [] # a list of tuples (atom, new coordinates, energy) for storage.
 		self.ecoords = None # equilibrium coordinates.
@@ -42,6 +43,7 @@ class Mol:
 		self.atom_nodes = None
 		self.J_coupling = None
 		self.bonds = None  #{bond_type, length, atom_index_1, atom_index_2}
+		self.bond_type = None # define whether it is a single, double or triple bond
 		self.Bonds_Between  = None
 		self.H_Bonds_Between = None
 		# all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
@@ -80,9 +82,110 @@ class Mol:
 					self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
 					#print np.array([bond_type, dist, pair_index[0], pair_index[1]]), " atom type:", self.atoms[pair_index[0]], self.atoms[pair_index[1]]
 		self.bonds = np.asarray(self.bonds)
+		self.Calculate_Bond_Type()
 		return
 			
+	def Calculate_Bond_Type(self):
+		self.bond_type = [0 for i in range (0, self.NBonds())]
+		left_atoms = range (0, self.NAtoms())
+		left_connections = list(self.num_atom_connected)
+		left_valance = [ atom_valance[at] for at in self.atoms ]
+		bond_of_atom = [[] for i in  range (0, self.NAtoms())] # index of the bonds that the atom are connected
+		for i in range (0, self.NBonds()):
+			bond_of_atom[int(self.bonds[i][2])].append(i)
+			bond_of_atom[int(self.bonds[i][3])].append(i)
+		flag = 1
+		while (flag == 1):  # finish the easy assigment
+			flag  = self.Define_Easy_Bonds(bond_of_atom, left_connections, left_atoms, left_valance)
+			if (flag == -1):
+				print "error when define bond type.."
+				self.bond_type = [-1 for i in range (0, self.NBonds())]
+				self.WriteXYZfile(fname = "bond_type_debug")
+                        	print self.bonds
+                        	raise Exception("debug stop:")
+				return 
+		save_bond_type = list(self.bond_type)
+		if left_atoms: # begin try and error
+			try_index = bond_of_atom[left_atoms[0]][0]
+			for try_type in range (1, left_valance[left_atoms[0]] - left_connections[left_atoms[0]]+2):
+				self.bond_type = list(save_bond_type)
+				import copy
+				cp_bond_of_atom = copy.deepcopy(bond_of_atom)
+				cp_left_connections = list(left_connections)
+				cp_left_atoms = list(left_atoms)		
+				cp_left_valance = list(left_valance)
+				self.bond_type[try_index] = try_type
+				cp_bond_of_atom[left_atoms[0]].pop(0)
+				cp_left_connections[left_atoms[0]] -= 1
+				cp_left_valance[left_atoms[0]] -= try_type
+				other_at = (int(self.bonds[try_index][2]) if left_atoms[0] != int(self.bonds[try_index][2]) else int(self.bonds[try_index][3]))
+				cp_bond_of_atom[other_at].pop(cp_bond_of_atom[other_at].index(try_index))
+				cp_left_connections[other_at] -= 1
+				cp_left_valance[other_at] -= try_type
+ 
+				flag = 1
+				while(flag == 1):
+					flag  = self.Define_Easy_Bonds(cp_bond_of_atom, cp_left_connections, cp_left_atoms, cp_left_valance, True)
+				if not cp_left_atoms and flag == 0 :
+					left_atoms = []
+					break
+		if   left_atoms or flag != 0  :
+			print "error when define bond type.."
+			self.bond_type = [-1 for i in range (0, self.NBonds())]
+			#self.WriteXYZfile(fname = "bond_type_debug")
+			#print self.bonds
+                        #raise Exception("debug stop:")
+			return 
+		return
 
+
+	def Define_Easy_Bonds(self, bond_of_atom, left_connections, left_atoms, left_valance, ignore_error = False):  # deal with situtations that is easy to define bonds
+		try:
+			finished_atoms = []
+			for at in left_atoms: #
+				if left_connections[at] == 1:
+					if (left_valance[at] < 1 or len(bond_of_atom[at]) !=1 ) and not ignore_error: # there is not valance available for the connections or left bonds not equal to 1, error occurs
+						return -1
+					bond_index = bond_of_atom[at][0] 
+					self.bond_type[bond_index] = left_valance[at]
+					bond_of_atom[at].pop(bond_of_atom[at].index(bond_index))
+					left_valance[at] -= left_valance[at]
+					left_connections[at] -= 1
+					finished_atoms.append(at)			
+	
+					other_at = (int(self.bonds[bond_index][2]) if at != int(self.bonds[bond_index][2]) else int(self.bonds[bond_index][3]))
+					left_connections[other_at] -= 1
+					left_valance[other_at] -= self.bond_type[bond_index]
+					bond_of_atom[other_at].pop(bond_of_atom[other_at].index(bond_index)) 
+					if (left_connections[other_at] == 0):
+						if (len(bond_of_atom[other_at]) != 0 or left_valance[other_at] != 0) and not ignore_error:
+							return -1
+						finished_atoms.append(other_at)
+				elif left_connections[at] >= 2 and left_connections[at] == left_valance[at]:  # it is all single bond
+					finished_atoms.append(at)
+					while (bond_of_atom[at]):
+						bond_index = bond_of_atom[at].pop(-1)
+						self.bond_type[bond_index] = 1
+						left_valance[at] -= 1
+						left_connections[at] -= 1
+						other_at = (int(self.bonds[bond_index][2]) if at != int(self.bonds[bond_index][2]) else int(self.bonds[bond_index][3]))
+						left_connections[other_at] -= 1
+						left_valance[other_at] -=  1
+						bond_of_atom[other_at].pop(bond_of_atom[other_at].index(bond_index))
+						if (left_connections[other_at] == 0):
+	                                        	if (len(bond_of_atom[other_at]) != 0 or left_valance[other_at] != 0 ) and not ignore_error:
+		                                                return -1
+	                                        	finished_atoms.append(other_at)
+				else:
+					pass
+			if finished_atoms:
+				for at in finished_atoms:
+					left_atoms.pop(left_atoms.index(at))
+				return 1
+			else:
+				return 0
+		except:
+			return -2
 
 	def Make_AtomNodes(self):
 		atom_nodes = []
@@ -93,6 +196,7 @@ class Mol:
 	def Connect_AtomNodes(self):
 		dist_mat = MolEmb.Make_DistMat(self.coords)
 		self.DistMatrix = dist_mat
+		self.num_atom_connected = []
 		for i in range (0, self.NAtoms()):
 			for j in range (i+1, self.NAtoms()):
 				dist = dist_mat[i][j]
@@ -102,6 +206,8 @@ class Mol:
 				if dist <= bond_length_thresh[bond_name]:
 					(self.atom_nodes[i]).Append(self.atom_nodes[j])
 					(self.atom_nodes[j]).Append(self.atom_nodes[i])
+		for i in range (0, self.NAtoms()):
+			self.num_atom_connected.append(len(self.atom_nodes[i].connected_nodes))
 		return
 
 	def Make_Mol_Graph(self):

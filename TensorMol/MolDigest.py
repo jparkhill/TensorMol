@@ -76,7 +76,6 @@ class MolDigester:
                 CM_Bond_BP_deri = np.zeros((CM_Bond_BP.shape[0], CM_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
                 return  CM_Bond_BP, CM_Bond_BP_deri
 
-
         def make_dist_bond_bp(self, mol):
                 Dist_Bond_BP = []
                 for i in range (0, mol.NBonds()):
@@ -88,6 +87,17 @@ class MolDigester:
                 Dist_Bond_BP = np.array(Dist_Bond_BP)
                 Dist_Bond_BP_deri = np.zeros((Dist_Bond_BP.shape[0], Dist_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
                 return  Dist_Bond_BP, Dist_Bond_BP_deri
+
+	def make_connectedbond_cm_bond_bp(self, mol):
+		CM_Bond_BP, CM_Bond_BP_deri = self.make_cm_bond_bp(mol)
+		ConnectedBond_Bond_BP, ConnectedBond_Bond_BP_deri = self.make_connectedbond_bond_bp(mol)
+		#print "ConnectedBond_Bond_BP.shape[1]", ConnectedBond_Bond_BP.shape, "CM_Bond_BP.shape[1]", CM_Bond_BP.shape
+		ConnectedBond_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
+		ConnectedBond_CM_Bond_BP[:,:ConnectedBond_Bond_BP.shape[1]] = ConnectedBond_Bond_BP
+		ConnectedBond_CM_Bond_BP[:,ConnectedBond_Bond_BP.shape[1]:] = CM_Bond_BP
+		deri_ConnectedBond_CM_Bond_BP = np.zeros((mol.NAtoms(), ConnectedBond_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
+		return ConnectedBond_CM_Bond_BP, deri_ConnectedBond_CM_Bond_BP
+
 
 	def make_connectedbond_bond_bp(self, mol):
 		ConnectedBond_Bond_BP = []
@@ -120,6 +130,7 @@ class MolDigester:
 		ConnectedBond_Bond_BP = np.array(ConnectedBond_Bond_BP)
 		ConnectedBond_Bond_BP_deri = np.zeros((ConnectedBond_Bond_BP.shape[0], ConnectedBond_Bond_BP.shape[1]))
 		return  ConnectedBond_Bond_BP, ConnectedBond_Bond_BP_deri
+	
 
 	def make_gauinv(self, mol):
 		""" This is a totally inefficient way of doing this
@@ -224,6 +235,8 @@ class MolDigester:
 		elif(self.name == "ConnectedBond_Bond_BP"):
 			Ins, deri_Dist_Bond_BP =  self.make_connectedbond_bond_bp(mol_)
                         Ins = Ins.reshape([Ins.shape[0],-1])
+		elif(self.name == "ConnectedBond_CM_Bond_BP"):
+			Ins, deri_BP = self.make_connectedbond_cm_bond_bp(mol_)
 		else:
 			raise Exception("Unknown MolDigester Type.", self.name)
 

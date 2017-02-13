@@ -437,7 +437,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			return
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.0001
+		self.learning_rate = 0.00001
 		self.momentum = 0.95
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
@@ -679,7 +679,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			test_loss += loss_value
 			num_of_mols += actual_mols
 
-			print ("actual_mols:", actual_mols)
+#			print ("actual_mols:", actual_mols)
 #			all_mols_nn += list(preds[np.nonzero(preds)])
 #			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
 #			#print ("length:", len(atom_outputs))

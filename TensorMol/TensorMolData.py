@@ -403,7 +403,7 @@ class TensorMolData_BP(TensorMolData):
 			return
 		ti, to, tm = self.LoadData(random)
 		#ti, to = self.Normalize(ti,to)
-		self.TestRatio = 1 # debug
+		self.TestRatio = 0.2 # debug
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
 		print "Using  BP"
@@ -693,8 +693,8 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
 		casep=0
 		# Generate the set in a random order.
-		ord = range (0, len(self.set.mols))
-		#ord=np.random.permutation(len(self.set.mols))
+		#ord = range (0, len(self.set.mols))
+		ord=np.random.permutation(len(self.set.mols))
 		mols_done = 0
 		for mi in ord:
 			nbo = self.set.mols[mi].NBonds()
