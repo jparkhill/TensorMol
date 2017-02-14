@@ -140,7 +140,45 @@ class TFManage:
 		p = mol_.UseGoProb(atom_, output)
 		return p
 
-	def EvalRotAvForce(self, mol, RotAv=11):
+	def EvalRotAvForce_v2(self, mol, RotAv=10):
+		"""
+		Goes without saying we should do this in batches for each element,
+		if it actually improves accuracy. And improve rotational sampling.
+		But for the time being I'm doing this sloppily.
+		"""
+		if(self.TData.dig.name != "GauSH"):
+		    raise Exception("Don't average this...")
+		p = np.zeros((mol.NAtoms(),3))
+		pi = np.zeros((3,RotAv,mol.NAtoms(),3))
+		for ax in range(3):
+			axis = [0,0,0]
+			axis[ax] = 1
+			t = 0
+			for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
+				for atom in range(mol.NAtoms()):
+					mol_t = Mol(mol.atoms, mol.coords)
+					ins = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+					orig_out = self.Instances[mol_t.atoms[atom]].evaluate(ins)[0]
+					mol_t.Rotate(axis, theta, mol.coords[atom])
+					inputst = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+					tmpt = self.Instances[mol_t.atoms[atom]].evaluate(inputst)[0,0]
+					p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),tmpt.T).reshape(3)
+					#print "Atom ", atom, " theta ", theta, " ax ", ax, "out ", tmp, " rot out ", p[atom], " orig out ", orig_out
+					pi[ax,i,atom] = p[atom]
+				t=t+1
+		# Just to debug and see how much the forces vary with rotation:
+		print "Checking Rotations... "
+		for atom in range(mol.NAtoms()):
+			print "Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1))
+			for ax in range(3):
+				t = 0
+				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
+					print atom,ax,theta,":",pi[ax,i,atom]
+				t=t+1
+		return p/(3.0*RotAv)
+
+
+	def EvalRotAvForce(self, mol, RotAv=10):
 		"""
 		Goes without saying we should do this in batches for each element,
 		if it actually improves accuracy. And improve rotational sampling.
@@ -168,7 +206,7 @@ class TFManage:
 				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
 					# tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
 					# p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),tmp.T).reshape(3)
-					p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,i+1].T).reshape(3)
+					p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,i].T).reshape(3)
 					pi[ax,i,atom] = p[atom]
 		# Just to debug and see how much the forces vary with rotation:
 		print "Checking Rotations... "

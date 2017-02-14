@@ -192,7 +192,8 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
-				veloc = 0.1*self.tfm.EvalRotAvForce(m, RotAv=11)
+				veloc = 0.1*self.tfm.EvalRotAvForce(m, RotAv=10)
+				veloc = 0.1*self.tfm.EvalRotAvForce_v2(m, RotAv=10)
 			elif (PARAMS["OctahedralAveraging"]):
 				veloc = 0.1*self.tfm.EvalOctAvForce(m)
 			if (IfDebug):

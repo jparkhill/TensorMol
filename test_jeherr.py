@@ -98,7 +98,7 @@ if(0):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
-if(1):
+if(0):
 	#a=MSet("OptMols")
 	##a.ReadXYZ('OptMols')
 	##a.Save()
@@ -122,11 +122,20 @@ if(1):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
+# a=MSet("morphine")
+# a.ReadXYZ("morphine")
+# test_mol = a.mols[0]
+# test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
+# test_mol.Distort()
+# manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)test
+# optimizer=Optimizer(manager)
+# optimizer.OptRealForce(test_mol)
+
 a=MSet("benzene")
 a.Load()
-test_mol = a.mols[100]
+test_mol = a.mols[0]
 test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
 test_mol.Distort()
-manager=TFManage("benzene_NEQ_GauSH_fc_sqdiff",None,False)
+manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
 optimizer=Optimizer(manager)
 optimizer.OptRealForce(test_mol)
