@@ -40,7 +40,7 @@ class TMParams(dict):
         self["batch_size"] = 8000
         self["MxTimePerElement"] = 36000
         self["MxMemPerElement"]=16000 # Max Array for an element in MB
-        self["ChopTo"] = None 
+        self["ChopTo"] = None
         self["results_dir"] = "./results/"
         self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
         self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs

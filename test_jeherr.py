@@ -122,11 +122,11 @@ if(0):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
-a=MSet("morphine")
-a.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/morphine/")
+a=MSet("toluene")
+a.ReadXYZ()
 test_mol = a.mols[0]
 test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
-# pythtest_mol.Distort()
+# test_mol.Distort()
 manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
 optimizer=Optimizer(manager)
 optimizer.OptRealForce(test_mol)

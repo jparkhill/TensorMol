@@ -164,8 +164,8 @@ class TFManage:
 				axis = [0,0,0]
 				axis[ax] = 1
 				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
-					p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,ax*RotAv+i].T).reshape(3)
-					pi[ax,i,atom] = p[atom]
+					pi[ax,i,atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,ax*RotAv+i].T).reshape(3)
+					p[atom] += pi[ax,i,atom]
 		# Just to debug and see how much the forces vary with rotation:
 		print "Checking Rotations... "
 		for atom in range(mol.NAtoms()):
@@ -186,13 +186,13 @@ class TFManage:
 		p = np.zeros((mol.NAtoms(),3))
 		ops = OctahedralOperations()
 		invops = map(np.linalg.inv,ops)
-		for oi in range(len(ops)):
+		for i in range(len(ops)):
 			op = ops[i]
 			for atom in range(mol.NAtoms()):
 				mol_t = Mol(mol.atoms, mol.coords)
 				mol_t.Transform(op, mol.coords[atom])
 				inputs = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-				tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
+				tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0,0]
 				p[atom] = np.dot(invops,tmp.T).reshape(3)
 			t=t+1
 		return p/(len(ops))
