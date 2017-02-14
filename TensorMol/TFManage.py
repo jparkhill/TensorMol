@@ -190,13 +190,12 @@ class TFManage:
 		pi = np.zeros((3,RotAv,mol.NAtoms(),3))
 		for atom in range(mol.NAtoms()):
 			ins = np.zeros((3*RotAv,PARAMS["SH_NRAD"]*(PARAMS["SH_LMAX"]+1)*(PARAMS["SH_LMAX"]+1)))
-			mol_t = Mol(mol.atoms, mol.coords)
-			# ins[0] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
 			for ax in range(3):
 				axis = [0,0,0]
 				axis[ax] = 1
 				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
 					# orig_out = self.Instances[mol_t.atoms[atom]].evaluate(ins)[0]
+					mol_t = Mol(mol.atoms, mol.coords)
 					mol_t.Rotate(axis, theta, mol.coords[atom])
 					ins[ax*RotAv+i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(ins)
@@ -206,7 +205,7 @@ class TFManage:
 				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
 					# tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
 					# p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),tmp.T).reshape(3)
-					p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,i].T).reshape(3)
+					p[atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,ax*RotAv+i].T).reshape(3)
 					pi[ax,i,atom] = p[atom]
 		# Just to debug and see how much the forces vary with rotation:
 		print "Checking Rotations... "
