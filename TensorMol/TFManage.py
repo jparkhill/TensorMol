@@ -183,9 +183,10 @@ class TFManage:
 		"""
 		if(self.TData.dig.name != "GauSH"):
 		    raise Exception("Don't average this...")
-		p = np.zeros((mol.NAtoms(),3))
 		ops = OctahedralOperations()
 		invops = map(np.linalg.inv,ops)
+		pi = np.zeros((mol.NAtoms(),len(ops),3))
+		p = np.zeros((mol.NAtoms(),3))
 		for i in range(len(ops)):
 			op = ops[i]
 			for atom in range(mol.NAtoms()):
@@ -193,8 +194,13 @@ class TFManage:
 				mol_t.Transform(op, mol.coords[atom])
 				inputs = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
 				tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0,0]
-				p[atom] = np.dot(invops,tmp.T).reshape(3)
-			t=t+1
+				pi[atom,i] = np.dot(invops[i],tmp.T).reshape(3)
+				p[atom] += np.dot(invops[i],tmp.T).reshape(3)
+		print "Checking Rotations... "
+		for atom in range(mol.NAtoms()):
+			print "Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1))
+			for i in range(len(ops)):
+				print atom, i, pi[atom,i]
 		return p/(len(ops))
 
 	def evaluate(self, mol, atom, RotAv=10):

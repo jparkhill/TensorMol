@@ -13,7 +13,7 @@ class Optimizer:
 		Args:
 			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
 		"""
-		self.thresh = 0.001
+		self.thresh = 0.0001
 		self.maxstep = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
@@ -191,9 +191,12 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
-				veloc = 0.1*self.tfm.EvalRotAvForce(m, RotAv=10)
+				veloc = 0.001*self.tfm.EvalRotAvForce(m, RotAv=10)
 			elif (PARAMS["OctahedralAveraging"]):
-				veloc = 0.1*self.tfm.EvalOctAvForce(m)
+				veloc = 0.001*self.tfm.EvalOctAvForce(m)
+			else:
+				for i in range(m.NAtoms()):
+					veloc[i] = 0.001*self.tfm.evaluate(m,i)
 			if (IfDebug):
 				for i in range(m.NAtoms()):
 					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::"

@@ -11,11 +11,12 @@ import cPickle as pickle
 class MSet:
 	""" A molecular database which
 		provides structures """
-	def __init__(self, name_ ="gdb9", path_="./datasets/"):
+	def __init__(self, name_ ="gdb9", path_="./datasets/", center_=True):
 		self.mols=[]
 		self.path=path_
 		self.name=name_
 		self.suffix=".pdb" #Pickle Database? Poor choice.
+		self.center=center_
 
 	def Save(self, filename=None):
 		if filename == None:
@@ -102,6 +103,14 @@ class MSet:
 				s.mols[-1].Transform(transfs[k])
 		return s
 
+	def CenterSet(self):
+		"""
+		Translates every Mol such that the center is at 0.
+		"""
+		ord = range(len(self.mols))
+		for j in ord:
+			self.mols[j].coords -= self.mols[j].Center()
+
 	def NAtoms(self):
 		nat=0
 		for m in self.mols:
@@ -114,7 +123,7 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
-	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, center=False):
+	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False):
 		"""
 		Reads XYZs in distinct files in one directory as a molset
 		Args:
@@ -135,10 +144,8 @@ class MSet:
 				self.mols[-1].Force_from_xyz(path+file)
 			if has_energy:
 				self.mols[-1].Energy_from_xyz(path+file)
-		if (center):
-			ord = range(len(self.mols))
-			for j in ord:
-				self.mols[j].coords -= self.mols[j].Center()
+		if (self.center):
+			self.CenterSet()
 		return
 
 	def ReadXYZ(self,filename = None, xyz_type = 'mol'):
@@ -158,6 +165,8 @@ class MSet:
 				else:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+		if (self.center):
+			self.CenterSet()
 		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 
