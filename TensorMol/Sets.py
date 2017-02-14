@@ -28,8 +28,10 @@ class MSet:
 		f.close()
 		return
 
-	def Load(self):
-		f = open(self.path+self.name+self.suffix,"rb")
+	def Load(self, filename=None):
+		if filename == None:
+			filename = self.name
+		f = open(self.path+filename+self.suffix,"rb")
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()
