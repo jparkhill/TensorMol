@@ -620,26 +620,6 @@ class TensorMolData_BP(TensorMolData):
 #		print "outputpointer:", outputpointer 
 		return [inputs, matrices, outputs]
 
-        def Init_TraceBack(self):
-                num_eles = [0 for ele in self.eles]
-                for mol_index in self.test_mols:
-                        for ele in list(self.set.mols[mol_index].bonds[:,0]):
-                                num_eles[self.eles.index(ele)] += 1
-                self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
-
-		pointer = [0 for ele in self.eles]
-		for mol_index in self.test_mols:
-			mol = self.set.mols[mol_index]
-			for i in range (0, mol.bonds.shape[0]):
-				bond_type = mol.bonds[i,0]
-				self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
-				pointer[self.eles.index(bond_type)] += 1
-		print self.test_atom_index
-		f  = open("test_atom_index.dat","wb")
-		pickle.dump(self.test_atom_index, f)
-		f.close()
-		return 
-
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
@@ -729,4 +709,23 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 		return
 
 
+        def Init_TraceBack(self):
+                num_eles = [0 for ele in self.eles]
+                for mol_index in self.test_mols:
+                        for ele in list(self.set.mols[mol_index].bonds[:,0]):
+                                num_eles[self.eles.index(ele)] += 1
+                self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
+
+                pointer = [0 for ele in self.eles]
+                for mol_index in self.test_mols:
+                        mol = self.set.mols[mol_index]
+                        for i in range (0, mol.bonds.shape[0]):
+                                bond_type = mol.bonds[i,0]
+                                self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
+                                pointer[self.eles.index(bond_type)] += 1
+                print self.test_atom_index
+                f  = open("test_atom_index.dat","wb")
+                pickle.dump(self.test_atom_index, f)
+                f.close()
+                return
 

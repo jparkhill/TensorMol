@@ -679,22 +679,22 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			test_loss += loss_value
 			num_of_mols += actual_mols
 
-#			print ("actual_mols:", actual_mols)
-#			all_mols_nn += list(preds[np.nonzero(preds)])
-#			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
-#			#print ("length:", len(atom_outputs))
-#			for atom_index in range (0,len(self.eles)):
-#				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
-#				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
-#				#print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
-#		test_result = dict()
-#		test_result['atoms'] = all_atoms
-#		test_result['nn'] = all_mols_nn
-#		test_result['acc'] = all_mols_acc
-#		test_result['length'] = bond_length
-#		f = open("test_result_connectedbond.dat","wb")
-#		pickle.dump(test_result, f)
-#		f.close()
+			print ("actual_mols:", actual_mols)
+			all_mols_nn += list(preds[np.nonzero(preds)])
+			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
+			#print ("length:", len(atom_outputs))
+			for atom_index in range (0,len(self.eles)):
+				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
+				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
+				#print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
+		test_result = dict()
+		test_result['atoms'] = all_atoms
+		test_result['nn'] = all_mols_nn
+		test_result['acc'] = all_mols_acc
+		test_result['length'] = bond_length
+		f = open("test_result_connectedbond_cm.dat","wb")
+		pickle.dump(test_result, f)
+		f.close()
  
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
 		duration = time.time() - start_time
@@ -706,25 +706,36 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return test_loss, feed_dict
 
 
-        def evaluate(self, eval_input):   #this need to be modified 
+        def evaluate(self, batch_data):   #this need to be modified 
                 # Check sanity of input
-                MolInstance.evaluate(self, eval_input)
-                eval_input_ = eval_input
-                if (self.PreparedFor>eval_input.shape[0]):
-                        eval_input_ =np.copy(eval_input)
-                        eval_input_.resize((self.PreparedFor,eval_input.shape[1]))
-                        # pad with zeros
-                eval_labels = np.zeros((self.PreparedFor,1))  # dummy labels
-                batch_data = [eval_input_, eval_labels]
-                #images_placeholder, labels_placeholder = self.placeholder_inputs(Ncase) Made by Prepare()
-                feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder,self.labels_placeholder)
-                tmp, gradient =  (self.sess.run([self.output, self.gradient], feed_dict=feed_dict))
-                if (not np.all(np.isfinite(tmp))):
-                        print("TFsession returned garbage")
-                        print("TFInputs",eval_input) #If it's still a problem here use tf.Print version of the graph.
-                if (self.PreparedFor>eval_input.shape[0]):
-                        return tmp[:eval_input.shape[0]], gradient[:eval_input.shape[0]]
-                return tmp, gradient
+		nmol = batch_data[2].shape[0]
+		print ("nmol:", batch_data[2].shape[0])
+		self.batch_size_output = nmol
+		self.Eval_Prepare(batch_data[2].shape[0])
+		feed_dict=self.fill_feed_dict(batch_data)
+		preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+                return mol_output, atom_outputs
+
+	def Eval_Prepare(self, nmol):
+                #eval_labels = np.zeros(Ncase)  # dummy labels
+                with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+                        self.inp_pl=[]
+                        self.mats_pl=[]
+                        for e in range(len(self.eles)):
+                                self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
+                                self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None, self.batch_size_output])))
+                        self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+                        self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
+                        self.check = tf.add_check_numerics_ops()
+                        self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+                        self.summary_op = tf.summary.merge_all()
+                        init = tf.global_variables_initializer()
+                        self.saver = tf.train.Saver()
+                        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+                        self.saver.restore(self.sess, self.chk_file)
+                return
+
 
         def Prepare(self):
                 #eval_labels = np.zeros(Ncase)  # dummy labels

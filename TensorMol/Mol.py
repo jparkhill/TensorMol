@@ -100,9 +100,9 @@ class Mol:
 			if (flag == -1):
 				print "error when define bond type.."
 				self.bond_type = [-1 for i in range (0, self.NBonds())]
-				self.WriteXYZfile(fname = "bond_type_debug")
-                        	print self.bonds
-                        	raise Exception("debug stop:")
+				#self.WriteXYZfile(fname = "bond_type_debug")
+                        	#print self.bonds
+                        	#raise Exception("debug stop:")
 				return 
 		save_bond_type = list(self.bond_type)
 		if left_atoms: # begin try and error

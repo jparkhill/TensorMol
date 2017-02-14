@@ -66,6 +66,51 @@ class TFMolManage(TFManage):
 	def Eval(self, test_input):
 		return self.Instances.evaluate(test_input)   
 
+
+	def Eval_Bond_BP(self, mol_set):
+		nmols = len(mol_set.mols)
+		nbonds = mol_set.NBonds()
+		cases = np.zeros(tuple([nbonds]+list(self.TData.dig.eshape)))
+		dummy_outputs = np.zeros((nmols))
+		meta = np.zeros((nbonds, 4), dtype = np.int)	
+		casep = 0
+		mols_done = 0
+		for mol in mol_set.mols:
+			ins = self.TData.dig.EvalDigest(mol)
+			nbo = mol.NBonds()
+			cases[casep:casep+nbo] = ins
+			for i in range (casep, casep+nbo):
+				meta[i, 0] = mols_done
+				meta[i, 1] = mol.bonds[i - casep,0]
+				meta[i, 2] = casep
+				meta[i, 3] = casep + nbo
+			casep += nbo
+			mols_done += 1
+		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+		inputs = []
+		matrices = []
+		outputpointer = 0
+		for i in range (0, nbonds):
+			sto[self.TData.eles.index(meta[i, 1])] += 1
+		currentmol = 0
+		for e in range (len(self.TData.eles)):
+			inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+			matrices.append(np.zeros((sto[e], nmols)))
+		for i in range (0, nbonds):
+			if currentmol != meta[i, 0]:
+				outputpointer += 1
+				currentmol = meta[i, 0]
+			e = meta[i, 1]
+			ei = self.TData.eles.index(e)
+			inputs[ei][offsets[ei], :] = cases[i]
+			matrices[ei][offsets[ei], outputpointer] = 1.0
+			offsets[ei] += 1
+		#print "[inputs, matrices, dummy_outputs]", [inputs, matrices, dummy_outputs]
+		mol_out, atom_out = self.Instances.evaluate([inputs, matrices, dummy_outputs])
+		print "mol out:", mol_out, " atom_out", atom_out
+		return		
+
 	def Eval_Mol(self, mol):
 		total_case = len(mol.mbe_frags[self.TData.order])
 		if total_case == 0:

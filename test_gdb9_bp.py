@@ -5,12 +5,13 @@ import cProfile
 if (1):
 	# To read gdb9 xyz files and populate an Mset.
 	# Because we use pickle to save. if you write new routines on Mol you need to re-execute this.
-	if (1):
+	if (0):
 		a=MSet("gdb9")
 		a.ReadGDB9Unpacked("/home/kyao/TensorMol/gdb9/")
 		allowed_eles=[1, 6, 7, 8]
 		a.CutSet(allowed_eles)
 		a.Make_Graphs()
+		a.Bonds_Between_All()
 		a.Save()
 	if (0):
                 # 1 - Get molecules into memory
@@ -98,13 +99,26 @@ if (1):
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=500)
 
+
         if (0):
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_ConnectedBond_Bond_BP_fc_sqdiff_BP_1" , None, False)
-                tset = TensorMolData_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_ConnectedBond_Bond_BP")
+                manager= TFMolManage("Mol_gdb9_1_6_7_8_ConnectedBond_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_ConnectedBond_CM_Bond_BP")
                 manager.TData = tset
-                manager.Test()
+                #manager.Test()
+		a=MSet("gdb9_1_6_7_8")
+                a.Load()
+		manager.Eval_Bond_BP(a.mols[1])
 
-
+	if (1):
+		a = MSet("bond_strength")
+		a.ReadGDB9Unpacked("./bond_strength/")
+		a.Make_Graphs()
+		manager= TFMolManage("Mol_gdb9_1_6_7_8_ConnectedBond_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+		tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_ConnectedBond_CM_Bond_BP")
+                manager.TData = tset
+                #manager.Test()
+                manager.Eval_Bond_BP(a)
+	
 # Kun's tests.
 if (0):
 	if (0):
