@@ -198,7 +198,7 @@ class TFManage:
 				p[atom] += np.dot(invops[i],tmp.T).reshape(3)
 		print "Checking Rotations... "
 		for atom in range(mol.NAtoms()):
-			print "Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1))
+			print "Atom ", atom, " mean: ", np.mean(pi[atom,:],axis=0), " std ",np.std(pi[atom,:],axis=0)
 			for i in range(len(ops)):
 				print atom, i, pi[atom,i]
 		return p/(len(ops))

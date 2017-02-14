@@ -734,9 +734,8 @@ class Mol:
 
 	def Energy_from_xyz(self, path):
 		"""
-		Reads the forces from the comment line in the md_dataset,
-		and if no forces exist sets them to zero. Switched on by
-		has_force=True in the ReadGDB9Unpacked routine
+		Reads the energy from the comment line in the md_dataset.
+		Switched on by has_energy=True in the ReadGDB9Unpacked routine
 		"""
 		try:
 			f = open(path, 'r')
@@ -745,3 +744,10 @@ class Mol:
 			self.properties['energy'] = energy
 		except Exception as Ex:
 			print "Read Failed.", Ex
+
+	def Set_EQ_force(self):
+		"""
+		Sets forces to 0 for equilibrium molecules with no force data.
+		"""
+		if not self.properties.get("forces", None):
+			self.properties["forces"]=np.zeros((self.NAtoms(),3))

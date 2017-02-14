@@ -122,14 +122,18 @@ if(0):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
-a=MSet("toluene")
-a.ReadXYZ()
-test_mol = a.mols[0]
-test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
+# a=MSet("toluene")
+# a.ReadXYZ()
+# test_mol = a.mols[0]
+# test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
 # test_mol.Distort()
-manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
-optimizer=Optimizer(manager)
-optimizer.OptRealForce(test_mol)
+# manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
+# optimizer=Optimizer(manager)
+# optimizer.OptRealForce(test_mol)
+
+a=MSet("OptMols")
+a.ReadXYZ(eqforce=True)
+print a.mols[15].properties["forces"]
 
 #a=MSet("benzene")
 #a.Load()

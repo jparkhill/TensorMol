@@ -111,6 +111,14 @@ class MSet:
 		for j in ord:
 			self.mols[j].coords -= self.mols[j].Center()
 
+	def EQ_forces(self):
+		"""
+		Sets forces to 0 for every molecule which has no forces
+		"""
+		ord = range(len(self.mols))
+		for j in ord:
+			self.mols[j].Set_EQ_force()
+
 	def NAtoms(self):
 		nat=0
 		for m in self.mols:
@@ -148,7 +156,7 @@ class MSet:
 			self.CenterSet()
 		return
 
-	def ReadXYZ(self,filename = None, xyz_type = 'mol'):
+	def ReadXYZ(self,filename = None, xyz_type = 'mol', eqforce=False):
 		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
 		if filename == None:
 			filename = self.name
@@ -167,6 +175,8 @@ class MSet:
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
 		if (self.center):
 			self.CenterSet()
+		if (eqforce):
+			self.EQ_forces()
 		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 
