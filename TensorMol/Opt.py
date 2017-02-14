@@ -172,7 +172,7 @@ class Optimizer:
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
-	def OptRealForce(self,m,IfDebug=True):
+	def OptRealForce(self,m, filename="OptLog",IfDebug=True):
 		"""
 		Optimize using force output of an atomwise network.
 		now also averages over rotations...
@@ -186,8 +186,7 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		print "Orig Coords", m.coords
-		#for i in range(m.NAtoms()):
-		#	print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
@@ -206,7 +205,7 @@ class Optimizer:
 			# old_veloc = self.momentum_decay*c_veloc
 			err = m.rms(prev_m)
 			mol_hist.append(prev_m)
-			prev_m.WriteXYZfile("./datasets/", "OptLog")
+			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return

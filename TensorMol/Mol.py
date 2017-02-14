@@ -227,8 +227,8 @@ class Mol:
 			try:
 				self.properties["energy"]=float(lines[1].split()[1])
 			except Exception as Ex:
-				print "Problem with energy", string
-				raise Ex
+				# print "Problem with energy", string
+				pass
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
