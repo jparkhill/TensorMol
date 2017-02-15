@@ -246,7 +246,7 @@ class TensorMolData(TensorData):
 	def Save(self):
 		self.CleanScratch()
 		f=open(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+".tdt","wb")
-		pickle.dump(self.__dict__, f, protocol=1)
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
@@ -565,6 +565,6 @@ class TensorMolData_BP(TensorMolData):
 	def Save(self):
 	    self.CleanScratch()
 	    f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
-	    pickle.dump(self.__dict__, f, protocol=1)
+	    pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 	    f.close()
 	    return
