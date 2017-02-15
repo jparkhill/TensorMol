@@ -24,12 +24,14 @@ class MSet:
 		LOGGER.info("Saving set to: %s ", self.path+filename+self.suffix)
 		#print "Saving set to: ", self.path+self.name+self.suffix
 		f=open(self.path+filename+self.suffix,"wb")
-		pickle.dump(self.__dict__, f, protocol=1)
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
-	def Load(self):
-		f = open(self.path+self.name+self.suffix,"rb")
+	def Load(self, filename=None):
+		if filename == None:
+			filename = self.name
+		f = open(self.path+filename+self.suffix,"rb")
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()

@@ -1,4 +1,5 @@
 from TensorMol import *
+import time
 
 #jeherr tests
 

@@ -5,6 +5,7 @@ Changes that need to be made:
 from Sets import *
 from TFManage import *
 import random
+import time
 
 class Optimizer:
 	def __init__(self,tfm_):
@@ -139,7 +140,7 @@ class Optimizer:
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
-	def OptForce(self,m,IfDebug=True):
+	def OptTFGoForce(self,m,Debug=True):
 		"""
 		Optimize using force output of an atomwise network.
 		Args:
@@ -155,9 +156,15 @@ class Optimizer:
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
-			for i in range(m.NAtoms()):
-				veloc[i] = -1.0*self.tfm.evaluate(m, i)
-				if (IfDebug):
+			if (PARAMS["RotAvOutputs"]):
+				veloc = -0.001*self.tfm.EvalRotAvForce(m, RotAv=10)
+			elif (PARAMS["OctahedralAveraging"]):
+				veloc = -0.001*self.tfm.EvalOctAvForce(m)
+			else:
+				for i in range(m.NAtoms()):
+					veloc[i] = -0.001*self.tfm.evaluate(m,i)
+			if (Debug):
+				for i in range(m.NAtoms()):
 					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::", -1.0*m.GoForce(i)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
@@ -172,7 +179,7 @@ class Optimizer:
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
-	def OptRealForce(self,m, filename="OptLog",IfDebug=True):
+	def OptTFRealForce(self,m, filename="OptLog",Debug=True):
 		"""
 		Optimize using force output of an atomwise network.
 		now also averages over rotations...
@@ -193,13 +200,13 @@ class Optimizer:
 			if (PARAMS["RotAvOutputs"]):
 				veloc = 0.001*self.tfm.EvalRotAvForce(m, RotAv=10)
 			elif (PARAMS["OctahedralAveraging"]):
-				veloc = 0.01*self.tfm.EvalOctAvForce(m)
+				veloc = 0.001*self.tfm.EvalOctAvForce(m)
 			else:
 				for i in range(m.NAtoms()):
 					veloc[i] = 0.001*self.tfm.evaluate(m,i)
-			if (IfDebug):
+			if (Debug):
 				for i in range(m.NAtoms()):
-					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::"
+					print "TF veloc: ",m.atoms[i], ":" , veloc[i]
 			# c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = veloc - np.average(veloc,axis=0)

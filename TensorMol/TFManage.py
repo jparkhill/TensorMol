@@ -61,7 +61,7 @@ class TFManage:
 		print "Saving TFManager:",self.path+self.name+".tfm"
 		self.TData.CleanScratch()
 		f=open(self.path+self.name+".tfm","wb")
-		pickle.dump(self.__dict__, f, protocol=1)
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
@@ -140,7 +140,7 @@ class TFManage:
 		p = mol_.UseGoProb(atom_, output)
 		return p
 
-	def EvalRotAvForce(self, mol, RotAv=10):
+	def EvalRotAvForce(self, mol, RotAv=10, Debug=False):
 		"""
 		Goes without saying we should do this in batches for each element,
 		if it actually improves accuracy. And improve rotational sampling.
@@ -166,16 +166,16 @@ class TFManage:
 				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
 					pi[ax,i,atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,ax*RotAv+i].T).reshape(3)
 					p[atom] += pi[ax,i,atom]
-		# Just to debug and see how much the forces vary with rotation:
-		print "Checking Rotations... "
-		for atom in range(mol.NAtoms()):
-			print "Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1))
-			for ax in range(3):
-				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
-					print atom,ax,theta,":",pi[ax,i,atom]
+		if (Debug):
+			print "Checking Rotations... "
+			for atom in range(mol.NAtoms()):
+				print "Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1))
+				for ax in range(3):
+					for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
+						print atom,ax,theta,":",pi[ax,i,atom]
 		return p/(3.0*RotAv)
 
-	def EvalOctAvForce(self, mol):
+	def EvalOctAvForce(self, mol, Debug=False):
 		"""
 		Goes without saying we should do this in batches for each element,
 		if it actually improves accuracy. And improve rotational sampling.
@@ -187,20 +187,23 @@ class TFManage:
 		invops = map(np.linalg.inv,ops)
 		pi = np.zeros((mol.NAtoms(),len(ops),3))
 		p = np.zeros((mol.NAtoms(),3))
-		for i in range(len(ops)):
-			op = ops[i]
-			for atom in range(mol.NAtoms()):
+		for atom in range(mol.NAtoms()):
+			ins = np.zeros((len(ops),PARAMS["SH_NRAD"]*(PARAMS["SH_LMAX"]+1)*(PARAMS["SH_LMAX"]+1)))
+			for i in range(len(ops)):
+				op = ops[i]
 				mol_t = Mol(mol.atoms, mol.coords)
 				mol_t.Transform(op, mol.coords[atom])
-				inputs = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-				tmp = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0,0]
-				pi[atom,i] = np.dot(invops[i],tmp.T).reshape(3)
-				p[atom] += np.dot(invops[i],tmp.T).reshape(3)
-		print "Checking Rotations... "
-		for atom in range(mol.NAtoms()):
-			print "Atom ", atom, " mean: ", np.mean(pi[atom,:],axis=0), " std ",np.std(pi[atom,:],axis=0)
+				ins[i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+			outs = self.Instances[mol_t.atoms[atom]].evaluate(ins)[0]
 			for i in range(len(ops)):
-				print atom, i, pi[atom,i]
+				pi[atom,i] = np.dot(invops[i],outs[i].T).reshape(3)
+				p[atom] += np.sum(pi[atom,i], axis=0)
+		if (Debug):
+			print "Checking Rotations... "
+			for atom in range(mol.NAtoms()):
+				print "Atom ", atom, " mean: ", np.mean(pi[atom,:],axis=0), " std ",np.std(pi[atom,:],axis=0)
+				for i in range(len(ops)):
+					print atom, i, pi[atom,i]
 		return p/(len(ops))
 
 	def evaluate(self, mol, atom, RotAv=10):

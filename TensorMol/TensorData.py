@@ -291,7 +291,7 @@ class TensorData():
 			if (MakeDebug):
 				dbgname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_dbg.tdt"
 				f=open(dbgname,"wb")
-				pickle.dump(DebugCases, f, protocol=1)
+				pickle.dump(DebugCases, f, protocol=pickle.HIGHEST_PROTOCOL)
 				f.close()
 		self.Save() #write a convenience pickle.
 		return
@@ -410,7 +410,7 @@ class TensorData():
 	def Save(self):
 		self.CleanScratch()
 		f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
-		pickle.dump(self.__dict__, f, protocol=1)
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 

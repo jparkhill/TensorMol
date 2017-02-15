@@ -172,7 +172,7 @@ class Instance:
 		self.Clean()
 		#print("Going to pickle...\n",[(attr,type(ins)) for attr,ins in self.__dict__.items()])
 		f=open(self.path+self.name+".tfn","wb")
-		pickle.dump(self.__dict__, f, protocol=1)
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
