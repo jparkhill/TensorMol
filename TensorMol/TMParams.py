@@ -37,6 +37,7 @@ class TMParams(dict):
         # DATA usage parameters
         self["NormalizeInputs"] = False
         self["NormalizeOutputs"] = False
+		self["NormalizeOutputsLog"] = False
         self["batch_size"] = 8000
         self["MxTimePerElement"] = 36000
         self["MxMemPerElement"]=16000 # Max Array for an element in MB

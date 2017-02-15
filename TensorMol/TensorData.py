@@ -46,6 +46,7 @@ class TensorData():
 		self.MxMemPerElement=PARAMS["MxMemPerElement"]
 		self.NormalizeInputs = PARAMS["NormalizeInputs"]
 		self.NormalizeOutputs = PARAMS["NormalizeOutputs"]
+		self.NormalizeOutputsLog = PARAMS["NormalizeOutputsLog"]
 		self.ChopTo = PARAMS["ChopTo"]
 		self.ExpandIsometriesAltogether = False
 		self.ExpandIsometriesBatchwise = False
@@ -529,6 +530,12 @@ class TensorData():
 			stdo = np.std(to)
 			to /= stdo
 			self.dig.AssignNormalization(mo,stdo)
+		if (self.NormalizeOutputsLog):
+			for x in np.nditer(to, op_flags=["readwrite"]):
+				if x > 0:
+					x[...] = np.log10(x+1)
+				if x < 0:
+					x[...] = -np.log10(np.absolute(x-1))
 		return ti, to
 
 	def LoadElementToScratch(self,ele):

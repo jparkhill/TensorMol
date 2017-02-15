@@ -207,6 +207,15 @@ class Digester:
 		"""
 		return (a*self.StdNorm+self.MeanNorm)
 
+	def unlog(self, a):
+		tmp = a.copy()
+		for x in np.nditer(tmp, op_flags=["readwrite"]):
+			if x > 0:
+				x[...] = (10**x)-1
+			if x < 0:
+				x[...] = (-1*(10**(-x)))+1
+		return tmp
+
 	def EvaluateTestOutputs(self, desired, predicted):
 		try:
 			print "Evaluating, ", len(desired), " predictions... "
@@ -214,15 +223,24 @@ class Digester:
 			if (self.OType=="HardP"):
 				raise Exception("Unknown Digester Output Type.")
 			elif (self.OType=="Disp" or self.OType=="Force" or self.OType == "GoForce"):
-				ders=np.zeros(len(desired))
-				#comp=np.zeros(len(desired))
-				for i in range(len(desired)):
-					ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
 				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
-				for i in range(100):
-					print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
+				if (PARAMS["NormalizeOutputs"]):
+					for i in range(len(desired)):
+						ders[i] = np.linalg.norm(self.unscld(predicted[i,-3:])-self.unscld(desired[i,-3:]))
+					for i in range(100):
+						print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
+				elif (PARAMS["NormalizeOutputsLog"]):
+					for i in range(len(desired)):
+						ders[i] = np.linalg.norm(self.unlog(predicted[i,-3:])-self.unlog(desired[i,-3:]))
+					for i in range(100):
+						print "Desired: ",i,self.unscld(desired[i,-3:])," Predicted: ",self.unscld(predicted[i,-3:])
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 			elif (self.OType == "GoForceSphere"):
 				# Convert them back to cartesian
 				desiredc = SphereToCartV(desired)
