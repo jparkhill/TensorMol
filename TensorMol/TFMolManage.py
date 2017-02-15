@@ -108,7 +108,18 @@ class TFMolManage(TFManage):
 			offsets[ei] += 1
 		#print "[inputs, matrices, dummy_outputs]", [inputs, matrices, dummy_outputs]
 		mol_out, atom_out = self.Instances.evaluate([inputs, matrices, dummy_outputs])
-		print "mol out:", mol_out, " atom_out", atom_out
+
+		pointers = [0 for ele in self.TData.eles]
+		for i in range (0, nmols):
+			mol = mol_set.mols[i]
+			print "for mol :", mol.name, 
+			print "total atomization energy:", mol_out[0][i]
+			for j in range (0, mol.bonds.shape[0]):
+				bond_type = mol.bonds[j, 0]
+				bond_index = self.TData.eles.index(bond_type)
+				print "bond: ", mol.bonds[j], " energy:", atom_out[bond_index][0][pointers[bond_index]] 
+				pointers[bond_index] += 1		
+		#print "mol out:", mol_out, " atom_out", atom_out
 		return		
 
 	def Eval_Mol(self, mol):

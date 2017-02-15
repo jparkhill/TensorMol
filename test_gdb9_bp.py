@@ -15,10 +15,11 @@ if (1):
 		a.Save()
 	if (0):
                 # 1 - Get molecules into memory
-                a=MSet("gdb9_1_6_7_8")
+                a=MSet("gdb9_1_6_7_8_cleaned")
                 a.Load()
-                a.Bonds_Between_All()
-		a.Save()
+		a.WriteXYZ()
+		#s = a.Clean_GDB9()
+		#s.Save()
 
 	# To generate training data for all the atoms in the GDB 9
 	if (0):
@@ -110,8 +111,8 @@ if (1):
 		manager.Eval_Bond_BP(a.mols[1])
 
 	if (1):
-		a = MSet("bond_strength")
-		a.ReadGDB9Unpacked("./bond_strength/")
+		a = MSet("SNB_bondstrength")
+		a.ReadXYZ("SNB_bondstrength")
 		a.Make_Graphs()
 		manager= TFMolManage("Mol_gdb9_1_6_7_8_ConnectedBond_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
 		tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_ConnectedBond_CM_Bond_BP")

@@ -313,3 +313,16 @@ class MSet:
                         mol.Bonds_Between_All()
 			#print "bonds matrix:", mol.Bonds_Between
                 return
+
+	def Clean_GDB9(self):
+		s = MSet(self.name+"_cleaned")
+		s.path = self.path
+		for mol in self.mols:
+			if float('inf') in mol.Bonds_Between:
+				print "disconnected atoms in mol.. discard"
+			elif -1 in mol.bond_type or 0 in mol.bond_type:
+				print "allowed bond type in mol... discard"
+			else:
+				s.mols.append(mol)
+		return s
+	

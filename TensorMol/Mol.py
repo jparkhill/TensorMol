@@ -979,6 +979,8 @@ class Mol:
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
+		self.name = lines[1] #debug
+		print "mol name:", self.name
 		if (len(lines[1].split())>1):
 			try:
 				self.energy=float(lines[1].split()[1])
