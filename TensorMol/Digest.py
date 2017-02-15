@@ -219,13 +219,10 @@ class Digester:
 	def EvaluateTestOutputs(self, desired, predicted):
 		try:
 			print "Evaluating, ", len(desired), " predictions... "
-			#print desired.shape, predicted.shape
+			print desired.shape, predicted.shape
 			if (self.OType=="HardP"):
 				raise Exception("Unknown Digester Output Type.")
 			elif (self.OType=="Disp" or self.OType=="Force" or self.OType == "GoForce"):
-				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 				ders=np.zeros(len(desired))
 				#comp=np.zeros(len(desired))
 				if (PARAMS["NormalizeOutputs"]):

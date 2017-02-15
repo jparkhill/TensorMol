@@ -20,7 +20,7 @@ class TMParams(dict):
         self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
         self["SH_LMAX"]=6
         self["SH_NRAD"]=10
-        self["SH_ORTH"]=0
+        self["SH_ORTH"]=1
         self["SH_MAXNR"]=self["RBFS"].shape[0]
         # SET GENERATION parameters
         self["MAX_ATOMIC_NUMBER"] = 10
@@ -36,8 +36,8 @@ class TMParams(dict):
         self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
         # DATA usage parameters
         self["NormalizeInputs"] = False
-        self["NormalizeOutputs"] = False
-		self["NormalizeOutputsLog"] = False
+        self["NormalizeOutputs"] = True 
+	self["NormalizeOutputsLog"] = False
         self["batch_size"] = 8000
         self["MxTimePerElement"] = 36000
         self["MxMemPerElement"]=16000 # Max Array for an element in MB
@@ -49,7 +49,7 @@ class TMParams(dict):
         self["learning_rate"] = 0.001
         self["momentum"] = 0.9
         self["max_steps"] = 1000
-        self["test_freq"] = 50
+        self["test_freq"] = 50 
         self["hidden1"] = 512
         self["hidden2"] = 512
         self["hidden3"] = 512
