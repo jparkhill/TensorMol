@@ -357,10 +357,10 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 			}
 		}
 
-		//for (int m = 0; m < nele; m++) {
-		//	std::sort(ele_dist[m].begin(), ele_dist[m].end());
-		//	std::reverse(ele_dist[m].begin(), ele_dist[m].end());
-		//}
+		for (int m = 0; m < nele; m++) {
+			std::sort(ele_dist[m].begin(), ele_dist[m].end());
+			std::reverse(ele_dist[m].begin(), ele_dist[m].end());
+		}
 
 		for (int m = 0;  m < nele; m++)
 		for (int n= 0; n < ele_dist[m].size() && n < ngrids; n++)

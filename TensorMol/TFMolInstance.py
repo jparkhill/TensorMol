@@ -679,23 +679,23 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			test_loss += loss_value
 			num_of_mols += actual_mols
 
-			print ("actual_mols:", actual_mols)
-			all_mols_nn += list(preds[np.nonzero(preds)])
-			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
-			#print ("length:", len(atom_outputs))
-			for atom_index in range (0,len(self.eles)):
-				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
-				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
-				#print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
-		test_result = dict()
-		test_result['atoms'] = all_atoms
-		test_result['nn'] = all_mols_nn
-		test_result['acc'] = all_mols_acc
-		test_result['length'] = bond_length
-		f = open("test_result_connectedbond_cm.dat","wb")
-		pickle.dump(test_result, f)
-		f.close()
- 
+#			print ("actual_mols:", actual_mols)
+#			all_mols_nn += list(preds[np.nonzero(preds)])
+#			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
+#			#print ("length:", len(atom_outputs))
+#			for atom_index in range (0,len(self.eles)):
+#				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
+#				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
+#				#print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
+#		test_result = dict()
+#		test_result['atoms'] = all_atoms
+#		test_result['nn'] = all_mols_nn
+#		test_result['acc'] = all_mols_acc
+#		test_result['length'] = bond_length
+#		f = open("test_result_cleaned_connectedbond_cm.dat","wb")
+#		pickle.dump(test_result, f)
+#		f.close()
+
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
 		duration = time.time() - start_time
 		#print ("preds:", preds, " label:", batch_data[2])

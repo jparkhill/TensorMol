@@ -1,7 +1,7 @@
 import pickle
 import numpy  as np
 
-result = pickle.load(open("test_result_connectedbond_cm.dat", "rb"))
+result = pickle.load(open("test_result_cleaned_connectedbond_cm.dat", "rb"))
 
 nn = result['nn']
 acc = result['acc']
@@ -18,6 +18,7 @@ diff = mol[:,0] - mol[:,1]
 print diff
 print "MAE:", np.mean(abs(diff))
 
+print "MSE", (np.sum((diff)**2)/diff.shape[0])**0.5
 
 length = result['length']
 atoms = result['atoms']
