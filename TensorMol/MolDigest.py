@@ -55,6 +55,7 @@ class MolDigester:
 			cm_bp.flatten()
 			CM_BP.append(cm_bp)
 		CM_BP = np.array(CM_BP)
+		CM_BP = CM_BP.reshape((CM_BP.shape[0],-1))
 		CM_BP_deri = np.zeros((CM_BP.shape[0], CM_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
 		return 	CM_BP, CM_BP_deri
 
@@ -95,9 +96,27 @@ class MolDigester:
 		ConnectedBond_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
 		ConnectedBond_CM_Bond_BP[:,:ConnectedBond_Bond_BP.shape[1]] = ConnectedBond_Bond_BP
 		ConnectedBond_CM_Bond_BP[:,ConnectedBond_Bond_BP.shape[1]:] = CM_Bond_BP
-		deri_ConnectedBond_CM_Bond_BP = np.zeros((mol.NAtoms(), ConnectedBond_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
+		deri_ConnectedBond_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
 		return ConnectedBond_CM_Bond_BP, deri_ConnectedBond_CM_Bond_BP
 
+        def make_connectedbond_cm_bp(self, mol):
+                CM_BP, CM_BP_deri = self.make_cm_bp(mol)
+                ConnectedBond_BP, ConnectedBond_deri = self.make_connectedbond_bp(mol)
+		#print "ConnectedBond_BP.shape", ConnectedBond_BP.shape, "CM_BP.shape:", CM_BP.shape
+                ConnectedBond_CM_BP = np.zeros((mol.NAtoms(), ConnectedBond_BP.shape[1]+CM_BP.shape[1]))
+                ConnectedBond_CM_BP[:,:ConnectedBond_BP.shape[1]] = ConnectedBond_BP
+                ConnectedBond_CM_BP[:,ConnectedBond_BP.shape[1]:] = CM_BP
+                deri_ConnectedBond_CM_BP = np.zeros((mol.NAtoms(), ConnectedBond_BP.shape[1]+CM_BP.shape[1]))
+                return ConnectedBond_CM_BP, deri_ConnectedBond_CM_BP
+
+        def make_connectedbond_angle_cm_bond_bp(self, mol):
+		CM_Bond_BP, CM_Bond_BP_deri = self.make_cm_bond_bp(mol)
+                ConnectedBond_Angle_Bond_BP, ConnectedBond_Angle_Bond_BP_deri = self.make_connectedbond_angle_bond_bp(mol)
+                ConnectedBond_Angle_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
+                ConnectedBond_Angle_CM_Bond_BP[:,:ConnectedBond_Angle_Bond_BP.shape[1]] = ConnectedBond_Angle_Bond_BP
+                ConnectedBond_Angle_CM_Bond_BP[:,ConnectedBond_Angle_Bond_BP.shape[1]:] = CM_Bond_BP
+                deri_ConnectedBond_Angle_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
+                return ConnectedBond_Angle_CM_Bond_BP, deri_ConnectedBond_Angle_CM_Bond_BP
 
 	def make_connectedbond_bond_bp(self, mol):
 		ConnectedBond_Bond_BP = []
@@ -130,7 +149,88 @@ class MolDigester:
 		ConnectedBond_Bond_BP = np.array(ConnectedBond_Bond_BP)
 		ConnectedBond_Bond_BP_deri = np.zeros((ConnectedBond_Bond_BP.shape[0], ConnectedBond_Bond_BP.shape[1]))
 		return  ConnectedBond_Bond_BP, ConnectedBond_Bond_BP_deri
+
 	
+        def make_connectedbond_bp(self, mol):
+                ConnectedBond_BP = []
+		self.ngrid = 4
+                for i in range (0, mol.NAtoms()):
+                        #atom = int(mol.atoms[i])
+                        #print "bond :", i, "index:", atom1, atom2, "ele type:", mol.atoms[atom1], mol.atoms[atom2] 
+                        connected_atom = [[] for j in range (0, self.neles)]
+                        for node in mol.atom_nodes[i].connected_nodes:
+                                atom_index = node.node_index
+                                dist = mol.DistMatrix[i][atom_index]
+                                connected_atom[list(self.eles).index(mol.atoms[atom_index])].append(1.0/dist)
+                        connected_atom = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_atom ]
+                        connected_atom = [item for sublist in connected_atom for item in sublist]
+
+                        connectedbond_bp = np.asarray(connected_atom, dtype=np.float32)
+                        ConnectedBond_BP.append(connectedbond_bp)
+                ConnectedBond_BP = np.array(ConnectedBond_BP)
+                ConnectedBond_BP_deri = np.zeros((ConnectedBond_BP.shape[0], ConnectedBond_BP.shape[1]))
+		#print "ConnectedBond_BP", ConnectedBond_BP
+                return  ConnectedBond_BP, ConnectedBond_BP_deri
+
+        def make_connectedbond_angle_bond_bp(self, mol):
+		self.ngrid = 3
+                ConnectedBond_Angle_Bond_BP = []
+                for i in range (0, mol.NBonds()):
+                        atom1 = int(mol.bonds[i][2])
+                        atom2 = int(mol.bonds[i][3])
+			bond_dist =  mol.bonds[i][1]
+                        #print "bond :", i, "index:", atom1, atom2, "ele type:", mol.atoms[atom1], mol.atoms[atom2] 
+                        connected_bond1 = [[] for j in range (0, self.neles)]
+			connected_angle1 = [[] for j in range (0, self.neles)]
+                        for node in mol.atom_nodes[atom1].connected_nodes:
+                                atom_index = node.node_index
+                                if atom_index != atom2:
+                                        dist = mol.DistMatrix[atom1][atom_index]
+					dist2 = mol.DistMatrix[atom2][atom_index]
+                                        connected_bond1[list(self.eles).index(mol.atoms[atom_index])].append(1.0/dist)
+					connected_angle1[list(self.eles).index(mol.atoms[atom_index])].append((bond_dist**2+dist**2-dist2**2)/(2*bond_dist*dist))
+			#print "before sorting 1:",connected_bond1, connected_angle1
+			for j  in range (0, len(connected_bond1)):
+				connected_angle1[j] = [x for (y, x) in sorted(zip(connected_bond1[j], connected_angle1[j]))]
+				connected_bond1[j].sort()
+				connected_bond1[j].reverse()
+				connected_angle1[j].reverse()
+			#print "after sorting 1:", connected_bond1, connected_angle1
+                        connected_bond1 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_bond1 ]
+                        connected_bond1 = [item for sublist in connected_bond1 for item in sublist]
+			connected_angle1 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_angle1 ]
+                        connected_angle1 = [item for sublist in connected_angle1 for item in sublist]
+			
+
+                        connected_bond2 = [[] for j in range (0, self.neles)]
+			connected_angle2 = [[] for j in range (0, self.neles)]
+                        for node in mol.atom_nodes[atom2].connected_nodes:
+                                atom_index = node.node_index
+                                if atom_index != atom1:
+                                        dist = mol.DistMatrix[atom2][atom_index]
+					dist2 = mol.DistMatrix[atom1][atom_index]
+                                        connected_bond2[list(self.eles).index(mol.atoms[atom_index])].append(1.0/dist)
+					connected_angle2[list(self.eles).index(mol.atoms[atom_index])].append((bond_dist**2+dist**2-dist2**2)/(2*bond_dist*dist))
+			#print "before sorting 2:",connected_bond2, connected_angle2
+			for j  in range (0, len(connected_bond2)):
+                                connected_angle2[j] = [x for (y, x) in sorted(zip(connected_bond2[j], connected_angle2[j]))]
+                                connected_bond2[j].sort()
+				connected_bond2[j].reverse()
+                                connected_angle2[j].reverse()
+			#print "after sorting 2:",connected_bond2, connected_angle2
+                        connected_bond2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_bond2 ]
+                        connected_bond2 = [item for sublist in connected_bond2 for item in sublist]
+			connected_angle2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_angle2 ]
+                        connected_angle2 = [item for sublist in connected_angle2 for item in sublist]
+				
+
+                        connectedbond_angle_bond_bp = np.asarray(connected_bond1 + connected_bond2 + connected_angle1 + connected_angle2 + [1.0/bond_dist], dtype=np.float32)
+                        #print "connectedbond_bond_bp", connectedbond_bond_bp
+                        ConnectedBond_Angle_Bond_BP.append(connectedbond_angle_bond_bp)
+                ConnectedBond_Angle_Bond_BP = np.array(ConnectedBond_Angle_Bond_BP)
+                ConnectedBond_Angle_Bond_BP_deri = np.zeros((ConnectedBond_Angle_Bond_BP.shape[0], ConnectedBond_Angle_Bond_BP.shape[1]))
+                return  ConnectedBond_Angle_Bond_BP, ConnectedBond_Angle_Bond_BP_deri
+
 
 	def make_gauinv(self, mol):
 		""" This is a totally inefficient way of doing this
@@ -237,6 +337,12 @@ class MolDigester:
                         Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "ConnectedBond_CM_Bond_BP"):
 			Ins, deri_BP = self.make_connectedbond_cm_bond_bp(mol_)
+		elif(self.name == "ConnectedBond_CM_BP"):
+                        Ins, deri_BP = self.make_connectedbond_cm_bp(mol_)
+		elif(self.name == "ConnectedBond_Angle_Bond_BP"):
+			Ins, deri_BP = self.make_connectedbond_angle_bond_bp(mol_)
+		elif(self.name == "ConnectedBond_Angle_CM_Bond_BP"):
+                        Ins, deri_BP = self.make_connectedbond_angle_cm_bond_bp(mol_)
 		else:
 			raise Exception("Unknown MolDigester Type.", self.name)
 

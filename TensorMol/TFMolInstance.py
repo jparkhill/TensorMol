@@ -705,6 +705,13 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
 
+        def print_training(self, step, loss, Ncase, duration, Train=True):
+                if Train:
+                        print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))
+                else:
+                        print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(NCase)))
+                return
+
 
         def evaluate(self, batch_data):   #this need to be modified 
                 # Check sanity of input
