@@ -56,17 +56,6 @@ class Transformer:
 		self.StdNorm=sn
 		return
 
-	def Print(self):
-		LOGGER.info("-------------------- ")
-		LOGGER.info("Digester Information ")
-		LOGGER.info("self.name:"+self.name)
-		LOGGER.info("self.OType", self.OType)
-		LOGGER.debug("self.NTrainSamples"+str(self.NTrainSamples))
-		LOGGER.debug("self.TrainSampDistance"+str(self.TrainSampDistance))
-		LOGGER.debug("self.OType", self.OType)
-		LOGGER.info("-------------------- ")
-		return
-
 	def MakeSamples_v2(self,point):    # with sampling function f(x)=M/(x+1)^2+N; f(0)=maxdisp,f(maxdisp)=0; when maxdisp =5.0, 38 % lie in (0, 0.1)
 		disps = samplingfunc_v2(self.TrainSampDistance * np.random.random(self.NTrainSamples), self.TrainSampDistance)
 		theta  = np.random.random(self.NTrainSamples)* math.pi
