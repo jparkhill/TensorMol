@@ -6,7 +6,7 @@ import LinearOperations
 
 class Transformer:
 	"""
-	 For various reasons it can be better to treat inputs and outputs different for evaluation than in training 
+	 For various reasons it can be better to treat inputs and outputs different for evaluation than in training
 	 (Ie: run isometries when you )
 	"""
 	def __init__(self, eles_, name_="GauSH", OType_="Disp"):
@@ -93,96 +93,47 @@ class Transformer:
 #  Instead call a batch digest routine.
 #
 
-	def Emb(self, mol_, at_, xyz_, MakeOutputs=True, MakeGradients=False):
+	def NormalizeInputs(self, ele):
 		"""
-		Generates various molecular embeddings.
-		Args:
-			mol_: a Molecule to be digested
-			at_: an atom to be digested or moved. if at_ < 0 it usually returns arrays for each atom in the molecule
-			xyz_: makes inputs with at_ moved to these positions.
-			MakeOutputs: generates outputs according to self.OType.
-		Returns:
-			Output embeddings, and possibly labels and gradients.
-			if at_ < 0 the first dimension loops over atoms in mol_
+		PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
+		AND REMOVE THE OTHER ONE...
+		JAP
 		"""
-		#start = time.time()
-		if (self.name=="Coulomb"):
-			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
-		elif (self.name=="GauSH"):
-			Ins= MolEmb.Make_SH(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, self.ngrid, at_, 0.0)
-			#print "Ins",Ins
-		elif (self.name=="GauInv"):
-			Ins= MolEmb.Make_Inv(PARAMS,mol_.coords, xyz_, mol_.atoms ,  self.SensRadius, at_)
-		elif (self.name=="RDF"):
-			Ins= MolEmb.Make_RDF(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
-		elif (self.name=="SensoryBasis"):
-			Ins= mol_.OverlapEmbeddings(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
-		elif (self.name=="SymFunc"):
-			Ins= self.make_sym(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
-		elif (self.name=="PGaussian"):
-			Ins= self.make_pgaussian(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
-		else:
-			raise Exception("Unknown Embedding Function.")
-		#self.embtime += (time.time() - start)
-		#start = time.time()
-		Outs=None
-		if (MakeOutputs):
-			if (self.OType=="HardP"):
-				Outs = self.HardCut(xyz_-coords_[at_])
-			elif (self.OType=="SmoothP"):
-				Outs = mol_.FitGoProb(at_)
-			elif (self.OType=="Disp"):
-				Outs = mol_.GoDisp(at_)
-			elif (self.OType=="GoForce"):
-				Outs = mol_.GoForce(at_)
-			elif (self.OType=="GoForceSphere"):
-				Outs = mol_.GoForce(at_, 1) # See if the network is better at doing spherical=>spherical
-			elif (self.OType=="Force"):
-				if ( "forces" in mol_.properties):
-					if (at_<0):
-						Outs = mol_.properties['forces']
-						#print "Outs", Outs
-					else:
-						Outs = mol_.properties['forces'][at_].reshape((1,3))
-				else:
-					raise Exception("Mol Is missing force. ")
-			elif (self.OType=="StoP"):
-				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
-				if (ens_==None):
-					raise Exception("Empty energies...")
-				E0=np.min(ens_)
-				Es=ens_-E0
-				Boltz=np.exp(-1.0*Es/KAYBEETEE)
-				rnds = np.random.rand(len(xyz_))
-				Outs = np.array([1 if rnds[i]<Boltz[i] else 0 for i in range(len(ens_))])
-			elif (self.OType=="Energy"):
-				if ("energy" in mol_.properties):
-					ens_ = mol_.properties["energy"]
-				else:
-					raise Exception("Empty energies...")
-			elif (self.OType=="CalcEnergy"):
-				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
-				if (ens_==None):
-					raise Exception("Empty energies...")
-				E0=np.min(ens_)
-				Es=ens_-E0
-				Outs = Es
-			# elif (self.OType=="Force"):
-			# 	ens_ = mol_.ForcesAfterAtomMove(xyz_,at_)
-			# 	if (ens_==None):
-			# 		raise Exception("Empty energies...")
-			elif (self.OType=="GoForce_old_version"): # python version is fine for here
-				ens_ = mol_.SoftCutGoForceOneAtom(at_)
-				Outs = ens_
-				if (ens_==None):
-					raise Exception("Empty energies...")
-			else:
-				raise Exception("Unknown Digester Output Type.")
-			#self.outtime += (time.time() - start)
-			#print "Embtime: ", self.embtime, " OutTime: ", self.outtime
-			return Ins,Outs
-		else:
-			return Ins
+		mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))
+		std = (np.std(self.scratch_inputs, axis=0)).reshape((1, -1))
+		self.scratch_inputs = (self.scratch_inputs-mean)/std
+		self.scratch_test_inputs = (self.scratch_test_inputs-mean)/std
+		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy", mean)
+		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy",std)
+		return
+
+	def ApplyNormalize(self, inputs, ele):
+		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy")
+		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy")
+		return (inputs-mean)/std
+
+	def Normalize(self,ti,to):
+		"""
+		PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
+		AND REMOVE THE OTHER ONE...
+		-JAP
+		"""
+		if (self.NormalizeInputs):
+			for i in range(len(ti)):
+				ti[i] = ti[i]/(np.linalg.norm(ti[i])+1.0E-8)
+		if (self.NormalizeOutputs):
+			mo = np.average(to)
+			to -= mo
+			stdo = np.std(to)
+			to /= stdo
+			self.dig.AssignNormalization(mo,stdo)
+		if (self.NormalizeOutputsLog):
+			for x in np.nditer(to, op_flags=["readwrite"]):
+				if x > 0:
+					x[...] = np.log10(x+1)
+				if x < 0:
+					x[...] = -np.log10(np.absolute(x-1))
+		return ti, to
 
 	def unscld(self,a):
 		"""
@@ -193,6 +144,15 @@ class Transformer:
 		Thinking about how to do this for all elements etc. is tricky.
 		"""
 		return (a*self.StdNorm+self.MeanNorm)
+
+	def unlog(self, a):
+		tmp = a.copy()
+		for x in np.nditer(tmp, op_flags=["readwrite"]):
+			if x > 0:
+				x[...] = (10**x)-1
+			if x < 0:
+				x[...] = (-1*(10**(-x)))+1
+		return tmp
 
 	def EvaluateTestOutputs(self, desired, predicted):
 		try:
@@ -251,122 +211,3 @@ class Transformer:
 			print "Something went wrong"
 			pass
 		return
-
-#
-#  Various types of Batch Digests.
-#
-
-	def TrainDigestMolwise(self, mol_):
-		"""
-		Returns list of inputs and outputs for a molecule.
-		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
-		This version works mol-wise to try to speed up and avoid calling C++ so much...
-		Args:
-			mol_: a molecule to be digested
-			eles_: A list of elements coming from Tensordata to order the output.
-		Returns:
-			Two lists: containing inputs and outputs in order of eles_
-		"""
-		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" )):
-			raise Exception("Molwise Embedding not supported")
-		if (self.eshape==None or self.lshape==None):
-			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
-			self.eshape = list(tinps[0].shape)
-			self.lshape = list(touts[0].shape)
-			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
-		return self.Emb(mol_,-1,mol_.coords[0]) # will deal with getting energies if it's needed.
-
-	def TrainDigest(self, mol_, ele_, MakeDebug=False):
-		"""
-		Returns list of inputs and outputs for a molecule.
-		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
-		Args:
-			mol_: a molecule to be digested
-			ele_: an element for which training data will be made.
-			MakeDebug: if MakeDebug is True, it also returns a list with debug information to trace possible errors in digestion.
-		"""
-		if (self.eshape==None or self.lshape==None):
-			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
-			self.eshape = list(tinps[0].shape)
-			self.lshape = list(touts[0].shape)
-			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
-		ncase = mol_.NumOfAtomsE(ele_)*self.NTrainSamples
-		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float32)
-		outs = np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
-		dbg=[]
-		casep=0
-		for i in range(len(mol_.atoms)):
-			if (mol_.atoms[i]==ele_):
-				if (self.OType == "SmoothP" or self.OType == "Disp" or self.OType == "Force"):
-					inputs, outputs = self.Emb(mol_,i,mol_.coords[i]) # will deal with getting energies if it's needed.
-				elif(self.SamplingType=="Smooth"): #If Smooth is now a property of the Digester: OType SmoothP
-					samps=PointsNear(mol_.coords[i], self.NTrainSamples, self.TrainSampDistance)
-					inputs, outputs = self.Emb(mol_,i,samps) # will deal with getting energies if it's needed.
-				else:
-					samps=self.MakeSamples_v2(mol_.coords[i])
-					inputs, outputs = self.Emb(mol_,i,samps)
-				# Here we should write a short routine to debug/print the inputs and outputs.
-				#				print "Smooth",outputs
-				#print i, mol_.atoms, mol_.coords,mol_.coords[i],"Samples:",samps,"inputs ", inputs, "Outputs",outputs, "Distances",np.array(map(np.linalg.norm,samps-mol_.coords[i]))
-
-				ins[casep:casep+self.NTrainSamples] = np.array(inputs)
-				outs[casep:casep+self.NTrainSamples] = outputs
-				casep += self.NTrainSamples
-
-		if (MakeDebug):
-			return ins,outs,dbg
-		else:
-			return ins,outs
-
-	def SampleDigestWPyscf(self, mol_, ele_,uniform=False):
-		''' Runs PySCF calculations for each sample without generating embeddings and probabilities '''
-		for i in range(len(mol_.atoms)):
-			if (mol_.atoms[i]==ele_):
-				samps=None
-				if (not uniform):
-					samps=self.MakeSamples(mol_.coords[i])
-				else:
-					samps=MakeUniform(mol_.coords[i],4.0,20)
-				energies=mol_.RunPySCFWithCoords(samps,i)
-
-	def UniformDigest(self, mol_, at_, mxstep, num):
-		""" Returns list of inputs sampled on a uniform cubic grid around at """
-		ncase = num*num*num
-		samps=MakeUniform(mol_.coords[at_],mxstep,num)
-		if (self.name=="SymFunc"):
-			inputs = self.Emb(self, mol_, at_, samps, None, False) #(self.EmbF())(mol_.coords, samps, mol_.atoms, self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
-			inputs = np.asarray(inputs)
-		else:
-			inputs = self.Emb(self, mol_, at_, samps, None, False)
-			inputs = np.assrray(inputs[0])
-		return samps, inputs
-
-	def emb_vary_coords(self, coords, xyz, atoms, eles, Radius, ngrid, vary_at, tar_at):
-		return  MolEmb.Make_CM_vary_coords(coords, xyz, atoms, eles, Radius, ngrid, vary_at, tar_at)
-
-	def make_sym(self, coords_, xyz_, ats_,  eles , SensRadius, ngrid, at_, dummy):    #coords_, xyz_, ats_, self.eles ,  self.SensRadius, self.ngrid, at_, 0.0
-		zeta=[]
-		eta1=[]
-		eta2=[]
-		Rs=[]
-		for i in range (0, ngrid):
-			zeta.append(1.5**i)    # set some value for zeta, eta, Rs
-			eta1.append(0.008*(2**i))
-			eta2.append(0.002*(2**i))
-			Rs.append(i*SensRadius/float(ngrid))
-		SYM =  MolEmb.Make_Sym(coords_, xyz_, ats_, eles, at_, SensRadius, zeta, eta1, eta2, Rs)
-		SYM = numpy.asarray(SYM[0], dtype=np.float32)
-		SYM = SYM.reshape((SYM.shape[0]/self.nsym, self.nsym,  SYM.shape[1] *  SYM.shape[2]))
-		return SYM
-
-	def make_pgaussian (self, coords_, xyz_, ats_, eles_, SensRadius, ngrid, at_, dummy):
-		eta = []
-		eta_max = 12  # hard code
-		eta_min = 0.5 #	hard code
-		for i in range (0, ngrid):
-			tmp=math.log(eta_max/eta_min)/(ngrid-1)*i
-			eta.append(pow(math.e, tmp)*eta_min)
-		PGaussian = MolEmb.Make_PGaussian(coords_, xyz_, ats_, eles_, at_, SensRadius, eta)
-		PGaussian = numpy.asarray(PGaussian[0], dtype=np.float32)
-                PGaussian = PGaussian.reshape((PGaussian.shape[0]/self.npgaussian, self.npgaussian,  PGaussian.shape[1] *  PGaussian.shape[2]))
-                return PGaussian
