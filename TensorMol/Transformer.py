@@ -22,6 +22,8 @@ class Transformer:
 		"""
 		self.Emb = Emb_
 		self.OType = OType_
+		self.innorm = None
+		self.outnorm = None
 		if (InNorm_ != None):
 			self.innorm = InNorm_
 		if (OutNorm_ != None):
@@ -31,7 +33,7 @@ class Transformer:
 
 	def Normalize(self, ti, to):
 		if (self.innorm == "Frobenius"):
-			ti = self.NormInFrobenius		
+			ti = self.NormInFrobenius
 		if (self.outnorm == "MeanStd"):
 			to = self.NormOutMeanStd(to)
 		if (self.outnorm == "Logarithmic"):
@@ -60,6 +62,12 @@ class Transformer:
 			if x < 0:
 				x[...] = -np.log10(np.absolute(x-1))
 		return to
+
+	def Unnormalize(self, to):
+		if (self.outnorm == "MeanStd"):
+			to = self.NormOutMeanStd(to)
+		if (self.outnorm == "Logarithmic"):
+			to = self.NormOutLogarithmic(to)
 
 	def MakeSamples_v2(self,point):    # with sampling function f(x)=M/(x+1)^2+N; f(0)=maxdisp,f(maxdisp)=0; when maxdisp =5.0, 38 % lie in (0, 0.1)
 		disps = samplingfunc_v2(self.TrainSampDistance * np.random.random(self.NTrainSamples), self.TrainSampDistance)
@@ -106,28 +114,28 @@ class Transformer:
 		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy")
 		return (inputs-mean)/std
 
-	def Normalize(self,ti,to):
-		"""
-		PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
-		AND REMOVE THE OTHER ONE...
-		-JAP
-		"""
-		if (self.NormalizeInputs):
-			for i in range(len(ti)):
-				ti[i] = ti[i]/(np.linalg.norm(ti[i])+1.0E-8)
-		if (self.NormalizeOutputs):
-			mo = np.average(to)
-			to -= mo
-			stdo = np.std(to)
-			to /= stdo
-			self.dig.AssignNormalization(mo,stdo)
-		if (self.NormalizeOutputsLog):
-			for x in np.nditer(to, op_flags=["readwrite"]):
-				if x > 0:
-					x[...] = np.log10(x+1)
-				if x < 0:
-					x[...] = -np.log10(np.absolute(x-1))
-		return ti, to
+	# def Normalize(self,ti,to):
+	# 	"""
+	# 	PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
+	# 	AND REMOVE THE OTHER ONE...
+	# 	-JAP
+	# 	"""
+	# 	if (self.NormalizeInputs):
+	# 		for i in range(len(ti)):
+	# 			ti[i] = ti[i]/(np.linalg.norm(ti[i])+1.0E-8)
+	# 	if (self.NormalizeOutputs):
+	# 		mo = np.average(to)
+	# 		to -= mo
+	# 		stdo = np.std(to)
+	# 		to /= stdo
+	# 		self.dig.AssignNormalization(mo,stdo)
+	# 	if (self.NormalizeOutputsLog):
+	# 		for x in np.nditer(to, op_flags=["readwrite"]):
+	# 			if x > 0:
+	# 				x[...] = np.log10(x+1)
+	# 			if x < 0:
+	# 				x[...] = -np.log10(np.absolute(x-1))
+	# 	return ti, to
 
 	def unscld(self,a):
 		"""

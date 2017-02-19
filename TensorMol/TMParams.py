@@ -36,7 +36,7 @@ class TMParams(dict):
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# DATA usage parameters
 		self["Normalize"] = True
-		self["NormalizeInputs"] = None
+		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
@@ -56,11 +56,11 @@ class TMParams(dict):
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 
-    def __str__(self):
-        tore=""
-        for k in self.keys():
-            tore = tore+k+":"+str(self[k])+"\n"
-        return tore
+	def __str__(self):
+	    tore=""
+	    for k in self.keys():
+	        tore = tore+k+":"+str(self[k])+"\n"
+	    return tore
 
 def TMBanner():
 	print("--------------------------\n")

@@ -27,7 +27,6 @@ class TensorData():
 		self.suffix = ".pdb"
 		self.set = MSet_
 		self.dig = Dig_
-		self.tform = Tform_
 		self.type = type_
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
 		self.SamplesPerElement = []
@@ -46,9 +45,9 @@ class TensorData():
 		self.Classify=PARAMS["Classify"]
 		self.MxTimePerElement=PARAMS["MxTimePerElement"]
 		self.MxMemPerElement=PARAMS["MxMemPerElement"]
-		self.NormalizeInputs = PARAMS["NormalizeInputs"]
-		self.NormalizeOutputs = PARAMS["NormalizeOutputs"]
-		self.NormalizeOutputsLog = PARAMS["NormalizeOutputsLog"]
+		# self.NormalizeInputs = PARAMS["NormalizeInputs"]
+		# self.NormalizeOutputs = PARAMS["NormalizeOutputs"]
+		# self.NormalizeOutputsLog = PARAMS["NormalizeOutputsLog"]
 		self.ChopTo = PARAMS["ChopTo"]
 		self.ExpandIsometriesAltogether = False
 		self.ExpandIsometriesBatchwise = False
@@ -61,7 +60,7 @@ class TensorData():
 			self.name = Name_
 			self.Load()
 			if (PARAMS["Normalize"]):
-				self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType):
+				self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType)
 			return
 		elif (MSet_==None or Dig_==None):
 			raise Exception("I need a set and Digester if you're not loading me.")
