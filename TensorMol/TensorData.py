@@ -59,8 +59,7 @@ class TensorData():
 		if (Name_!= None):
 			self.name = Name_
 			self.Load()
-			if (PARAMS["Normalize"]):
-				self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType)
+			self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType)
 			return
 		elif (MSet_==None or Dig_==None):
 			raise Exception("I need a set and Digester if you're not loading me.")
@@ -375,62 +374,73 @@ class TensorData():
 		return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)])
 
 	def EvaluateTestBatch(self, desired, predicted):
-		try:
-			print "Evaluating, ", len(desired), " predictions... "
-			print desired.shape, predicted.shape
-			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
-				ders=np.zeros(len(desired))
-				#comp=np.zeros(len(desired))
-				if (PARAMS["NormalizeOutputs"]):
-					for i in range(len(desired)):
-						ders[i] = np.linalg.norm(self.tform.UnNormalizeOut(predicted[i,-3:])-self.tform.UnNormalizeOut(desired[i,-3:]))
-					for i in range(100):
-						print "Desired: ",i,self.tform.UnNormalizeOut(desired[i,-3:])," Predicted: ",self.tform.UnNormalizeOut(predicted[i,-3:])
-				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
-			elif (self.dig.OType == "GoForceSphere"):
-				# Convert them back to cartesian
-				desiredc = SphereToCartV(desired)
-				predictedc = SphereToCartV(predicted)
-				ders=np.zeros(len(desired))
-				#comp=np.zeros(len(desired))
-				for i in range(len(desiredc)):
-					ders[i] = np.linalg.norm(self.tform.unscld(predictedc[i,-3:])-self.tform.unscld(desiredc[i,-3:]))
-				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
-				for i in range(100):
-					print "Desired: ",i,self.tform.unscld(desiredc[i,-3:])," Predicted: ",self.tform.unscld(predictedc[i,-3:])
-			elif (self.dig.OType=="SmoothP"):
-				ders=np.zeros(len(desired))
-				iers=np.zeros(len(desired))
-				comp=np.zeros(len(desired))
+		#try:
+		print "Evaluating, ", len(desired), " predictions... "
+		print desired.shape, predicted.shape
+		if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
+			ders=np.zeros(len(desired))
+			#comp=np.zeros(len(desired))
+			if (self.tform.outnorm != None):
 				for i in range(len(desired)):
-					#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
-					Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
-					Pr /= np.sum(Pr)
-					p=np.dot(GRIDS.MyGrid().T,Pr)
-					#print "fit disp: ", p
-					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
-					iers[i] = np.linalg.norm(p-desired[i,-3:])
-					comp[i] = np.linalg.norm(p-predicted[i,-3:])
-				print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
-				print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
-			elif (self.dig.OType=="StoP"):
-				raise Exception("Unknown Digester Output Type.")
-			elif (self.dig.OType=="Energy"):
-				raise Exception("Unknown Digester Output Type.")
-			elif (self.dig.OType=="GoForce_old_version"): # python version is fine for here
-				raise Exception("Unknown Digester Output Type.")
-			elif (self.dig.OType=="HardP"):
-				raise Exception("Unknown Digester Output Type.")
+					ders[i] = np.linalg.norm(self.tform.UnNormalizeOuts(predicted[i,-3:])-self.tform.UnNormalizeOuts(desired[i,-3:]))
+				for i in range(100):
+					print "Desired: ",i,self.tform.UnNormalizeOuts(desired[i,-3:])," Predicted: ",self.tform.UnNormalizeOuts(predicted[i,-3:])
 			else:
-				raise Exception("Unknown Digester Output Type.")
-		except Exception as Ex:
-			print "Something went wrong"
-			pass
+				for i in range(len(desired)):
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+				for i in range(100):
+					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
+			LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+			LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
+			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+		elif (self.dig.OType == "GoForceSphere"):
+			# Convert them back to cartesian
+			desiredc = SphereToCartV(desired)
+			predictedc = SphereToCartV(predicted)
+			ders=np.zeros(len(desired))
+			#comp=np.zeros(len(desired))
+			if (self.tform.outnorm != None):
+				for i in range(len(desiredc)):
+					ders[i] = np.linalg.norm(self.tform.UnNormalizeOuts(predictedc[i,-3:])-self.tform.UnNormalizeOuts(desiredc[i,-3:]))
+				for i in range(100):
+					print "Desired: ",i,self.tform.UnNormalizeOuts(desiredc[i,-3:])," Predicted: ",self.tform.UnNormalizeOuts(predictedc[i,-3:])
+			else:	
+				for i in range(len(desiredc)):
+					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
+				for i in range(100):
+					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
+			LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+			LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
+			print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
+		elif (self.dig.OType=="SmoothP"):
+			ders=np.zeros(len(desired))
+			iers=np.zeros(len(desired))
+			comp=np.zeros(len(desired))
+			for i in range(len(desired)):
+				#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
+				Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
+				Pr /= np.sum(Pr)
+				p=np.dot(GRIDS.MyGrid().T,Pr)
+				#print "fit disp: ", p
+				ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+				iers[i] = np.linalg.norm(p-desired[i,-3:])
+				comp[i] = np.linalg.norm(p-predicted[i,-3:])
+			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
+			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
+			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+		elif (self.dig.OType=="StoP"):
+			raise Exception("Unknown Digester Output Type.")
+		elif (self.dig.OType=="Energy"):
+			raise Exception("Unknown Digester Output Type.")
+		elif (self.dig.OType=="GoForce_old_version"): # python version is fine for here
+			raise Exception("Unknown Digester Output Type.")
+		elif (self.dig.OType=="HardP"):
+			raise Exception("Unknown Digester Output Type.")
+		else:
+			raise Exception("Unknown Digester Output Type.")
+		#except Exception as Ex:
+		#	print "Something went wrong"
+		#	pass
 		return
 
 	def MergeWith(self,ASet_):
@@ -611,8 +621,12 @@ class TensorData():
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)
 		# Here we should Check to see if we want to normalize inputs/outputs.
-		if (PARAMS["Normalize"]):
-			ti, to = self.tform.Normalize(ti, to)
+		if (self.tform.innorm != None):
+			ti = self.tform.NormalizeIns(ti)
+		if (self.tform.outnorm != None):
+			to = self.tform.NormalizeOuts(to)
+		#if (PARAMS["Normalize"]):
+		#	ti, to = self.tform.Normalize(ti, to)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]

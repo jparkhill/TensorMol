@@ -31,14 +31,17 @@ class Transformer:
 		#Should check that normalization routines match input/output types here
 		return
 
-	def Normalize(self, ti, to):
+	def NormalizeIns(self, ti):
 		if (self.innorm == "Frobenius"):
 			ti = self.NormInFrobenius
+		return ti
+
+	def NormalizeOuts(self, to):
 		if (self.outnorm == "MeanStd"):
 			to = self.NormOutMeanStd(to)
 		if (self.outnorm == "Logarithmic"):
 			to = self.NormOutLogarithmic(to)
-		return ti, to
+		return to
 
 	def NormInFrobenius(self, ins):
 		for i in range(len(ti)):
@@ -63,16 +66,12 @@ class Transformer:
 				x[...] = -np.log10(np.absolute(x-1))
 		return to
 
-	def UnNormalizeOut(self, to):
+	def UnNormalizeOuts(self, to):
 		if (self.outnorm == "MeanStd"):
-			to = self.NormOutMeanStd(to)
+			to = self.UnNormOutMeanStd(to)
 		if (self.outnorm == "Logarithmic"):
-			to = self.NormOutLogarithmic(to)
-
-	def UnNormInFrobenius(self, ins):
-		for i in range(len(ti)):
-			ins[i] = ins[i]/(np.linalg.norm(ins[i])+1.0E-8)
-		return ti
+			to = self.UnNormOutLogarithmic(to)
+		return to
 
 	def UnNormOutMeanStd(self, to):
 		return to*self.outstd+self.outmean

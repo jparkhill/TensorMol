@@ -137,12 +137,12 @@ if(0):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
-a=MSet("benzene")
-a.Load()
-TreatedAtoms = a.AtomTypes()
-d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-tset = TensorData(a,d)
-tset.BuildTrainMolwise("benzene_NEQ",TreatedAtoms)
+#a=MSet("benzene")
+#a.Load()
+#TreatedAtoms = a.AtomTypes()
+#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+#tset = TensorData(a,d)
+#tset.BuildTrainMolwise("benzene_NEQ",TreatedAtoms)
 tset = TensorData(None,None,"benzene_NEQ_"+"GauSH")
 manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 
