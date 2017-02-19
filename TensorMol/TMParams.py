@@ -48,18 +48,18 @@ class TMParams(dict):
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 1000
-		self["test_freq"] = 50 
+		self["test_freq"] = 5 
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 
-	def __str__(self):
-	    tore=""
-	    for k in self.keys():
-	        tore = tore+k+":"+str(self[k])+"\n"
-	    return tore
+def __str__(self):
+	tore=""
+	for k in self.keys():
+		tore = tore+k+":"+str(self[k])+"\n"
+	return tore
 
 def TMBanner():
 	print("--------------------------\n")
@@ -78,16 +78,16 @@ def TMBanner():
 	print("--------------------------")
 
 def TMLogger(path_):
-    tore=logging.getLogger('TensorMol')
-    tore.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(filename=path_+time.ctime()+'.log')
-    fh.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    pformatter = logging.Formatter('%(message)s')
-    fh.setFormatter(fformatter)
-    ch.setFormatter(pformatter)
-    tore.addHandler(fh)
-    tore.addHandler(ch)
-    return tore
+	tore=logging.getLogger('TensorMol')
+	tore.setLevel(logging.DEBUG)
+	fh = logging.FileHandler(filename=path_+time.ctime()+'.log')
+	fh.setLevel(logging.DEBUG)
+	ch = logging.StreamHandler()
+	ch.setLevel(logging.INFO)
+	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+	pformatter = logging.Formatter('%(message)s')
+	fh.setFormatter(fformatter)
+	ch.setFormatter(pformatter)
+	tore.addHandler(fh)
+	tore.addHandler(ch)
+	return tore

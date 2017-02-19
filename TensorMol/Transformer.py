@@ -33,8 +33,8 @@ class Transformer:
 	def Print(self):
 		LOGGER.info("-------------------- ")
 		LOGGER.info("Transformer Information ")
-		LOGGER.info("self.innorm: "+self.innorm)
-		LOGGER.info("self.outnorm: "+self.outnorm)
+		LOGGER.info("self.innorm: "+str(self.innorm))
+		LOGGER.info("self.outnorm: "+str(self.outnorm))
 		LOGGER.info("-------------------- ")
 
 	def NormalizeIns(self, ins):
@@ -67,7 +67,7 @@ class Transformer:
 		self.outstd = np.std(outs, axis=0)
 
 	def NormOutMeanStd(self, outs):
-		self.AssignMeanStd(outs)
+		self.AssignOutMeanStd(outs)
 		return (outs - self.outmean)/self.outstd
 
 	def NormOutLogarithmic(self, outs):
