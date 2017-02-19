@@ -20,58 +20,46 @@ class Transformer:
 			Name_: type of digester to reduce molecules to NN inputs.
 			OType_: property of the molecule which will be learned (energy, force, etc)
 		"""
-		self.name = Name_
-		#Should check that normalization routines match input/output types here
+		self.Emb = Emb_
+		self.OType = OType_
 		if (InNorm_ != None):
 			self.innorm = InNorm_
 		if (OutNorm_ != None):
 			self.outnorm = OutNorm_
-		if (self.innorm == "MeanStd"):
-			self.AssignInMeanStd()
-		if (self.outnorm == "MeanStd"):
-			self.AssignOutMeanStd()
-		 # In Atomic units at 300K
-		# These are the key variables which determine the type of digestion.
-		self.eshape=None  #shape of an embedded case
-		self.lshape=None  #shape of the labels of an embedded case.
-		self.OType = OType_ # Output Type: HardP, SmoothP, StoP, Disp, Force, Energy etc. See Emb() for options.
-
-		self.NTrainSamples=1 # Samples per atom. Should be made a parameter.
-		if (self.OType == "SmoothP" or self.OType == "Disp"):
-			self.NTrainSamples=1 #Smoothprobability only needs one sample because it fits the go-probability and pgaussians-center.
-
-		self.eles = np.array(eles_)
-		self.eles.sort() # Consistent list of atoms in the order they are treated.
-		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
-		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
-		self.npgaussian = self.neles # channel of PGaussian
-		# Instead self.emb should know it's return shape or it should be testable.
-
-		self.SamplingType = PARAMS["dig_SamplingType"]
-		self.TrainSampDistance=2.0 #how far in Angs to sample on average.
-		self.ngrid = PARAMS["dig_ngrid"] #this is a shitty parameter if we go with anything other than RDF and should be replaced.
-		self.BlurRadius = PARAMS["BlurRadius"] # Stdev of gaussian used as prob of atom
-		self.SensRadius=6.0 # Distance which is used for input.
-
-		# These are used to normalize data.
-		self.MeanNorm=0.0
-		self.StdNorm=1.0
-
-		self.embtime=0.0
-		self.outtime=0.0
-
-		self.Print()
+		#Should check that normalization routines match input/output types here
 		return
 
-	def AssignOutMeanStd(self, to):
+	def Normalize(self, ti, to):
+		if (self.innorm == "Frobenius"):
+			ti = self.NormInFrobenius		
+		if (self.outnorm == "MeanStd"):
+			to = self.NormOutMeanStd(to)
+		if (self.outnorm == "Logarithmic"):
+			to = self.NormOutLogarithmic(to)
+		return ti, to
+
+	def NormInFrobenius(self, ins):
+		for i in range(len(ti)):
+			ins[i] = ins[i]/(np.linalg.norm(ins[i])+1.0E-8)
+		return ti
+
+	def AssignMeanStd(self, to):
 		self.outmean = np.mean(to, axis=0)
 		self.outstd = np.std(to, axis=0)
 		return
 
-	def AssignNormalization(self,mn,sn):
-		self.MeanNorm=mn
-		self.StdNorm=sn
-		return
+	def NormOutMeanStd(self, to):
+		self.AssignMeanStd(to)
+		to = (to - self.outmean)/self.outstd
+		return to
+
+	def NormOutLogarithmic(self, to):
+		for x in np.nditer(to, op_flags=["readwrite"]):
+			if x > 0:
+				x[...] = np.log10(x+1)
+			if x < 0:
+				x[...] = -np.log10(np.absolute(x-1))
+		return to
 
 	def MakeSamples_v2(self,point):    # with sampling function f(x)=M/(x+1)^2+N; f(0)=maxdisp,f(maxdisp)=0; when maxdisp =5.0, 38 % lie in (0, 0.1)
 		disps = samplingfunc_v2(self.TrainSampDistance * np.random.random(self.NTrainSamples), self.TrainSampDistance)

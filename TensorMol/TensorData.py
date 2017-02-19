@@ -60,7 +60,7 @@ class TensorData():
 		if (Name_!= None):
 			self.name = Name_
 			self.Load()
-			if (PARAMS["NormalizeInputs"] or PARAMS["NormalizeOutputs"]):
+			if (PARAMS["Normalize"]):
 				self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType):
 			return
 		elif (MSet_==None or Dig_==None):
@@ -377,11 +377,7 @@ class TensorData():
 			return (tmpinputs[ncases*(ministep):ncases*(ministep+1)], tmpoutputs[ncases*(ministep):ncases*(ministep+1)])
 		return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)])
 
-	def EvaluateTestBatch(self,desired,preds):
-		self.EvaluateTestOutputs(desired,preds)
-		return
-
-	def EvaluateTestOutputs(self, desired, predicted):
+	def EvaluateTestBatch(self, desired, predicted):
 		try:
 			print "Evaluating, ", len(desired), " predictions... "
 			print desired.shape, predicted.shape
@@ -623,7 +619,8 @@ class TensorData():
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)
 		# Here we should Check to see if we want to normalize inputs/outputs.
-		ti, to = self.tform.Normalize(ti, to)
+		if (PARAMS["Normalize"]):
+			ti, to = self.tform.Normalize(ti, to)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]

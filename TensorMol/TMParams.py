@@ -35,9 +35,8 @@ class TMParams(dict):
 		self["BlurRadius"] = 0.05
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# DATA usage parameters
-		self["NormalizeInputs"] = False
-		self["NormalizeOutputs"] = True
-		self["InNormRoutine"] = "MeanStd"
+		self["Normalize"] = True
+		self["NormalizeInputs"] = None
 		self["OutNormRoutine"] = "MeanStd"
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
