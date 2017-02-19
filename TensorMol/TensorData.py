@@ -64,8 +64,6 @@ class TensorData():
 			return
 		elif (MSet_==None or Dig_==None):
 			raise Exception("I need a set and Digester if you're not loading me.")
-		if (Tform_ != None):
-			self.tform = Tform_
 		self.name = ""
 
 	def CleanScratch(self):
@@ -385,14 +383,9 @@ class TensorData():
 				#comp=np.zeros(len(desired))
 				if (PARAMS["NormalizeOutputs"]):
 					for i in range(len(desired)):
-						ders[i] = np.linalg.norm(self.tform.unscld(predicted[i,-3:])-self.tform.unscld(desired[i,-3:]))
+						ders[i] = np.linalg.norm(self.tform.UnNormalizeOut(predicted[i,-3:])-self.tform.UnNormalizeOut(desired[i,-3:]))
 					for i in range(100):
-						print "Desired: ",i,self.tform.unscld(desired[i,-3:])," Predicted: ",self.tform.unscld(predicted[i,-3:])
-				elif (PARAMS["NormalizeOutputsLog"]):
-					for i in range(len(desired)):
-						ders[i] = np.linalg.norm(self.tform.unlog(predicted[i,-3:])-self.tform.unlog(desired[i,-3:]))
-					for i in range(100):
-						print "Desired: ",i,self.tform.unlog(desired[i,-3:])," Predicted: ",self.tform.unlog(predicted[i,-3:])
+						print "Desired: ",i,self.tform.UnNormalizeOut(desired[i,-3:])," Predicted: ",self.tform.UnNormalizeOut(predicted[i,-3:])
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
 				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))

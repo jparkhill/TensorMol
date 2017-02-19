@@ -63,11 +63,28 @@ class Transformer:
 				x[...] = -np.log10(np.absolute(x-1))
 		return to
 
-	def Unnormalize(self, to):
+	def UnNormalizeOut(self, to):
 		if (self.outnorm == "MeanStd"):
 			to = self.NormOutMeanStd(to)
 		if (self.outnorm == "Logarithmic"):
 			to = self.NormOutLogarithmic(to)
+
+	def UnNormInFrobenius(self, ins):
+		for i in range(len(ti)):
+			ins[i] = ins[i]/(np.linalg.norm(ins[i])+1.0E-8)
+		return ti
+
+	def UnNormOutMeanStd(self, to):
+		return to*self.outstd+self.outmean
+
+	def UnNormOutLogarithmic(self, to):
+		tmp = a.copy()
+		for x in np.nditer(tmp, op_flags=["readwrite"]):
+			if x > 0:
+				x[...] = (10**x)-1
+			if x < 0:
+				x[...] = (-1*(10**(-x)))+1
+		return tmp
 
 	def MakeSamples_v2(self,point):    # with sampling function f(x)=M/(x+1)^2+N; f(0)=maxdisp,f(maxdisp)=0; when maxdisp =5.0, 38 % lie in (0, 0.1)
 		disps = samplingfunc_v2(self.TrainSampDistance * np.random.random(self.NTrainSamples), self.TrainSampDistance)
@@ -113,29 +130,6 @@ class Transformer:
 		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy")
 		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy")
 		return (inputs-mean)/std
-
-	# def Normalize(self,ti,to):
-	# 	"""
-	# 	PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
-	# 	AND REMOVE THE OTHER ONE...
-	# 	-JAP
-	# 	"""
-	# 	if (self.NormalizeInputs):
-	# 		for i in range(len(ti)):
-	# 			ti[i] = ti[i]/(np.linalg.norm(ti[i])+1.0E-8)
-	# 	if (self.NormalizeOutputs):
-	# 		mo = np.average(to)
-	# 		to -= mo
-	# 		stdo = np.std(to)
-	# 		to /= stdo
-	# 		self.dig.AssignNormalization(mo,stdo)
-	# 	if (self.NormalizeOutputsLog):
-	# 		for x in np.nditer(to, op_flags=["readwrite"]):
-	# 			if x > 0:
-	# 				x[...] = np.log10(x+1)
-	# 			if x < 0:
-	# 				x[...] = -np.log10(np.absolute(x-1))
-	# 	return ti, to
 
 	def unscld(self,a):
 		"""
