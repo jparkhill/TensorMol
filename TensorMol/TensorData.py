@@ -45,9 +45,6 @@ class TensorData():
 		self.Classify=PARAMS["Classify"]
 		self.MxTimePerElement=PARAMS["MxTimePerElement"]
 		self.MxMemPerElement=PARAMS["MxMemPerElement"]
-		# self.NormalizeInputs = PARAMS["NormalizeInputs"]
-		# self.NormalizeOutputs = PARAMS["NormalizeOutputs"]
-		# self.NormalizeOutputsLog = PARAMS["NormalizeOutputsLog"]
 		self.ChopTo = PARAMS["ChopTo"]
 		self.ExpandIsometriesAltogether = False
 		self.ExpandIsometriesBatchwise = False
@@ -404,7 +401,7 @@ class TensorData():
 					ders[i] = np.linalg.norm(self.tform.UnNormalizeOuts(predictedc[i,-3:])-self.tform.UnNormalizeOuts(desiredc[i,-3:]))
 				for i in range(100):
 					print "Desired: ",i,self.tform.UnNormalizeOuts(desiredc[i,-3:])," Predicted: ",self.tform.UnNormalizeOuts(predictedc[i,-3:])
-			else:	
+			else:
 				for i in range(len(desiredc)):
 					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
 				for i in range(100):
@@ -581,29 +578,6 @@ class TensorData():
 		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy")
 		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy")
 		return (inputs-mean)/std
-
-	def Normalize(self,ti,to):
-		"""
-		PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
-		AND REMOVE THE OTHER ONE...
-		-JAP
-		"""
-		if (self.NormalizeInputs):
-			for i in range(len(ti)):
-				ti[i] = ti[i]/(np.linalg.norm(ti[i])+1.0E-8)
-		if (self.NormalizeOutputs):
-			mo = np.average(to)
-			to -= mo
-			stdo = np.std(to)
-			to /= stdo
-			self.tform.AssignNormalization(mo,stdo)
-		if (self.NormalizeOutputsLog):
-			for x in np.nditer(to, op_flags=["readwrite"]):
-				if x > 0:
-					x[...] = np.log10(x+1)
-				if x < 0:
-					x[...] = -np.log10(np.absolute(x-1))
-		return ti, to
 
 	def LoadElementToScratch(self,ele):
 		"""
