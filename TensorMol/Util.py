@@ -41,8 +41,12 @@ atoc = {1: 40, 6: 100, 7: 150, 8: 200, 9:240}
 atom_valance = {1:1, 8:2, 7:3, 6:4}
 bond_length_thresh = {"HH": 1.5, "HC": 1.5, "HN": 1.5, "HO": 1.5, "CC": 1.7, "CN": 1.7, "CO": 1.7, "NN": 1.7, "NO": 1.7, "OO": 1.7 }
 bond_index = {"HH": 1, "HC": 2, "HN": 3, "HO": 4, "CC": 5, "CN": 6, "CO": 7, "NN": 8, "NO": 9, "OO": 10}
+dihed_pair = {1006:1, 1007:2, 1008:3, 6006:4, 6007:5, 6008:6,  7006:7, 7007:8, 7008:9, 8006:10, 8007:11, 8008:12}  # atomic_1*1000 + atomic_2 hacky way to do that
 atomic_radius = {1:53.0, 2:31.0, 3:167.0, 4:112.0, 5:87.0, 6:67.0, 7:56.0, 8:48.0, 9:42.0, 10:38.0, 11:190.0, 12:145.0, 13:118.0, 14:111.0, 15:98.0, 16:88.0, 17:79.0, 18:71.0} # units in pm, ref: https://en.wikipedia.org/wiki/Atomic_radius
 atomic_radius_2 = {1:25.0, 3:145.0, 4:105.0, 5:85.0, 6:70.0, 7:65.0, 8:60.0, 9:50.0, 11:180.0, 12:150.0, 13:125.0, 14:110.0, 15:100.0, 16:100.0, 17:100.0} # units in pm, ref: https://en.wikipedia.org/wiki/Atomic_radius
+atomic_vdw_radius = {1:1.001, 2:1.012, 3:0.825, 4:1.408, 5:1.485, 6:1.452, 7:1.397, 8:1.342, 9:1.287, 10:1.243} # ref: http://onlinelibrary.wiley.com/doi/10.1002/jcc.20495/epdf   unit in angstrom
+C6_coff = {1:0.14, 2:0.08, 3:1.16, 4:1.61, 5:3.13, 6:1.75, 7:1.23, 8:0.70, 9:0.75, 10:0.63}  # ref: http://onlinelibrary.wiley.com/doi/10.1002/jcc.20495/epdf unit in Jnm^6/mol
+S6 = {"PBE": 0.75, "BLYP":1.2, "B-P86":1.05, "TPSS":1.0, "B3LYP":1.05}  # s6 scaler of different DF of Grimmer C6 scheme
 atomic_raidus_cho = {1:0.328, 6:0.754, 8:0.630} # roughly statisfy mp2 cc-pvtz equilibrium carbohydrate bonds.
 KAYBEETEE = 0.000950048 # At 300K
 BOHRPERA = 1.889725989
@@ -261,6 +265,16 @@ def Pair_In_List(l, pairs): # check whether l contain pair
 			return True
 	return False
 
+def Dihed_4Points(x1, x2, x3, x4): # dihedral angle constructed by x1 - x2 - x3 - x4
+	b1 = x2 - x1
+	b2 = x3 - x2
+	b3 = x4 - x3
+	c1 = np.cross(b1, b2)
+	c1 = c1/np.linalg.norm(c1)
+	c2 = np.cross(b2, b3)
+        c2 = c2/np.linalg.norm(c2)
+	b2 = b2/np.linalg.norm(b2)
+	return math.atan2(np.dot(np.cross(c1, c2), b2), np.dot(c1, c2))	
 
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

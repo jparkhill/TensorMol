@@ -118,6 +118,15 @@ class MolDigester:
                 deri_ConnectedBond_Angle_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
                 return ConnectedBond_Angle_CM_Bond_BP, deri_ConnectedBond_Angle_CM_Bond_BP
 
+        def make_connectedbond_angle_dihed_cm_bond_bp(self, mol):
+                CM_Bond_BP, CM_Bond_BP_deri = self.make_cm_bond_bp(mol)
+                ConnectedBond_Angle_Dihed_Bond_BP, ConnectedBond_Angle_Dihed_Bond_BP_deri = self.make_connectedbond_angle_dihed_bond_bp(mol)
+                ConnectedBond_Angle_Dihed_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Dihed_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
+                ConnectedBond_Angle_Dihed_CM_Bond_BP[:,:ConnectedBond_Angle_Dihed_Bond_BP.shape[1]] = ConnectedBond_Angle_Dihed_Bond_BP
+                ConnectedBond_Angle_Dihed_CM_Bond_BP[:,ConnectedBond_Angle_Dihed_Bond_BP.shape[1]:] = CM_Bond_BP
+                deri_ConnectedBond_Angle_Dihed_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Dihed_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
+                return ConnectedBond_Angle_Dihed_CM_Bond_BP, deri_ConnectedBond_Angle_Dihed_CM_Bond_BP
+
 	def make_connectedbond_bond_bp(self, mol):
 		ConnectedBond_Bond_BP = []
 		for i in range (0, mol.NBonds()):
@@ -232,6 +241,180 @@ class MolDigester:
                 return  ConnectedBond_Angle_Bond_BP, ConnectedBond_Angle_Bond_BP_deri
 
 
+        def make_connectedbond_angle_dihed_bond_bp(self, mol):
+                self.ngrid = 3
+		dihed_max = 9
+		ConnectedBond_Angle_Dihed_Bond_BP = []
+		#print "mol name", mol.name, "\n\n\n"
+                for i in range (0, mol.NBonds()):
+                        atom1 = int(mol.bonds[i][2])
+                        atom2 = int(mol.bonds[i][3])
+                        bond_dist =  mol.bonds[i][1]
+                        #print "bond :", i, "index:", atom1, atom2, "ele type:", mol.atoms[atom1], mol.atoms[atom2] 
+                        connected_bond1 = [[] for j in range (0, self.neles)]
+                        connected_angle1 = [[] for j in range (0, self.neles)]
+			connected_dihed1 = [[] for j in range (0, len(dihed_pair.keys()))]
+			connected_dihed1_dist1 = [[] for j in range (0, len(dihed_pair.keys()))]
+			connected_dihed1_dist2 = [[] for j in range (0, len(dihed_pair.keys()))]
+			connected_atom1 = [[] for j in range (0, self.neles)]
+                        for node in mol.atom_nodes[atom1].connected_nodes:
+                                atom_index = node.node_index
+                                if atom_index != atom2:
+                                        dist = mol.DistMatrix[atom1][atom_index]
+                                        dist2 = mol.DistMatrix[atom2][atom_index]
+                                        connected_bond1[list(self.eles).index(mol.atoms[atom_index])].append(1.0/dist)
+                                        connected_angle1[list(self.eles).index(mol.atoms[atom_index])].append((bond_dist**2+dist**2-dist2**2)/(2*bond_dist*dist))
+					connected_atom1[list(self.eles).index(mol.atoms[atom_index])].append(atom_index)
+                        #print "before sorting 1:",connected_bond1, connected_angle1
+                        for j  in range (0, len(connected_bond1)):
+                                connected_angle1[j] = [x for (y, x) in sorted(zip(connected_bond1[j], connected_angle1[j]))]
+				connected_atom1[j] = [x for (y, x) in sorted(zip(connected_bond1[j], connected_atom1[j]))]
+                                connected_bond1[j].sort()
+                                connected_bond1[j].reverse()
+				connected_atom1[j].reverse()
+                                connected_angle1[j].reverse()
+			#print "connected_atom1:", connected_atom1
+			for j in range (0, len(connected_atom1)):
+				for k in range (0, len(connected_atom1[j])):
+					atom_index = connected_atom1[j][k]
+					atom_ele =  mol.atoms[atom_index]
+					tmp_dist1 = [[] for m in range (0, self.neles)]
+					tmp_dist2 = [[] for m in range (0, self.neles)]
+					tmp_dihed = [[] for m in range (0, self.neles)]
+					#print "atom_index:", atom_index
+					for node in mol.atom_nodes[atom_index].connected_nodes:
+						dihed_atom_index = node.node_index
+						if dihed_atom_index != atom1:
+							dihed_atom_ele_index = list(self.eles).index(mol.atoms[dihed_atom_index])
+							dist1 = mol.DistMatrix[atom_index][dihed_atom_index]
+							dist2 = mol.DistMatrix[atom_index][atom1]
+							tmp_dist1[dihed_atom_ele_index].append(1.0/dist1)
+							tmp_dist2[dihed_atom_ele_index].append(1.0/dist2)
+							import warnings
+							with warnings.catch_warnings():
+                                                                warnings.filterwarnings('error')
+                                                                try:
+                                                                        theta = Dihed_4Points(mol.coords[atom2], mol.coords[atom1], mol.coords[atom_index], mol.coords[dihed_atom_index])
+                                                                except Warning as e:
+									print "coplane..."
+									theta = 0.0
+							tmp_dihed[dihed_atom_ele_index].append(math.cos(theta))
+					for m in range (0, len(tmp_dist1)):
+						tmp_dihed[m] = [x for (y, x) in sorted(zip(tmp_dist1[m], tmp_dihed[m]))]
+						tmp_dist1[m].sort()
+						tmp_dist1[m].reverse()
+						tmp_dihed[m].reverse()
+					tmp_dist1 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in tmp_dist1]
+					tmp_dihed = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in tmp_dihed]
+					tmp_dist2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in tmp_dist2]
+					for m in range (0, self.neles):
+						try:
+							pair = int(self.eles[m]*1000 + atom_ele)  # hacky way to find the index
+							pair_index = dihed_pair[pair] 
+							connected_dihed1[pair_index] += tmp_dihed[m]
+							connected_dihed1_dist1[pair_index] += tmp_dist1[m]
+							connected_dihed1_dist2[pair_index] += tmp_dist2[m]
+						except:
+							pass
+                        #print "after sorting 1:", connected_bond1, connected_angle1
+                        connected_bond1 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_bond1 ]
+                        connected_bond1 = [item for sublist in connected_bond1 for item in sublist]
+                        connected_angle1 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_angle1 ]
+                        connected_angle1 = [item for sublist in connected_angle1 for item in sublist]
+			#print "atom1:", atom1, "atom2:", atom2,"connected_dihed1:", connected_dihed1, " connected_dihed1_dist1:", connected_dihed1_dist1, "connected_dihed1_dist2", connected_dihed1_dist2
+			connected_dihed1 = [b[0:dihed_max] + [0]*(dihed_max-len(b)) for b in connected_dihed1 ]
+			connected_dihed1 = [item for sublist in connected_dihed1 for item in sublist]
+			connected_dihed1_dist1 = [b[0:dihed_max] + [0]*(dihed_max-len(b)) for b in connected_dihed1_dist1 ]
+                        connected_dihed1_dist1 = [item for sublist in connected_dihed1_dist1 for item in sublist]
+			connected_dihed1_dist2 = [b[0:dihed_max] + [0]*(dihed_max-len(b)) for b in connected_dihed1_dist2 ]
+                        connected_dihed1_dist2 = [item for sublist in connected_dihed1_dist2 for item in sublist]
+			#print "connected_dihed1:", connected_dihed1, " connected_dihed1_dist1:", connected_dihed1_dist1, "connected_dihed1_dist2", connected_dihed1_dist2
+
+			connected_bond2 = [[] for j in range (0, self.neles)]
+                        connected_angle2 = [[] for j in range (0, self.neles)]
+                        connected_dihed2 = [[] for j in range (0, len(dihed_pair.keys()))]
+                        connected_dihed2_dist1 = [[] for j in range (0, len(dihed_pair.keys()))]
+                        connected_dihed2_dist2 = [[] for j in range (0, len(dihed_pair.keys()))]
+                        connected_atom2 = [[] for j in range (0, self.neles)]
+                        for node in mol.atom_nodes[atom2].connected_nodes:
+                                atom_index = node.node_index
+                                if atom_index != atom1:
+                                        dist = mol.DistMatrix[atom2][atom_index]
+                                        dist2 = mol.DistMatrix[atom1][atom_index]
+                                        connected_bond2[list(self.eles).index(mol.atoms[atom_index])].append(1.0/dist)
+                                        connected_angle2[list(self.eles).index(mol.atoms[atom_index])].append((bond_dist**2+dist**2-dist2**2)/(2*bond_dist*dist))
+                                        connected_atom2[list(self.eles).index(mol.atoms[atom_index])].append(atom_index)
+                        #print "before sorting 1:",connected_bond1, connected_angle1
+                        for j  in range (0, len(connected_bond2)):
+                                connected_angle2[j] = [x for (y, x) in sorted(zip(connected_bond2[j], connected_angle2[j]))]
+                                connected_atom2[j] = [x for (y, x) in sorted(zip(connected_bond2[j], connected_atom2[j]))]
+                                connected_bond2[j].sort()
+                                connected_bond2[j].reverse()
+                                connected_atom2[j].reverse()
+                                connected_angle2[j].reverse()
+                        #print "connected_atom2:", connected_atom2
+                        for j in range (0, len(connected_atom2)):
+                                for k in range (0, len(connected_atom2[j])):
+                                        atom_index = connected_atom2[j][k]
+                                        atom_ele =  mol.atoms[atom_index]
+                                        tmp_dist1 = [[] for m in range (0, self.neles)]
+                                        tmp_dist2 = [[] for m in range (0, self.neles)]
+                                        tmp_dihed = [[] for m in range (0, self.neles)]
+                                        #print "atom_index:", atom_index
+                                        for node in mol.atom_nodes[atom_index].connected_nodes:
+                                                dihed_atom_index = node.node_index
+                                                if dihed_atom_index != atom2:
+                                                        dihed_atom_ele_index = list(self.eles).index(mol.atoms[dihed_atom_index])
+                                                        dist1 = mol.DistMatrix[atom_index][dihed_atom_index]
+                                                        dist2 = mol.DistMatrix[atom_index][atom2]
+                                                        tmp_dist1[dihed_atom_ele_index].append(1.0/dist1)
+                                                        tmp_dist2[dihed_atom_ele_index].append(1.0/dist2)
+							import warnings
+							with warnings.catch_warnings():
+								warnings.filterwarnings('error')
+								try:
+									theta = Dihed_4Points(mol.coords[atom1], mol.coords[atom2], mol.coords[atom_index], mol.coords[dihed_atom_index])
+								except Warning as e:
+									print "coplane..."
+									theta = 0.0
+                                                        tmp_dihed[dihed_atom_ele_index].append(math.cos(theta))
+                                        for m in range (0, len(tmp_dist1)):
+                                                tmp_dihed[m] = [x for (y, x) in sorted(zip(tmp_dist1[m], tmp_dihed[m]))]
+						tmp_dist1[m].sort()
+                                                tmp_dist1[m].reverse()
+                                                tmp_dihed[m].reverse()
+                                        tmp_dist1 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in tmp_dist1]
+                                        tmp_dihed = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in tmp_dihed]
+                                        tmp_dist2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in tmp_dist2]
+                                        for m in range (0, self.neles):
+                                                try:
+                                                        pair = int(self.eles[m]*1000 + atom_ele)  # hacky way to find the index
+                                                        pair_index = dihed_pair[pair]
+                                                        connected_dihed2[pair_index] += tmp_dihed[m]
+                                                        connected_dihed2_dist1[pair_index] += tmp_dist1[m]
+                                                        connected_dihed2_dist2[pair_index] += tmp_dist2[m]
+                                                except:
+                                                        pass
+                        #print "after sorting 1:", connected_bond1, connected_angle1
+                        connected_bond2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_bond2 ]
+                        connected_bond2 = [item for sublist in connected_bond2 for item in sublist]
+                        connected_angle2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_angle2 ]
+                        connected_angle2 = [item for sublist in connected_angle2 for item in sublist]
+                        #print "atom1:", atom1, "atom2:", atom2,"connected_dihed2:", connected_dihed2, " connected_dihed2_dist1:", connected_dihed2_dist1, "connected_dihed2_dist2", connected_dihed2_dist2, connected_bond2, connected_angle2
+                        connected_dihed2 = [b[0:dihed_max] + [0]*(dihed_max-len(b)) for b in connected_dihed2 ]
+                        connected_dihed2 = [item for sublist in connected_dihed2 for item in sublist]
+                        connected_dihed2_dist1 = [b[0:dihed_max] + [0]*(dihed_max-len(b)) for b in connected_dihed2_dist1 ]
+                        connected_dihed2_dist1 = [item for sublist in connected_dihed2_dist1 for item in sublist]
+                        connected_dihed2_dist2 = [b[0:dihed_max] + [0]*(dihed_max-len(b)) for b in connected_dihed2_dist2 ]
+                        connected_dihed2_dist2 = [item for sublist in connected_dihed2_dist2 for item in sublist]
+
+			connectedbond_angle_dihed_bond_bp = np.asarray(connected_bond1 + connected_bond2 + connected_angle1 + connected_angle2 + connected_dihed1 + connected_dihed1_dist1 + connected_dihed1_dist2 + connected_dihed2 + connected_dihed2_dist1 + connected_dihed2_dist2 + [1.0/bond_dist], dtype=np.float32)
+                        #print "connectedbond_bond_bp", connectedbond_bond_bp
+                        ConnectedBond_Angle_Dihed_Bond_BP.append(connectedbond_angle_dihed_bond_bp)
+                ConnectedBond_Angle_Dihed_Bond_BP = np.array(ConnectedBond_Angle_Dihed_Bond_BP)
+                ConnectedBond_Angle_Dihed_Bond_BP_deri = np.zeros((ConnectedBond_Angle_Dihed_Bond_BP.shape[0], ConnectedBond_Angle_Dihed_Bond_BP.shape[1]))
+                return  ConnectedBond_Angle_Dihed_Bond_BP, ConnectedBond_Angle_Dihed_Bond_BP_deri
+
 	def make_gauinv(self, mol):
 		""" This is a totally inefficient way of doing this
 			MolEmb should loop atoms. """
@@ -341,8 +524,12 @@ class MolDigester:
                         Ins, deri_BP = self.make_connectedbond_cm_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_Bond_BP"):
 			Ins, deri_BP = self.make_connectedbond_angle_bond_bp(mol_)
+		elif(self.name == "ConnectedBond_Angle_Dihed_Bond_BP"):
+			Ins, deri_BP = self.make_connectedbond_angle_dihed_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_CM_Bond_BP"):
                         Ins, deri_BP = self.make_connectedbond_angle_cm_bond_bp(mol_)
+		elif(self.name == "ConnectedBond_Angle_Dihed_CM_Bond_BP"):
+                        Ins, deri_BP = self.make_connectedbond_angle_dihed_cm_bond_bp(mol_)
 		else:
 			raise Exception("Unknown MolDigester Type.", self.name)
 
@@ -357,6 +544,8 @@ class MolDigester:
 				Outs = np.array([mol_.GoEnergy()])
 			elif (self.OType == "Atomization"):
 				Outs = np.array([mol_.atomization])
+			elif (self.OType == "Atomization_novdw"):
+                                Outs = np.array([mol_.atomization - mol_.vdw])
 			else:
 				raise Exception("Unknown Output Type... "+self.OType)
 			if (self.lshape == None):

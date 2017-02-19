@@ -144,22 +144,56 @@ if (1):
                 tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
                 tset.BuildTrain("gdb9_1_6_7_8_cleaned")
 
-	if (1):
+	if (0):
                 tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=500)
 
 	if (0):
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Test()
 
 	if (0):
                 a = MSet("SNB_bondstrength")
+		a.ReadXYZ("SNB_bondstrength")
+                a.Make_Graphs()
+		a.Save()
 		a.Load()
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a)
 
+	if (0):
+                # 1 - Get molecules into memory
+                a=MSet("gdb9_1_6_7_8_cleaned")
+                a.Load()
+		a.name = a.name + "_vdw"
+		a.Calculate_vdw()
+		a.Save()
+	if(0):
+                # 1 - Get molecules into memory
+                a=MSet("gdb9_1_6_7_8_cleaned_vdw")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                print "TreatedAtoms ", TreatedAtoms
+                TreatedBonds = list(a.BondTypes())
+                print "TreatedBonds ", TreatedBonds
+                d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_CM_Bond_BP", OType_="Atomization_novdw")  # Initialize a digester that apply descriptor for the fragments.
+                tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+                tset.BuildTrain("gdb9_1_6_7_8_cleaned_vdw")
 
+        if (0):
+                tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_cleaned_vdw_ConnectedBond_Angle_CM_Bond_BP")
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+                manager.Train(maxstep=500)
+
+	if (1):
+		a = MSet("gdb9_1_6_7_8_cleaned")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_Dihed_CM_Bond_BP", OType_="Atomization")  # Initialize a digester that apply descriptor for the fragments.
+                tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+              	tset.BuildTrain("gdb9_1_6_7_8_cleaned")
+	
 # Kun's tests.
 if (0):
 	if (0):

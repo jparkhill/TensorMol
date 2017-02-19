@@ -325,4 +325,9 @@ class MSet:
 			else:
 				s.mols.append(mol)
 		return s
-	
+
+	def Calculate_vdw(self):
+		for mol in self.mols:
+			mol.Calculate_vdw()
+			print "atomization:", mol.atomization, " vdw:", mol.vdw
+		return	

@@ -61,6 +61,7 @@ class Mol:
 		self.frag_pair_list = None
 		self.mob_all_frags = dict() # dictionary that stores all the necessary frags in mol format  for MOB dic[LtoS([list])] = mol
 		self.mob_energy = None
+		self.vdw = None
 		return
 
 	
@@ -833,6 +834,19 @@ class Mol:
 		for i in range (0, self.atoms.shape[0]):
 			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
 		return
+
+        def Calculate_vdw(self):
+                c = 0.38088 
+                self.vdw = 0.0
+                s6 = S6['B3LYP']
+                for i in range (0, self.NAtoms()):
+			atom1 = self.atoms[i]
+                        for j in range (i+1, self.NAtoms()):
+				atom2 = self.atoms[j]
+                                self.vdw += -s6*c*((C6_coff[atom1]*C6_coff[atom2])**0.5)/(self.DistMatrix[i][j])**6 * (1.0/(1.0+6.0*(self.DistMatrix[i][j]/(atomic_vdw_radius[atom1]+atomic_vdw_radius[atom2]))**-12))
+                return 
+
+
 
 	def AtomsWithin(self,rad, pt):
 		# Returns indices of atoms within radius of point.

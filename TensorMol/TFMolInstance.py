@@ -692,10 +692,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 #		test_result['nn'] = all_mols_nn
 #		test_result['acc'] = all_mols_acc
 #		test_result['length'] = bond_length
-#		f = open("test_result_cleaned_connectedbond_cm.dat","wb")
+#		f = open("test_result_cleaned_connectedbond_cm_angle.dat","wb")
 #		pickle.dump(test_result, f)
 #		f.close()
-
+#
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
 		duration = time.time() - start_time
 		#print ("preds:", preds, " label:", batch_data[2])
