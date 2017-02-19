@@ -5,6 +5,7 @@
 import os, gc
 from Sets import *
 from Digest import *
+from Transformer import *
 #import tables should go to hdf5 soon...
 
 class TensorData():
@@ -13,7 +14,7 @@ class TensorData():
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, Tform_=None, type_="atom"):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, type_="atom"):
 		"""
 		make a tensordata object
 		Several arguments of PARAMS affect this classes behavior
@@ -59,7 +60,8 @@ class TensorData():
 		if (Name_!= None):
 			self.name = Name_
 			self.Load()
-			self.QueryAvailable() # Should be a sanity check on the data files.
+			if (PARAMS["NormalizeInputs"] or PARAMS["NormalizeOutputs"]):
+				self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType):
 			return
 		elif (MSet_==None or Dig_==None):
 			raise Exception("I need a set and Digester if you're not loading me.")

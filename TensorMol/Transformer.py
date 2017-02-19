@@ -6,20 +6,32 @@ import LinearOperations
 
 class Transformer:
 	"""
-	 For various reasons it can be better to treat inputs and outputs different for evaluation than in training
-	 (Ie: run isometries when you )
+	Data manipulation routines for normalizing and other transformations to the
+	embedding and learning targets. TensorData initializes the transformer if
+	PARAMS["NormalizeInputs"] or PARAMS["NormalizeOutputs"] is set to True. The
+	choice of transformation routines are set by PARAMS["InNormRoutine"] and
+	PARAMS["OutNormRoutine"]
 	"""
-	def __init__(self, eles_, name_="GauSH", OType_="Disp"):
+	def __init__(self, InNorm_ = None, OutNorm_ = None, Emb_ = None, OType_ = None):
 		"""
 		Args:
-			eles_ : a list of elements in the Tensordata that I'll digest
-			name_: type of digester to reduce molecules to NN inputs.
+			InNorm_ : Input Normalization type
+			OutNorm_ Output Normalization type
+			Name_: type of digester to reduce molecules to NN inputs.
 			OType_: property of the molecule which will be learned (energy, force, etc)
 		"""
-
+		self.name = Name_
+		#Should check that normalization routines match input/output types here
+		if (InNorm_ != None):
+			self.innorm = InNorm_
+		if (OutNorm_ != None):
+			self.outnorm = OutNorm_
+		if (self.innorm == "MeanStd"):
+			self.AssignInMeanStd()
+		if (self.outnorm == "MeanStd"):
+			self.AssignOutMeanStd()
 		 # In Atomic units at 300K
 		# These are the key variables which determine the type of digestion.
-		self.name = name_ # Embedding type.
 		self.eshape=None  #shape of an embedded case
 		self.lshape=None  #shape of the labels of an embedded case.
 		self.OType = OType_ # Output Type: HardP, SmoothP, StoP, Disp, Force, Energy etc. See Emb() for options.
@@ -49,6 +61,11 @@ class Transformer:
 		self.outtime=0.0
 
 		self.Print()
+		return
+
+	def AssignOutMeanStd(self, to):
+		self.outmean = np.mean(to, axis=0)
+		self.outstd = np.std(to, axis=0)
 		return
 
 	def AssignNormalization(self,mn,sn):
