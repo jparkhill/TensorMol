@@ -176,7 +176,7 @@ class Instance:
 		f.close()
 		return
 
-	def variable_summaries(var):
+	def variable_summaries(self, var):
 		"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
 		with tf.name_scope('summaries'):
 			mean = tf.reduce_mean(var)
@@ -197,8 +197,8 @@ class Instance:
 		self.saver.save(self.sess, checkpoint_file_mini)
 		return
 
-#this isn't really the correct way to load()
-# only the local class members (not any TF objects should be unpickled.)
+	#this isn't really the correct way to load()
+	# only the local class members (not any TF objects should be unpickled.)
 	def Load(self):
 		LOGGER.info("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")

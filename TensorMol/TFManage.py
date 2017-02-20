@@ -151,15 +151,19 @@ class TFManage:
 		p = np.zeros((mol.NAtoms(),3))
 		pi = np.zeros((3,RotAv,mol.NAtoms(),3))
 		for atom in range(mol.NAtoms()):
-			ins = np.zeros((3*RotAv,PARAMS["SH_NRAD"]*(PARAMS["SH_LMAX"]+1)*(PARAMS["SH_LMAX"]+1)))
+			inputs = np.zeros((3*RotAv,PARAMS["SH_NRAD"]*(PARAMS["SH_LMAX"]+1)*(PARAMS["SH_LMAX"]+1)))
 			for ax in range(3):
 				axis = [0,0,0]
 				axis[ax] = 1
 				for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
 					mol_t = Mol(mol.atoms, mol.coords)
 					mol_t.Rotate(axis, theta, mol.coords[atom])
-					ins[ax*RotAv+i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-			outs = self.Instances[mol_t.atoms[atom]].evaluate(ins)
+					inputs[ax*RotAv+i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+			if (self.TData.tform.innorm != None):
+				inputs = self.TData.tform.NormalizeIns(inputs)
+			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)
+			if (self.TData.tform.outnorm != None):
+				outs = self.TData.tform.NormalizeOuts(outs)			
 			for ax in range(3):
 				axis = [0,0,0]
 				axis[ax] = 1
@@ -188,13 +192,17 @@ class TFManage:
 		pi = np.zeros((mol.NAtoms(),len(ops),3))
 		p = np.zeros((mol.NAtoms(),3))
 		for atom in range(mol.NAtoms()):
-			ins = np.zeros((len(ops),PARAMS["SH_NRAD"]*(PARAMS["SH_LMAX"]+1)*(PARAMS["SH_LMAX"]+1)))
+			inputs = np.zeros((len(ops),PARAMS["SH_NRAD"]*(PARAMS["SH_LMAX"]+1)*(PARAMS["SH_LMAX"]+1)))
 			for i in range(len(ops)):
 				op = ops[i]
 				mol_t = Mol(mol.atoms, mol.coords)
 				mol_t.Transform(op, mol.coords[atom])
-				ins[i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-			outs = self.Instances[mol_t.atoms[atom]].evaluate(ins)[0]
+				inputs[i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+			if (self.TData.tform.innorm != None):
+				inputs = self.TData.tform.NormalizeIns(inputs)
+			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
+			if (self.TData.tform.outnorm != None):
+				outs = self.TData.tform.NormalizeOuts(outs)
 			for i in range(len(ops)):
 				pi[atom,i] = np.dot(invops[i],outs[i].T).reshape(3)
 				p[atom] += np.sum(pi[atom,i], axis=0)
@@ -206,23 +214,14 @@ class TFManage:
 					print atom, i, pi[atom,i]
 		return p/(len(ops))
 
-	def evaluate(self, mol, atom, RotAv=10):
-		input = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
-		p = self.Instances[mol.atoms[atom]].evaluate(input)
-		return p[0]
-
-	def EvalOneAtom(self, mol, atom, maxstep = 0.2, ngrid = 50):
-		xyz, inputs = self.SampleAtomGrid( mol, atom, maxstep, ngrid)
+	def evaluate(self, mol, atom):
+		inputs = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
+		if (self.TData.tform.innorm != None):
+			inputs = self.TData.tform.NormalizeIns(inputs)
 		p = self.Instances[mol.atoms[atom]].evaluate(inputs)
-		if (np.sum(p**2)**0.5 != 0):
-			p = p/(np.sum(p**2))**0.5
-		else:
-			p.fill(1.0)
-		#Check finite-ness or throw
-		if(not np.all(np.isfinite(p))):
-			print p
-			raise Exception("BadTFOutput")
-		return xyz, p
+		if (self.TData.tform.outnorm != None):
+			p = self.tform.NormalizeOuts(p)
+		return p[0]
 
 	def EvalOneAtom(self, mol, atom, maxstep = 0.2, ngrid = 50):
 		xyz, inputs = self.SampleAtomGrid( mol, atom, maxstep, ngrid)
