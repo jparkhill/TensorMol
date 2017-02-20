@@ -11,7 +11,7 @@ class Transformer:
 	automatically if a .tdt file is loaded for training. The choice of transformation
 	routines are set by PARAMS["InNormRoutine"] and PARAMS["OutNormRoutine"].
 	"""
-	def __init__(self, InNorm_ = None, OutNorm_ = None, Emb_ = None, OType_ = None):
+	def __init__(self, InNorm_ = None, OutNorm_ = None, ele_ = None, Emb_ = None, OType_ = None):
 		"""
 		Args:
 			InNorm_ : Embedding normalization type
@@ -117,27 +117,3 @@ class Transformer:
 		labels = np.clip(-(dists - cutoff), 0, (-(dists - cutoff)).max())
 		labels[np.where(labels > 0)]=1
 		return labels
-
-#
-#  Embedding functions, called by batch digests. Use outside of Digester() is discouraged.
-#  Instead call a batch digest routine.
-#
-
-	def NormalizeInputs(self, ele):
-		"""
-		PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
-		AND REMOVE THE OTHER ONE...
-		JAP
-		"""
-		mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))
-		std = (np.std(self.scratch_inputs, axis=0)).reshape((1, -1))
-		self.scratch_inputs = (self.scratch_inputs-mean)/std
-		self.scratch_test_inputs = (self.scratch_test_inputs-mean)/std
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy", mean)
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy",std)
-		return
-
-	def ApplyNormalize(self, inputs, ele):
-		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy")
-		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy")
-		return (inputs-mean)/std

@@ -41,6 +41,7 @@ class TFManage:
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData
+		self.Transformers=[None for i in range(MAX_ATOMIC_NUMBER)]
 		if (Train_):
 			self.Train()
 			return
@@ -89,6 +90,7 @@ class TFManage:
 			self.Instances[ele] = Instance_KRR(self.TData, ele, None)
 		else:
 			raise Exception("Unknown Network Type!")
+		self.Transformers[ele] = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], ele, self.dig.name, self.dig.OType)
 		#self.Instances[ele].train_prepare()
 		#for step in range (0, 10):
 			#self.Instances[ele].train_step(step)
@@ -165,7 +167,7 @@ class TFManage:
 			print self.TData.tform.outnorm
 			print self.TData.tform.outmean, self.TData.tform.outstd
 			if (self.TData.tform.outnorm != None):
-				outs = self.TData.tform.NormalizeOuts(outs)			
+				outs = self.TData.tform.NormalizeOuts(outs)
 			for ax in range(3):
 				axis = [0,0,0]
 				axis[ax] = 1
