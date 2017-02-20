@@ -574,7 +574,6 @@ class TensorData():
 		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp" and self.ExpandIsometriesAltogether):
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)
-		# Here we should Check to see if we want to normalize inputs/outputs.
 		if (tformer.innorm != None):
 			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):

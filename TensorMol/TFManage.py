@@ -159,7 +159,7 @@ class TFManage:
 					mol_t.Rotate(axis, theta, mol.coords[atom])
 					inputs[ax*RotAv+i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
 			if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
-				inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs)
+				inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)
 			if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
 				outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
@@ -198,7 +198,7 @@ class TFManage:
 				mol_t.Transform(op, mol.coords[atom])
 				inputs[i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
 			if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
-				inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs)
+				inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
 			if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
 				outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
@@ -216,7 +216,7 @@ class TFManage:
 	def evaluate(self, mol, atom):
 		inputs = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
-			inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs)
+			inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
 		outs = self.Instances[mol.atoms[atom]].evaluate(inputs)
 		if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
 			outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)

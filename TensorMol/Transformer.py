@@ -16,8 +16,9 @@ class Transformer:
 		Args:
 			InNorm_ : Embedding normalization type
 			OutNorm_: Learning target normalization type
-			Emb_: type of digester to reduce molecules to NN inputs.
-			OType_: property of the molecule which will be learned (energy, force, etc)
+			ele_: Element type for this transformer
+			Emb_: Type of digester to reduce molecules to NN inputs.
+			OType_: Property of the molecule which will be learned (energy, force, etc)
 		"""
 		self.Emb = Emb_
 		self.OType = OType_
@@ -42,14 +43,18 @@ class Transformer:
 			LOGGER.info("self.outstd: "+str(self.outstd))
 		LOGGER.info("-------------------- ")
 
-	def NormalizeIns(self, ins):
+	def NormalizeIns(self, ins, train=True):
 		if (self.innorm == "Frobenius"):
 			return self.NormInFrobenius(ins)
 		elif (self.innorm == "MeanStd"):
+			if (train):
+				self.AssignInMeanStd(outs)
 			return self.NormInMeanStd(ins)
 
-	def NormalizeOuts(self, outs):
+	def NormalizeOuts(self, outs, train=True):
 		if (self.outnorm == "MeanStd"):
+			if (train):
+				self.AssignOutMeanStd(outs)
 			return self.NormOutMeanStd(outs)
 		elif (self.outnorm == "Logarithmic"):
 			return self.NormOutLogarithmic(outs)
@@ -64,7 +69,6 @@ class Transformer:
 		self.instd = (np.std(ins, axis=0)).reshape((1, -1))
 
 	def NormInMeanStd(self, ins):
-		self.AssignInMeanStd(ins)
 		return (ins - self.inmean)/self.instd
 
 	def AssignOutMeanStd(self, outs):
@@ -72,7 +76,6 @@ class Transformer:
 		self.outstd = np.std(outs, axis=0)
 
 	def NormOutMeanStd(self, outs):
-		self.AssignOutMeanStd(outs)
 		return (outs - self.outmean)/self.outstd
 
 	def NormOutLogarithmic(self, outs):
