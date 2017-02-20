@@ -579,7 +579,7 @@ class TensorData():
 		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy")
 		return (inputs-mean)/std
 
-	def LoadElementToScratch(self,ele):
+	def LoadElementToScratch(self,ele,tformer):
 		"""
 		Reads built training data off disk into scratch space.
 		Divides training and test data.
@@ -595,9 +595,9 @@ class TensorData():
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)
 		# Here we should Check to see if we want to normalize inputs/outputs.
-		if (self.tform.innorm != None):
+		if (tformer.innorm != None):
 			ti = self.tform.NormalizeIns(ti)
-		if (self.tform.outnorm != None):
+		if (tformer.outnorm != None):
 			to = self.tform.NormalizeOuts(to)
 		#if (PARAMS["Normalize"]):
 		#	ti, to = self.tform.Normalize(ti, to)

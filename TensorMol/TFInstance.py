@@ -54,6 +54,7 @@ class Instance:
 
 		self.element = ele_
 		self.TData = TData_
+		self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
 		self.chk_file = ''
@@ -340,7 +341,7 @@ class Instance:
 		return train_op
 
 	def train(self, mxsteps, continue_training= False):
-		self.TData.LoadElementToScratch(self.element)
+		self.TData.LoadElementToScratch(self.element, self.tformer)
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
