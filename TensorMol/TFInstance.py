@@ -70,13 +70,9 @@ class Instance:
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		if (ele_ != 0):
-			self.TData.LoadElementToScratch(ele_)
+		if (self.element != 0):
+			self.TData.LoadElementToScratch(self.element, self.tformer)
 			self.TData.PrintStatus()
-			if (self.TData.dig.name=="SymFunc"):
-				# Kun: NOOO please keep it homogeneous! LoadElementToScratch() should do this.
-				self.TData.NormalizeInputs(ele_)  # let me just normolize it here for sym functions...needs a flag in future
-				self.normalize=True
 			self.inshape = self.TData.dig.eshape
 			self.outshape = self.TData.dig.lshape
 		return
@@ -341,7 +337,6 @@ class Instance:
 		return train_op
 
 	def train(self, mxsteps, continue_training= False):
-		self.TData.LoadElementToScratch(self.element, self.tformer)
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
@@ -613,7 +608,7 @@ class Instance_fc_sqdiff(Instance):
 		batch_data=self.TData.GetTestBatch(self.element,  self.batch_size)#, ministep)
 		feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
-		self.TData.EvaluateTestBatch(batch_data[1],preds)
+		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
 		test_loss = test_loss + loss_value
 		duration = time.time() - test_start_time
 		print("testing...")
@@ -777,7 +772,7 @@ class Instance_3dconv_sqdiff(Instance):
 		batch_data=self.PrepareData(self.TData.GetTestBatch(self.element,  self.batch_size))#, ministep)
 		feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
-		self.TData.EvaluateTestBatch(batch_data[1],preds)
+		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
 		test_loss = test_loss + loss_value
 		duration = time.time() - test_start_time
 		LOGGER.info("testing...")
@@ -840,7 +835,7 @@ class Instance_KRR(Instance):
 		test_start_time = time.time()
 		ti,to = self.TData.GetTestBatch(self.element,  self.batch_size)
 		preds  = self.krr.predict(ti)
-		self.TData.EvaluateTestBatch(to,preds)
+		self.TData.EvaluateTestBatch(to,preds, self.tformer)
 		return None, None
 
 	def PrepareData(self, batch_data):

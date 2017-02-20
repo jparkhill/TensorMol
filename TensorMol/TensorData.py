@@ -56,7 +56,7 @@ class TensorData():
 		if (Name_!= None):
 			self.name = Name_
 			self.Load()
-			self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType)
+			# self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType)
 			return
 		elif (MSet_==None or Dig_==None):
 			raise Exception("I need a set and Digester if you're not loading me.")
@@ -370,18 +370,18 @@ class TensorData():
 			return (tmpinputs[ncases*(ministep):ncases*(ministep+1)], tmpoutputs[ncases*(ministep):ncases*(ministep+1)])
 		return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)])
 
-	def EvaluateTestBatch(self, desired, predicted):
+	def EvaluateTestBatch(self, desired, predicted, tformer):
 		#try:
 		print "Evaluating, ", len(desired), " predictions... "
 		print desired.shape, predicted.shape
 		if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
 			ders=np.zeros(len(desired))
 			#comp=np.zeros(len(desired))
-			if (self.tform.outnorm != None):
+			if (tformer.outnorm != None):
 				for i in range(len(desired)):
-					ders[i] = np.linalg.norm(self.tform.UnNormalizeOuts(predicted[i,-3:])-self.tform.UnNormalizeOuts(desired[i,-3:]))
+					ders[i] = np.linalg.norm(tformer.UnNormalizeOuts(predicted[i,-3:])-tformer.UnNormalizeOuts(desired[i,-3:]))
 				for i in range(100):
-					print "Desired: ",i,self.tform.UnNormalizeOuts(desired[i,-3:])," Predicted: ",self.tform.UnNormalizeOuts(predicted[i,-3:])
+					print "Desired: ",i,tformer.UnNormalizeOuts(desired[i,-3:])," Predicted: ",tformer.UnNormalizeOuts(predicted[i,-3:])
 			else:
 				for i in range(len(desired)):
 					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
@@ -396,11 +396,11 @@ class TensorData():
 			predictedc = SphereToCartV(predicted)
 			ders=np.zeros(len(desired))
 			#comp=np.zeros(len(desired))
-			if (self.tform.outnorm != None):
+			if (tformer.outnorm != None):
 				for i in range(len(desiredc)):
-					ders[i] = np.linalg.norm(self.tform.UnNormalizeOuts(predictedc[i,-3:])-self.tform.UnNormalizeOuts(desiredc[i,-3:]))
+					ders[i] = np.linalg.norm(tformer.UnNormalizeOuts(predictedc[i,-3:])-tformer.UnNormalizeOuts(desiredc[i,-3:]))
 				for i in range(100):
-					print "Desired: ",i,self.tform.UnNormalizeOuts(desiredc[i,-3:])," Predicted: ",self.tform.UnNormalizeOuts(predictedc[i,-3:])
+					print "Desired: ",i,tformer.UnNormalizeOuts(desiredc[i,-3:])," Predicted: ",tformer.UnNormalizeOuts(predictedc[i,-3:])
 			else:
 				for i in range(len(desiredc)):
 					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
@@ -560,25 +560,6 @@ class TensorData():
 		self.ScratchNCase = to.shape[0]
 		return ti, to
 
-	def NormalizeInputs(self, ele):
-		"""
-		PLEASE MAKE THESE TWO WAYS OF NORMALIZING CONSISTENT.
-		AND REMOVE THE OTHER ONE...
-		JAP
-		"""
-		mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))
-		std = (np.std(self.scratch_inputs, axis=0)).reshape((1, -1))
-		self.scratch_inputs = (self.scratch_inputs-mean)/std
-		self.scratch_test_inputs = (self.scratch_test_inputs-mean)/std
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy", mean)
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy",std)
-		return
-
-	def ApplyNormalize(self, inputs, ele):
-		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_MEAN.npy")
-		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in_STD.npy")
-		return (inputs-mean)/std
-
 	def LoadElementToScratch(self,ele,tformer):
 		"""
 		Reads built training data off disk into scratch space.
@@ -596,9 +577,9 @@ class TensorData():
 			ti,to = GRIDS.ExpandIsometries(ti,to)
 		# Here we should Check to see if we want to normalize inputs/outputs.
 		if (tformer.innorm != None):
-			ti = self.tform.NormalizeIns(ti)
+			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):
-			to = self.tform.NormalizeOuts(to)
+			to = tformer.NormalizeOuts(to)
 		#if (PARAMS["Normalize"]):
 		#	ti, to = self.tform.Normalize(ti, to)
 		self.NTest = int(self.TestRatio * ti.shape[0])

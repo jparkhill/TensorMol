@@ -65,8 +65,6 @@ class Transformer:
 	def AssignOutMeanStd(self, outs):
 		self.outmean = np.mean(outs, axis=0)
 		self.outstd = np.std(outs, axis=0)
-		print self.outmean
-		print self.outstd
 
 	def NormOutMeanStd(self, outs):
 		self.AssignOutMeanStd(outs)

@@ -158,14 +158,11 @@ class TFManage:
 					mol_t = Mol(mol.atoms, mol.coords)
 					mol_t.Rotate(axis, theta, mol.coords[atom])
 					inputs[ax*RotAv+i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-			print self.TData.tform.innorm
-			if (self.TData.tform.innorm != None):
-				inputs = self.TData.tform.NormalizeIns(inputs)
+			if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
+				inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs)
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)
-			print self.TData.tform.outnorm
-			print self.TData.tform.outmean, self.TData.tform.outstd
-			if (self.TData.tform.outnorm != None):
-				outs = self.TData.tform.NormalizeOuts(outs)
+			if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
+				outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
 			for ax in range(3):
 				axis = [0,0,0]
 				axis[ax] = 1
@@ -200,11 +197,11 @@ class TFManage:
 				mol_t = Mol(mol.atoms, mol.coords)
 				mol_t.Transform(op, mol.coords[atom])
 				inputs[i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-			if (self.TData.tform.innorm != None):
-				inputs = self.TData.tform.NormalizeIns(inputs)
+			if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
+				inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs)
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
-			if (self.TData.tform.outnorm != None):
-				outs = self.TData.tform.NormalizeOuts(outs)
+			if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
+				outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
 			for i in range(len(ops)):
 				pi[atom,i] = np.dot(invops[i],outs[i].T).reshape(3)
 				p[atom] += np.sum(pi[atom,i], axis=0)
@@ -218,12 +215,12 @@ class TFManage:
 
 	def evaluate(self, mol, atom):
 		inputs = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
-		if (self.TData.tform.innorm != None):
-			inputs = self.TData.tform.NormalizeIns(inputs)
-		p = self.Instances[mol.atoms[atom]].evaluate(inputs)
-		if (self.TData.tform.outnorm != None):
-			p = self.tform.NormalizeOuts(p)
-		return p[0]
+		if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
+			inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs)
+		outs = self.Instances[mol.atoms[atom]].evaluate(inputs)
+		if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
+			outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
+		return outs[0]
 
 	def EvalOneAtom(self, mol, atom, maxstep = 0.2, ngrid = 50):
 		xyz, inputs = self.SampleAtomGrid( mol, atom, maxstep, ngrid)
