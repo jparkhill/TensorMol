@@ -42,13 +42,13 @@ class TMParams(dict):
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
 		self["results_dir"] = "./results/"
-		self["RotAvOutputs"] = 0 # Rotational averaging of force outputs.
-		self["OctahedralAveraging"] = 1 # Octahedrally Average Outputs
+		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
+		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-		self["max_steps"] = 1000
-		self["test_freq"] = 5 
+		self["max_steps"] = 500
+		self["test_freq"] = 50 
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512

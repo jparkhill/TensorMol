@@ -54,7 +54,6 @@ class TFManage:
 		print "Will train a NNetwork for each element in: ", self.TData.name
 		for i in range(len(self.TData.AvailableElements)):
 			self.TrainElement(self.TData.AvailableElements[i])
-		self.Save()
 		return
 
 	def Save(self):
@@ -159,9 +158,12 @@ class TFManage:
 					mol_t = Mol(mol.atoms, mol.coords)
 					mol_t.Rotate(axis, theta, mol.coords[atom])
 					inputs[ax*RotAv+i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
+			print self.TData.tform.innorm
 			if (self.TData.tform.innorm != None):
 				inputs = self.TData.tform.NormalizeIns(inputs)
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)
+			print self.TData.tform.outnorm
+			print self.TData.tform.outmean, self.TData.tform.outstd
 			if (self.TData.tform.outnorm != None):
 				outs = self.TData.tform.NormalizeOuts(outs)			
 			for ax in range(3):
