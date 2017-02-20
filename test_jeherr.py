@@ -137,18 +137,18 @@ if(0):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
-a=MSet("toluene_tmp")
-a.Load()
-test_mol = a.mols[0]
+# a=MSet("toluene_tmp")
+# a.Load()
+# test_mol = a.mols[0]
 #TreatedAtoms = a.AtomTypes()
 #d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 #tset = TensorData(a,d)
 #tset.BuildTrainMolwise("benzene_NEQ",TreatedAtoms)
-# tset = TensorData(None,None,"toluene_tmp_GauSH")
-# manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-manager=TFManage("toluene_tmp_GauSH_fc_sqdiff",None,False)
-optimizer = Optimizer(manager)
-optimizer.OptTFRealForce(test_mol)
+tset = TensorData(None,None,"toluene_tmp_GauSH")
+manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+# manager=TFManage("toluene_tmp_GauSH_fc_sqdiff",None,False)
+# optimizer = Optimizer(manager)
+# optimizer.OptTFRealForce(test_mol)
 
 #a=MSet("benzene")
 #a.Load()

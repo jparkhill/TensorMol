@@ -56,7 +56,6 @@ class TensorData():
 		if (Name_!= None):
 			self.name = Name_
 			self.Load()
-			# self.tform = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.dig.name, self.dig.OType)
 			return
 		elif (MSet_==None or Dig_==None):
 			raise Exception("I need a set and Digester if you're not loading me.")
@@ -580,8 +579,6 @@ class TensorData():
 			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):
 			to = tformer.NormalizeOuts(to)
-		#if (PARAMS["Normalize"]):
-		#	ti, to = self.tform.Normalize(ti, to)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]

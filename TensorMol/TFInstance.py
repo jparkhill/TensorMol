@@ -72,6 +72,7 @@ class Instance:
 		self.train_dir = './networks/'+self.name
 		if (self.element != 0):
 			self.TData.LoadElementToScratch(self.element, self.tformer)
+			self.tformer.Print()
 			self.TData.PrintStatus()
 			self.inshape = self.TData.dig.eshape
 			self.outshape = self.TData.dig.lshape
@@ -100,7 +101,7 @@ class Instance:
 		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder)
 			self.saver = tf.train.Saver()
@@ -419,7 +420,7 @@ class Instance_fc_classify(Instance):
 		self.correct = None
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder)
 			self.correct = self.n_correct(self.output, self.labels_placeholder)
