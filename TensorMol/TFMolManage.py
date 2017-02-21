@@ -165,8 +165,8 @@ class TFMolManage(TFManage):
 		self.Instances.TData = self.TData
 		self.Instances.TData.LoadDataToScratch()
 		self.Instances.Prepare()
-		self.Instances.test(-1)
-		#self.Instances.TData.Init_TraceBack()
+		self.Instances.test_after_training(-1)
+		self.Instances.TData.Init_TraceBack()
 		return
 
 

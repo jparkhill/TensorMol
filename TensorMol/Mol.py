@@ -42,8 +42,10 @@ class Mol:
 		self.qchem_data_path = None
 		self.atom_nodes = None
 		self.J_coupling = None
-		self.bonds = None  #{bond_type, length, atom_index_1, atom_index_2}
+		self.bonds = None  #{connection type, length, atom_index_1, atom_index_2}
 		self.bond_type = None # define whether it is a single, double or triple bond
+		self.bond_conju = None # whether a bond is in a conjugated system
+		self.bond_index = None # the bond index between two atoms
 		self.Bonds_Between  = None
 		self.H_Bonds_Between = None
 		# all_frags_index, overlap_index_list, frags_type, overlaps_type, all_frags_mol, all_overlaps_mol
@@ -84,6 +86,7 @@ class Mol:
 					#print np.array([bond_type, dist, pair_index[0], pair_index[1]]), " atom type:", self.atoms[pair_index[0]], self.atoms[pair_index[1]]
 		self.bonds = np.asarray(self.bonds)
 		self.Calculate_Bond_Type()
+		self.Define_Conjugation()
 		return
 			
 	def Calculate_Bond_Type(self):
@@ -187,6 +190,99 @@ class Mol:
 				return 0
 		except:
 			return -2
+
+
+	def Define_Conjugation(self):
+		self.bond_conju  = np.zeros(self.NBonds(), dtype = bool )
+		finished_bonds = []
+		for i in range (0, self.NBonds()):
+			if i not in finished_bonds:
+				conju = False
+				atom1 = int(self.bonds[i][2])
+				atom2 = int(self.bonds[i][3])
+				bond_type = self.bond_type[i]
+				if (bond_type == 1): # single bond
+					flag = 0
+					for node in self.atom_nodes[atom1].connected_nodes:
+						if node.node_index != atom2:
+							pair = [atom1, node.node_index]
+							pair.sort()
+							bond_index = self.bond_index[LtoS(pair)]
+							if (self.bond_type[bond_index] != 1):
+								tmp_bond_1  = bond_index
+								flag += 1 
+								break
+					if flag == 1:
+						for node in self.atom_nodes[atom2].connected_nodes:
+                                                	if node.node_index != atom1:
+                                                        	pair = [atom2, node.node_index]
+								pair.sort()
+                                                        	bond_index = self.bond_index[LtoS(pair)]
+                                                        	if (self.bond_type[bond_index] != 1):
+                                                               		tmp_bond_2  = bond_index
+                                                                	flag += 1
+                                                                	break
+					if flag == 2:
+						self.bond_conju[tmp_bond_1] = True
+						self.bond_conju[tmp_bond_2] = True
+						self.bond_conju[i] = True
+						finished_bonds += [i, tmp_bond_1, tmp_bond_2]
+				
+				elif(bond_type == 2 or bond_type == 3):
+					flag = 0
+					for node in self.atom_nodes[atom1].connected_nodes:
+						if flag == 1:
+							break	
+						if node.node_index != atom2:
+							pair1 = [atom1, node.node_index]
+							pair1.sort()
+                                                        bond_index_1 = self.bond_index[LtoS(pair1)]
+							for next_node in node.connected_nodes:
+								if next_node.node_index != atom1:
+									pair2 = [next_node.node_index, node.node_index]
+									pair2.sort()
+									bond_index_2 = self.bond_index[LtoS(pair2)]
+									if (self.bond_type[bond_index_2] != 1):
+										flag = 1
+										self.bond_conju[i] = True
+										self.bond_conju[bond_index_1] = True
+										self.bond_conju[bond_index_2] = True
+										finished_bonds += [i, bond_index_1, bond_index_2]
+										break
+					if flag != 1:
+						for node in self.atom_nodes[atom2].connected_nodes:
+							if flag == 1:
+								break
+							if node.node_index != atom1:
+								pair1 = [atom2, node.node_index]
+								pair1.sort()
+								bond_index_1 = self.bond_index[LtoS(pair1)]
+								for next_node in node.connected_nodes:
+									if next_node.node_index != atom2:
+										pair2 = [next_node.node_index, node.node_index]
+										pair2.sort()
+										bond_index_2 = self.bond_index[LtoS(pair2)]
+										if (self.bond_type[bond_index_2] != 1):
+											flag = 1
+											self.bond_conju[i] = True
+											self.bond_conju[bond_index_1] = True
+											self.bond_conju[bond_index_2] = True
+											finished_bonds += [i, bond_index_1, bond_index_2]
+											break
+				else:
+					pass
+		return										
+				
+			
+	def Find_Bond_Index(self):
+		#print "name", self.name, "\n\n\nbonds", self.bonds, " bond_type:", self.bond_type
+		self.bond_index = dict()
+		for i in range (0, self.NBonds()):
+			pair = [int(self.bonds[i][2]), int(self.bonds[i][3])]
+			pair.sort()
+			self.bond_index[LtoS(pair)] = i
+		return
+
 
 	def Make_AtomNodes(self):
 		atom_nodes = []

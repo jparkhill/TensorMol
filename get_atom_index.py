@@ -2,14 +2,67 @@ import pickle
 import numpy as np
 from TensorMol import *
 
-a=MSet("gdb9_1_6_7_8")
+a=MSet("gdb9_1_6_7_8_cleaned_for_test")
 a.Load()
-mol_index_list = pickle.load(open("test_atom_index.dat", "rb"))
+mol_index_list = pickle.load(open("test_atom_index_for_test.dat", "rb"))
 
 bond_energys = []
 eles = a.BondTypes()
 for i in range (0, len(a.BondTypes())):
-        bond_energys.append(np.loadtxt("bond_"+str(i)+"_connectedbond.dat"))
+        bond_energys.append(np.loadtxt("bond_"+str(i)+"_connectedbond_angle_cm_for_test.dat"))
+
+
+if (0):
+	ele = bond_index['CC']
+	conju1 = []
+	noconju1 = []
+	conju2 = []
+	noconju2 = []
+	conju3 = []
+	noconju3 = []
+	ele_index = list(eles).index(ele)
+	print "ele_index:", ele_index, eles
+	bond_energy = bond_energys[ele_index]
+        mol_index=mol_index_list[ele_index]
+	for i in range (0, bond_energy.shape[0]):
+		length = bond_energy[i][0]
+		energy = bond_energy[i][1]
+		mol_num = mol_index[i][0]  
+		bond_num = mol_index[i][1]
+		bond_type = a.mols[mol_num].bond_type[bond_num]
+		bond_conju = a.mols[mol_num].bond_conju[bond_num]
+		print length, energy, bond_type, bond_conju
+		if bond_type == 1:
+			if bond_conju:
+				conju1.append([length, energy])
+			else:
+				noconju1.append([length, energy])
+		elif bond_type == 2:
+			if bond_conju:
+                                conju2.append([length, energy])
+                        else:
+                                noconju2.append([length, energy])
+		elif bond_type == 3:
+			if bond_conju:
+                                conju3.append([length, energy])
+                        else:
+                                noconju3.append([length, energy])
+		else:
+			print ("woops..")
+			pass
+	conju1 = np.asarray(conju1)
+	conju2 = np.asarray(conju2)
+	conju3 = np.asarray(conju3)
+	noconju1 = np.asarray(noconju1)
+	noconju2 = np.asarray(noconju2)
+	noconju3 = np.asarray(noconju3)
+	np.savetxt("./BP_data/CC_conju1.dat", conju1)
+	np.savetxt("./BP_data/CC_conju2.dat", conju2)
+	np.savetxt("./BP_data/CC_conju3.dat", conju3)
+	np.savetxt("./BP_data/CC_noconju1.dat", noconju1)
+	np.savetxt("./BP_data/CC_noconju2.dat", noconju2)
+	np.savetxt("./BP_data/CC_noconju3.dat", noconju3)	
+
 
 if (0):
 	index_list = [10000,20000,30000,40000,50000,60000,70000,80000,90000,100000]
@@ -30,26 +83,29 @@ if (0):
 		a.mols[index].WriteXYZfile(fname = str(index))
 		print "\n\n"
 
-if (0):
-	ele = bond_index['NN']
+if (1):
+	ele = bond_index['CC']
 	ele_index = list(eles).index(ele)
 	print "ele_index:", ele_index, eles
 	bond_energy = bond_energys[ele_index]
 	mol_index=mol_index_list[ele_index]
-	badOH = 1
+	badCC = 1
 	for i in range (0, bond_energy.shape[0]):
 		length = bond_energy[i][0]
 		energy = bond_energy[i][1]
-		if length < 1.2 and energy < -900:
-			mol_num = mol_index[i][0]	
-			bond_num = mol_index[i][1]
-			print a.mols[mol_num].bonds, " bond_num", bond_num
+		mol_num = mol_index[i][0]	
+		bond_num = mol_index[i][1]
+		if 1.412 <  length < 1.422 and -520  > energy and not a.mols[mol_num].bond_conju[bond_num]:
+			#print a.mols[mol_num].bonds, " bond_num", bond_num
 			print "atom_index", a.mols[mol_num].bonds[bond_num]
-			a.mols[mol_num].WriteXYZfile(fname = "badNN")	
-			break
+			a.mols[mol_num].WriteXYZfile(fname = "CCnoconju_single_strongest")
+			badCC += 1
+			if badCC > 5:	
+				break
+			
 			
 
-if (1):
+if (0):
         ele = bond_index['HC']
         ele_index = list(eles).index(ele)
         print "ele_index:", ele_index, eles

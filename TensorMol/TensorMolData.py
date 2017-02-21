@@ -724,7 +724,7 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
                                 self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
                                 pointer[self.eles.index(bond_type)] += 1
                 print self.test_atom_index
-                f  = open("test_atom_index.dat","wb")
+                f  = open("test_atom_index_for_test.dat","wb")
                 pickle.dump(self.test_atom_index, f)
                 f.close()
                 return

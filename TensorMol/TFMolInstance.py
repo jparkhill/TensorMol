@@ -663,6 +663,38 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
 
+
+		for ministep in range (0, int(Ncase_test/self.batch_size)):
+			#print ("ministep:", ministep)
+			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
+			feed_dict=self.fill_feed_dict(batch_data)
+			actual_mols  = np.count_nonzero(batch_data[2])
+			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+			test_loss += loss_value
+			num_of_mols += actual_mols
+
+		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
+		duration = time.time() - start_time
+		#print ("preds:", preds, " label:", batch_data[2])
+		#print ("diff:", preds - batch_data[2])
+		print( "testing...")
+		self.print_training(step, test_loss, num_of_mols, duration)
+		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
+		return test_loss, feed_dict
+
+
+	def test_after_training(self, step):   # testing in the training
+		"""
+		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		test_loss =  0.0
+		start_time = time.time()
+		Ncase_test = self.TData.NTest
+		num_of_mols = 0
+
 		all_atoms = []
 		bond_length = []
 		for i in range (0, len(self.eles)):
@@ -679,23 +711,23 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			test_loss += loss_value
 			num_of_mols += actual_mols
 
-#			print ("actual_mols:", actual_mols)
-#			all_mols_nn += list(preds[np.nonzero(preds)])
-#			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
-#			#print ("length:", len(atom_outputs))
-#			for atom_index in range (0,len(self.eles)):
-#				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
-#				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
-#				#print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
-#		test_result = dict()
-#		test_result['atoms'] = all_atoms
-#		test_result['nn'] = all_mols_nn
-#		test_result['acc'] = all_mols_acc
-#		test_result['length'] = bond_length
-#		f = open("test_result_cleaned_connectedbond_cm_angle.dat","wb")
-#		pickle.dump(test_result, f)
-#		f.close()
-#
+			print ("actual_mols:", actual_mols)
+			all_mols_nn += list(preds[np.nonzero(preds)])
+			all_mols_acc += list(batch_data[2][np.nonzero(batch_data[2])])
+			#print ("length:", len(atom_outputs))
+			for atom_index in range (0,len(self.eles)):
+				all_atoms[atom_index] += list(atom_outputs[atom_index][0])
+				bond_length[atom_index] += list(1.0/batch_data[0][atom_index][:,-1])
+				#print ("atom_index:", atom_index, len(atom_outputs[atom_index][0]))
+		test_result = dict()
+		test_result['atoms'] = all_atoms
+		test_result['nn'] = all_mols_nn
+		test_result['acc'] = all_mols_acc
+		test_result['length'] = bond_length
+		f = open("test_result_cleaned_connectedbond_cm_angle_for_test.dat","wb")
+		pickle.dump(test_result, f)
+		f.close()
+
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
 		duration = time.time() - start_time
 		#print ("preds:", preds, " label:", batch_data[2])
@@ -704,6 +736,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
+
 
         def print_training(self, step, loss, Ncase, duration, Train=True):
                 if Train:
