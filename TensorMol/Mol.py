@@ -464,7 +464,9 @@ class Mol:
 			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
 		if (spherical):
-			return PARAMS["GoK"]*MolEmb.Make_GoForceSpherical(self.coords,self.DistMatrix,at_,1)
+			rthph = MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,1)
+			rthph[:,0] = rthph[:,0]*PARAMS["GoK"]
+			return rthph
 		else:
 			return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,0)
 

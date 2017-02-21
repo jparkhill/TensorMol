@@ -789,8 +789,8 @@ void CartToSphere(double* InOut)
 	double y = InOut[1];
 	double z = InOut[2];
 	double r = sqrt(x*x+y*y+z*z);
-	double theta = acos(z/r);
-	double phi = atan2(y,x);
+	double theta = atan2(y,x);
+	double phi = acos(z/r);
 	InOut[0] = r; InOut[1] = theta; InOut[2] = phi;
 }
 
@@ -799,9 +799,9 @@ void SphereToCart(double* InOut)
 	double r = InOut[0];
 	double theta = InOut[1];
 	double phi = InOut[2];
-	double x = r*sin(theta)*cos(phi);
+	double x = r*cos(theta)*sin(phi);
 	double y = r*sin(theta)*sin(phi);
-	double z = r*cos(theta);
+	double z = r*cos(phi);
 	InOut[0] = x; InOut[1] = y; InOut[2] = z;
 }
 
