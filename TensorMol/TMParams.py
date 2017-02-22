@@ -36,7 +36,7 @@ class TMParams(dict):
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# DATA usage parameters
 		self["InNormRoutine"] = None
-		self["OutNormRoutine"] = None
+		self["OutNormRoutine"] = "MeanStd"
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB

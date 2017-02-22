@@ -180,7 +180,6 @@ a=MSet("benzene_rand_rot_KRR")
 a.Load()
 for mol in a.mols:
 	mol.Make_Spherical_Forces()
-print a.mols[0].properties["sphere_forces"]
 TreatedAtoms = a.AtomTypes()
 d = Digester(TreatedAtoms, name_="GauSH",OType_ ="ForceSphere")
 tset = TensorData(a,d)
