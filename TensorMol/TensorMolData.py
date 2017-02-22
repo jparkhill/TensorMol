@@ -684,6 +684,8 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nbo] = ins
+			if (self.set.mols[mi].name == "Comment: c60"):
+				np.savetxt("c60_in.dat", ins)
 			#print "ins:", ins, " cases:", cases[casep:casep+nat]
 			labels[mols_done] = outs
 			for j in range(casep,casep+nbo):

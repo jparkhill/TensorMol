@@ -350,10 +350,10 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 				//           std::cout<<disp<<"  "<<dist<<std::endl;
 				//     std::cout<<" "<<m<<"  "<<k<<"  "<<1/dist*(1 - erf(4*(dist-dist_cut)))/2<<"  "<<1/dist<<std::endl;
 				//if (dist > 0.5)
-				ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
+				//ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
 				//else
 				//ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
-				//ele_dist[m].push_back(1/dist);
+				ele_dist[m].push_back(1/dist);
 			}
 		}
 

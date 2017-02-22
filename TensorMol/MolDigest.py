@@ -7,7 +7,7 @@ from Mol import *
 from Util import *
 
 class MolDigester:
-	def __init__(self, eles_, name_="Coulomb", OType_="FragEnergy", SensRadius_=6):
+	def __init__(self, eles_, name_="Coulomb", OType_="FragEnergy", SensRadius_=5):
 		self.name = name_
 		self.OType = OType_
 		self.lshape = None  # output is just the energy

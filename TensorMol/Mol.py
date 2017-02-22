@@ -36,6 +36,7 @@ class Mol:
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
 		self.roomT_H = None
 		self.atomization = None
+		self.zpe = None # zero point energy
 		self.mbe_deri =None
 		self.nn_energy=None
 		self.ngroup=None
@@ -86,6 +87,7 @@ class Mol:
 					#print np.array([bond_type, dist, pair_index[0], pair_index[1]]), " atom type:", self.atoms[pair_index[0]], self.atoms[pair_index[1]]
 		self.bonds = np.asarray(self.bonds)
 		self.Calculate_Bond_Type()
+		self.Find_Bond_Index()
 		self.Define_Conjugation()
 		return
 			
@@ -929,6 +931,7 @@ class Mol:
 		self.atomization = self.roomT_H
 		for i in range (0, self.atoms.shape[0]):
 			self.atomization = self.atomization - ele_roomT_H[self.atoms[i]]
+			self.energy = self.energy - ele_U[self.atoms[i]]
 		return
 
         def Calculate_vdw(self):
@@ -1059,8 +1062,10 @@ class Mol:
                         self.atoms.resize((natoms))
                         self.coords.resize((natoms,3))
 			try:
-				self.energy = float((lines[1].split())[12])
+				self.internal = float((lines[1].split())[12])
 				self.roomT_H = float((lines[1].split())[14])
+				self.zpe = float((lines[1].split())[11])
+				self.energy = self.internal - self.zpe
 			except:
 				pass
 			for i in range(natoms):
