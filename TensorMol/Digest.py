@@ -63,11 +63,11 @@ class Digester:
 	def Print(self):
 		LOGGER.info("-------------------- ")
 		LOGGER.info("Digester Information ")
-		LOGGER.info("self.name:"+self.name)
-		LOGGER.info("self.OType"+self.OType)
-		LOGGER.debug("self.NTrainSamples"+str(self.NTrainSamples))
-		LOGGER.debug("self.TrainSampDistance"+str(self.TrainSampDistance))
-		LOGGER.debug("self.OType"+self.OType)
+		LOGGER.info("self.name: "+self.name)
+		LOGGER.info("self.OType: "+self.OType)
+		LOGGER.debug("self.NTrainSamples: "+str(self.NTrainSamples))
+		LOGGER.debug("self.TrainSampDistance: "+str(self.TrainSampDistance))
+		LOGGER.debug("self.OType: "+self.OType)
 		LOGGER.info("-------------------- ")
 		return
 
@@ -149,6 +149,15 @@ class Digester:
 						Outs = mol_.properties['forces'][at_].reshape((1,3))
 				else:
 					raise Exception("Mol Is missing force. ")
+			elif (self.OType=="ForceSphere"):
+				if ( "sphere_forces" in mol_.properties):
+					if (at_<0):
+						Outs = mol_.properties['sphere_forces']
+						#print "Outs", Outs
+					else:
+						Outs = mol_.properties['sphere_forces'][at_].reshape((1,3))
+				else:
+					raise Exception("Mol Is missing spherical force. ")
 			elif (self.OType=="StoP"):
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):
@@ -207,7 +216,7 @@ class Digester:
 		Returns:
 			Two lists: containing inputs and outputs in order of eles_
 		"""
-		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" )):
+		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" and self.OType !="ForceSphere" )):
 			raise Exception("Molwise Embedding not supported")
 		if (self.eshape==None or self.lshape==None):
 			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
