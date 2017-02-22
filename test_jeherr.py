@@ -1,4 +1,5 @@
 from TensorMol import *
+import time
 
 #jeherr tests
 
@@ -76,7 +77,7 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(1):
+if(0):
 	a=MSet("md_set")
 	a.ReadXYZUnpacked(path='/data/jeherr/TensorMol/datasets/md_datasets/md_set/', has_force=True, center=True)
 	a.Save()
@@ -97,3 +98,85 @@ if(1):
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
+
+if(0):
+	#a=MSet("OptMols")
+	##a.ReadXYZ('OptMols')
+	##a.Save()
+	##a.WriteXYZ()
+	#a.Load()
+        #b=a.DistortAlongNormals(80, True, 0.7)
+	#print "nmols:",len(b.mols)
+	#c=b.RotatedClone(6)
+	#c.WriteXYZ("OptMols_NEQ_rot")
+	#c.Save("OptMols_NEQ_rot")
+	##b=MSet("md_set_rot")
+	##b.Load()
+	###print "nmols:",len(a.mols)
+	#print "nmols:",len(c.mols)
+	#TreatedAtoms = c.AtomTypes()
+	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="GoForce")
+	#tset = TensorData(c,d)
+	#tset.BuildTrainMolwise("OptMols_NEQ_rot",TreatedAtoms)
+	tset = TensorData(None,None,"OptMols_NEQ_rot_"+"GauSH")
+	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	#optimizer = Optimizer(manager)
+	#optimizer.OptRealForce(test_mol)
+
+if(0):
+	#a=MSet("md_OptMols_gdb9clean")
+	#a.Save()
+	#a.WriteXYZ()
+	#print "nmols:",len(a.mols)
+	#TreatedAtoms = a.AtomTypes()
+	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+	#tset = TensorData(a,d)
+	#tset.BuildTrainMolwise("md_OptMols_gdb9clean",TreatedAtoms)
+	tset = TensorData(None,None,"md_OptMols_gdb9clean_"+"GauSH")
+	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	#optimizer = Optimizer(manager)
+	#optimizer.OptRealForce(test_mol)
+
+# a=MSet("toluene_tmp")
+# a.Load()
+# test_mol = a.mols[0]
+#TreatedAtoms = a.AtomTypes()
+#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+#tset = TensorData(a,d)
+#tset.BuildTrainMolwise("benzene_NEQ",TreatedAtoms)
+# tset = TensorData(None,None,"toluene_tmp_GauSH")
+# manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+# manager=TFManage("toluene_tmp_GauSH_fc_sqdiff",None,False)
+# optimizer = Optimizer(manager)
+# optimizer.OptTFRealForce(test_mol)
+
+#a=MSet("benzene")
+#a.Load()
+#test_mol = a.mols[0]
+#test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
+#test_mol.Distort()
+#manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
+#optimizer=Optimizer(manager)
+#optimizer.OptRealForce(test_mol)
+
+# a=MSet("toluene_tmp_rot")
+# a.Load()
+# print "nmols:",len(a.mols)
+# a.Statistics()
+# TreatedAtoms = a.AtomTypes()
+# # 2 - Choose Digester
+# d = Digester(TreatedAtoms, name_=dig_,OType_ ="GoForceSphere")
+# # 4 - Generate training set samples.
+# tset = TensorData(c,d)
+# tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
+tset = TensorData(None,None,"toluene_tmp_rotated_GauSH")
+manager=TFManage("",tset,True, "KRR_sqdiff") # True indicates train all atoms
+# This Tests the optimizer.
+# if (net_ == "KRR_sqdiff"):
+# 	a=MSet("OptMols")
+# 	a.ReadXYZ("OptMols")
+# 	test_mol = a.mols[11]
+# 	print "Orig Coords", test_mol.coords
+# 	test_mol.Distort()
+# 	optimizer  = Optimizer(manager)
+# 	optimizer.Opt(test_mol)

@@ -35,12 +35,6 @@ class Mol:
 	def NAtoms(self):
 		return self.atoms.shape[0]
 
-	def AtomTypes(self):
-		return np.unique(self.atoms)
-
-	def NEles(self):
-		return len(self.AtomTypes())
-
 	def NumOfAtomsE(self, e):
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
@@ -233,8 +227,8 @@ class Mol:
 			try:
 				self.properties["energy"]=float(lines[1].split()[1])
 			except Exception as Ex:
-				print "Problem with energy", string
-				raise Ex
+				# print "Problem with energy", string
+				pass
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
 		for i in range(natoms):
@@ -470,9 +464,11 @@ class Mol:
 			Args: at_ an atom index, if at_ = -1 it returns an array for each atom.
 		'''
 		if (spherical):
-			return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,0)
+			rthph = MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,1)
+			rthph[:,0] = rthph[:,0]*PARAMS["GoK"]
+			return rthph
 		else:
-			return PARAMS["GoK"]*MolEmb.Make_GoForceSpherical(self.coords,self.DistMatrix,at_,1)
+			return PARAMS["GoK"]*MolEmb.Make_GoForce(self.coords,self.DistMatrix,at_,0)
 
 	def GoForceLocal(self, at_=-1):
 		''' The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
@@ -740,9 +736,8 @@ class Mol:
 
 	def Energy_from_xyz(self, path):
 		"""
-		Reads the forces from the comment line in the md_dataset,
-		and if no forces exist sets them to zero. Switched on by
-		has_force=True in the ReadGDB9Unpacked routine
+		Reads the energy from the comment line in the md_dataset.
+		Switched on by has_energy=True in the ReadGDB9Unpacked routine
 		"""
 		try:
 			f = open(path, 'r')
@@ -751,3 +746,10 @@ class Mol:
 			self.properties['energy'] = energy
 		except Exception as Ex:
 			print "Read Failed.", Ex
+
+	def Set_EQ_force(self):
+		"""
+		Sets forces to 0 for equilibrium molecules with no force data.
+		"""
+		if not self.properties.get("forces", None):
+			self.properties["forces"]=np.zeros((self.NAtoms(),3))

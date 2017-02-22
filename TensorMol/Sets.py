@@ -11,11 +11,12 @@ import cPickle as pickle
 class MSet:
 	""" A molecular database which
 		provides structures """
-	def __init__(self, name_ ="gdb9", path_="./datasets/"):
+	def __init__(self, name_ ="gdb9", path_="./datasets/", center_=True):
 		self.mols=[]
 		self.path=path_
 		self.name=name_
 		self.suffix=".pdb" #Pickle Database? Poor choice.
+		self.center=center_
 
 	def Save(self, filename=None):
 		if filename == None:
@@ -23,12 +24,14 @@ class MSet:
 		LOGGER.info("Saving set to: %s ", self.path+filename+self.suffix)
 		#print "Saving set to: ", self.path+self.name+self.suffix
 		f=open(self.path+filename+self.suffix,"wb")
-		pickle.dump(self.__dict__, f, protocol=1)
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
-	def Load(self):
-		f = open(self.path+self.name+self.suffix,"rb")
+	def Load(self, filename=None):
+		if filename == None:
+			filename = self.name
+		f = open(self.path+filename+self.suffix,"rb")
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()
@@ -102,6 +105,22 @@ class MSet:
 				s.mols[-1].Transform(transfs[k])
 		return s
 
+	def CenterSet(self):
+		"""
+		Translates every Mol such that the center is at 0.
+		"""
+		ord = range(len(self.mols))
+		for j in ord:
+			self.mols[j].coords -= self.mols[j].Center()
+
+	def EQ_forces(self):
+		"""
+		Sets forces to 0 for every molecule which has no forces
+		"""
+		ord = range(len(self.mols))
+		for j in ord:
+			self.mols[j].Set_EQ_force()
+
 	def NAtoms(self):
 		nat=0
 		for m in self.mols:
@@ -114,7 +133,7 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
-	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, center=False):
+	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False):
 		"""
 		Reads XYZs in distinct files in one directory as a molset
 		Args:
@@ -135,14 +154,14 @@ class MSet:
 				self.mols[-1].Force_from_xyz(path+file)
 			if has_energy:
 				self.mols[-1].Energy_from_xyz(path+file)
-		if (center):
-			ord = range(len(self.mols))
-			for j in ord:
-				self.mols[j].coords -= self.mols[j].Center()
+		if (self.center):
+			self.CenterSet()
 		return
 
-	def ReadXYZ(self,filename, xyz_type = 'mol'):
+	def ReadXYZ(self,filename = None, xyz_type = 'mol', eqforce=False):
 		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
+		if filename == None:
+			filename = self.name
 		f = open(self.path+filename+".xyz","r")
 		txts = f.readlines()
 		for line in range(len(txts)):
@@ -156,6 +175,10 @@ class MSet:
 				else:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+		if (self.center):
+			self.CenterSet()
+		if (eqforce):
+			self.EQ_forces()
 		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 

@@ -54,6 +54,7 @@ class Instance:
 
 		self.element = ele_
 		self.TData = TData_
+		self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
 		self.chk_file = ''
@@ -69,13 +70,10 @@ class Instance:
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		if (ele_ != 0):
-			self.TData.LoadElementToScratch(ele_)
+		if (self.element != 0):
+			self.TData.LoadElementToScratch(self.element, self.tformer)
+			self.tformer.Print()
 			self.TData.PrintStatus()
-			if (self.TData.dig.name=="SymFunc"):
-				# Kun: NOOO please keep it homogeneous! LoadElementToScratch() should do this.
-				self.TData.NormalizeInputs(ele_)  # let me just normolize it here for sym functions...needs a flag in future
-				self.normalize=True
 			self.inshape = self.TData.dig.eshape
 			self.outshape = self.TData.dig.lshape
 		return
@@ -103,12 +101,11 @@ class Instance:
 		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder)
 			self.saver = tf.train.Saver()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 			if (len(metafiles)>0):
 				most_recent_meta_file=metafiles[0]
@@ -173,11 +170,11 @@ class Instance:
 		self.Clean()
 		#print("Going to pickle...\n",[(attr,type(ins)) for attr,ins in self.__dict__.items()])
 		f=open(self.path+self.name+".tfn","wb")
-		pickle.dump(self.__dict__, f, protocol=1)
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
-	def variable_summaries(var):
+	def variable_summaries(self, var):
 		"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
 		with tf.name_scope('summaries'):
 			mean = tf.reduce_mean(var)
@@ -198,8 +195,8 @@ class Instance:
 		self.saver.save(self.sess, checkpoint_file_mini)
 		return
 
-#this isn't really the correct way to load()
-# only the local class members (not any TF objects should be unpickled.)
+	#this isn't really the correct way to load()
+	# only the local class members (not any TF objects should be unpickled.)
 	def Load(self):
 		LOGGER.info("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")
@@ -341,7 +338,6 @@ class Instance:
 		return train_op
 
 	def train(self, mxsteps, continue_training= False):
-		self.TData.LoadElementToScratch(self.element)
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
@@ -424,7 +420,7 @@ class Instance_fc_classify(Instance):
 		self.correct = None
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder)
 			self.correct = self.n_correct(self.output, self.labels_placeholder)
@@ -613,7 +609,7 @@ class Instance_fc_sqdiff(Instance):
 		batch_data=self.TData.GetTestBatch(self.element,  self.batch_size)#, ministep)
 		feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
-		self.TData.EvaluateTestBatch(batch_data[1],preds)
+		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
 		test_loss = test_loss + loss_value
 		duration = time.time() - test_start_time
 		print("testing...")
@@ -777,7 +773,7 @@ class Instance_3dconv_sqdiff(Instance):
 		batch_data=self.PrepareData(self.TData.GetTestBatch(self.element,  self.batch_size))#, ministep)
 		feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
 		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
-		self.TData.EvaluateTestBatch(batch_data[1],preds)
+		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
 		test_loss = test_loss + loss_value
 		duration = time.time() - test_start_time
 		LOGGER.info("testing...")
@@ -840,7 +836,7 @@ class Instance_KRR(Instance):
 		test_start_time = time.time()
 		ti,to = self.TData.GetTestBatch(self.element,  self.batch_size)
 		preds  = self.krr.predict(ti)
-		self.TData.EvaluateTestBatch(to,preds)
+		self.TData.EvaluateTestBatch(to,preds, self.tformer)
 		return None, None
 
 	def PrepareData(self, batch_data):
