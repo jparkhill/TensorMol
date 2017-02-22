@@ -158,3 +158,25 @@ if(0):
 #manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
 #optimizer=Optimizer(manager)
 #optimizer.OptRealForce(test_mol)
+
+# a=MSet("toluene_tmp_rot")
+# a.Load()
+# print "nmols:",len(a.mols)
+# a.Statistics()
+# TreatedAtoms = a.AtomTypes()
+# # 2 - Choose Digester
+# d = Digester(TreatedAtoms, name_=dig_,OType_ ="GoForceSphere")
+# # 4 - Generate training set samples.
+# tset = TensorData(c,d)
+# tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
+tset = TensorData(None,None,"toluene_tmp_rotated_GauSH")
+manager=TFManage("",tset,True, "KRR_sqdiff") # True indicates train all atoms
+# This Tests the optimizer.
+# if (net_ == "KRR_sqdiff"):
+# 	a=MSet("OptMols")
+# 	a.ReadXYZ("OptMols")
+# 	test_mol = a.mols[11]
+# 	print "Orig Coords", test_mol.coords
+# 	test_mol.Distort()
+# 	optimizer  = Optimizer(manager)
+# 	optimizer.Opt(test_mol)
