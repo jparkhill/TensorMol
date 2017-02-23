@@ -746,17 +746,32 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
                 return
 
 
+	def continue_training(self, mxsteps):
+		self.Eval_Prepare()
+		test_loss , feed_dict = self.test(-1)
+                test_freq = 10
+                mini_test_loss = test_loss
+                for step in  range (0, mxsteps+1):
+                        self.train_step(step)
+                        if step%test_freq==0 and step!=0 :
+                                test_loss, feed_dict = self.test(step)
+                                if test_loss < mini_test_loss:
+                                        mini_test_loss = test_loss
+                                        self.save_chk(step, feed_dict)
+                self.SaveAndClose()	
+		return 	
+
         def evaluate(self, batch_data):   #this need to be modified 
                 # Check sanity of input
 		nmol = batch_data[2].shape[0]
 		print ("nmol:", batch_data[2].shape[0])
 		self.batch_size_output = nmol
-		self.Eval_Prepare(batch_data[2].shape[0])
+		self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
                 return mol_output, atom_outputs
 
-	def Eval_Prepare(self, nmol):
+	def Eval_Prepare(self):
                 #eval_labels = np.zeros(Ncase)  # dummy labels
                 with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
                         self.inp_pl=[]

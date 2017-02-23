@@ -161,6 +161,14 @@ class TFMolManage(TFManage):
 # This has to be totally re-written to be more like the
 # testing in TFInstance.
 
+	def Continue_Training(self, maxsteps):   # test a pretrained network
+                self.Instances.TData = self.TData
+                self.Instances.TData.LoadDataToScratch()
+                self.Instances.Prepare()
+                self.Instances.continue_training(maxsteps)
+                return
+
+
 	def Test(self):   # test a pretrained network
 		self.Instances.TData = self.TData
 		self.Instances.TData.LoadDataToScratch()

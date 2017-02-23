@@ -132,6 +132,11 @@ if (1):
                 manager.Test()
 
 
+	if (1):
+                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Continue_Training(1000)
+
+
 	if (0):
                 # 1 - Get molecules into memory
                 a=MSet("gdb9_1_6_7_8_cleaned")
@@ -170,12 +175,12 @@ if (1):
                 print "TreatedAtoms ", TreatedAtoms
                 TreatedBonds = list(a.BondTypes())
                 print "TreatedBonds ", TreatedBonds
-                d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_CM_Bond_BP", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
+                d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_CM_Bond_BP", OType_="Energy",  SensRadius_=6)  # Initialize a digester that apply descriptor for the fragments.
                 tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-                tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned")
+                tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned_cutoff6")
 
         if (1):
-                tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_cleaned_cutoff5_ConnectedBond_Angle_CM_Bond_BP")
+                tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_energy_1_6_7_8_cleaned_cutoff6_ConnectedBond_Angle_CM_Bond_BP")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=501)
 
