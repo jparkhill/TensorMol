@@ -48,7 +48,7 @@ void rdf(double *data,  const int ngrids,  const array<std::vector<int>, 100> el
 	double height=1.0;
 	for (std::size_t i = 0; i < ele_index[v_index].size(); i++) {
 		dist = sqrt(pow(xyz[ele_index[v_index][i]*3+0] - center[0],2)+pow(xyz[ele_index[v_index][i]*3+1] - center[1],2)+pow(xyz[ele_index[v_index][i]*3+2] - center[2],2));
-		if (dist < dist_cut)
+		//if (dist < dist_cut)
 		for (int j = 0 ; j < ngrids; j++) {
 			data[v_index*ngrids+j] += gaussian(dist_cut, ngrids, dist, j, width, height); // this can be easily parralled similar like ex-grids -JAP GOOD IDEA
 		}
@@ -201,7 +201,6 @@ static PyObject*  Make_RDF(PyObject *self, PyObject  *args) {
 	num_RDF = Ngrids[0];
 	xyz_data = (double*) xyz->data;
 	grids_data = (double*) grids -> data;
-
 	for (int j = 0; j < natom; j++) {
 		if (j==theatom)
 		continue;
@@ -350,10 +349,10 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 				//           std::cout<<disp<<"  "<<dist<<std::endl;
 				//     std::cout<<" "<<m<<"  "<<k<<"  "<<1/dist*(1 - erf(4*(dist-dist_cut)))/2<<"  "<<1/dist<<std::endl;
 				//if (dist > 0.5)
-				ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
+				//ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
 				//else
 				//ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
-				//ele_dist[m].push_back(1/dist);
+				ele_dist[m].push_back(1/dist);
 			}
 		}
 
