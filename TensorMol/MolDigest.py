@@ -136,6 +136,17 @@ class MolDigester:
                 deri_ConnectedBond_Angle_CM_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Bond_BP.shape[1]+CM_Bond_BP.shape[1]))
                 return ConnectedBond_Angle_CM_Bond_BP, deri_ConnectedBond_Angle_CM_Bond_BP
 
+	def make_connectedbond_angle_rdf_bond_bp(self, mol):
+                RDF_Bond_BP, RDF_Bond_BP_deri = self.make_rdf_bond_bp(mol)
+                ConnectedBond_Angle_Bond_BP, ConnectedBond_Angle_Bond_BP_deri = self.make_connectedbond_angle_bond_bp(mol)
+                ConnectedBond_Angle_RDF_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Bond_BP.shape[1]+ RDF_Bond_BP.shape[1]))
+                ConnectedBond_Angle_RDF_Bond_BP[:,:ConnectedBond_Angle_Bond_BP.shape[1]] = ConnectedBond_Angle_Bond_BP
+                ConnectedBond_Angle_RDF_Bond_BP[:,ConnectedBond_Angle_Bond_BP.shape[1]:] = RDF_Bond_BP
+                deri_ConnectedBond_Angle_RDF_Bond_BP = np.zeros((mol.NBonds(), ConnectedBond_Angle_Bond_BP.shape[1]+RDF_Bond_BP.shape[1]))
+                return ConnectedBond_Angle_RDF_Bond_BP, deri_ConnectedBond_Angle_RDF_Bond_BP
+
+
+
         def make_connectedbond_angle_2_cm_bond_bp(self, mol):
                 CM_Bond_BP, CM_Bond_BP_deri = self.make_cm_bond_bp(mol)
                 ConnectedBond_Angle_Bond_BP, ConnectedBond_Angle_Bond_BP_deri = self.make_connectedbond_angle_2_bond_bp(mol)
@@ -811,6 +822,8 @@ class MolDigester:
 			Ins, deri_BP = self.make_connectedbond_angle_dihed_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_CM_Bond_BP"):
                         Ins, deri_BP = self.make_connectedbond_angle_cm_bond_bp(mol_)
+		elif(self.name == "ConnectedBond_Angle_RDF_Bond_BP"):
+                        Ins, deri_BP = self.make_connectedbond_angle_rdf_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_Dihed_CM_Bond_BP"):
                         Ins, deri_BP = self.make_connectedbond_angle_dihed_cm_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_Dihed_2_CM_Bond_BP"):
