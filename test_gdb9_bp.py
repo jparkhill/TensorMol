@@ -133,7 +133,7 @@ if (1):
 
 
 	if (1):
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_cutoff6_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Continue_Training(1000)
 
 
