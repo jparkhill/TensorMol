@@ -7,7 +7,7 @@ from Mol import *
 from Util import *
 
 class MolDigester:
-	def __init__(self, eles_, name_="Coulomb", OType_="FragEnergy", SensRadius_=6):
+	def __init__(self, eles_, name_="Coulomb", OType_="FragEnergy", SensRadius_=5):
 		self.name = name_
 		self.OType = OType_
 		self.lshape = None  # output is just the energy
@@ -76,6 +76,24 @@ class MolDigester:
                 CM_Bond_BP = np.array(CM_Bond_BP)
                 CM_Bond_BP_deri = np.zeros((CM_Bond_BP.shape[0], CM_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
                 return  CM_Bond_BP, CM_Bond_BP_deri
+
+	def make_rdf_bond_bp(self, mol):
+		RDF_Bond_BP = []
+		ngrids = 50
+		width = 0.1 
+		for i in range (0, mol.NBonds()):
+			rdf_bp_1 = MolEmb.Make_RDF(mol.coords, mol.coords[int(mol.bonds[i][2])].reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, int(mol.bonds[i][2]),  width)
+			rdf_bp_2 = MolEmb.Make_RDF(mol.coords, mol.coords[int(mol.bonds[i][3])].reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, int(mol.bonds[i][3]),  width)
+			rdf_bp_1  = rdf_bp_1[0][0].reshape(-1)
+                        rdf_bp_2  = rdf_bp_2[0][0].reshape(-1)
+			#print "rdf_bp_1:", rdf_bp_1, "atom type:", mol.atoms[int(mol.bonds[i][2])]
+			dist = mol.bonds[i][1]
+			rdf_bond_bp = np.asarray(list(rdf_bp_1)+list(rdf_bp_2)+[1.0/dist], dtype=np.float32)
+			rdf_bond_bp.flatten()
+                        RDF_Bond_BP.append(rdf_bond_bp)
+                RDF_Bond_BP = np.array(RDF_Bond_BP)
+                RDF_Bond_BP_deri = np.zeros((RDF_Bond_BP.shape[0], RDF_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
+                return  RDF_Bond_BP, RDF_Bond_BP_deri
 
         def make_dist_bond_bp(self, mol):
                 Dist_Bond_BP = []
@@ -765,6 +783,9 @@ class MolDigester:
 			Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "Coulomb_Bond_BP"):
                         Ins, deri_CM_Bond_BP =  self.make_cm_bond_bp(mol_)
+                        Ins = Ins.reshape([Ins.shape[0],-1])
+		elif(self.name == "RDF_Bond_BP"):
+                        Ins, deri_CM_Bond_BP =  self.make_rdf_bond_bp(mol_)
                         Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "Dist_Bond_BP"):
                         Ins, deri_Dist_Bond_BP =  self.make_dist_bond_bp(mol_)
