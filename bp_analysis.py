@@ -1,11 +1,11 @@
 import pickle
 import numpy  as np
 
-result = pickle.load(open("test_result_cleaned_connectedbond_cm_angle_for_test.dat", "rb"))
+result = pickle.load(open("test_result_cleaned_connectedbond_angle.dat", "rb"))
+
 
 nn = result['nn']
 acc = result['acc']
-
 #print "nn",nn
 
 nmol = len(nn)
@@ -30,4 +30,4 @@ for i in range (0, len(atoms)):
 	tmp =np.zeros((natom,2))
 	tmp[:,0] = length[i]
 	tmp[:,1] = np.asarray(atoms[i])*hartreetokjmol
-	np.savetxt("bond_"+str(i)+"_connectedbond_angle_cm_for_test.dat", tmp)
+	np.savetxt("bond_"+str(i)+"_connectedbond_angle.dat", tmp)
