@@ -233,7 +233,11 @@ class Instance:
 		"""
 		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev), name=var_name)
 		if var_wd is not None:
-			weight_decay = tf.mul(tf.nn.l2_loss(var), var_wd, name='weight_loss')
+			try:
+				weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
+			except:
+				print("tf.mul is deprecated in tensorflow 1.0. Please upgrade soon.")
+				weight_decay = tf.mul(tf.nn.l2_loss(var), var_wd, name='weight_loss')
 			tf.add_to_collection('losses', weight_decay)
 		return var
 
