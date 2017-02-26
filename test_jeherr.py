@@ -159,17 +159,32 @@ if(0):
 #optimizer=Optimizer(manager)
 #optimizer.OptRealForce(test_mol)
 
-# a=MSet("toluene_tmp_rot")
+# a=MSet("benzene_rand_rot_KRR")
 # a.Load()
-# print "nmols:",len(a.mols)
-# a.Statistics()
-# TreatedAtoms = a.AtomTypes()
-# # 2 - Choose Digester
-# d = Digester(TreatedAtoms, name_=dig_,OType_ ="GoForceSphere")
-# # 4 - Generate training set samples.
-# tset = TensorData(c,d)
-# tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-tset = TensorData(None,None,"toluene_tmp_rotated_GauSH")
+# test_mol = a.mols[0]
+# print test_mol.properties["forces"]
+# test_mol.Make_Spherical_Forces()
+# print test_mol.properties["sphere_forces"]
+
+# a=MSet("benzene")
+# a.Load()
+# mollist = random.sample(range(len(a.mols)), 20000)
+# b=MSet("benzene_rand_rot_KRR")
+# for mol in mollist:
+# 	b.mols.append(a.mols[mol])
+# b = b.RotatedClone(1)
+# print "nmols:",len(b.mols)
+# b.WriteXYZ()
+# b.Save()
+a=MSet("benzene_rand_rot_KRR")
+a.Load()
+for mol in a.mols:
+	mol.Make_Spherical_Forces()
+TreatedAtoms = a.AtomTypes()
+d = Digester(TreatedAtoms, name_="GauSH",OType_ ="ForceSphere")
+tset = TensorData(a,d)
+tset.BuildTrainMolwise("benzene_rand_rot_KRR",TreatedAtoms) # generates dataset numpy arrays for each atom.
+tset = TensorData(None,None,"benzene_rand_rot_KRR_GauSH")
 manager=TFManage("",tset,True, "KRR_sqdiff") # True indicates train all atoms
 # This Tests the optimizer.
 # if (net_ == "KRR_sqdiff"):

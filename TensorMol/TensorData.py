@@ -373,7 +373,7 @@ class TensorData():
 		#try:
 		print "Evaluating, ", len(desired), " predictions... "
 		print desired.shape, predicted.shape
-		if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
+		if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "ForceSphere"):
 			ders=np.zeros(len(desired))
 			#comp=np.zeros(len(desired))
 			if (tformer.outnorm != None):
