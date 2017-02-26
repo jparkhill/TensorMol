@@ -184,16 +184,15 @@ static PyObject* Make_Go(PyObject *self, PyObject  *args) {
 			{
 				if (i==theatom)
 				{
-					outmat[s] += 0.125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*j],coords[3*j+1],coords[3*j+2]),2.0);
+					outmat[s] += 0.0125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*j],coords[3*j+1],coords[3*j+2]),2.0);
 				}
 				else if (j==theatom)
 				{
-					outmat[s] += 0.125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*i],coords[3*i+1],coords[3*i+2]),2.0);
+					outmat[s] += 0.0125*pow(distmat[i*natom+j]-dist(xyz_data[3*s],xyz_data[3*s+1],xyz_data[3*s+2],coords[3*i],coords[3*i+1],coords[3*i+2]),2.0);
 				}
 			}
 		}
 	}
-
 	PyObject* nlist = PyList_New(0);
 	return nlist;
 }

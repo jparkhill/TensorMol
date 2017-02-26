@@ -14,19 +14,22 @@ class TMParams(dict):
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
 		self["check_level"] = 1 # whether to test the consistency of several things...
 		# Parameters of MolEmb
-		self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
-			2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		# self["RBFS"] = np.array([[0.6055012, 0.4385015], [0.93135292, 0.95142939], [0.66637165, 0.21118037],
-  		#	[0.56917364, 0.68594089], [1.20570142, 1.18508645], [2.18882899, 2.38447963], [4.38254313, 2.44684121]])
+		self["RBFS"] = np.array([[0.39630917, 0.31252485],[0.47070883, 0.45674287],[0.80010034,0.52232968],[1.38551184, 1.15332936],[1.04108038, 0.92311321],[2.18361714, 2.35639363],[4.3696938, 2.39863773]])
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
+<<<<<<< HEAD
 		self["SH_LMAX"]=4
 		self["SH_NRAD"]=10
+=======
+		self["SH_LMAX"]=2
+		self["SH_NRAD"]=7
+>>>>>>> d8232a06765318dfe3125a3a3db2a5781a454d3c
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		# SET GENERATION parameters
 		self["MAX_ATOMIC_NUMBER"] = 10
 		self["MBE_ORDER"] = 2
+		self["KAYBEETEE"] = 0.000950048 # At 300K
 		self["RotateSet"] = 0
 		self["TransformSet"] = 1
 		self["NModePts"] = 10
@@ -43,7 +46,6 @@ class TMParams(dict):
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
-		self["results_dir"] = "./results/"
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Training Parameters
@@ -54,6 +56,10 @@ class TMParams(dict):
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
+		#paths
+		self["results_dir"] = "./results/"
+		self["dens_dir"] = "./densities/"
+
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 
@@ -80,16 +86,20 @@ def TMBanner():
 	print("--------------------------")
 
 def TMLogger(path_):
-	tore=logging.getLogger('TensorMol')
-	tore.setLevel(logging.DEBUG)
-	fh = logging.FileHandler(filename=path_+time.ctime()+'.log')
-	fh.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler()
-	ch.setLevel(logging.INFO)
-	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-	pformatter = logging.Formatter('%(message)s')
-	fh.setFormatter(fformatter)
-	ch.setFormatter(pformatter)
-	tore.addHandler(fh)
-	tore.addHandler(ch)
-	return tore
+    #Delete Jupyter notebook root logger handler
+    logger = logging.getLogger()
+    logger.handlers = []
+    tore=logging.getLogger('TensorMol')
+    tore.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(filename=path_+time.ctime()+'.log')
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    pformatter = logging.Formatter('%(message)s')
+    fh.setFormatter(fformatter)
+    ch.setFormatter(pformatter)
+    tore.addHandler(fh)
+    tore.addHandler(ch)
+    print "Built Logger... "
+    return tore

@@ -308,7 +308,7 @@ class Mol:
 		grids = grids.reshape(ngrids**3)   #kind of ugly, but lets keep it for now
 		return grids
 
-	def SpanningGrid(self,num=250,pad=4.):
+	def SpanningGrid(self,num=250,pad=4.,Flatten=True, Cubic = True):
 		''' Returns a regular grid the molecule fits into '''
 		xmin=np.min(self.coords[:,0])-pad
 		xmax=np.max(self.coords[:,0])+pad
@@ -316,8 +316,18 @@ class Mol:
 		ymax=np.max(self.coords[:,1])+pad
 		zmin=np.min(self.coords[:,2])-pad
 		zmax=np.max(self.coords[:,2])+pad
+		lx = xmax-xmin
+		ly = ymax-ymin
+		lz = zmax-zmin
+		if (Cubic):
+			mlen = np.max([lx,ly,lz])
+			xmax = xmin + mlen
+			ymax = ymin + mlen
+			zmax = zmin + mlen
 		grids = np.mgrid[xmin:xmax:num*1j, ymin:ymax:num*1j, zmin:zmax:num*1j]
-		grids = grids.transpose()
+		grids = grids.transpose((1,2,3,0))
+		if (not Flatten):
+			return grids.rshape()
 		grids = grids.reshape((grids.shape[0]*grids.shape[1]*grids.shape[2], grids.shape[3]))
 		return grids, (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 
@@ -454,10 +464,6 @@ class Mol:
 		newd = newd*newd
 		return PARAMS["GoK"]*np.sum(newd)
 
-	def GoEnergyAfterAtomMove(self,s,ii):
-		''' The GO potential enforces equilibrium bond lengths. '''
-		raise Exception("Depreciated.")
-
 	def GoForce(self, at_=-1, spherical = 0):
 		'''
 			The GO potential enforces equilibrium bond lengths, and this is the force of that potential.
@@ -593,7 +599,9 @@ class Mol:
 
 	def EnergyAfterAtomMove(self,s,i,Type="GO"):
 		if (Type=="GO"):
-			return self.GoEnergyAfterAtomMove(s,i)
+			out = np.zeros(s.shape[:-1])
+			MolEmb.Make_Go(s,self.DistMatrix,out,self.coords,i)
+			return out
 		else:
 			raise Exception("Unknown Energy")
 
@@ -635,24 +643,6 @@ class Mol:
 	#Most parameters are unneccesary.
 	def OverlapEmbeddings(self, d1, coords, d2 , d3 ,  d4 , d5, i, d6):#(self,coord,i):
 		return np.array([GRIDS.EmbedAtom(self,j,i) for j in coords])
-
-	def GoMeanProbForce(self):
-		forces = np.zeros(shape=(self.NAtoms(),3))
-		for ii in range(self.NAtoms()):
-			Ps = self.POfAtomMoves(GRIDS.MyGrid(),ii)
-			print "SAMPLE CENTER:", self.coords[ii]
-			forces[ii] = np.dot(samps.T,Ps)
-			print "Disp CENTER:", Pc
-		return forces
-
-	def GoDisp(self,ii,Print=False):
-		'''
-			Generates a Go-potential for atom i on a uniform grid of 4A with 50 pts/direction
-			And fits that go potential with the H@0 basis centered at the same point
-			In practice 9 (1A) gaussians separated on a 1A grid around the sensory point appears to work for moderate distortions.
-		'''
-		Ps = self.POfAtomMoves(GRIDS.MyGrid(),ii)
-		return np.array([np.dot(GRIDS.MyGrid().T,Ps)])
 
 	def FitGoProb(self,ii,Print=False):
 		'''
@@ -704,10 +694,11 @@ class Mol:
 		MolEmb.Make_Go(samps+self.coords[i],self.DistMatrix,Es,self.coords,i)
 		Es=np.nan_to_num(Es)
 		Es=Es-np.min(Es)
-		Ps = np.exp(-1.0*Es/KAYBEETEE)
+		Ps = np.exp(-1.0*Es/(0.25*np.std(Es)))
 		Ps=np.nan_to_num(Ps)
 		Z = np.sum(Ps)
-		return Ps/Z
+		Ps /= Z
+		return Ps
 
 	def Force_from_xyz(self, path):
 		"""
