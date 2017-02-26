@@ -90,9 +90,52 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 	optimizer.Opt(test_mol)
 	return
 
+def TestPotential():
+	"""
+	Makes volumetric data for looking at how potentials behave near and far from equilibrium.
+	"""
+	PARAMS["KAYBEETEE"] = 5000.0*0.000950048 # At 10*300K
+	a=MSet("OptMols")
+	a.ReadXYZ("OptMols")
+	m = a.mols[5]
+	m.Distort(0.1,0.1)
+	n = 230
+	ns = 35 # number of points to do around the atom.
+	na1 = 1 # number of points to do as the atom.
+	na2 = 2 # number of points to do as the atom.
+	grid, volume = m.SpanningGrid(n,3.0, Flatten=True, Cubic=True)
+	l0 = grid[0]
+	dl = (grid[1]-grid[0])[2]
+	vol = np.zeros((n,n,n))
+	cgrid = grid.copy()
+	cgrid = cgrid.reshape((n,n,n,3))
+	for i in range(len(m.atoms)):
+		#print m.coords[i]
+		ic = np.array((m.coords[i]-l0)/dl,dtype=np.int) # Get indices in cubic grid.
+		#print ic, cgrid[ic[0],ic[1],ic[2]]
+		subgrid = cgrid[ic[0]-ns:ic[0]+ns,ic[1]-ns:ic[1]+ns,ic[2]-ns:ic[2]+ns].copy()
+		fsubgrid = subgrid.reshape((8*ns*ns*ns,3))
+		cvol = m.POfAtomMoves(fsubgrid-m.coords[i],i)
+		#cvol -= cvol.min()
+		#cvol /= cvol.max()
+		cvol = cvol.reshape((2*ns,2*ns,2*ns))
+		vol[ic[0]-ns:ic[0]+ns,ic[1]-ns:ic[1]+ns,ic[2]-ns:ic[2]+ns] += cvol
+		vol[ic[0]-na1:ic[0]+na1,ic[1]-na1:ic[1]+na1,ic[2]-na1:ic[2]+na1] = 5.
+		vol[ic[0]-na2:ic[0]+na2,ic[1]-na2:ic[1]+na2,ic[2]-na2:ic[2]+na2] = 2.
+	#vol = m.AddPointstoMolDots(vol,grid,0.9)
+	#ipyvol can nicely visualize [nx,nx,xz] integer volume arrays.
+	vol = vol.reshape((n,n,n))
+	np.save(PARAMS["dens_dir"]+"goEn",vol)
+	exit(0)
+	return
+
+#
 # Tests to run.
-TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
+#
+
+#TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
+TestPotential()
 
 # Kun's tests.
 if (0):
