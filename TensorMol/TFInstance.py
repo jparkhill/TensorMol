@@ -809,11 +809,10 @@ class Instance_KRR(Instance):
 		self.summary_op =None
 		self.summary_writer=None
 		self.krr = None
-		from sklearn.kernel_ridge import KernelRidge
 		return
 
 	def evaluate(self, eval_input):
-		return self.TData.dig.unscld(self.krr.predict(eval_input))
+		return self.krr.predict(eval_input)
 
 	def Save(self):
 		self.summary_op =None
@@ -833,11 +832,24 @@ class Instance_KRR(Instance):
 	def test(self, step):
 		Ncase_test = self.TData.NTestCasesInScratch()
 		test_loss =  0.0
-		test_start_time = time.time()
 		ti,to = self.TData.GetTestBatch(self.element,  self.batch_size)
 		preds  = self.krr.predict(ti)
 		self.TData.EvaluateTestBatch(to,preds, self.tformer)
 		return None, None
+
+	def basis_opt(self):
+		from sklearn.kernel_ridge import KernelRidge
+		self.krr = KernelRidge(alpha=0.001, kernel='rbf')
+		# Here we should use as much data as the kernel method can actually take.
+		# probly on the order of 100k cases.
+		ti,to = self.TData.GetTrainBatch(self.element,  10000)
+		self.krr.fit(ti,to)
+		Ncase_test = self.TData.NTestCasesInScratch()
+		test_loss =  0.0
+		ti,to = self.TData.GetTestBatch(self.element,  self.batch_size)
+		preds = self.krr.predict(ti)
+		return self.TData.EvaluateTestBatch_opt(to,preds, self.tformer)
+
 
 	def PrepareData(self, batch_data):
 		raise Exception("NYI")

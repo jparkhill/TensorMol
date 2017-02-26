@@ -755,8 +755,4 @@ class Mol:
 			self.properties["forces"]=np.zeros((self.NAtoms(),3))
 
 	def Make_Spherical_Forces(self):
-		sphere_forces = np.zeros(self.properties["forces"].shape)
-		sphere_forces[:,0] = np.sqrt(np.power(self.properties["forces"][:,0], 2) + np.power(self.properties["forces"][:,1], 2) + np.power(self.properties["forces"][:,2], 2))
-		sphere_forces[:,1] = np.arctan2(self.properties["forces"][:,1], self.properties["forces"][:,0])
-		sphere_forces[:,2] = np.arccos(self.properties["forces"][:,2]/sphere_forces[:,0])
-		self.properties["sphere_forces"] = sphere_forces
+		self.properties["sphere_forces"] = CartToSphereV(self.properties["forces"])

@@ -15,8 +15,8 @@ def SphereToCart(arg_):
 	y = r*np.sin(theta)*np.sin(phi)
 	z = r*np.cos(theta)
 	return np.array([x,y,z])
+
 def CartToSphere(arg_):
-	print arg_
 	x = arg_[0]
 	y = arg_[1]
 	z = arg_[2]
@@ -24,8 +24,10 @@ def CartToSphere(arg_):
 	theta = np.arccos(z/r)
 	phi = np.arctan2(y,x)
 	return np.array([r,theta,phi])
+
 def SphereToCartV(arg_):
 	return np.array(map(SphereToCart,arg_))
+
 def CartToSphereV(arg_):
 	return np.array(map(CartToSphere,arg_))
 
