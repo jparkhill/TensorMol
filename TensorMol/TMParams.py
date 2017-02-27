@@ -19,7 +19,7 @@ class TMParams(dict):
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=2
-		self["SH_NRAD"]=7
+		self["SH_NRAD"]=5
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		# SET GENERATION parameters
@@ -47,7 +47,7 @@ class TMParams(dict):
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-		self["max_steps"] = 1000
+		self["max_steps"] = 500
 		self["test_freq"] = 50
 		self["hidden1"] = 512
 		self["hidden2"] = 512

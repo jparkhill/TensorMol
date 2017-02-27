@@ -150,51 +150,50 @@ if(0):
 # optimizer = Optimizer(manager)
 # optimizer.OptTFRealForce(test_mol)
 
-# from scipy.optimize import minimize
-# step=0
-#
-# def opt_basis(rbfs):
-# 	global step
-# 	PARAMS["RBFS"] = rbfs.copy()
-# 	S_Rad = MolEmb.Overlap_RBF(PARAMS)
-# 	try:
-# 		if (np.amin(np.linalg.eigvals(S_Rad)) < 1.e-10):
-# 			mae = 100
-# 			return mae
-# 	except numpy.linalg.linalg.LinAlgError:
-# 		mae = 100
-# 		return mae
-# 	PARAMS["SRBF"] = MatrixPower(S_Rad,-1./2)
-# 	b=MSet("mixed_KRR_rand")
-# 	b.Load()
-# 	TreatedAtoms = b.AtomTypes()
-# 	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-# 	tset = TensorData(b,d)
-# 	tset.BuildTrainMolwise("mixed_KRR",TreatedAtoms)
-# 	tset = TensorData(None,None,"mixed_KRR_GauSH")
-# 	h_inst = Instance_KRR(tset, 1, None)
-# 	mae_h = h_inst.basis_opt()
-# 	c_inst = Instance_KRR(tset, 6, None)
-# 	mae_c = c_inst.basis_opt()
-# 	o_inst = Instance_KRR(tset, 8, None)
-# 	mae_o = o_inst.basis_opt()
-# 	mae = mae_h + mae_c + mae_o
-# 	step+=1
-# 	LOGGER.info("RBFS params: "+str(rbfs))
-# 	LOGGER.info("Minimal Overlap Eigenvalue: "+str(np.amin(np.linalg.eigvals(S_Rad))))
-# 	LOGGER.info("MAE: "+str(mae))
-# 	LOGGER.info("Step: "+str(step))
-# 	return mae
-#
-# res = minimize(opt_basis, PARAMS["RBFS"][:PARAMS["SH_NRAD"]], method='L-BFGS-B', bounds=((0,None),(0,None),(0,None),
-# 	(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),
-# 	(0,None),(0,None),(0,None),(0,None)), jac=False, tol=1.e-2, options={'disp':True, 'factr':1, 'maxcor':30, 'eps':0.01})
+from scipy.optimize import minimize
+step=0
 
-b=MSet("mixed_KRR_rand")
-b.Load()
-TreatedAtoms = b.AtomTypes()
-d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-tset = TensorData(b,d)
-tset.BuildTrainMolwise("mixed_KRR",TreatedAtoms)
-tset = TensorData(None,None,"mixed_KRR_GauSH")
-manager=TFManage("",tset,True,"KRR_sqdiff")
+def opt_basis(rbfs):
+	global step
+	PARAMS["RBFS"] = rbfs.copy()
+	S_Rad = MolEmb.Overlap_RBF(PARAMS)
+	try:
+		if (np.amin(np.linalg.eigvals(S_Rad)) < 1.e-10):
+			mae = 100
+			return mae
+	except numpy.linalg.linalg.LinAlgError:
+		mae = 100
+		return mae
+	PARAMS["SRBF"] = MatrixPower(S_Rad,-1./2)
+	b=MSet("mixed_KRR_rand")
+	b.Load()
+	TreatedAtoms = b.AtomTypes()
+	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+	tset = TensorData(b,d)
+	tset.BuildTrainMolwise("mixed_KRR",TreatedAtoms)
+	tset = TensorData(None,None,"mixed_KRR_GauSH")
+	h_inst = Instance_KRR(tset, 1, None)
+	mae_h = h_inst.basis_opt_run()
+	c_inst = Instance_KRR(tset, 6, None)
+	mae_c = c_inst.basis_opt_run()
+	o_inst = Instance_KRR(tset, 8, None)
+	mae_o = o_inst.basis_opt_run()
+	mae = mae_h + mae_c + mae_o
+	step+=1
+	LOGGER.info("RBFS params: "+str(rbfs))
+	LOGGER.info("Minimal Overlap Eigenvalue: "+str(np.amin(np.linalg.eigvals(S_Rad))))
+	LOGGER.info("MAE: "+str(mae))
+	LOGGER.info("Step: "+str(step))
+	return mae
+
+res = minimize(opt_basis, PARAMS["RBFS"][:PARAMS["SH_NRAD"]], method='L-BFGS-B', bounds=((0,None),(0,None),(0,None),
+	(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None)), jac=False, tol=1.e-1, options={'disp':True, 'factr':0.01, 'maxcor':30, 'eps':1})
+
+# b=MSet("mixed_KRR_rand")
+# b.Load()
+# TreatedAtoms = b.AtomTypes()
+# d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+# tset = TensorData(b,d)
+# tset.BuildTrainMolwise("mixed_KRR",TreatedAtoms)
+# tset = TensorData(None,None,"mixed_KRR_GauSH")
+# manager=TFManage("",tset,True,"KRR_sqdiff")
