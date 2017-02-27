@@ -137,6 +137,19 @@ if(0):
 	#optimizer = Optimizer(manager)
 	#optimizer.OptRealForce(test_mol)
 
+# a=MSet("toluene_tmp")
+# a.Load()
+# test_mol = a.mols[0]
+#TreatedAtoms = a.AtomTypes()
+#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+#tset = TensorData(a,d)
+#tset.BuildTrainMolwise("benzene_NEQ",TreatedAtoms)
+# tset = TensorData(None,None,"toluene_tmp_GauSH")
+# manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+# manager=TFManage("toluene_tmp_GauSH_fc_sqdiff",None,False)
+# optimizer = Optimizer(manager)
+# optimizer.OptTFRealForce(test_mol)
+
 #a=MSet("benzene")
 #a.Load()
 #test_mol = a.mols[0]
@@ -145,6 +158,13 @@ if(0):
 #manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
 #optimizer=Optimizer(manager)
 #optimizer.OptRealForce(test_mol)
+
+# a=MSet("benzene_rand_rot_KRR")
+# a.Load()
+# test_mol = a.mols[0]
+# print test_mol.properties["forces"]
+# test_mol.Make_Spherical_Forces()
+# print test_mol.properties["sphere_forces"]
 
 # a=MSet("benzene")
 # a.Load()
@@ -157,86 +177,21 @@ if(0):
 # b.WriteXYZ()
 # b.Save()
 # a=MSet("benzene_rand_rot_KRR")
-# a.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/benzene_KRR/", has_force=True)
-# b = a.RotatedClone(1)
-# for mol in b.mols:
+# a.Load()
+# for mol in a.mols:
 # 	mol.Make_Spherical_Forces()
-# TreatedAtoms = b.AtomTypes()
+# TreatedAtoms = a.AtomTypes()
 # d = Digester(TreatedAtoms, name_="GauSH",OType_ ="ForceSphere")
-# tset = TensorData(b,d)
+# tset = TensorData(a,d)
 # tset.BuildTrainMolwise("benzene_rand_rot_KRR",TreatedAtoms) # generates dataset numpy arrays for each atom.
 # tset = TensorData(None,None,"benzene_rand_rot_KRR_GauSH")
 # manager=TFManage("",tset,True, "KRR_sqdiff") # True indicates train all atoms
-
-#a=MSet("mixed_KRR")
-#a.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/mixed_KRR/", has_force=True)
-#mollist = random.sample(range(len(a.mols)), 14000)
-#b=MSet("mixed_KRR_rand")
-#for mol in mollist:
-#	b.mols.append(a.mols[mol])
-#b = b.RotatedClone(1)
-###for mol in a.mols:
-###	mol.Make_Spherical_Forces()
-#b.Save()
-#b=MSet("mixed_KRR_rand")
-#b.Load()
-#TreatedAtoms = b.AtomTypes()
-#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-#tset = TensorData(b,d)
-#tset.BuildTrainMolwise("mixed_KRR",TreatedAtoms)
-#tset = TensorData(None,None,"mixed_KRR_GauSH")
-#manager=TFManage("",tset,True, "KRR_sqdiff") # True indicates train all atoms
-
-from scipy.optimize import minimize
-step=0
-
-def opt_basis(rbfs):
-	global step
-	PARAMS["RBFS"] = rbfs
-	S_Rad = MolEmb.Overlap_RBF(PARAMS)
-	try:
-		if (np.amin(np.linalg.eigvals(S_Rad)) < 1.e-10):
-			mae = 100
-			return mae
-	except numpy.linalg.linalg.LinAlgError:
-		mae = 100
-		return mae
-	PARAMS["SRBF"] = MatrixPower(S_Rad,-1./2)
-	b=MSet("mixed_KRR_rand")
-	b.Load()
-	TreatedAtoms = b.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	tset = TensorData(b,d)
-	tset.BuildTrainMolwise("mixed_KRR",TreatedAtoms)
-	tset = TensorData(None,None,"mixed_KRR_GauSH")
-	h_inst = Instance_KRR(tset, 1, None)
-	mae_h = h_inst.basis_opt()
-	c_inst = Instance_KRR(tset, 6, None)
-	mae_c = c_inst.basis_opt()
-	o_inst = Instance_KRR(tset, 8, None)
-	mae_o = o_inst.basis_opt()
-	mae = mae_h + mae_c + mae_o
-	step+=1
-	LOGGER.info("RBFS params: "+str(rbfs))
-	LOGGER.info("Minimal Overlap Eigenvalue: "+str(np.amin(np.linalg.eigvals(S_Rad))))
-	LOGGER.info("MAE: "+str(mae))
-	LOGGER.info("Step: "+str(step))
-	return mae
-
-res = minimize(opt_basis, PARAMS["RBFS"][:PARAMS["SH_NRAD"]], method='L-BFGS-B', bounds=((0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None), \
-	(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None)), jac=False, tol=1.e-2, options={'disp':True, 'factr':1, 'maxcor':30, 'eps':0.01})
-
-#a=MSet("benzene_rand_rot")
-##a.Load()
-#a.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/benzene_KRR/", has_force=True)
-#a = a.RotatedClone(1)
-#for mol in a.mols:
-#	mol.Make_Spherical_Forces()
-#a.Save()
-#a.WriteXYZ()
-#TreatedAtoms = a.AtomTypes()
-#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-#tset = TensorData(a,d)
-#tset.BuildTrainMolwise("benzene_rand_rot_KRR",TreatedAtoms) # generates dataset numpy arrays for each atom.
-#tset = TensorData(None,None,"benzene_rand_rot_KRR_GauSH")
-#manager=TFManage("",tset,True, "KRR_sqdiff") # True indicates train all atoms
+# This Tests the optimizer.
+# if (net_ == "KRR_sqdiff"):
+# 	a=MSet("OptMols")
+# 	a.ReadXYZ("OptMols")
+# 	test_mol = a.mols[11]
+# 	print "Orig Coords", test_mol.coords
+# 	test_mol.Distort()
+# 	optimizer  = Optimizer(manager)
+# 	optimizer.Opt(test_mol)

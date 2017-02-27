@@ -236,7 +236,7 @@ class Instance:
 			try:
 				weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
 			except:
-				print("tf.mul is deprecated in tensorflow 1.0. Please upgrade soon.")
+				print("tf.mul() is deprecated in tensorflow 1.0 in favor of tf.multiply(). Please upgrade soon.")
 				weight_decay = tf.mul(tf.nn.l2_loss(var), var_wd, name='weight_loss')
 			tf.add_to_collection('losses', weight_decay)
 		return var
@@ -631,6 +631,182 @@ class Instance_fc_sqdiff(Instance):
 			tmp_output.resize((self.batch_size,  batch_data[1].shape[1]))
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
+
+class Instance_conv2d_sqdiff(Instance):
+	def __init__(self, TData_, ele_ = 1 , Name_=None):
+		Instance.__init__(self, TData_, ele_, Name_)
+		self.NetType = "conv2d_sqdiff"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
+		self.summary_op =None
+		self.summary_writer=None
+
+	def placeholder_inputs(self, batch_size):
+		"""Generate placeholder variables to represent the input tensors.
+		These placeholders are used as inputs by the rest of the model building
+		code and will be fed from the downloaded data in the .run() loop, below.
+		Args:
+		batch_size: The batch size will be baked into both placeholders.
+		Returns:
+		embeds_placeholder: Images placeholder.
+		labels_placeholder: Labels placeholder.
+		"""
+		# Note that the shapes of the placeholders match the shapes of the full
+		# image and label tensors, except the first dimension is now batch_size
+		# rather than the full size of the train or test data sets.
+		inputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size,self.inshape]))
+		outputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size, self.outshape]))
+		return inputs_pl, outputs_pl
+
+	def _weight_variable(self, name, shape):
+		return tf.get_variable(name, shape, tf.float32, tf.truncated_normal_initializer(stddev=0.01))
+
+	def _bias_variable(self, name, shape):
+		return tf.get_variable(name, shape, tf.float32, tf.constant_initializer(0.01, dtype=tf.float32))
+
+	def conv2d(self, x, W, b, strides=1):
+		"""
+		2D Convolution wrapper with bias and relu activation
+		"""
+		x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+		x = tf.nn.bias_add(x, b)
+		return tf.nn.relu(x)
+
+	def inference(self, input):
+		FC_SIZE = 512
+		with tf.variable_scope('conv1') as scope:
+			in_filters = 1
+			out_filters = 8
+			kernel = self._weight_variable('weights', [2, 2, 2, in_filters, out_filters])
+			conv = tf.nn.conv2d(input, kernel, [1, 1, 1, 1], padding='SAME') # third arg. is the strides case,xstride,ystride,zstride,channel stride
+			biases = self._bias_variable('biases', [out_filters])
+			bias = tf.nn.bias_add(conv, biases)
+			conv1 = tf.nn.relu(bias, name=scope.name)
+			prev_layer = conv1
+			in_filters = out_filters
+
+		# pool1 = tf.nn.max_pool3d(prev_layer, ksize=[1, 3, 3, 3, 1], strides=[1, 2, 2, 2, 1], padding='SAME')
+		#norm1 = pool1  # tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta = 0.75, name='norm1')
+		#prev_layer = norm1
+
+		with tf.variable_scope('conv2') as scope:
+			out_filters = 16
+			kernel = self._weight_variable('weights', [2, 2, 2, in_filters, out_filters])
+			conv = tf.nn.conv3d(prev_layer, kernel, [1, 1, 1, 1, 1], padding='SAME')
+			biases = self._bias_variable('biases', [out_filters])
+			bias = tf.nn.bias_add(conv, biases)
+			conv2 = tf.nn.relu(bias, name=scope.name)
+			prev_layer = conv2
+			in_filters = out_filters
+
+		# normalize prev_layer here
+		# prev_layer = tf.nn.max_pool3d(prev_layer, ksize=[1, 3, 3, 3, 1], strides=[1, 2, 2, 2, 1], padding='SAME')
+
+		with tf.variable_scope('local1') as scope:
+			dim = np.prod(prev_layer.get_shape().as_list()[1:])
+			prev_layer_flat = tf.reshape(prev_layer, [-1, dim])
+			weights = self._weight_variable('weights', [dim, FC_SIZE])
+			biases = self._bias_variable('biases', [FC_SIZE])
+			local1 = tf.nn.relu(tf.matmul(prev_layer_flat, weights) + biases, name=scope.name)
+			prev_layer = local1
+
+		with tf.variable_scope('local2') as scope:
+			dim = np.prod(prev_layer.get_shape().as_list()[1:])
+			prev_layer_flat = tf.reshape(prev_layer, [-1, dim])
+			weights = self._weight_variable('weights', [dim, FC_SIZE])
+			biases = self._bias_variable('biases', [FC_SIZE])
+			local2 = tf.nn.relu(tf.matmul(prev_layer_flat, weights) + biases, name=scope.name)
+			prev_layer = local2
+
+		with tf.variable_scope('regression_linear') as scope:
+			dim = np.prod(prev_layer.get_shape().as_list()[1:])
+			weights = self._weight_variable('weights', [dim]+list(self.outshape))
+			biases = self._bias_variable('biases', self.outshape)
+			output = tf.add(tf.matmul(prev_layer, weights), biases, name=scope.name)
+		return output
+
+	def evaluate(self, eval_input):
+		# Check sanity of input
+		Instance.evaluate(self, eval_input)
+		eval_input_ = eval_input
+		if (self.PreparedFor>eval_input.shape[0]):
+			eval_input_ =np.copy(eval_input)
+			eval_input_.resize(([self.PreparedFor]+self.inshape))
+		# pad with zeros
+		eval_labels = np.zeros(tuple([self.PreparedFor]+list(self.outshape)))  # dummy labels
+		batch_data = self.PrepareData([eval_input_, eval_labels])
+		#embeds_placeholder, labels_placeholder = self.placeholder_inputs(Ncase) Made by Prepare()
+		feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder, self.labels_placeholder)
+		tmp = np.array(self.sess.run([self.output], feed_dict=feed_dict))
+		if (not np.all(np.isfinite(tmp))):
+			LOGGER.error("TFsession returned garbage")
+			LOGGER.error("TFInputs"+str(eval_input)) #If it's still a problem here use tf.Print version of the graph.
+		if (self.PreparedFor>eval_input.shape[0]):
+			return tmp[:eval_input.shape[0]]
+		return tmp
+
+	def Save(self):
+		self.summary_op =None
+		self.summary_writer=None
+		Instance.Save(self)
+		return
+
+	def loss_op(self, output, labels):
+		diff  = tf.slice(tf.sub(output, labels),[0,self.outshape[0]-3],[-1,-1])
+		# this only compares direct displacement predictions.
+		loss = tf.nn.l2_loss(diff)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
+
+	def train_step(self,step):
+		Ncase_train = self.TData.NTrainCasesInScratch()
+		start_time = time.time()
+		train_loss =  0.0
+		total_correct = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			batch_data=self.PrepareData(self.TData.GetTrainBatch(self.element,  self.batch_size)) #advances the case pointer in TData...
+			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+			_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
+			train_loss = train_loss + loss_value
+		duration = time.time() - start_time
+		#self.print_training(step, train_loss, total_correct, Ncase_train, duration)
+		self.print_training(step, train_loss, Ncase_train, duration)
+		return
+
+	def test(self, step):
+		Ncase_test = self.TData.NTestCasesInScratch()
+		test_loss =  0.0
+		test_start_time = time.time()
+		#for ministep in range (0, int(Ncase_test/self.batch_size)):
+		batch_data=self.PrepareData(self.TData.GetTestBatch(self.element,  self.batch_size))#, ministep)
+		feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
+		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
+		test_loss = test_loss + loss_value
+		duration = time.time() - test_start_time
+		LOGGER.info("testing...")
+		self.print_training(step, test_loss,  Ncase_test, duration)
+		return test_loss, feed_dict
+
+	def PrepareData(self, batch_data):
+
+		#for i in range(self.batch_size):
+		#	ds=GRIDS.Rasterize(batch_data[0][i])
+		#	GridstoRaw(ds, GRIDS.NPts, "Inp"+str(i))
+
+		if (batch_data[0].shape[0]==self.batch_size):
+			batch_data=[batch_data[0].reshape(batch_data[0].shape[0],GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1), batch_data[1]]
+		elif (batch_data[0].shape[0] < self.batch_size):
+			LOGGER.info("Resizing... ")
+			batch_data=[batch_data[0].resize(self.batch_size,GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1), batch_data[1].resize((self.batch_size,  batch_data[1].shape[1]))]
+#			batch_data=[batch_data[0], batch_data[1].reshape((batch_data[1].shape[0],1))]
+#			tmp_input = np.copy(batch_data[0])
+#			tmp_output = np.copy(batch_data[1])
+#			tmp_input.resize((self.batch_size,  batch_data[0].shape[1]))
+#			tmp_output.resize((self.batch_size,  batch_data[1].shape[1]))
+#			batch_data=[ tmp_input, tmp_output]
+		return batch_data
+
 
 class Instance_3dconv_sqdiff(Instance):
 	''' Let's see if a 3d-convolutional network improves the learning rate on the Gaussian grids. '''
