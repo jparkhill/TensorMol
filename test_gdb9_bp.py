@@ -154,15 +154,21 @@ if (1):
                 tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=500)
-
 	if (0):
                 manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Test()
-
-
 	if (0):
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_cutoff6_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
-                manager.Continue_Training(1000)
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Continue_Training(500)
+	if (0):
+                a = MSet("SNB_bondstrength")
+                a.ReadXYZ("SNB_bondstrength")
+                a.Make_Graphs()
+                a.Save()
+                a.Load()
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Eval_Bond_BP(a, True)
+
 
 
 	if (0):
@@ -211,15 +217,22 @@ if (1):
                 tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=501)
-
+	if (0):
+		manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Continue_Training(maxsteps=1001)
 	if (1):
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Test()
+
+
+	if (0):
                 a = MSet("SNB_bondstrength")
 		a.ReadXYZ("SNB_bondstrength")
                 a.Make_Graphs()
 		a.Save()
 		a.Load()
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
-                manager.Eval_Bond_BP(a)
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Eval_Bond_BP(a, True)
 
 	if (0):
                 a = MSet("aminoacids")
@@ -227,9 +240,8 @@ if (1):
                 a.Make_Graphs()
                 a.Save()
                 a.Load()
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
-                manager.Eval_Bond_BP(a)
-
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Eval_Bond_BP(a, True)
 
 	if (0):
                 a = MSet("1_1_Ostrech")
@@ -237,13 +249,8 @@ if (1):
                 a.Make_Graphs()
                 a.Save()
                 a.Load()
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a)
-
-
-	if (0):
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_vdw_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
-                manager.Test()
 
 	if (0):
 		a = MSet("SNB_bondstrength")
