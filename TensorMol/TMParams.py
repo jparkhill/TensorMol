@@ -14,11 +14,11 @@ class TMParams(dict):
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
 		self["check_level"] = 1 # whether to test the consistency of several things...
 		# Parameters of MolEmb
-		self["RBFS"] = np.array([[0.39630917, 0.31252485],[0.47070883, 0.45674287],[0.80010034,0.52232968],[1.38551184, 1.15332936],[1.04108038, 0.92311321],[2.18361714, 2.35639363],[4.3696938, 2.39863773]])
+		self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
+			2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
-		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
-		self["SH_LMAX"]=4
-		self["SH_NRAD"]=10
+		self["SH_LMAX"]=2
+		self["SH_NRAD"]=7
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		# SET GENERATION parameters
@@ -37,7 +37,7 @@ class TMParams(dict):
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
-		self["batch_size"] = 8000
+		self["batch_size"] = 4000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None

@@ -34,7 +34,7 @@ class TensorData():
 		self.AvailableDataFiles = []
 		self.NTest = 0  # assgin this value when the data is loaded
 		self.TestRatio = 0.2 # number of cases withheld for testing.
-		self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
+		self.Random=False # Whether to scramble training data (can be disabled for debugging purposes)
 		self.ScratchNCase = 0
 		self.ScratchState=None
 		self.ScratchPointer=0 # for non random batch iteration.
@@ -374,6 +374,7 @@ class TensorData():
 				for i in range(100):
 					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				print "MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
 				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
@@ -430,18 +431,13 @@ class TensorData():
 			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
 				ders=np.zeros(len(desired))
 				#comp=np.zeros(len(desired))
-				if (tformer.outnorm != None):
-					for i in range(len(desired)):
-						ders[i] = np.linalg.norm(tformer.UnNormalizeOuts(predicted[i,-3:])-tformer.UnNormalizeOuts(desired[i,-3:]))
-					for i in range(100):
-						print "Desired: ",i,tformer.UnNormalizeOuts(desired[i,-3:])," Predicted: ",tformer.UnNormalizeOuts(predicted[i,-3:])
-				else:
-					for i in range(len(desired)):
-						ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
-					for i in range(100):
-						print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
-				mae = np.average(ders)
+				for i in range(len(desired)):
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+				for i in range(100):
+					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
+				mae = np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				print "MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
 				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
 			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
@@ -450,19 +446,14 @@ class TensorData():
 				predictedc = SphereToCartV(predicted)
 				ders=np.zeros(len(desired))
 				#comp=np.zeros(len(desired))
-				if (tformer.outnorm != None):
-					for i in range(len(desiredc)):
-						ders[i] = np.linalg.norm(tformer.UnNormalizeOuts(predictedc[i,-3:])-tformer.UnNormalizeOuts(desiredc[i,-3:]))
-					for i in range(100):
-						print "Desired: ",i,tformer.UnNormalizeOuts(desiredc[i,-3:])," Predicted: ",tformer.UnNormalizeOuts(predictedc[i,-3:])
-				else:
-					for i in range(len(desiredc)):
-						ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
-					for i in range(100):
-						print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
-				mae = np.average(ders)
+				for i in range(len(desiredc)):
+					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
+				for i in range(100):
+					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
+				mae = np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)
 				# mae = np.sum(np.mean(np.absolute(predictedc[:,-3:] - desiredc[:,-3:]), axis=0))
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				print "MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
 				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
 			elif (self.dig.OType=="SmoothP"):

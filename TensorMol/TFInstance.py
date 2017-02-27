@@ -1017,7 +1017,7 @@ class Instance_KRR(Instance):
 		self.TData.EvaluateTestBatch(to,preds, self.tformer)
 		return None, None
 
-	def basis_opt(self):
+	def basis_opt_run(self):
 		from sklearn.kernel_ridge import KernelRidge
 		self.krr = KernelRidge(alpha=0.001, kernel='rbf')
 		# Here we should use as much data as the kernel method can actually take.
