@@ -40,6 +40,7 @@ class TMParams(dict):
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
+		self["RandomizeData"] = True
 		self["batch_size"] = 4000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
