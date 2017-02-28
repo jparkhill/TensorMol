@@ -2,17 +2,17 @@ import pickle
 import numpy as np
 from TensorMol import *
 
-a=MSet("gdb9_1_6_7_8_cleaned_for_test")
+a=MSet("gdb9_energy_1_6_7_8_cleaned_for_test")
 a.Load()
-mol_index_list = pickle.load(open("test_atom_index_for_test.dat", "rb"))
+mol_index_list = pickle.load(open("test_energy_atom_index_for_test.dat", "rb"))
 
 bond_energys = []
 eles = a.BondTypes()
 for i in range (0, len(a.BondTypes())):
-        bond_energys.append(np.loadtxt("bond_"+str(i)+"_connectedbond_angle_cm_for_test.dat"))
+        bond_energys.append(np.loadtxt("bond_"+str(i)+"_energy_connectedbond_angle_for_test.dat"))
 
 
-if (0):
+if (1):
 	ele = bond_index['CC']
 	conju1 = []
 	noconju1 = []

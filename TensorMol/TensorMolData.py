@@ -403,7 +403,7 @@ class TensorMolData_BP(TensorMolData):
 			return
 		ti, to, tm = self.LoadData(random)
 		#ti, to = self.Normalize(ti,to)
-		self.TestRatio = 0.2 # debug
+		self.TestRatio = 1.0 # debug
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
 		print "Using  BP"
@@ -673,8 +673,8 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
 		casep=0
 		# Generate the set in a random order.
-		#ord = range (0, len(self.set.mols))
-		ord=np.random.permutation(len(self.set.mols))
+		ord = range (0, len(self.set.mols))
+		#ord=np.random.permutation(len(self.set.mols))
 		mols_done = 0
 		for mi in ord:
 			nbo = self.set.mols[mi].NBonds()
@@ -726,7 +726,7 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
                                 self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
                                 pointer[self.eles.index(bond_type)] += 1
                 print self.test_atom_index
-                f  = open("test_atom_index_for_test.dat","wb")
+                f  = open("test_energy_atom_index_for_test.dat","wb")
                 pickle.dump(self.test_atom_index, f)
                 f.close()
                 return

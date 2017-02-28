@@ -127,9 +127,6 @@ if (1):
                 a.Load()
                 manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a)
-
-
-
 	if (0):
                 manager= TFMolManage("Mol_gdb9_1_6_7_8_ConnectedBond_Bond_BP_fc_sqdiff_BP_1" , None, False)
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_ConnectedBond_Bond_BP")
@@ -173,31 +170,29 @@ if (1):
 
 	if (0):
                 # 1 - Get molecules into memory
-                a=MSet("gdb9_1_6_7_8_cleaned")
+                a=MSet("gdb9_energy_1_6_7_8_cleaned")
                 a.Load()
                 a.name = a.name + "_for_test"
-		for num_mol, mol in enumerate (a.mols):
-			if num_mol % 1000 == 0:
-				print "dealing mol:", num_mol
-                        mol.Find_Bond_Index()
-                        mol.Define_Conjugation()
+		#for num_mol, mol in enumerate (a.mols):
+		#	if num_mol % 1000 == 0:
+		#		print "dealing mol:", num_mol
+                #        mol.Find_Bond_Index()
+                #        mol.Define_Conjugation()
                 a.Save()
-
         if (0):
                 # 1 - Get molecules into memory
-                a=MSet("gdb9_1_6_7_8_cleaned_for_test")
+                a=MSet("gdb9_energy_1_6_7_8_cleaned_for_test")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
                 print "TreatedAtoms ", TreatedAtoms
                 TreatedBonds = list(a.BondTypes())
                 print "TreatedBonds ", TreatedBonds
-                d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_CM_Bond_BP", OType_="Atomization")  # Initialize a digester that apply descriptor for the fragments.
+                d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_Bond_BP", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
                 tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-                tset.BuildTrain("gdb9_1_6_7_8_cleaned_for_test")
-
+                tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned_for_test")
 	if (0):
-                manager= TFMolManage("Mol_gdb9_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_fc_sqdiff_BP_1" , None, False)
-		tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_1_6_7_8_cleaned_for_test_ConnectedBond_Angle_CM_Bond_BP")
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+		tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_energy_1_6_7_8_cleaned_for_test_ConnectedBond_Angle_Bond_BP")
                 manager.TData = tset
                 manager.Test()
 
@@ -220,7 +215,7 @@ if (1):
 	if (0):
 		manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Continue_Training(maxsteps=1001)
-	if (1):
+	if (0):
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Test()
 

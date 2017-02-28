@@ -375,7 +375,7 @@ class Mol:
 		node = node_stack.pop()
 		visited_list.append(node.node_index)
 		for next_node in node.connected_nodes:
-			if next_node.node_index not in visited_list:
+			if next_node.node_index not in visited_list and next_node not in node_stack:
 				node_stack.append(next_node)
 		return node, visited_list, node_stack
 
@@ -440,6 +440,10 @@ class Mol:
                 while(frag_node_stack):   # if node stack is not empty
 			current_frag_node = frag_node_stack[-1]
 			updated_all_mol_visited_list = []
+			#print "frag_node_stack:",[node.node_index for node in  frag_node_stack]
+			#print "current_frag_node_index:", current_frag_node.node_index
+			#print "all_mol_visited_list", all_mol_visited_list
+			#print "frag_visited_list", frag_visited_list
 			for mol_visited_list in all_mol_visited_list:
 				possible_node = []
 				if mol_visited_list ==[]:
@@ -465,6 +469,7 @@ class Mol:
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
 		frags_in_mol = []
 		already_included = []
+		#print "final:", all_mol_visited_list
 		for mol_visited_list in all_mol_visited_list:
 			mol_visited_list.sort()
 			if mol_visited_list not in already_included:
@@ -2672,10 +2677,15 @@ class Frag_of_Mol(Mol):
                         except:
                                 self.coords[i,2]=scitodeci(line[3])
 		import ast
-		self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
-		if "type" in self.undefined_bonds.keys():
-			self.undefined_bond_type = self.undefined_bonds["type"]
-		else:
+		try:
+			self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
+			if "type" in self.undefined_bonds.keys():
+				self.undefined_bond_type = self.undefined_bonds["type"]
+			else:
+				self.undefined_bond_type = "any"
+		except:
+			self.name = lines[1] #debug
+			self.undefined_bonds = {}
 			self.undefined_bond_type = "any"
                 return
 
