@@ -14,11 +14,14 @@ class TMParams(dict):
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
 		self["check_level"] = 1 # whether to test the consistency of several things...
 		# Parameters of MolEmb
-		self["RBFS"] = np.array([[0.39630917, 0.31252485],[0.47070883, 0.45674287],[0.80010034,0.52232968],[1.38551184, 1.15332936],[1.04108038, 0.92311321],[2.18361714, 2.35639363],[4.3696938, 2.39863773]])
+		# self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
+		# 	2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+		self["RBFS"] = np.array([[0.99438638, 0.41676905], [0.59320762, 0.26405542], [0.44094295, 0.4394062],
+  								[0.61691555, 0.61625545], [1.20242598, 2.17935545]])
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=2
-		self["SH_NRAD"]=7
+		self["SH_NRAD"]=5
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		# SET GENERATION parameters
@@ -37,7 +40,8 @@ class TMParams(dict):
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
-		self["batch_size"] = 8000
+		self["RandomizeData"] = True
+		self["batch_size"] = 4000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
@@ -46,13 +50,8 @@ class TMParams(dict):
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-<<<<<<< HEAD
-		self["max_steps"] = 50
-		self["test_freq"] = 10
-=======
-		self["max_steps"] = 1000
+		self["max_steps"] = 500
 		self["test_freq"] = 50
->>>>>>> b8d07db49d037048d7e312083d70bf25798b8ac8
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512

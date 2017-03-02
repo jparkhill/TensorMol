@@ -34,7 +34,7 @@ class TensorData():
 		self.AvailableDataFiles = []
 		self.NTest = 0  # assgin this value when the data is loaded
 		self.TestRatio = 0.2 # number of cases withheld for testing.
-		self.Random=True # Whether to scramble training data (can be disabled for debugging purposes)
+		self.Random = PARAMS["RandomizeData"] # Whether to scramble training data (can be disabled for debugging purposes)
 		self.ScratchNCase = 0
 		self.ScratchState=None
 		self.ScratchPointer=0 # for non random batch iteration.
@@ -102,11 +102,6 @@ class TensorData():
 		self.CheckShapes()
 		self.name=name_
 		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
-		if (len(self.set.mols[0].PESSamples)==0):
-			LOGGER.info("--- using a Go model of the PES ---")
-		else:
-			LOGGER.info("--- using ab-initio PES ---")
-			raise Exception("Finish writing code to use an ab-initio PES")
 		if (len(atypes)==0):
 			atypes = self.set.AtomTypes()
 		LOGGER.debug("Will train atoms: "+str(atypes))
@@ -120,10 +115,10 @@ class TensorData():
 		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
 		casep_list = [0 for element in atypes]
 		t0 = time.time()
-		ord=np.random.permutation(len(self.set.mols))
+		ord = len(self.set.mols)
 		mols_done = 0
 		try:
-		 	for mi in ord:
+		 	for mi in range(ord):
 				m = self.set.mols[mi]
 				ins,outs = self.dig.TrainDigestMolwise(m)
 				for i in range(m.NAtoms()):
@@ -194,11 +189,6 @@ class TensorData():
 		self.CheckShapes()
 		self.name=name_
 		print "Generating Train set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
-		if (len(self.set.mols[0].PESSamples)==0):
-			print "--- using a Go model of the PES ---"
-		else:
-			print "--- using ab-initio PES ---"
-			raise Exception("Finish writing code to use an ab-initio PES")
 		if (len(atypes)==0):
 			atypes = self.set.AtomTypes()
 		print "Will train atoms: ", atypes
@@ -370,74 +360,132 @@ class TensorData():
 		return (self.scratch_test_inputs[ncases*(ministep):ncases*(ministep+1)], self.scratch_test_outputs[ncases*(ministep):ncases*(ministep+1)])
 
 	def EvaluateTestBatch(self, desired, predicted, tformer):
-		#try:
-		print "Evaluating, ", len(desired), " predictions... "
-		print desired.shape, predicted.shape
-		if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "ForceSphere"):
-			ders=np.zeros(len(desired))
-			#comp=np.zeros(len(desired))
+		try:
 			if (tformer.outnorm != None):
-				for i in range(len(desired)):
-					ders[i] = np.linalg.norm(tformer.UnNormalizeOuts(predicted[i,-3:])-tformer.UnNormalizeOuts(desired[i,-3:]))
-				for i in range(100):
-					print "Desired: ",i,tformer.UnNormalizeOuts(desired[i,-3:])," Predicted: ",tformer.UnNormalizeOuts(predicted[i,-3:])
-			else:
+				desired = tformer.UnNormalizeOuts(desired)
+				predicted = tformer.UnNormalizeOuts(predicted)
+			print "Evaluating, ", len(desired), " predictions... "
+			print desired.shape, predicted.shape
+			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
 				for i in range(len(desired)):
 					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
 				for i in range(100):
 					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
-			LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-			LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
-			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
-		elif (self.dig.OType == "GoForceSphere"):
-			# Convert them back to cartesian
-			desiredc = SphereToCartV(desired)
-			predictedc = SphereToCartV(predicted)
-			ders=np.zeros(len(desired))
-			#comp=np.zeros(len(desired))
-			if (tformer.outnorm != None):
-				for i in range(len(desiredc)):
-					ders[i] = np.linalg.norm(tformer.UnNormalizeOuts(predictedc[i,-3:])-tformer.UnNormalizeOuts(desiredc[i,-3:]))
-				for i in range(100):
-					print "Desired: ",i,tformer.UnNormalizeOuts(desiredc[i,-3:])," Predicted: ",tformer.UnNormalizeOuts(predictedc[i,-3:])
-			else:
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				print "MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
+				# Convert them back to cartesian
+				desiredc = SphereToCartV(desired)
+				predictedc = SphereToCartV(predicted)
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
 				for i in range(len(desiredc)):
 					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
 				for i in range(100):
 					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
-			LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-			LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
-			print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
-		elif (self.dig.OType=="SmoothP"):
-			ders=np.zeros(len(desired))
-			iers=np.zeros(len(desired))
-			comp=np.zeros(len(desired))
-			for i in range(len(desired)):
-				#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
-				Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
-				Pr /= np.sum(Pr)
-				p=np.dot(GRIDS.MyGrid().T,Pr)
-				#print "fit disp: ", p
-				ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
-				iers[i] = np.linalg.norm(p-desired[i,-3:])
-				comp[i] = np.linalg.norm(p-predicted[i,-3:])
-			print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
-			print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
-			print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
-		elif (self.dig.OType=="StoP"):
-			raise Exception("Unknown Digester Output Type.")
-		elif (self.dig.OType=="Energy"):
-			raise Exception("Unknown Digester Output Type.")
-		elif (self.dig.OType=="GoForce_old_version"): # python version is fine for here
-			raise Exception("Unknown Digester Output Type.")
-		elif (self.dig.OType=="HardP"):
-			raise Exception("Unknown Digester Output Type.")
-		else:
-			raise Exception("Unknown Digester Output Type.")
-		#except Exception as Ex:
-		#	print "Something went wrong"
-		#	pass
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
+			elif (self.dig.OType=="SmoothP"):
+				ders=np.zeros(len(desired))
+				iers=np.zeros(len(desired))
+				comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
+					Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
+					Pr /= np.sum(Pr)
+					p=np.dot(GRIDS.MyGrid().T,Pr)
+					#print "fit disp: ", p
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+					iers[i] = np.linalg.norm(p-desired[i,-3:])
+					comp[i] = np.linalg.norm(p-predicted[i,-3:])
+				print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
+				print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+			elif (self.dig.OType=="StoP"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="Energy"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="GoForce_old_version"): # python version is fine for here
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="HardP"):
+				raise Exception("Unknown Digester Output Type.")
+			else:
+				raise Exception("Unknown Digester Output Type.")
+		except Exception as Ex:
+			print "Something went wrong"
+			pass
 		return
+
+	def EvaluateTestBatch_BasisOpt(self, desired, predicted, tformer):
+		try:
+			if (tformer.outnorm != None):
+				desired = tformer.UnNormalizeOuts(desired)
+				predicted = tformer.UnNormalizeOuts(predicted)
+			print "Evaluating, ", len(desired), " predictions... "
+			print desired.shape, predicted.shape
+			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+				for i in range(100):
+					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
+				mae = np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
+				# Convert them back to cartesian
+				desiredc = SphereToCartV(desired)
+				predictedc = SphereToCartV(predicted)
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
+				for i in range(len(desiredc)):
+					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
+				for i in range(100):
+					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
+				mae = np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)
+				# mae = np.sum(np.mean(np.absolute(predictedc[:,-3:] - desiredc[:,-3:]), axis=0))
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
+			elif (self.dig.OType=="SmoothP"):
+				ders=np.zeros(len(desired))
+				iers=np.zeros(len(desired))
+				comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
+					Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
+					Pr /= np.sum(Pr)
+					p=np.dot(GRIDS.MyGrid().T,Pr)
+					#print "fit disp: ", p
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+					iers[i] = np.linalg.norm(p-desired[i,-3:])
+					comp[i] = np.linalg.norm(p-predicted[i,-3:])
+				print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
+				print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
+				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+			elif (self.dig.OType=="StoP"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="Energy"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="GoForce_old_version"): # python version is fine for here
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="HardP"):
+				raise Exception("Unknown Digester Output Type.")
+			else:
+				raise Exception("Unknown Digester Output Type.")
+		except Exception as Ex:
+			print "Something went wrong"
+			pass
+		return mae
 
 	def MergeWith(self,ASet_):
 		''' Augments my training data with another set, which for example may have been generated on another computer.'''
