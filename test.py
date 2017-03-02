@@ -133,9 +133,9 @@ def TestPotential():
 # Tests to run.
 #
 
-#TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
+TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
-TestPotential()
+#TestPotential()
 
 # Kun's tests.
 if (0):
