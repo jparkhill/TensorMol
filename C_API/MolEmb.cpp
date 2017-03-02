@@ -34,10 +34,12 @@ static SHParams ParseParams(PyObject *Pdict)
 	tore.SH_MAXNR = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_MAXNR")));
 
 	// HACK TO DEBUG>>>>>
+	/*
 	double t[9] = {1.0,0.,0.,0.,1.,0.,0.,0.,1.};
 	double* out;
 	TransInSHBasis(&tore,t, out);
-
+	*/
+	
 	return tore;
 }
 

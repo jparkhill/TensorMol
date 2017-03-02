@@ -19,7 +19,7 @@ class TMParams(dict):
 		# 	2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 		self["RBFS"] = np.array([[0.99438638, 0.41676905], [0.59320762, 0.26405542], [0.44094295, 0.4394062],
   								[0.61691555, 0.61625545], [1.20242598, 2.17935545]])
-		self["ERBFS"] = np.zeros((self["MAX_ATOMIC_NUMBER"],self["RBFS"].shape[0],self["RBFS"].shape[0])) # element specific version. 
+		self["ERBFS"] = np.zeros((self["MAX_ATOMIC_NUMBER"],self["RBFS"].shape[0],self["RBFS"].shape[0])) # element specific version.
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=2
@@ -41,6 +41,8 @@ class TMParams(dict):
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
+		self["NormalizeInputs"] = False
+		self["NormalizeOutputs"] = False
 		self["RandomizeData"] = True
 		self["batch_size"] = 4000
 		self["MxTimePerElement"] = 36000
