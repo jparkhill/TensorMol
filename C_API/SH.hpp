@@ -1031,8 +1031,8 @@ void RadInvProjection(SHParams* Prm, double x, double y, double z, double* outpu
 void TransInSHBasis(SHParams* Prm, double* t, double* out)
 {
 	 double x0 = -20.;
-	 double dx = 0.1;
-	 int n = 400;
+	 double dx = 0.2;
+	 int n = 200;
 	 int ng = n*n*n;
 	 double* grid = new double[ng*3];
 	 double* tgrid = new double[ng*3];
@@ -1065,6 +1065,24 @@ void TransInSHBasis(SHParams* Prm, double* t, double* out)
 			RadSHProjection(Prm,grid[i*3],grid[i*3+1],grid[i*3+2], BFS + i*dim);
 			RadSHProjection(Prm,tgrid[i*3],tgrid[i*3+1],tgrid[i*3+2], tBFS + i*dim);
 		}
+		// Now note that BFS is a grid X SH matrix. calculate norms. etc.
+		double OrigIntegral=0.;
+		double TransIntegral=0.;
+		for (int o=0; o<dim; ++o)
+		{
+			for (int i =0; i<ng; ++i)
+			{
+				OrigIntegral += BFS[i*dim+o]*BFS[i*dim+o];
+				TransIntegral += tBFS[i*dim+o]*tBFS[i*dim+o];
+			}
+			cout << o << endl;
+			cout << "Original Integral " << OrigIntegral << " :: " << OrigIntegral*(dx*dx*dx) << endl;
+			cout << "TransIntegral " << TransIntegral << " :: " << TransIntegral*(dx*dx*dx) << endl;
+			OrigIntegral=0.;
+			TransIntegral=0.;
+		}
+		// Finally create the transformation matrix
+
 	 delete [] grid;
 	 delete [] tgrid;
 }

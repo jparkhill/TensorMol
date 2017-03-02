@@ -32,8 +32,12 @@ static SHParams ParseParams(PyObject *Pdict)
 	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
 	tore.SH_ORTH = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
 	tore.SH_MAXNR = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_MAXNR")));
-	//for (int i=0; i<tore.SH_NRAD; ++i)
-	//	cout << tore.RBFS[i*2] << " " << tore.RBFS[i*2+1] <<  endl;
+
+	// HACK TO DEBUG>>>>>
+	double t[9] = {1.0,0.,0.,0.,1.,0.,0.,0.,1.};
+	double* out;
+	TransInSHBasis(&tore,t, out);
+
 	return tore;
 }
 
