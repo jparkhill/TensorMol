@@ -1028,7 +1028,7 @@ class Instance_KRR(Instance):
 		test_loss =  0.0
 		ti,to = self.TData.GetTestBatch(self.element,  self.batch_size)
 		preds = self.krr.predict(ti)
-		return self.TData.EvaluateTestBatch_opt(to,preds, self.tformer)
+		return self.TData.EvaluateTestBatch_BasisOpt(to,preds, self.tformer)
 
 
 	def PrepareData(self, batch_data):
