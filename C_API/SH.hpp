@@ -805,7 +805,12 @@ void SphereToCart(double* InOut)
 	InOut[0] = x; InOut[1] = y; InOut[2] = z;
 }
 
-void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* output, int natom, double fac=1.0)
+int SizeOfGauSH(SHParams* Prm)
+{
+	return (Prm->SH_NRAD)*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
+}
+
+void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* output, double fac=1.0)
 {
 	double rnotinv = sqrt(x*x+y*y+z*z);
 	double r = 1.0/rnotinv;
@@ -838,7 +843,7 @@ void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* o
 		//cout << "Num Thread: " << omp_get_num_threads() << endl;
 		double Gv = 0;
 		for (int j=0; j<Prm->SH_NRAD ; ++j)
-		Gv += Prm->SRBF[i*(Prm->SH_NRAD)+j]*Gau(rnotinv, Prm->RBFS[j*2],Prm->RBFS[j*2+1]);
+			Gv += Prm->SRBF[i*(Prm->SH_NRAD)+j]*Gau(rnotinv, Prm->RBFS[j*2],Prm->RBFS[j*2+1]);
 		for (int l=0; l<Prm->SH_LMAX+1 ; ++l)
 		{
 			for (int m=-l; m<l+1 ; ++m)
@@ -855,10 +860,10 @@ void RadSHProjection_Orth(SHParams* Prm, double x, double y, double z, double* o
 // Projects a delta function at x,y,z onto
 //  Exp[-(x-r)^2/(2 sigma^2)]*Y_{LM}(theta,phi)
 // which will occupy a vector of length Nrad*(1+lmax)**2
-void RadSHProjection(SHParams* Prm, double x, double y, double z, double* output, int natom, double fac=1.0)
+void RadSHProjection(SHParams* Prm, double x, double y, double z, double* output, double fac=1.0)
 {
 	if (Prm->SH_ORTH){
-		return RadSHProjection_Orth(Prm,  x,  y,  z,  output,  natom,  fac);
+		return RadSHProjection_Orth(Prm,  x,  y,  z,  output,  fac);
 	}
 	double rnotinv = sqrt(x*x+y*y+z*z);
 	double r = 1.0/rnotinv;
@@ -903,7 +908,7 @@ void RadSHProjection(SHParams* Prm, double x, double y, double z, double* output
 	}
 }
 
-void RadSHProjection_Orth_EleUniq(SHParams* Prm, double x, double y, double z, double* output, int natom, int ele, double fac=1.0)
+void RadSHProjection_Orth_EleUniq(SHParams* Prm, double x, double y, double z, double* output, int ele, double fac=1.0)
 {
 	double rnotinv = sqrt(x*x+y*y+z*z);
 	double r = 1.0/rnotinv;
@@ -949,7 +954,6 @@ void RadSHProjection_Orth_EleUniq(SHParams* Prm, double x, double y, double z, d
 		}
 	}
 }
-
 
 void RadSHProjection_Spherical(SHParams* Prm, double x, double y, double z, double* output, double fac=1.0)
 {
@@ -1020,4 +1024,47 @@ void RadInvProjection(SHParams* Prm, double x, double y, double z, double* outpu
 			++op;
 		}
 	}
+}
+
+// Obtain the Gau-SH version of a given linear transformation.
+// This is done by dumping the SH onto a grid centered at zero, and transformed grid, and taking the inner product.
+void TransInSHBasis(SHParams* Prm, double* t, double* out)
+{
+	 double x0 = -20.;
+	 double dx = 0.1;
+	 int n = 400;
+	 int ng = n*n*n;
+	 double* grid = new double[ng*3];
+	 double* tgrid = new double[ng*3];
+	 int dim = SizeOfGauSH(Prm);
+	 double* BFS = new double[dim*ng];
+	 double* tBFS = new double[dim*ng];
+	 int l = 0;
+	 #pragma omp parallel for
+	 for (int i=0; i<n;++i)
+	 {
+		 for (int j=0; j<n;++j)
+		 {
+			 for (int k=0; k<n;++k)
+			 {
+				 grid[l*3] = x0+i*dx;
+				 grid[l*3+1] = x0+j*dx;
+				 grid[l*3+2] = x0+k*dx;
+				 tgrid[l*3] = t[0]*grid[l*3]+t[1]*grid[l*3+1]+t[2]*grid[l*3+2];
+				 tgrid[l*3+1] = t[3]*grid[l*3]+t[4]*grid[l*3+1]+t[5]*grid[l*3+2];
+				 tgrid[l*3+2] = t[6]*grid[l*3]+t[7]*grid[l*3+1]+t[8]*grid[l*3+2];
+				 ++l;
+			 }
+			}
+		}
+
+		// Dump the orbitals onto the grids using RadSHProjection.
+		#pragma omp parallel for
+	  for (int i =0; i<ng; ++i)
+		{
+			RadSHProjection(Prm,grid[i*3],grid[i*3+1],grid[i*3+2], BFS + i*dim);
+			RadSHProjection(Prm,tgrid[i*3],tgrid[i*3+1],tgrid[i*3+2], tBFS + i*dim);
+		}
+	 delete [] grid;
+	 delete [] tgrid;
 }

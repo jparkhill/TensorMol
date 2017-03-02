@@ -427,7 +427,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	const int nele = (elements->dimensions)[0];
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
-	npy_intp* Nxyz = xyz->dimensions;
+	npy_intp* Nxyz = xyz->dimensions; // Now assumed to be natomX3.
 	int natom, num_CM;
 	natom = Nxyz[0];
 
@@ -443,22 +443,22 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	// Note that Grids are currently unused...
 	//grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-
+	int SHdim = SizeOfGauSH(Prm);
 	if (theatom<0)
 	{
 		#pragma omp parallel for
 		for (int i=0; i<natom; ++i)
 		{
-			double xc = xyz_data[i*Nxyz[1]+0];
-			double yc = xyz_data[i*Nxyz[1]+1];
-			double zc = xyz_data[i*Nxyz[1]+2];
+			double xc = xyz_data[i*3+0];
+			double yc = xyz_data[i*3+1];
+			double zc = xyz_data[i*3+2];
 			for (int j = 0; j < natom; j++)
 			{
-				double x = xyz_data[j*Nxyz[1]+0];
-				double y = xyz_data[j*Nxyz[1]+1];
-				double z = xyz_data[j*Nxyz[1]+2];
+				double x = xyz_data[j*3+0];
+				double y = xyz_data[j*3+1];
+				double z = xyz_data[j*3+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
-				RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
+				RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, (double)atoms[j]);
 			}
 		}
 	}
@@ -466,16 +466,16 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 		int i = theatom;
 		int ai=0;
 
-		double xc = xyz_data[i*Nxyz[1]+0];
-		double yc = xyz_data[i*Nxyz[1]+1];
-		double zc = xyz_data[i*Nxyz[1]+2];
+		double xc = xyz_data[i*3+0];
+		double yc = xyz_data[i*3+1];
+		double zc = xyz_data[i*3+2];
 
 		for (int j = 0; j < natom; j++)
 		{
-			double x = xyz_data[j*Nxyz[1]+0];
-			double y = xyz_data[j*Nxyz[1]+1];
-			double z = xyz_data[j*Nxyz[1]+2];
-			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
+			double x = xyz_data[j*3+0];
+			double y = xyz_data[j*3+1];
+			double z = xyz_data[j*3+2];
+			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*SHdim, (double)atoms[j]);
 		}
 	}
 	//	}
@@ -511,7 +511,7 @@ static PyObject* Make_SH_EleUniq(PyObject *self, PyObject  *args)
 	// Note that Grids are currently unused...
 	//grids_data = (double*) grids -> data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
-
+	int SHdim = SizeOfGauSH(Prm);
 	if (theatom<0)
 	{
 		#pragma omp parallel for
@@ -526,7 +526,7 @@ static PyObject* Make_SH_EleUniq(PyObject *self, PyObject  *args)
 				double y = xyz_data[j*Nxyz[1]+1];
 				double z = xyz_data[j*Nxyz[1]+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
-				RadSHProjection_Orth_EleUniq(Prm,x-xc,y-yc,z-zc,SH_data + i*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom, atoms[i]);
+				RadSHProjection_Orth_EleUniq(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, (double)atoms[j]);
 			}
 		}
 	}
@@ -543,10 +543,9 @@ static PyObject* Make_SH_EleUniq(PyObject *self, PyObject  *args)
 			double x = xyz_data[j*Nxyz[1]+0];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
-			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX), natom);
+			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*SHdim, (double)atoms[j]);
 		}
 	}
-	//	}
 	return SH;
 }
 
