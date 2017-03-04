@@ -28,6 +28,11 @@ static SHParams ParseParams(PyObject *Pdict)
 		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
 		tore.ORBFS = (double*)RBFa->data;
 	}
+	{
+		PyObject* RBFo = PyDict_GetItemString(Pdict, "ANES");
+		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+		tore.ANES = (double*)RBFa->data;
+	}
 	tore.SH_LMAX = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
 	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
 	tore.SH_ORTH = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
@@ -464,7 +469,15 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double y = xyz_data[j*3+1];
 				double z = xyz_data[j*3+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
-				RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, (double)atoms[j]);
+				//RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, (double)atoms[j]);
+				if (atoms[j] = 1)
+					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[0]);
+				if (atoms[j] = 6) 
+					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[1]);
+				if (atoms[j] = 7)
+					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[2]);
+				if (atoms[j] = 8)
+					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[3]);
 			}
 		}
 	}
