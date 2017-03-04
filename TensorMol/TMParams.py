@@ -22,7 +22,7 @@ class TMParams(dict):
 		self["ERBFS"] = np.zeros((self["MAX_ATOMIC_NUMBER"],self["RBFS"].shape[0],self["RBFS"].shape[0])) # element specific version.
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
-		self["ANES"] = np.array([1.0, 1.0, 1.0, 1.0]) #Atomic Number Encoding, only for C, H, N, and O for now
+		self["ANES"] = np.array([1., 1., 1., 1., 1., 1., 1., 1.])
 		self["SH_LMAX"]=2
 		self["SH_NRAD"]=5
 		self["SH_ORTH"]=1

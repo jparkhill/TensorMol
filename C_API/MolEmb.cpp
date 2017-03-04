@@ -457,7 +457,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	int SHdim = SizeOfGauSH(Prm);
 	if (theatom<0)
 	{
-		#pragma omp parallel for
+		//#pragma omp parallel for
 		for (int i=0; i<natom; ++i)
 		{
 			double xc = xyz_data[i*3+0];
@@ -470,14 +470,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double z = xyz_data[j*3+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
 				//RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, (double)atoms[j]);
-				if (atoms[j] = 1)
-					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[0]);
-				if (atoms[j] = 6) 
-					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[1]);
-				if (atoms[j] = 7)
-					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[2]);
-				if (atoms[j] = 8)
-					RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[3]);
+				RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[atoms[j]-1]);
 			}
 		}
 	}
