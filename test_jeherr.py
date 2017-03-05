@@ -152,7 +152,10 @@ if(0):
 
 from scipy.optimize import minimize
 step=0
-optset = np.array([0.1, 0.156787, 0.3, 0.3, 0.5, 0.5, 0.7, 0.7, 1.3, 1.3, 1., 1., 1., 1.])
+#optset = np.array([0.1, 0.156787, 0.3, 0.3, 0.5, 0.5, 0.7, 0.7, 1.3, 1.3, 1., 1., 1., 1.])
+optset = np.array([ 0.60310955,  0.5236758,  0.92999626,  1.27205388,  0.60979713,  0.3985326,
+  0.62031682,  0.3728798,   1.2550871,   1.18446065,  0.84459955,  1.4283786,
+  0.83621637,  0.85743746])
 
 
 def opt_basis(rbfs):
@@ -179,12 +182,14 @@ def opt_basis(rbfs):
 	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
 	tset = TensorData(None,None,"SmallMols_GauSH")
 	h_inst = Instance_KRR(tset, 1, None)
-	mae = h_inst.basis_opt_run()
-	#c_inst = Instance_KRR(tset, 6, None)
-	#mae_c = c_inst.basis_opt_run()
-	#o_inst = Instance_KRR(tset, 8, None)
-	#mae_o = o_inst.basis_opt_run()
-	#mae = mae_h + mae_c + mae_o
+	mae_h = h_inst.basis_opt_run()
+	c_inst = Instance_KRR(tset, 6, None)
+	mae_c = c_inst.basis_opt_run()
+	n_inst = Instance_KRR(tset, 7, None)
+	mae_n = n_inst.basis_opt_run()
+	o_inst = Instance_KRR(tset, 8, None)
+	mae_o = o_inst.basis_opt_run()
+	mae = mae_h + mae_c + mae_o + mae_n
 	step+=1
 	LOGGER.info("RBFS params: "+str(rbfs))
 	LOGGER.info("Minimal Overlap Eigenvalue: "+str(np.amin(np.linalg.eigvals(S_Rad))))
@@ -192,8 +197,9 @@ def opt_basis(rbfs):
 	LOGGER.info("Step: "+str(step))
 	return mae
 
-res = minimize(opt_basis, optset, method='L-BFGS-B', bounds=((0,None),(0,None),(0,None),
-	(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(None,None),(None,None),(None,None),(None,None)), jac=False, tol=1.e-2, options={'disp':True, 'factr':0.0000001, 'maxcor':30, 'eps':0.1})
+#res = minimize(opt_basis, optset, method='L-BFGS-B', bounds=((0,None),(0,None),(0,None),
+#	(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(None,None),(None,None),(None,None),(None,None)), jac=False, tol=1.e-2, options={'disp':True, 'factr':0.0000001, 'maxcor':30, 'eps':0.1})
+res = minimize(opt_basis, optset, method='L-BFGS-B', jac=False, tol=1.e-2, options={'disp':True, 'factr':0.0000001, 'maxcor':30, 'eps':0.01})
 
 # b=MSet("mixed_KRR_rand")
 # b.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/mixed_KRR/", has_force=True)
@@ -220,19 +226,19 @@ res = minimize(opt_basis, optset, method='L-BFGS-B', bounds=((0,None),(0,None),(
 #a=MSet("SmallMols")
 #a.Load()
 #b=MSet("SmallMols_minset")
-#mols = random.sample(range(len(a.mols)), 10000)
+#mols = random.sample(range(len(a.mols)), 50000)
 #for i in mols:
 #	b.mols.append(a.mols[i])
 #b = b.RotatedClone(1)
 #b.Save()
 #b.WriteXYZ()
-a=MSet("SmallMols_minset")
-a.Load()
-TreatedAtoms = a.AtomTypes()
-d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-tset = TensorData(a,d)
-tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
-tset = TensorData(None,None,"SmallMols_GauSH")
+#a=MSet("SmallMols_minset")
+#a.Load()
+#TreatedAtoms = a.AtomTypes()
+#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+#tset = TensorData(a,d)
+#tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
+#tset = TensorData(None,None,"SmallMols_GauSH")
 #manager=TFManage("",tset,True,"KRR_sqdiff")
-h_inst = Instance_KRR(tset, 1, None)
-print h_inst.basis_opt_run()
+##h_inst = Instance_KRR(tset, 1, None)
+##print h_inst.basis_opt_run()
