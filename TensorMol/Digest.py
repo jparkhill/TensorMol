@@ -1,6 +1,7 @@
 from Mol import *
 from Util import *
-import numpy,os,sys,re
+import os,sys,re
+import numpy as np
 import cPickle as pickle
 import LinearOperations
 if (HAS_EMB):
@@ -304,7 +305,7 @@ class Digester:
 			eta2.append(0.002*(2**i))
 			Rs.append(i*SensRadius/float(ngrid))
 		SYM =  MolEmb.Make_Sym(coords_, xyz_, ats_, eles, at_, SensRadius, zeta, eta1, eta2, Rs)
-		SYM = numpy.asarray(SYM[0], dtype=np.float32)
+		SYM = np.asarray(SYM[0], dtype=np.float32)
 		SYM = SYM.reshape((SYM.shape[0]/self.nsym, self.nsym,  SYM.shape[1] *  SYM.shape[2]))
 		return SYM
 
@@ -316,6 +317,6 @@ class Digester:
 			tmp=math.log(eta_max/eta_min)/(ngrid-1)*i
 			eta.append(pow(math.e, tmp)*eta_min)
 		PGaussian = MolEmb.Make_PGaussian(coords_, xyz_, ats_, eles_, at_, SensRadius, eta)
-		PGaussian = numpy.asarray(PGaussian[0], dtype=np.float32)
+		PGaussian = np.asarray(PGaussian[0], dtype=np.float32)
                 PGaussian = PGaussian.reshape((PGaussian.shape[0]/self.npgaussian, self.npgaussian,  PGaussian.shape[1] *  PGaussian.shape[2]))
                 return PGaussian
