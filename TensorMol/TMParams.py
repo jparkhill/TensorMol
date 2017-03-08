@@ -15,16 +15,19 @@ class TMParams(dict):
 		self["check_level"] = 1 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
-		self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
-			2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+		#self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
+		#	2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 		#self["RBFS"] = np.array([[0.99438638, 0.41676905], [0.59320762, 0.26405542], [0.44094295, 0.4394062],
-  		#						[0.61691555, 0.61625545], [1.20242598, 2.17935545]])
+ 		#						[0.61691555, 0.61625545], [1.20242598, 2.17935545]])
 		#self["RBFS"] = np.array([[0.60310955, 0.5236758], [0.92999626, 1.27205388], [0.50979713, 0.3985326],
-  		#			[0.72031682, 0.3728798], [1.2550871, 1.18446065]])
+ 		#			[0.72031682, 0.3728798], [1.2550871, 1.18446065]])
+		self["RBFS"] = np.array([[0.33177521, 0.50949676], [0.74890231, 0.99964731], [0.52021807, 0.42015268],
+					[0.6151809, 0.39502989], [1.26607895, 1.24048779], [2.19569368, 2.39738431]])
 		self["ERBFS"] = np.zeros((self["MAX_ATOMIC_NUMBER"],self["RBFS"].shape[0],self["RBFS"].shape[0])) # element specific version.
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
-		self["ANES"] = np.array([0.84459955, 1., 1., 1., 1., 1.4283786, 0.83621637, 0.85743746])
+		#self["ANES"] = np.array([0.84459955, 1., 1., 1., 1., 1.4283786, 0.83621637, 0.85743746])
+		self["ANES"] = np.array([0.50068655, 1., 1., 1., 1., 1.12237954, 0.90361766, 1.06592739])
 		self["SH_LMAX"]=3
 		self["SH_NRAD"]=6
 		self["SH_ORTH"]=1
@@ -44,7 +47,7 @@ class TMParams(dict):
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
-		self["RandomizeData"] = True 
+		self["RandomizeData"] = True
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
