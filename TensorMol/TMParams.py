@@ -57,7 +57,7 @@ class TMParams(dict):
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-		self["max_steps"] = 1000
+		self["max_steps"] = 250
 		self["test_freq"] = 50
 		self["hidden1"] = 512
 		self["hidden2"] = 512

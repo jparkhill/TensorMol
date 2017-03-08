@@ -374,9 +374,9 @@ class TensorData():
 				for i in range(100):
 					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				print "MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3))
+				LOGGER.info("MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
 			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
 				# Convert them back to cartesian
 				desiredc = SphereToCartV(desired)
@@ -388,8 +388,9 @@ class TensorData():
 				for i in range(100):
 					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
 			elif (self.dig.OType=="SmoothP"):
 				ders=np.zeros(len(desired))
 				iers=np.zeros(len(desired))
@@ -439,7 +440,7 @@ class TensorData():
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
 			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
 				# Convert them back to cartesian
 				desiredc = SphereToCartV(desired)
@@ -455,7 +456,7 @@ class TensorData():
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("MAE: "+str(np.sum(np.absolute(predicted[:,-3:]-desired[:,-3:]))/(len(desired)*3)))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desiredc[:,-3:])-np.sign(predictedc[:,-3:]))/(6.*len(desiredc))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
 			elif (self.dig.OType=="SmoothP"):
 				ders=np.zeros(len(desired))
 				iers=np.zeros(len(desired))
