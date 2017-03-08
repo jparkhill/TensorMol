@@ -1030,7 +1030,6 @@ class Instance_KRR(Instance):
 		preds = self.krr.predict(ti)
 		return self.TData.EvaluateTestBatch_BasisOpt(to,preds, self.tformer)
 
-
 	def PrepareData(self, batch_data):
 		raise Exception("NYI")
 		return

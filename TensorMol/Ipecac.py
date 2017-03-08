@@ -9,16 +9,20 @@ from Util import *
 import os, sys, re, random, math
 import numpy as np
 import cPickle as pickle
-import LinearOperations, MolDigester, Digester
-if (HAS_EMB):
-	import MolEmb
+import LinearOperations, DigestMol, Digest, Opt
 
-def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, metric_ = "SqDiffAligned"):
+def EmbAtomwiseErr(mol_,dig_,emb_):
+	ins = dig_.TrainDigestMolwise(mol_,MakeOutputs_=False)
+	err = np.sqrt(np.sum((ins-emb_)*(ins-emb_)))
+	print err
+	return err
+
+def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, GdDistMatrix=None):
 	"""
 	Args:
 		atoms_: a list of element types for which this routine provides coords.
 		dig_: a digester
-		emb_: the embedding which we will try to construct a mol to match. Because this is atomwise this will actually be a (natom X embedding shape) tensor. 
+		emb_: the embedding which we will try to construct a mol to match. Because this is atomwise this will actually be a (natom X embedding shape) tensor.
 	Returns:
 		A best-fit version of a molecule which produces an embedding as close to emb_ as possible.
 	"""
@@ -26,10 +30,29 @@ def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, metric_ = "SqDiffA
 	# Construct a random non-clashing guess.
 	# this is the tricky step, a random guess probably won't work.
 	coords = np.random.rand(natom,3)
+	if (guess_==None):
 	# This puts natom into a cube of length 1 so correct the density to be roughly 1atom/angstrom.
-	coords *= natom
-	mfit = Mol(atoms_,coords)
+		coords *= natom
+		mfit = Mol(atoms_,coords)
+		mfit.WriteXYZfile("./results/", "RevLog")
+		# Next optimize with an equilibrium distance matrix which is roughly correct for each type of species...
+		mfit.DistMatrix = np.ones((natom,3))
+		np.fill_diagonal(mfit.DistMatrix,0.0)
+		opt = Optimizer(None)
+		opt.OptGoForce(mfit)
+		mfit.WriteXYZfile("./results/", "RevLog")
+	else:
+		coords = guess_
 
+	# Now shit gets real. Create a function to minimize.
+	objective = lambda crds: EmbAtomwiseErr(Mol(atoms_,crds.reshape(natom,3)),dig_,emb_)
 
+	def callbk(x_):
+		mn = Mol(atoms_, x_.reshape(natom,3))
+		mn.BuildDistanceMatrix()
+		print "Distance error : ", np.sqrt(np.sum((GdDistMatrix-mn.DistMatrix)*(GdDistMatrix-mn.DistMatrix)))
 
+	import scipy.optimize
+	res=scipy.optimize.minimize(objective,coords.reshape(natom*3),method='Nelder-Mead',callback=callbk)
+	mfit = Mol(atoms_, res.x.reshape(natom,3))
 	return mfit

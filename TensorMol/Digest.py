@@ -206,7 +206,7 @@ class Digester:
 #  Various types of Batch Digests.
 #
 
-	def TrainDigestMolwise(self, mol_):
+	def TrainDigestMolwise(self, mol_, MakeOutputs_=True):
 		"""
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
@@ -220,11 +220,13 @@ class Digester:
 		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" and self.OType !="ForceSphere" )):
 			raise Exception("Molwise Embedding not supported")
 		if (self.eshape==None or self.lshape==None):
-			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
+			if (mol_.DistMatrix == None):
+				mol_.BuildDistanceMatrix()
+			tinps, touts = self.Emb(mol_, 0, np.array([[0.0,0.0,0.0]]))
 			self.eshape = list(tinps[0].shape)
 			self.lshape = list(touts[0].shape)
 			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
-		return self.Emb(mol_,-1,mol_.coords[0]) # will deal with getting energies if it's needed.
+		return self.Emb(mol_,-1,mol_.coords[0], MakeOutputs_) # will deal with getting energies if it's needed.
 
 	def TrainDigest(self, mol_, ele_, MakeDebug=False):
 		"""

@@ -451,7 +451,7 @@ class Mol:
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):
-		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
+		self.DistMatrix = MolEmb.Make_DistMat(self.coords)		
 
 	def GoEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
