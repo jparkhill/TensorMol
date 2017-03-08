@@ -35,6 +35,7 @@ public:
 	double* RBFS;
 	double* SRBF;
 	double* ORBFS;
+	double* ANES;
 };
 
 //
