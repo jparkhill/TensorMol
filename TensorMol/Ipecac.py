@@ -18,7 +18,7 @@ def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, metric_ = "SqDiffA
 	Args:
 		atoms_: a list of element types for which this routine provides coords.
 		dig_: a digester
-		emb_: the embedding which we will try to construct a mol to match.
+		emb_: the embedding which we will try to construct a mol to match. Because this is atomwise this will actually be a (natom X embedding shape) tensor. 
 	Returns:
 		A best-fit version of a molecule which produces an embedding as close to emb_ as possible.
 	"""
@@ -29,4 +29,7 @@ def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, metric_ = "SqDiffA
 	# This puts natom into a cube of length 1 so correct the density to be roughly 1atom/angstrom.
 	coords *= natom
 	mfit = Mol(atoms_,coords)
+
+
+
 	return mfit
