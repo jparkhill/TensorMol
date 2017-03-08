@@ -15,21 +15,18 @@ class TMParams(dict):
 		self["check_level"] = 1 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
-		#self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
-		#	2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+		self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2,
+			2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 		#self["RBFS"] = np.array([[0.99438638, 0.41676905], [0.59320762, 0.26405542], [0.44094295, 0.4394062],
   		#						[0.61691555, 0.61625545], [1.20242598, 2.17935545]])
-		#self["RBFS"] = np.array([[0.60310955, 0.5236758], [0.92999626, 1.27205388], [0.60979713, 0.3985326],
-  		#	[0.62031682, 0.3728798], [1.2550871, 1.18446065]])
-		self["RBFS"] = np.array([[0.60988209, 0.52151635], [0.92506289, 1.25541914], [0.62493751, 0.39895848],
-  			[0.62003749, 0.35112361], [1.25258906, 1.16363978]])
+		#self["RBFS"] = np.array([[0.60310955, 0.5236758], [0.92999626, 1.27205388], [0.50979713, 0.3985326],
+  		#			[0.72031682, 0.3728798], [1.2550871, 1.18446065]])
 		self["ERBFS"] = np.zeros((self["MAX_ATOMIC_NUMBER"],self["RBFS"].shape[0],self["RBFS"].shape[0])) # element specific version.
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
-		#self["ANES"] = np.array([0.84459955, 1., 1., 1., 1., 1.4283786, 0.83621637, 0.85743746])
-		self["ANES"] = np.array([0.84323192, 1., 1., 1., 1., 1.42852785, 0.83746751, 0.85695039])
-		self["SH_LMAX"]=2
-		self["SH_NRAD"]=5
+		self["ANES"] = np.array([0.84459955, 1., 1., 1., 1., 1.4283786, 0.83621637, 0.85743746])
+		self["SH_LMAX"]=3
+		self["SH_NRAD"]=6
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		# SET GENERATION parameters
@@ -47,7 +44,7 @@ class TMParams(dict):
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
-		self["RandomizeData"] = True
+		self["RandomizeData"] = True 
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
