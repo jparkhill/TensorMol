@@ -140,6 +140,12 @@ class Mol:
 							self.coords = tmp
 						maxiter=maxiter-1
 
+	def DistortAN(self,movechance=.15):
+		''' Randomly replace atom types. '''
+		for i in range(0, self.atoms.shape[0]):
+			if (random.uniform(0, 1)<movechance):
+				self.atoms[i] = random.random_integers(1,PARAMS["MAX_ATOMIC_NUMBER"])
+
 	def Read_Gaussian_Output(self, path, filename, set_name):
 		try:
 			f = open(path, "r+")
@@ -298,10 +304,18 @@ class Mol:
 		return np.average(self.coords,axis=0)
 
 	def rms(self, m):
+		""" Cartesian coordinate difference. """
 		err  = 0.0
 		for i in range (0, (self.coords).shape[0]):
 			err += (np.sum((m.coords[i] - self.coords[i])**2))**0.5
 		return err/float((self.coords).shape[0])
+
+	def rms_inv(self, m):
+		""" Invariant coordinate difference. """
+		mdm = MolEmb.Make_DistMat(self.coords)
+		odm = MolEmb.Make_DistMat(m.coords)
+		tmp = (mdm-odm)
+		return np.sqrt(np.sum(tmp*tmp))
 
 	def MolGrids(self, ngrids = 250):
 		grids = np.zeros((ngrids, ngrids, ngrids), dtype=np.uint8)
@@ -451,7 +465,7 @@ class Mol:
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):
-		self.DistMatrix = MolEmb.Make_DistMat(self.coords)		
+		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 
 	def GoEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''

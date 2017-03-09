@@ -133,19 +133,29 @@ def TestIpecac(dig_ = "GauSH"):
 	""" Tests reversal of an embedding type """
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
-	m = a.mols[5]
-	m.WriteXYZfile("./results/", "Before")
-	goodcrds = m.coords.copy()
-	m.BuildDistanceMatrix()
-	gooddmat = m.DistMatrix
-	print "Good Coordinates", goodcrds
-	TreatedAtoms = m.AtomTypes()
+	#Remove half of a
+	a.mols = a.mols[-1*int(len(a.mols)/4):]
+	TreatedAtoms = a.AtomTypes()
 	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
-	emb = dig.TrainDigestMolwise(m,MakeOutputs_=False)
-	m.Distort()
-	m.WriteXYZfile("./results/", "Distorted")
-	bestfit = ReverseAtomwiseEmbedding(m.atoms, dig, emb, guess_=m.coords,GdDistMatrix=gooddmat)
-	bestfit.WriteXYZfile("./results/", "BestFit")
+	eopt = EmbeddingOptimizer(a,dig)
+	eopt.PerformOptimization()
+
+	if (0):
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		m = a.mols[5]
+		m.WriteXYZfile("./results/", "Before")
+		goodcrds = m.coords.copy()
+		m.BuildDistanceMatrix()
+		gooddmat = m.DistMatrix
+		print "Good Coordinates", goodcrds
+		TreatedAtoms = m.AtomTypes()
+		dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+		emb = dig.TrainDigestMolwise(m,MakeOutputs_=False)
+		m.Distort()
+		m.WriteXYZfile("./results/", "Distorted")
+		bestfit = ReverseAtomwiseEmbedding(m.atoms, dig, emb, guess_=m.coords,GdDistMatrix=gooddmat)
+		bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 
 #
