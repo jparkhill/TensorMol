@@ -1,6 +1,7 @@
 from Mol import *
 from Util import *
-import numpy,os,sys,re
+import os,sys,re
+import numpy as np
 import cPickle as pickle
 import LinearOperations
 if (HAS_EMB):
@@ -205,7 +206,7 @@ class Digester:
 #  Various types of Batch Digests.
 #
 
-	def TrainDigestMolwise(self, mol_):
+	def TrainDigestMolwise(self, mol_, MakeOutputs_=True):
 		"""
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
@@ -219,11 +220,13 @@ class Digester:
 		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" and self.OType !="ForceSphere" )):
 			raise Exception("Molwise Embedding not supported")
 		if (self.eshape==None or self.lshape==None):
-			tinps, touts = self.Emb(mol_,0,np.array([[0.0,0.0,0.0]]))
+			if (mol_.DistMatrix == None):
+				mol_.BuildDistanceMatrix()
+			tinps, touts = self.Emb(mol_, 0, np.array([[0.0,0.0,0.0]]))
 			self.eshape = list(tinps[0].shape)
 			self.lshape = list(touts[0].shape)
 			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
-		return self.Emb(mol_,-1,mol_.coords[0]) # will deal with getting energies if it's needed.
+		return self.Emb(mol_,-1,mol_.coords[0], MakeOutputs_) # will deal with getting energies if it's needed.
 
 	def TrainDigest(self, mol_, ele_, MakeDebug=False):
 		"""
@@ -304,7 +307,7 @@ class Digester:
 			eta2.append(0.002*(2**i))
 			Rs.append(i*SensRadius/float(ngrid))
 		SYM =  MolEmb.Make_Sym(coords_, xyz_, ats_, eles, at_, SensRadius, zeta, eta1, eta2, Rs)
-		SYM = numpy.asarray(SYM[0], dtype=np.float32)
+		SYM = np.asarray(SYM[0], dtype=np.float32)
 		SYM = SYM.reshape((SYM.shape[0]/self.nsym, self.nsym,  SYM.shape[1] *  SYM.shape[2]))
 		return SYM
 
@@ -316,6 +319,6 @@ class Digester:
 			tmp=math.log(eta_max/eta_min)/(ngrid-1)*i
 			eta.append(pow(math.e, tmp)*eta_min)
 		PGaussian = MolEmb.Make_PGaussian(coords_, xyz_, ats_, eles_, at_, SensRadius, eta)
-		PGaussian = numpy.asarray(PGaussian[0], dtype=np.float32)
+		PGaussian = np.asarray(PGaussian[0], dtype=np.float32)
                 PGaussian = PGaussian.reshape((PGaussian.shape[0]/self.npgaussian, self.npgaussian,  PGaussian.shape[1] *  PGaussian.shape[2]))
                 return PGaussian

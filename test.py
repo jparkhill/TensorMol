@@ -61,7 +61,7 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 		c.Statistics()
 		TreatedAtoms = c.AtomTypes()
 		# 2 - Choose Digester
-		d = Digester(TreatedAtoms, name_=dig_,OType_ ="GoForceSphere")
+		d = Digester(TreatedAtoms, name_=dig_,OType_ ="GoForce")
 		# 4 - Generate training set samples.
 		tset = TensorData(c,d)
 		tset.BuildTrainMolwise("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
@@ -129,13 +129,43 @@ def TestPotential():
 	exit(0)
 	return
 
+def TestIpecac(dig_ = "GauSH"):
+	""" Tests reversal of an embedding type """
+	a=MSet("OptMols")
+	a.ReadXYZ("OptMols")
+	#Remove half of a
+	a.mols = a.mols[-1*int(len(a.mols)/4):]
+	TreatedAtoms = a.AtomTypes()
+	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+	eopt = EmbeddingOptimizer(a,dig)
+	eopt.PerformOptimization()
+
+	if (0):
+		a=MSet("OptMols")
+		a.ReadXYZ("OptMols")
+		m = a.mols[5]
+		m.WriteXYZfile("./results/", "Before")
+		goodcrds = m.coords.copy()
+		m.BuildDistanceMatrix()
+		gooddmat = m.DistMatrix
+		print "Good Coordinates", goodcrds
+		TreatedAtoms = m.AtomTypes()
+		dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+		emb = dig.TrainDigestMolwise(m,MakeOutputs_=False)
+		m.Distort()
+		m.WriteXYZfile("./results/", "Distorted")
+		bestfit = ReverseAtomwiseEmbedding(m.atoms, dig, emb, guess_=m.coords,GdDistMatrix=gooddmat)
+		bestfit.WriteXYZfile("./results/", "BestFit")
+	return
+
 #
 # Tests to run.
 #
 
-TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
+#TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
+TestIpecac()
 
 # Kun's tests.
 if (0):
