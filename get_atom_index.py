@@ -12,7 +12,7 @@ for i in range (0, len(a.BondTypes())):
         bond_energys.append(np.loadtxt("bond_"+str(i)+"_energy_connectedbond_angle_for_test.dat"))
 
 
-if (1):
+if (0):
 	ele = bond_index['CC']
 	conju1 = []
 	noconju1 = []
@@ -95,12 +95,13 @@ if (1):
 		energy = bond_energy[i][1]
 		mol_num = mol_index[i][0]	
 		bond_num = mol_index[i][1]
-		if 1.412 <  length < 1.422 and -520  > energy and not a.mols[mol_num].bond_conju[bond_num]:
+		bond_type = a.mols[mol_num].bond_type[bond_num]
+		if 1.20 <  length < 1.21 and -614 <  energy < -607 and not  a.mols[mol_num].bond_conju[bond_num] and bond_type == 3 and a.mols[mol_num].NAtoms() < 14:
 			#print a.mols[mol_num].bonds, " bond_num", bond_num
 			print "atom_index", a.mols[mol_num].bonds[bond_num]
-			a.mols[mol_num].WriteXYZfile(fname = "CCnoconju_single_strongest")
+			a.mols[mol_num].WriteXYZfile(fname = "CC_triple_strong")
 			badCC += 1
-			if badCC > 5:	
+			if badCC > 10:	
 				break
 			
 			

@@ -169,7 +169,7 @@ class TFMolManage(TFManage):
 	def Continue_Training(self, maxsteps):   # test a pretrained network
                 self.Instances.TData = self.TData
                 self.Instances.TData.LoadDataToScratch()
-		#self.Instances.chk_file = "./networks/Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_1_None/Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_CM_Bond_BP_1_None-chk-333" 
+		#self.Instances.chk_file = "./networks/Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_1_None/Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_1_None-chk-182" 
                 self.Instances.Prepare()
                 self.Instances.continue_training(maxsteps)
 		self.Save()

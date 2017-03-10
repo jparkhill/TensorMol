@@ -1100,7 +1100,6 @@ class Mol:
 		lines = string.split("\n")
 		natoms=int(lines[0])
 		self.name = lines[1] #debug
-		print "mol name:", self.name
 		if (len(lines[1].split())>1):
 			try:
 				self.energy=float(lines[1].split()[1])
@@ -1125,6 +1124,10 @@ class Mol:
 				self.coords[i,2]=float(line[3])
 			except:
 				self.coords[i,2]=scitodeci(line[3])
+		if self.energy:
+			for i in range (0, self.atoms.shape[0]):
+                        	self.energy = self.energy - ele_U[self.atoms[i]]
+			print "after self.energy:", self.energy
 		return
 
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):

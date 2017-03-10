@@ -214,8 +214,7 @@ class MSet:
 		return
 
 	def AppendSet(self, b):
-		if (self.name == None):
-			self.name = self.name + b.name
+		self.name = self.name + "_" + b.name
 		self.mols = self.mols+b.mols
 		return
 
