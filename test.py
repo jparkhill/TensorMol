@@ -134,7 +134,7 @@ def TestIpecac(dig_ = "GauSH"):
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	#Remove half of a
-	a.mols = a.mols[-1*int(len(a.mols)/4):]
+	a.mols = a.mols[-1*int(len(a.mols)/6):]
 	TreatedAtoms = a.AtomTypes()
 	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
 	eopt = EmbeddingOptimizer(a,dig)

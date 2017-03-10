@@ -50,7 +50,7 @@ def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, GdDistMatrix=None)
 			mn.BuildDistanceMatrix()
 			print "Distance error : ", np.sqrt(np.sum((GdDistMatrix-mn.DistMatrix)*(GdDistMatrix-mn.DistMatrix)))
 	import scipy.optimize
-	res=scipy.optimize.minimize(objective,coords.reshape(natom*3),method='L-BFGS-B',tol=0.000001,options={"maxiter":1000000})#,callback=callbk)
+	res=scipy.optimize.minimize(objective,coords.reshape(natom*3),method='L-BFGS-B',tol=0.000001,options={"maxiter":5000000,"maxfun":10000000})#,callback=callbk)
 	print "Reversal complete: ", res.message
 	mfit = Mol(atoms_, res.x.reshape(natom,3))
 	return mfit
