@@ -65,6 +65,7 @@ class Mol:
 		self.mob_all_frags = dict() # dictionary that stores all the necessary frags in mol format  for MOB dic[LtoS([list])] = mol
 		self.mob_energy = None
 		self.vdw = None
+		self.smiles= None
 		return
 
 	
@@ -1071,6 +1072,8 @@ class Mol:
 				self.roomT_H = float((lines[1].split())[14])
 				self.zpe = float((lines[1].split())[11])
 				self.energy = self.internal - self.zpe
+				self.smiles = lines[-2].split()[0]
+				print "smiles:", self.smiles
 			except:
 				pass
 			for i in range(natoms):
@@ -1143,6 +1146,19 @@ class Mol:
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+
+	def WriteSmiles(self, fpath=".", fname="gdb9_smiles", mode = "a"):
+		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".dat")):
+                        try:
+                                os.makedirs(os.path.dirname(fpath+"/"+fname+".dat"))
+                        except OSError as exc:
+                                if exc.errno != errno.EEXIST:
+                                        raise
+                with open(fpath+"/"+fname+".dat", mode) as f:
+                        f.write(self.name+ "  "+ self.smiles+"\n")
+			f.close()
+		return 
+
 
 	def NEle(self):
 		return np.sum(self.atoms)

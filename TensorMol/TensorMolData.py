@@ -403,7 +403,7 @@ class TensorMolData_BP(TensorMolData):
 			return
 		ti, to, tm = self.LoadData(random)
 		#ti, to = self.Normalize(ti,to)
-		self.TestRatio = 1.0 # debug
+		self.TestRatio = 0.2 # debug
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
 		print "Using  BP"
