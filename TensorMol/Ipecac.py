@@ -6,7 +6,7 @@
 
 from Mol import *
 from Util import *
-import os, sys, re, random, math, copy
+import os, sys, re, random, math, copy, itertools
 import numpy as np
 import cPickle as pickle
 import LinearOperations, DigestMol, Digest, Opt
@@ -43,14 +43,28 @@ def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, GdDistMatrix=None)
 	else:
 		coords = guess_
 	# Now shit gets real. Create a function to minimize.
-	objective = lambda crds: EmbAtomwiseErr(Mol(atoms_,crds.reshape(natom,3)),dig_,emb_)
-	if (0):
+	objective = lambda crds: BruteForceAtoms(Mol(atoms_,crds.reshape(natom,3)),dig_,emb_)
+	if (1):
 		def callbk(x_):
 			mn = Mol(atoms_, x_.reshape(natom,3))
 			mn.BuildDistanceMatrix()
 			print "Distance error : ", np.sqrt(np.sum((GdDistMatrix-mn.DistMatrix)*(GdDistMatrix-mn.DistMatrix)))
 	import scipy.optimize
-	res=scipy.optimize.minimize(objective,coords.reshape(natom*3),method='L-BFGS-B',tol=0.000001,options={"maxiter":5000000,"maxfun":10000000})#,callback=callbk)
+	res=scipy.optimize.minimize(objective,coords.reshape(natom*3),method='L-BFGS-B',tol=0.000001,options={"maxiter":5000000,"maxfun":10000000},callback=callbk)
 	print "Reversal complete: ", res.message
 	mfit = Mol(atoms_, res.x.reshape(natom,3))
 	return mfit
+
+def BruteForceAtoms(mol_, dig_, emb_):
+	bestmol = copy.deepcopy(mol_)
+	besterr = 100.0
+	posib_atoms = [x for x in itertools.combinations_with_replacement([1,6,7,8], len(mol_.atoms))]
+	for ats in posib_atoms:
+		mol_.atoms = np.array(ats)
+		tmperr = EmbAtomwiseErr(mol_,dig_,emb_)
+		if tmperr < besterr:
+			bestmol = copy.deepcopy(mol_)
+			besterr = tmperr
+			print besterr
+	print bestmol.atoms
+	return besterr
