@@ -38,6 +38,36 @@ if (1):
 		a.name  = a.name + "_cleaned"
                 a.Save()
 
+        if (0):
+                a=MSet("gdb9_smiles")
+                a.ReadGDB9Unpacked("/home/jparkhil/TensorMol_Kun/TensorMol/gdb9/")
+                allowed_eles=[1, 6, 7, 8]
+                a.CutSet(allowed_eles)
+                a.Make_Graphs()
+                a.Save()
+
+
+        if (0):
+		b=MSet("gdb9_energy_1_6_7_8_cleaned")
+                b.Load()
+                a=MSet("gdb9_smiles_1_6_7_8")
+                a.Load()
+                mol_names = []
+                for mol in b.mols:
+                        mol_names.append(mol.name)
+                new_mols = []
+                for mol in a.mols:
+                        if mol.name in mol_names:
+                                new_mols.append(mol)
+                a.mols = new_mols
+                a.name  = a.name + "_cleaned"
+                a.Save()
+
+	if (0):
+		a=MSet("gdb9_smiles_1_6_7_8_cleaned")
+		a.Load()
+		a.WriteSmiles()
+		
 
 	if (0):
                 # 1 - Get molecules into memory
@@ -190,7 +220,7 @@ if (1):
                 d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_Bond_BP", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
                 tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
                 tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned_for_test")
-	if (1):
+	if (0):
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
 		tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_energy_1_6_7_8_cleaned_for_test_ConnectedBond_Angle_Bond_BP")
                 manager.TData = tset
@@ -227,7 +257,7 @@ if (1):
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a)
 
-	if (0):
+	if (1):
                 a = MSet("SNB_bondstrength")
 		a.ReadXYZ("SNB_bondstrength")
                 a.Make_Graphs()

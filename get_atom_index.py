@@ -4,15 +4,15 @@ from TensorMol import *
 
 a=MSet("gdb9_energy_1_6_7_8_cleaned_for_test")
 a.Load()
-mol_index_list = pickle.load(open("test_energy_atom_index_for_test.dat", "rb"))
+mol_index_list = pickle.load(open("test_energy_atom_index_for_test_writting_all_mol.dat", "rb"))
 
 bond_energys = []
 eles = a.BondTypes()
 for i in range (0, len(a.BondTypes())):
-        bond_energys.append(np.loadtxt("bond_"+str(i)+"_energy_connectedbond_angle_for_test.dat"))
+        bond_energys.append(np.loadtxt("bond_"+str(i)+"_energy_connectedbond_angle_for_test_writting_all_mol.dat"))
 
 
-if (0):
+if (1):
 	ele = bond_index['CC']
 	conju1 = []
 	noconju1 = []
@@ -56,12 +56,12 @@ if (0):
 	noconju1 = np.asarray(noconju1)
 	noconju2 = np.asarray(noconju2)
 	noconju3 = np.asarray(noconju3)
-	np.savetxt("./BP_data/CC_conju1.dat", conju1)
-	np.savetxt("./BP_data/CC_conju2.dat", conju2)
-	np.savetxt("./BP_data/CC_conju3.dat", conju3)
-	np.savetxt("./BP_data/CC_noconju1.dat", noconju1)
-	np.savetxt("./BP_data/CC_noconju2.dat", noconju2)
-	np.savetxt("./BP_data/CC_noconju3.dat", noconju3)	
+	np.savetxt("./BP_data/CC_conju1_writting_all_mol.dat", conju1)
+	np.savetxt("./BP_data/CC_conju2_writting_all_mol.dat", conju2)
+	np.savetxt("./BP_data/CC_conju3_writting_all_mol.dat", conju3)
+	np.savetxt("./BP_data/CC_noconju1_writting_all_mol.dat", noconju1)
+	np.savetxt("./BP_data/CC_noconju2_writting_all_mol.dat", noconju2)
+	np.savetxt("./BP_data/CC_noconju3_writting_all_mol.dat", noconju3)	
 
 
 if (0):
@@ -83,7 +83,7 @@ if (0):
 		a.mols[index].WriteXYZfile(fname = str(index))
 		print "\n\n"
 
-if (1):
+if (0):
 	ele = bond_index['CC']
 	ele_index = list(eles).index(ele)
 	print "ele_index:", ele_index, eles
