@@ -214,8 +214,7 @@ class MSet:
 		return
 
 	def AppendSet(self, b):
-		if (self.name == None):
-			self.name = self.name + b.name
+		self.name = self.name + "_" + b.name
 		self.mols = self.mols+b.mols
 		return
 
@@ -303,7 +302,7 @@ class MSet:
 
 	def Make_Graphs(self):
 		for i, mol in enumerate(self.mols):
-			print "making graph of mol:", i
+			print "making graph of mol:", i, " name", mol.name
 			mol.Make_Mol_Graph()
 		return
 	
@@ -330,4 +329,9 @@ class MSet:
 		for mol in self.mols:
 			mol.Calculate_vdw()
 			print "atomization:", mol.atomization, " vdw:", mol.vdw
-		return	
+		return
+	
+	def WriteSmiles(self):
+		for mol in self.mols:
+			mol.WriteSmiles()
+		return 	

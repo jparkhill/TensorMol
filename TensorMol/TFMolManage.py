@@ -67,7 +67,7 @@ class TFMolManage(TFManage):
 		return self.Instances.evaluate(test_input)   
 
 
-	def Eval_Bond_BP(self, mol_set):
+	def Eval_Bond_BP(self, mol_set, total_energy = False):
 		nmols = len(mol_set.mols)
 		nbonds = mol_set.NBonds()
 		cases = np.zeros(tuple([nbonds]+list(self.TData.dig.eshape)))
@@ -114,6 +114,11 @@ class TFMolManage(TFManage):
 			mol = mol_set.mols[i]
 			print "for mol :", mol.name, 
 			print "total atomization energy:", mol_out[0][i]
+			if total_energy:
+				total = mol_out[0][i]
+				for j in range (0, mol.NAtoms()):
+					total += ele_U[mol.atoms[j]]
+				print "total electronic energy:", total
 			for j in range (0, mol.bonds.shape[0]):
 				bond_type = mol.bonds[j, 0]
 				bond_index = self.TData.eles.index(bond_type)
@@ -164,8 +169,10 @@ class TFMolManage(TFManage):
 	def Continue_Training(self, maxsteps):   # test a pretrained network
                 self.Instances.TData = self.TData
                 self.Instances.TData.LoadDataToScratch()
+		#self.Instances.chk_file = "./networks/Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_1_None/Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_1_None-chk-182" 
                 self.Instances.Prepare()
                 self.Instances.continue_training(maxsteps)
+		self.Save()
                 return
 
 

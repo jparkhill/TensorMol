@@ -724,7 +724,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		test_result['nn'] = all_mols_nn
 		test_result['acc'] = all_mols_acc
 		test_result['length'] = bond_length
-		f = open("test_result_cleaned_connectedbond_cm_angle_for_test.dat","wb")
+		f = open("test_result_energy_cleaned_connectedbond_angle_for_test_writting_all_mol.dat","wb")
 		pickle.dump(test_result, f)
 		f.close()
 
@@ -749,7 +749,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 	def continue_training(self, mxsteps):
 		self.Eval_Prepare()
 		test_loss , feed_dict = self.test(-1)
-                test_freq = 10
+                test_freq = 1
                 mini_test_loss = test_loss
                 for step in  range (0, mxsteps+1):
                         self.train_step(step)

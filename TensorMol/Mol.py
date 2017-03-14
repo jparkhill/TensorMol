@@ -65,6 +65,7 @@ class Mol:
 		self.mob_all_frags = dict() # dictionary that stores all the necessary frags in mol format  for MOB dic[LtoS([list])] = mol
 		self.mob_energy = None
 		self.vdw = None
+		self.smiles= None
 		return
 
 	
@@ -375,7 +376,7 @@ class Mol:
 		node = node_stack.pop()
 		visited_list.append(node.node_index)
 		for next_node in node.connected_nodes:
-			if next_node.node_index not in visited_list:
+			if next_node.node_index not in visited_list and next_node not in node_stack:
 				node_stack.append(next_node)
 		return node, visited_list, node_stack
 
@@ -440,6 +441,10 @@ class Mol:
                 while(frag_node_stack):   # if node stack is not empty
 			current_frag_node = frag_node_stack[-1]
 			updated_all_mol_visited_list = []
+			#print "frag_node_stack:",[node.node_index for node in  frag_node_stack]
+			#print "current_frag_node_index:", current_frag_node.node_index
+			#print "all_mol_visited_list", all_mol_visited_list
+			#print "frag_visited_list", frag_visited_list
 			for mol_visited_list in all_mol_visited_list:
 				possible_node = []
 				if mol_visited_list ==[]:
@@ -465,6 +470,7 @@ class Mol:
                         next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
 		frags_in_mol = []
 		already_included = []
+		#print "final:", all_mol_visited_list
 		for mol_visited_list in all_mol_visited_list:
 			mol_visited_list.sort()
 			if mol_visited_list not in already_included:
@@ -1066,6 +1072,8 @@ class Mol:
 				self.roomT_H = float((lines[1].split())[14])
 				self.zpe = float((lines[1].split())[11])
 				self.energy = self.internal - self.zpe
+				self.smiles = lines[-2].split()[0]
+				print "smiles:", self.smiles
 			except:
 				pass
 			for i in range(natoms):
@@ -1095,7 +1103,6 @@ class Mol:
 		lines = string.split("\n")
 		natoms=int(lines[0])
 		self.name = lines[1] #debug
-		print "mol name:", self.name
 		if (len(lines[1].split())>1):
 			try:
 				self.energy=float(lines[1].split()[1])
@@ -1120,6 +1127,10 @@ class Mol:
 				self.coords[i,2]=float(line[3])
 			except:
 				self.coords[i,2]=scitodeci(line[3])
+		if self.energy:
+			for i in range (0, self.atoms.shape[0]):
+                        	self.energy = self.energy - ele_U[self.atoms[i]]
+			print "after self.energy:", self.energy
 		return
 
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):
@@ -1135,6 +1146,19 @@ class Mol:
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+
+	def WriteSmiles(self, fpath=".", fname="gdb9_smiles", mode = "a"):
+		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".dat")):
+                        try:
+                                os.makedirs(os.path.dirname(fpath+"/"+fname+".dat"))
+                        except OSError as exc:
+                                if exc.errno != errno.EEXIST:
+                                        raise
+                with open(fpath+"/"+fname+".dat", mode) as f:
+                        f.write(self.name+ "  "+ self.smiles+"\n")
+			f.close()
+		return 
+
 
 	def NEle(self):
 		return np.sum(self.atoms)
@@ -2672,10 +2696,15 @@ class Frag_of_Mol(Mol):
                         except:
                                 self.coords[i,2]=scitodeci(line[3])
 		import ast
-		self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
-		if "type" in self.undefined_bonds.keys():
-			self.undefined_bond_type = self.undefined_bonds["type"]
-		else:
+		try:
+			self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
+			if "type" in self.undefined_bonds.keys():
+				self.undefined_bond_type = self.undefined_bonds["type"]
+			else:
+				self.undefined_bond_type = "any"
+		except:
+			self.name = lines[1] #debug
+			self.undefined_bonds = {}
 			self.undefined_bond_type = "any"
                 return
 
