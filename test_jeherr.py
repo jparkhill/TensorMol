@@ -264,7 +264,8 @@ def TestIpecac(dig_ = "GauSH"):
 	# eopt.PerformOptimization()
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
-	m = a.mols[5]
+	m = a.mols[0]
+	print type(m.atoms)
 	m.WriteXYZfile("./results/", "Before")
 	goodcrds = m.coords.copy()
 	m.BuildDistanceMatrix()
