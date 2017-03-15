@@ -2,6 +2,7 @@ from Util import *
 import numpy as np
 import random, math
 import MolEmb
+import networkx as nx
 
 class Mol:
 	""" Provides a general purpose molecule"""
@@ -66,6 +67,8 @@ class Mol:
 		self.mob_energy = None
 		self.vdw = None
 		self.smiles= None
+		self.mol_graph = None
+		self.shortest_path = None
 		return
 
 	
@@ -91,11 +94,26 @@ class Mol:
 		self.Find_Bond_Index()
 		self.Define_Conjugation()
 		return
-			
+
+	def Make_Nx_Graph(self):
+		self.mol_graph = nx.Graph()
+		self.mol_graph.add_nodes_from(range(0, self.NAtoms()))
+		for i in range (0, self.NBonds()):
+			atom1 = int(self.bonds[i][2])
+			atom2 = int(self.bonds[i][3]) 
+			self.mol_graph.add_edge(atom1, atom2)
+		self.shortest_path = dict() 
+		for i in range (0, self.NAtoms()):
+			self.shortest_path[i] = []
+                        for j in range (i+1, self.NAtoms()):
+                        	self.shortest_path[i].append(nx.shortest_path(self.mol_graph,i,j))
+		return
+	
 	def Calculate_Bond_Type(self):
 		self.bond_type = [0 for i in range (0, self.NBonds())]
 		left_atoms = range (0, self.NAtoms())
 		left_connections = list(self.num_atom_connected)
+		print "self.atoms:", self.atoms
 		left_valance = [ atom_valance[at] for at in self.atoms ]
 		bond_of_atom = [[] for i in  range (0, self.NAtoms())] # index of the bonds that the atom are connected
 		for i in range (0, self.NBonds()):
@@ -1019,7 +1037,8 @@ class Mol:
 		try:
 			f = open(path, "r+")
 			lines = f.readlines()
-			print path
+			self.name = filename
+			print "name:", self.name
 			for i in range (0, len(lines)):
 				if "Multiplicity" in lines[i]:
 					atoms = []
@@ -1055,8 +1074,9 @@ class Mol:
 	
 		except Exception as Ex:
 			print "Read Failed.", Ex
-			raise Ex
-		return 
+			return False
+			#raise Ex
+		return True
 
 	def ReadGDB9(self,path,filename, set_name):
                 try:
