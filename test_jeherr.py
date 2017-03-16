@@ -264,8 +264,8 @@ def TestIpecac(dig_ = "GauSH"):
 	# eopt.PerformOptimization()
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
-	m = a.mols[0]
-	print type(m.atoms)
+	m = a.mols[1]
+	print m.atoms
 	m.WriteXYZfile("./results/", "Before")
 	goodcrds = m.coords.copy()
 	m.BuildDistanceMatrix()
@@ -276,7 +276,7 @@ def TestIpecac(dig_ = "GauSH"):
 	emb = dig.TrainDigestMolwise(m,MakeOutputs_=False)
 	m.Distort()
 	m.WriteXYZfile("./results/", "Distorted")
-	bestfit = ReverseAtomwiseEmbedding(m.atoms, dig, emb, guess_=m.coords,GdDistMatrix=gooddmat)
+	bestfit = ReverseAtomwiseEmbedding(dig, emb, atoms_=m.atoms, guess_=m.coords,GdDistMatrix=gooddmat)
 	bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 

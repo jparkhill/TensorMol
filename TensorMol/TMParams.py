@@ -28,8 +28,9 @@ class TMParams(dict):
 		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		#self["ANES"] = np.array([0.84459955, 1., 1., 1., 1., 1.4283786, 0.83621637, 0.85743746])
 		self["ANES"] = np.array([0.50068655, 1., 1., 1., 1., 1.12237954, 0.90361766, 1.06592739])
-		self["SH_LMAX"]=3
-		self["SH_NRAD"]=6
+		# self["ANES"] = np.array([1, 1., 1., 1., 1., 6., 7., 8.])
+		self["SH_LMAX"]=2
+		self["SH_NRAD"]=5
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		# SET GENERATION parameters

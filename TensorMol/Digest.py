@@ -111,7 +111,6 @@ class Digester:
 			if at_ < 0 the first dimension loops over atoms in mol_
 		"""
 		#start = time.time()
-		print type(mol_.atoms)
 		if (self.name=="Coulomb"):
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):

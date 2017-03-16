@@ -16,7 +16,7 @@ def EmbAtomwiseErr(mol_,dig_,emb_):
 	err = np.sqrt(np.sum((ins-emb_)*(ins-emb_)))
 	return err
 
-def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, GdDistMatrix=None):
+def ReverseAtomwiseEmbedding(dig_, emb_,atoms_=None, guess_=None, GdDistMatrix=None):
 	"""
 	Args:
 		atoms_: a list of element types for which this routine provides coords.
@@ -42,30 +42,37 @@ def ReverseAtomwiseEmbedding(atoms_, dig_, emb_, guess_=None, GdDistMatrix=None)
 		mfit.WriteXYZfile("./results/", "RevLog")
 	else:
 		coords = guess_
+	atoms = np.ones(len(atoms_), dtype=np.uint8)
 	# Now shit gets real. Create a function to minimize.
-	objective = lambda crds: BruteForceAtoms(Mol(atoms_,crds.reshape(natom,3)),dig_,emb_)
-	if (0):
+	objective = lambda crds: EmbAtomwiseErr(Mol(atoms,crds.reshape(natom,3)),dig_,emb_)
+	if (1):
 		def callbk(x_):
-			mn = Mol(atoms_, x_.reshape(natom,3))
+			mn = Mol(atoms, x_.reshape(natom,3))
 			mn.BuildDistanceMatrix()
 			print "Distance error : ", np.sqrt(np.sum((GdDistMatrix-mn.DistMatrix)*(GdDistMatrix-mn.DistMatrix)))
 	import scipy.optimize
-	res=scipy.optimize.minimize(objective,coords.reshape(natom*3),method='L-BFGS-B',tol=0.000001,options={"maxiter":5000000,"maxfun":10000000})#,callback=callbk)
-	print "Reversal complete: ", res.message
-	mfit = Mol(atoms_, res.x.reshape(natom,3))
+	step = 0
+	while (EmbAtomwiseErr(Mol(atoms,coords),dig_,emb_) > 1.e-5) and (step < 10):
+		step += 1
+		res=scipy.optimize.minimize(objective,coords.reshape(natom*3),method='L-BFGS-B',tol=0.000001,options={"maxiter":5000000,"maxfun":10000000},callback=callbk)
+		print "Reversal complete: ", res.message
+		coords = res.x.reshape(natom,3)
+		mfit = Mol(atoms, coords)
+		atoms = BruteForceAtoms(mfit, dig_, emb_)
+	mfit = Mol(atoms, coords)
 	return mfit
 
 def BruteForceAtoms(mol_, dig_, emb_):
+	print "Searching for best atom fit"
 	bestmol = copy.deepcopy(mol_)
 	besterr = 100.0
-	# posib_atoms = [x for x in itertools.combinations_with_replacement([1,6,7,8], len(mol_.atoms))]
-	posib_atoms = [[6,6,6,6]]
-	for ats in posib_atoms:
-		mol_.atoms = np.array(ats)
-		tmperr = EmbAtomwiseErr(mol_,dig_,emb_)
+	posib_stoich = [x for x in itertools.product([1,6,7,8], repeat=len(mol_.atoms))]
+	for stoich in posib_stoich:
+		tmpmol = Mol(np.array(stoich), mol_.coords)
+		tmperr = EmbAtomwiseErr(tmpmol,dig_,emb_)
 		if tmperr < besterr:
-			bestmol = copy.deepcopy(mol_)
+			bestmol = copy.deepcopy(tmpmol)
 			besterr = tmperr
-			# print besterr
-	# print bestmol.atoms
-	return besterr
+			print besterr
+	print bestmol.atoms
+	return bestmol.atoms

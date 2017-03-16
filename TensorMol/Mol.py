@@ -8,7 +8,7 @@ class Mol:
 	""" Provides a general purpose molecule"""
 	def __init__(self, atoms_ =  None, coords_ = None):
 		if (atoms_!=None):
-			self.atoms = atoms_.copy()
+			self.atoms = atoms_.copy().astype(np.uint8)
 		else:
 			self.atoms = np.zeros(1,dtype=np.uint8)
 		if (coords_!=None):

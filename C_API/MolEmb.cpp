@@ -468,7 +468,6 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 				double z = xyz_data[j*3+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
 				//RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, (double)atoms[j]);
-				std::cout << "Atom #: " << int(atoms[j]) << "   ANES #: " << Prm->ANES[atoms[j]-1] << std::endl;
 				RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + i*SHdim, Prm->ANES[atoms[j]-1]);
 			}
 		}
