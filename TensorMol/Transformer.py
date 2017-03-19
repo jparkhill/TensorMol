@@ -87,6 +87,7 @@ class Transformer:
 		return outs
 
 	def UnNormalizeOuts(self, outs):
+		print "Unnormalizing outputs here!!!"
 		if (self.outnorm == "MeanStd"):
 			return self.UnNormOutMeanStd(outs)
 		elif (self.outnorm == "Logarithmic"):

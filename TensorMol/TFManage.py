@@ -197,11 +197,11 @@ class TFManage:
 				mol_t = Mol(mol.atoms, mol.coords)
 				mol_t.Transform(op, mol.coords[atom])
 				inputs[i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
-			if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
-				inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
+			#if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
+			#	inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
-			if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
-				outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
+			#if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
+			#	outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
 			for i in range(len(ops)):
 				pi[atom,i] = np.dot(invops[i],outs[i].T).reshape(3)
 				p[atom] += np.sum(pi[atom,i], axis=0)
