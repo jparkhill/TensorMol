@@ -77,27 +77,27 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(0):
-	#a=MSet("md_set_full")
+if(1):
+	#a=MSet("SmallMols")
 	#a.Load()
-	#a = a.RotatedClone(1)
-	#b=MSet("SmallMols")
-	#b.Load()
-	#b=b.RotatedClone(10)
-	#a.AppendSet(b)
+	#a = a.RotatedClone(20)
 	#print "nmols:",len(a.mols)
-	#a.Save("mddataset_smallmols")
-	#a.WriteXYZ("mddataset_smallmols")
-	#a=MSet("mddataset_smallmols")
-	#a.Load()
+	#a.Save("SmallMols_20rot")
+	#a.WriteXYZ("SmallMols_20rot")
+	##a=MSet("mddataset_smallmols")
+	##a.Load()
 	#TreatedAtoms = a.AtomTypes()
 	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 	#tset = TensorData(a,d)
-	#tset.BuildTrainMolwise("mddataset_smallmols",TreatedAtoms)
-	tset = TensorData(None,None,"mddataset_smallmols_"+"GauSH")
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-	#optimizer = Optimizer(manager)
-	#optimizer.OptRealForce(test_mol)
+	#tset.BuildTrainMolwise("SmallMols_20rot",TreatedAtoms)
+	#tset = TensorData(None,None,"SmallMols_20rot_"+"GauSH")
+	#manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	a=MSet("pentane_1")
+	a.ReadXYZ()
+	test_mol = a.mols[0]
+	manager=TFManage("SmallMols_20rot_GauSH_fc_sqdiff",None,False)
+	optimizer = Optimizer(manager)
+	optimizer.OptTFRealForce(test_mol)
 
 if(0):
 	#a=MSet("OptMols")
@@ -212,13 +212,13 @@ if(0):
 # h_inst = Instance_KRR(tset, 1, None)
 # mae_h = h_inst.basis_opt_run()
 
-# import glob
-# a=MSet("SmallMols")
-# for dir in glob.iglob("/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/*/*/"):
-# 	a.ReadXYZUnpacked(dir, has_force=True)
-# print len(a.mols)
-# a.Save()
-# a.WriteXYZ()
+#import glob
+#a=MSet("SmallMols")
+#for dir in glob.iglob("/media/sdb1/jeherr/TensorMol/datasets/small_mol_dataset/*/*/"):
+#	a.ReadXYZUnpacked(dir, has_force=True)
+#print len(a.mols)
+#a.Save()
+#a.WriteXYZ()
 
 #a=MSet("SmallMols")
 #a.Load()
@@ -304,4 +304,3 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 	# We should try to get optimizations working too...
 	return
 
-TestBP()
