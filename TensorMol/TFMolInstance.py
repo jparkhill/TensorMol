@@ -22,12 +22,11 @@ import sys
 class MolInstance(Instance):
 	def __init__(self, TData_,  Name_=None):
 		Instance.__init__(self, TData_, 0, Name_)
-		self.batch_size = 1000 # This is just the train batch size.
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.TData.LoadDataToScratch(True)
+		self.TData.LoadDataToScratch(self.tformer, True)
+		self.tformer.Print()
 		self.TData.PrintStatus()
-		self.normalize= True
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 		self.outshape = self.TData.dig.lshape    # use the flatted version
 		print ("inshape", self.inshape, "outshape", self.outshape)
@@ -441,7 +440,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
 		self.momentum = 0.95
-		self.TData.LoadDataToScratch()
+		self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
 		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
@@ -471,7 +470,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		Args:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
-		self.TData.LoadDataToScratch()
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
@@ -639,5 +637,5 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		preds, total_loss_value, loss_value = self.sess.run([self.output,self.total_loss, self.loss],  feed_dict=feed_dict)
 		duration = time.time() - test_start_time
 		self.print_training(step, test_loss, self.TData.NTest , duration)
-		self.TData.dig.EvaluateTestOutputs(batch_data[2],preds,batch_data[3]) # Pass the matrices to truncate the output.
+		self.TData.EvaluateTestBatch(batch_data[2], preds, self.tformer, batch_data[3]) # Pass the matrices to truncate the output.
 		return test_loss, feed_dict

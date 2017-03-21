@@ -264,7 +264,7 @@ def TestIpecac(dig_ = "GauSH"):
 	# eopt.PerformOptimization()
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
-	m = a.mols[1]
+	m = a.mols[5]
 	print m.atoms
 	m.WriteXYZfile("./results/", "Before")
 	goodcrds = m.coords.copy()
@@ -280,4 +280,28 @@ def TestIpecac(dig_ = "GauSH"):
 	bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 
-TestIpecac()
+#TestIpecac()
+
+def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
+	"""
+	General Behler Parinello using ab-initio energies.
+	Args:
+		set_: A dataset ("gdb9 or alcohol are available")
+		dig_: the digester string
+	"""
+	print "Testing General Behler-Parrinello using ab-initio energies...."
+	if (BuildTrain_):
+		a=MSet(set_)
+		a.ReadXYZ(set_)
+		TreatedAtoms = a.AtomTypes()
+		print "TreatedAtoms ", TreatedAtoms
+		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
+		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain(set_)
+	tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+	manager.Train(maxstep=500)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
+	# We should try to get optimizations working too...
+	return
+
+TestBP()

@@ -44,7 +44,6 @@ class Instance:
 		self.PreparedFor=0
 
 		self.path='./networks/'
-		self.normalize = False
 		if (Name_ !=  None):
 			self.name = Name_
 			#self.QueryAvailable() # Should be a sanity check on the data files.
@@ -85,8 +84,6 @@ class Instance:
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
-		if (self.normalize):
-			eval_input=self.TData.ApplyNormalize(eval_input, self.element)
 		if (not np.all(np.isfinite(eval_input))):
 			LOGGER.error("WTF, you trying to feed me, garbage?")
 			raise Exception("bad digest.")

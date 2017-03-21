@@ -103,6 +103,8 @@ class Transformer:
 				x[...] = (-1*(10**(-x)))+1
 		return outs
 
+	#Don't remember where this junk comes from
+
 	def MakeSamples_v2(self,point):    # with sampling function f(x)=M/(x+1)^2+N; f(0)=maxdisp,f(maxdisp)=0; when maxdisp =5.0, 38 % lie in (0, 0.1)
 		disps = samplingfunc_v2(self.TrainSampDistance * np.random.random(self.NTrainSamples), self.TrainSampDistance)
 		theta  = np.random.random(self.NTrainSamples)* math.pi
@@ -123,3 +125,55 @@ class Transformer:
 		labels = np.clip(-(dists - cutoff), 0, (-(dists - cutoff)).max())
 		labels[np.where(labels > 0)]=1
 		return labels
+
+	#This junk is from TMolData
+
+	def NormalizeInputs(self):
+		mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))
+		std = (np.std(self.scratch_inputs, axis=0)).reshape((1, -1))
+		self.scratch_inputs = (self.scratch_inputs-mean)/std
+		self.scratch_test_inputs = (self.scratch_test_inputs-mean)/std
+		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in_MEAN.npy", mean)
+		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in_STD.npy",std)
+		return
+
+	def NormalizeOutputs(self):
+		print self.scratch_outputs
+		mean = (np.mean(self.scratch_outputs, axis=0)).reshape((1,-1))
+		std = (np.std(self.scratch_outputs, axis=0)).reshape((1, -1))
+		self.scratch_outputs = (self.scratch_outputs-mean)/std
+		self.scratch_test_outputs = (self.scratch_test_outputs-mean)/std
+		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy", mean)
+		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy",std)
+		print mean, std, self.scratch_outputs
+		return
+
+	def Get_Mean_Std(self):
+		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy")
+		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy")
+		return mean, std
+
+
+	def ApplyNormalize(self, outputs):
+		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy")
+		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy")
+		print mean,std, outputs, (outputs-mean)/std
+		return (outputs-mean)/std
+
+	def Normalize(self,ti,to):
+		if (self.NormalizeInputs):
+			for i in range(len(ti)):
+				ti[i] = ti[i]/np.linalg.norm(ti[i])
+		if (self.NormalizeOutputs):
+			mo = np.average(to)
+			to -= mo
+			stdo = np.std(to)
+			to /= stdo
+			self.dig.AssignNormalization(mo,stdo)
+		return ti, to
+
+	#From DigestMol
+	def AssignNormalization(self,mn,sn):
+		self.MeanNorm=mn
+		self.StdNorm=sn
+		return

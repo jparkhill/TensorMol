@@ -111,7 +111,6 @@ class TFMolManage(TFManage):
 		ti= ti[ti.shape[0]-NTest:]
 		to = to[to.shape[0]-NTest:]
 		acc_nn = np.zeros((to.shape[0],2))
-		acc=self.TData.ApplyNormalize(to)
 		nn, gradient=self.Eval(ti)
 		acc_nn[:,0]=acc.reshape(acc.shape[0])
 		acc_nn[:,1]=nn.reshape(nn.shape[0])

@@ -20,11 +20,6 @@ class MolDigester:
     	self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
     	self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
 
-    def AssignNormalization(self,mn,sn):
-    	self.MeanNorm=mn
-    	self.StdNorm=sn
-    	return
-
     def make_sym(self, mol):
     	zeta=[]
     	eta1=[]
@@ -195,26 +190,6 @@ class MolDigester:
     		mol_: a molecule to be digested
     	"""
     	return self.Emb(mol_,True,False)
-
-    def unscld(self,a):
-        return (a*self.StdNorm+self.MeanNorm)
-
-    def EvaluateTestOutputs(self, desired, predicted, nmols_=100):
-        LOGGER.info("desired.shape "+str(desired.shape)+" predicted.shape "+str(predicted.shape)+" nmols "+str(nmols_))
-        LOGGER.info("Evaluating, "+str(len(desired))+" predictions... ")
-        if (self.OType=="GoEnergy" or self.OType == "Energy" or self.OType == "AtomizationEnergy"):
-            predicted=predicted.flatten()[:nmols_]
-            desired=desired.flatten()[:nmols_]
-            LOGGER.info( "NCases: "+str(len(desired))+"Mean Norm and Std"+str(self.MeanNorm)+" "+str(self.StdNorm))
-            #LOGGER.info( "Mean Energy "+str(self.unscld(desired)))
-            #LOGGER.info( "Mean Predicted Energy "+str(self.unscld(predicted)))
-            for i in range(min(50,nmols_)):
-                LOGGER.info( "Desired: "+str(i)+" "+str(self.unscld(desired[i]))+" Predicted "+str(self.unscld(predicted[i])))
-            LOGGER.info("MAE "+str(np.average(np.abs(self.unscld(desired)-self.unscld(predicted)))))
-            LOGGER.info("STD "+str(np.std(self.unscld(desired-predicted))))
-        else:
-        	raise Exception("Unknown Digester Output Type.")
-        return
 
     def Print(self):
     	print "Digest name: ", self.name

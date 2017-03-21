@@ -188,6 +188,10 @@ class TensorMolData(TensorData):
 
 	def LoadDataToScratch(self, random=True):
 		ti, to = self.LoadData( random)
+		if (tformer.innorm != None):
+			ti = tformer.NormalizeIns(ti)
+		if (tformer.outnorm != None):
+			to = tformer.NormalizeOuts(to)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.NTrain = int(ti.shape[0]-self.NTest)
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
@@ -203,41 +207,7 @@ class TensorMolData(TensorData):
 		# Also get the relevant Normalizations of input, output
 		# and average stoichiometries, etc.
 		#
-
 		return
-
-	def NormalizeInputs(self):
-		mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))
-		std = (np.std(self.scratch_inputs, axis=0)).reshape((1, -1))
-		self.scratch_inputs = (self.scratch_inputs-mean)/std
-		self.scratch_test_inputs = (self.scratch_test_inputs-mean)/std
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in_MEAN.npy", mean)
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_in_STD.npy",std)
-		return
-
-	#	We need to figure out a better way of incorporating this with the data.
-	def NormalizeOutputs(self):
-		print self.scratch_outputs
-		mean = (np.mean(self.scratch_outputs, axis=0)).reshape((1,-1))
-		std = (np.std(self.scratch_outputs, axis=0)).reshape((1, -1))
-		self.scratch_outputs = (self.scratch_outputs-mean)/std
-		self.scratch_test_outputs = (self.scratch_test_outputs-mean)/std
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy", mean)
-		np.save(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy",std)
-		print mean, std, self.scratch_outputs
-		return
-
-	def Get_Mean_Std(self):
-		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy")
-		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy")
-		return mean, std
-
-
-	def ApplyNormalize(self, outputs):
-		mean = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_MEAN.npy")
-		std  = np.load(self.path+self.name+"_"+self.dig.name+"_"+str(self.order)+"_out_STD.npy")
-		print mean,std, outputs, (outputs-mean)/std
-		return (outputs-mean)/std
 
 	def PrintSampleInformation(self):
 		print "From files: ", self.AvailableDataFiles
@@ -249,6 +219,27 @@ class TensorMolData(TensorData):
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
+
+	def EvaluateTestBatch(self, desired, predicted, tformer, nmols_=100):
+		if (tformer.outnorm != None):
+			desired = tformer.UnNormalizeOuts(desired)
+			predicted = tformer.UnNormalizeOuts(predicted)
+		LOGGER.info("desired.shape "+str(desired.shape)+" predicted.shape "+str(predicted.shape)+" nmols "+str(nmols_))
+		LOGGER.info("Evaluating, "+str(len(desired))+" predictions... ")
+		if (self.dig.OType=="GoEnergy" or self.dig.OType == "Energy" or self.dig.OType == "AtomizationEnergy"):
+			predicted=predicted.flatten()[:nmols_]
+			desired=desired.flatten()[:nmols_]
+			LOGGER.info( "NCases: "+str(len(desired)))
+			#LOGGER.info( "Mean Energy "+str(self.unscld(desired)))
+			#LOGGER.info( "Mean Predicted Energy "+str(self.unscld(predicted)))
+			for i in range(min(50,nmols_)):
+				LOGGER.info( "Desired: "+str(i)+" "+str(desired[i])+" Predicted "+str(predicted[i]))
+			LOGGER.info("MAE "+str(np.average(np.abs(desired-predicted))))
+			LOGGER.info("STD "+str(np.std(desired-predicted)))
+		else:
+			raise Exception("Unknown Digester Output Type.")
+		return
+
 
 class TensorMolData_BP(TensorMolData):
 	"""
@@ -266,8 +257,6 @@ class TensorMolData_BP(TensorMolData):
 		self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
-		self.NormalizeInputs = PARAMS["NormalizeInputs"]
-		self.NormalizeOutputs = PARAMS["NormalizeOutputs"]
 		print "TensorMolData_BP.eles", self.eles
 		print "TensorMolData_BP.MeanStoich", self.MeanStoich
 		print "TensorMolData_BP.MeanNAtoms", self.MeanStoich
@@ -350,19 +339,7 @@ class TensorMolData_BP(TensorMolData):
 			#ti, to, atom_index = self.Randomize(ti, to)
 		return ti, to, tm
 
-	def Normalize(self,ti,to):
-		if (self.NormalizeInputs):
-			for i in range(len(ti)):
-				ti[i] = ti[i]/np.linalg.norm(ti[i])
-		if (self.NormalizeOutputs):
-			mo = np.average(to)
-			to -= mo
-			stdo = np.std(to)
-			to /= stdo
-			self.dig.AssignNormalization(mo,stdo)
-		return ti, to
-
-	def LoadDataToScratch(self, random=True):
+	def LoadDataToScratch(self, tformer, random=True):
 		"""
 		Reads built training data off disk into scratch space.
 		Divides training and test data.
@@ -379,7 +356,12 @@ class TensorMolData_BP(TensorMolData):
 		if (self.ScratchState == 1):
 			return
 		ti, to, tm = self.LoadData(random)
-		ti, to = self.Normalize(ti,to)
+		print to[0]
+		if (tformer.innorm != None):
+			ti = tformer.NormalizeIns(ti)
+		if (tformer.outnorm != None):
+			to = tformer.NormalizeOuts(to)
+		print to[0]
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
 		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
