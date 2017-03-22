@@ -87,7 +87,6 @@ class Transformer:
 		return outs
 
 	def UnNormalizeOuts(self, outs):
-		print "Unnormalizing outputs here!!!"
 		if (self.outnorm == "MeanStd"):
 			return self.UnNormOutMeanStd(outs)
 		elif (self.outnorm == "Logarithmic"):
@@ -104,7 +103,8 @@ class Transformer:
 				x[...] = (-1*(10**(-x)))+1
 		return outs
 
-	#Don't remember where this junk comes from
+	### Everything below here is cabbage or need reimplimented to work with the transformer ###
+	#Don't remember where this cabbage comes from
 
 	def MakeSamples_v2(self,point):    # with sampling function f(x)=M/(x+1)^2+N; f(0)=maxdisp,f(maxdisp)=0; when maxdisp =5.0, 38 % lie in (0, 0.1)
 		disps = samplingfunc_v2(self.TrainSampDistance * np.random.random(self.NTrainSamples), self.TrainSampDistance)
@@ -127,7 +127,7 @@ class Transformer:
 		labels[np.where(labels > 0)]=1
 		return labels
 
-	#This junk is from TMolData
+	#This cabbage is from TMolData
 
 	def NormalizeInputs(self):
 		mean = (np.mean(self.scratch_inputs, axis=0)).reshape((1,-1))

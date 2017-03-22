@@ -30,7 +30,6 @@ class MolInstance(Instance):
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 		self.outshape = self.TData.dig.lshape    # use the flatted version
 		print ("inshape", self.inshape, "outshape", self.outshape)
-		print ("std of the output", (self.TData.scratch_outputs.reshape(self.TData.scratch_outputs.shape[0])).std())
 		return
 
 	def inference(self, images, hidden1_units, hidden2_units, hidden3_units):
@@ -222,7 +221,7 @@ class MolInstance_fc_classify(MolInstance):
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss, self.prob = self.loss_op(self.output, self.labels_placeholder)
@@ -368,7 +367,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
 			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
@@ -477,7 +476,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
 		print("Assigned batch input size: ",self.batch_size)
 		print("Assigned batch output size: ",self.batch_size_output)
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default():
 			self.inp_pl=[]
 			self.mats_pl=[]
 			for e in range(len(self.eles)):

@@ -77,7 +77,7 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(1):
+if(0):
 	#a=MSet("SmallMols")
 	#a.Load()
 	#a = a.RotatedClone(20)
@@ -304,3 +304,4 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 	# We should try to get optimizations working too...
 	return
 
+TestBP()

@@ -63,8 +63,14 @@ class TFMolManage(TFManage):
 		gc.collect()
 		return
 
-	def Eval(self, test_input):
-		return self.Instances.evaluate(test_input)
+	def Eval(self, inputs):
+		if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
+			inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
+		outputs = self.Instances.evaluate(inputs)
+		if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
+			outputs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outputs)
+		return outputs
+
 
 	def Eval_Mol(self, mol):
 		total_case = len(mol.mbe_frags[self.TData.order])
@@ -81,9 +87,6 @@ class TFMolManage(TFManage):
 			casep += 1
 		print "evaluating order:", self.TData.order
 		nn, nn_deri=self.Eval(cases)
-		mean, std = self.TData.Get_Mean_Std()
-		nn = nn*std+mean
-		nn_deri = nn_deri*std
 		#print "nn:",nn, "nn_deri:",nn_deri, "cm_deri:", cases_deri, "cases:",cases, "coord:", mol.coords
 		mol.Set_Frag_Force_with_Order(cases_deri, nn_deri, self.TData.order)
 		return nn.sum()

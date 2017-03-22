@@ -49,8 +49,6 @@ class TMParams(dict):
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"
-		self["NormalizeInputs"] = False # These should be phased out/ removed from the code.
-		self["NormalizeOutputs"] = False
 		self["RandomizeData"] = True
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000

@@ -186,7 +186,7 @@ class TensorMolData(TensorData):
 		print "KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:])
 		return
 
-	def LoadDataToScratch(self, random=True):
+	def LoadDataToScratch(self, tformer, random=True):
 		ti, to = self.LoadData( random)
 		if (tformer.innorm != None):
 			ti = tformer.NormalizeIns(ti)
@@ -258,8 +258,6 @@ class TensorMolData_BP(TensorMolData):
 		self.MeanStoich=None
 		self.MeanNAtoms=None
 		print "TensorMolData_BP.eles", self.eles
-		print "TensorMolData_BP.MeanStoich", self.MeanStoich
-		print "TensorMolData_BP.MeanNAtoms", self.MeanStoich
 		return
 
 	def CleanScratch(self):
@@ -320,7 +318,7 @@ class TensorMolData_BP(TensorMolData):
 		self.Save() #write a convenience pickle.
 		return
 
-	def LoadData(self, random=False):
+	def LoadData(self):
 		insname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_in.npy"
 		outsname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_out.npy"
 		metasname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_meta.npy" # Used aggregate
@@ -334,12 +332,9 @@ class TensorMolData_BP(TensorMolData):
 		ouf.close()
 		mef.close()
 		to = to.reshape((to.shape[0],-1))  # flat labels to [mol, 1]
-		if (random):
-			print "Cannot yet properly randomize molecule cases. Please implement soon."
-			#ti, to, atom_index = self.Randomize(ti, to)
 		return ti, to, tm
 
-	def LoadDataToScratch(self, tformer, random=True):
+	def LoadDataToScratch(self, tformer):
 		"""
 		Reads built training data off disk into scratch space.
 		Divides training and test data.
@@ -355,13 +350,11 @@ class TensorMolData_BP(TensorMolData):
 		"""
 		if (self.ScratchState == 1):
 			return
-		ti, to, tm = self.LoadData(random)
-		print to[0]
+		ti, to, tm = self.LoadData()
 		if (tformer.innorm != None):
 			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):
 			to = tformer.NormalizeOuts(to)
-		print to[0]
 		self.NTestMols = int(self.TestRatio * to.shape[0])
 		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
 		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
