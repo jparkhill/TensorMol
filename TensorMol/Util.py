@@ -114,7 +114,7 @@ SENSORY_BASIS=None
 if (HAS_PYSCF and HAS_GRIDS):
 	from TensorMol.Grids import *
 	GRIDS = Grids()
-	GRIDS.Populate()
+#	GRIDS.Populate()
 print("--------------------------")
 #
 # -- end Environment set up.

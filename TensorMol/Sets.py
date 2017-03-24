@@ -139,17 +139,22 @@ class MSet:
 	def Read_Jcoupling(self, path):
 		from os import listdir
 		from os.path import isdir, join, isfile
-		onlyfolders = [folder for folder in listdir(path) if isdir(join(path, folder))]
-		files = []
-		for subfolder in onlyfolders:
-			onlyfiles = [f for f in listdir(join(path, subfolder)) if isfile(join(path, subfolder, f))]
-			files += onlyfiles
-		for file in files:
+		onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+		#onlyfolders = [folder for folder in listdir(path) if isdir(join(path, folder))]
+		#files = []
+		#for subfolder in onlyfolders:
+		#	onlyfiles = [f for f in listdir(join(path, subfolder)) if isfile(join(path, subfolder, f))]
+		#	files += onlyfiles
+		#print "files:", files
+		for file in onlyfiles:
 			if (file[-2:]!='.z'):
 				continue
 			else:
 				self.mols.append(Mol())
-				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)	
+				return_value = self.mols[-1].Read_Gaussian_Output(join(path,  file), file, self.name)
+				if not return_value:
+					print "delete it"
+					del self.mols[-1]	
 		return 
 
 	def Analysis_Jcoupling(self):
