@@ -69,7 +69,7 @@ class EmbeddingOptimizer:
 		for i in range(len(self.dmols)):
 			m = self.dmols[i]
 			emb = self.DesiredEmbs[i]
-			resultmols.append(Ipecac.ReverseAtomwiseEmbedding(m.atoms, self.dig, emb, guess_=m.coords))
+			resultmols.append(Ipecac.ReverseAtomwiseEmbedding(self.dig, emb, m.atoms, guess_=m.coords))
 		# Compute the various parts of the error.
 		SelfDistances = 0.0
 		OtherDistances = 0.0

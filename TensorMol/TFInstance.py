@@ -582,7 +582,11 @@ class Instance_fc_sqdiff(Instance):
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
-		diff  = tf.sub(output, labels)
+		try:
+			diff  = tf.subtract(output, labels)
+		except:
+			print("tf.sub() is deprecated in tensorflow 1.0 in favor of tf.subtract(). Please upgrade soon.")
+			diff  = tf.sub(output, labels)
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
@@ -1025,7 +1029,7 @@ class Instance_KRR(Instance):
 		test_loss =  0.0
 		ti,to = self.TData.GetTestBatch(self.element,  self.batch_size)
 		preds = self.krr.predict(ti)
-		return self.TData.EvaluateTestBatch_BasisOpt(to,preds, self.tformer)
+		return self.TData.EvaluateTestBatch(to,preds, self.tformer, Opt=True)
 
 	def PrepareData(self, batch_data):
 		raise Exception("NYI")
