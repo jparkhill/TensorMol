@@ -77,7 +77,7 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(1):
+if(0):
 	a=MSet("SmallMols")
 	a.Load()
 	# a = a.RotatedClone(20)
@@ -90,7 +90,7 @@ if(1):
 	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 	tset = TensorData(a,d)
 	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
-	tset = TensorData(None,None,"SmallMols_"+"GauSH")
+	# tset = TensorData(None,None,"SmallMols_"+"GauSH")
 	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# a=MSet("pentane_1")
 	# a.ReadXYZ()
@@ -150,54 +150,6 @@ if(0):
 # optimizer = Optimizer(manager)
 # optimizer.OptTFRealForce(test_mol)
 
-#from scipy.optimize import minimize
-#step=0
-#optset = np.array([0.1, 0.156787, 0.3, 0.3, 0.5, 0.5, 0.7, 0.7, 1.3, 1.3, 2.2, 2.4, 1., 1., 1., 1.])
-#
-#
-#def opt_basis(rbfs):
-#	global step
-#	PARAMS["RBFS"] = rbfs[:PARAMS["SH_NRAD"]*2].reshape(PARAMS["SH_NRAD"],2).copy()
-#	PARAMS["ANES"][0] = rbfs[PARAMS["SH_NRAD"]*2].copy()
-#	PARAMS["ANES"][5] = rbfs[PARAMS["SH_NRAD"]*2+1].copy()
-#	PARAMS["ANES"][6] = rbfs[PARAMS["SH_NRAD"]*2+2].copy()
-#	PARAMS["ANES"][7] = rbfs[PARAMS["SH_NRAD"]*2+3].copy()
-#	S_Rad = MolEmb.Overlap_RBF(PARAMS)
-#	try:
-#		if (np.amin(np.linalg.eigvals(S_Rad)) < 1.e-10):
-#			mae = 100
-#			return mae
-#	except numpy.linalg.linalg.LinAlgError:
-#		mae = 100
-#		return mae
-#	PARAMS["SRBF"] = MatrixPower(S_Rad,-1./2)
-#	a=MSet("SmallMols_minset")
-#	a.Load()
-#	TreatedAtoms = a.AtomTypes()
-#	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-#	tset = TensorData(a,d)
-#	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
-#	tset = TensorData(None,None,"SmallMols_GauSH")
-#	h_inst = Instance_KRR(tset, 1, None)
-#	mae_h = h_inst.basis_opt_run()
-#	c_inst = Instance_KRR(tset, 6, None)
-#	mae_c = c_inst.basis_opt_run()
-#	n_inst = Instance_KRR(tset, 7, None)
-#	mae_n = n_inst.basis_opt_run()
-#	o_inst = Instance_KRR(tset, 8, None)
-#	mae_o = o_inst.basis_opt_run()
-#	mae = mae_h + mae_c + mae_o + mae_n
-#	step+=1
-#	LOGGER.info("RBFS params: "+str(rbfs))
-#	LOGGER.info("Minimal Overlap Eigenvalue: "+str(np.amin(np.linalg.eigvals(S_Rad))))
-#	LOGGER.info("MAE: "+str(mae))
-#	LOGGER.info("Step: "+str(step))
-#	return mae
-#
-##res = minimize(opt_basis, optset, method='L-BFGS-B', bounds=((0,None),(0,None),(0,None),
-##	(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(0,None),(None,None),(None,None),(None,None),(None,None)), jac=False, tol=1.e-2, options={'disp':True, 'factr':0.0000001, 'maxcor':30, 'eps':0.1})
-#res = minimize(opt_basis, optset, method='L-BFGS-B', jac=False, tol=1.e-2, options={'disp':True, 'factr':0.0000001, 'maxcor':30, 'eps':0.1})
-
 # b=MSet("mixed_KRR_rand")
 # b.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/mixed_KRR/", has_force=True)
 # b = b.RotatedClone(1)
@@ -240,8 +192,19 @@ if(0):
 ##h_inst = Instance_KRR(tset, 1, None)
 ##print h_inst.basis_opt_run()
 
-from scipy.optimize import minimize
-step=0
+def BasisOpt(method_, set_, dig_, OType = None, Elements_ = []):
+	a=MSet(set_)
+	a.Load()
+	b=MSet("OptSet")
+	mols = random.sample(range(len(a.mols)), 10000)
+	for i in mols:
+		b.mols.append(a.mols[i])
+	TreatedAtoms = b.AtomTypes()
+	dig = Digester(TreatedAtoms, name_=dig_, OType_ = OType)
+	eopt = EmbeddingOptimizer(method_, b, dig, OType, Elements_)
+	eopt.PerformOptimization()
+
+BasisOpt("KRR", "SmallMols", "GauSH", OType = "Force", Elements_ = [1])
 
 def TestIpecac(dig_ = "GauSH"):
 	# """ Tests reversal of an embedding type """
