@@ -72,8 +72,8 @@ class Transformer:
 		return (ins - self.inmean)/self.instd
 
 	def AssignOutMeanStd(self, outs):
-		self.outmean = np.mean(outs, axis=0)
-		self.outstd = np.std(outs, axis=0)
+		self.outmean = np.mean(outs)
+		self.outstd = np.std(outs)
 
 	def NormOutMeanStd(self, outs):
 		return (outs - self.outmean)/self.outstd
