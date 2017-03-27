@@ -24,7 +24,7 @@ class MolInstance(Instance):
 		Instance.__init__(self, TData_, 0, Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.TData.LoadDataToScratch(self.tformer, True)
+		self.TData.LoadDataToScratch(self.tformer)
 		self.tformer.Print()
 		self.TData.PrintStatus()
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
@@ -305,7 +305,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.Clean()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:0'):
+		with tf.Graph().as_default():
 				self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 				self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 				print ("type of self.embeds_placeholder:", type(self.embeds_placeholder))
@@ -317,13 +317,13 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return
 
 	def SaveAndClose(self):
-		MolInstance.SaveAndClose(self)
 		self.summary_op =None
 		self.summary_writer=None
 		self.check=None
 		self.label_pl = None
 		self.mats_pl = None
 		self.inp_pl = None
+		MolInstance.SaveAndClose(self)
 		return
 
 	def placeholder_inputs(self, batch_size):

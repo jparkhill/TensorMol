@@ -54,7 +54,7 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
-		self.Instances.train(maxstep) # Just for the sake of debugging.
+		self.Instances.train(self.n_train) # Just for the sake of debugging.
 		nm = self.Instances.name
 		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:
