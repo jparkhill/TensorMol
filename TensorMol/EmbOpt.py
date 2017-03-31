@@ -55,10 +55,10 @@ class EmbeddingOptimizer:
 
 	def SetBasisParams(self,basisParams_):
 		PARAMS["RBFS"] = basisParams_[:PARAMS["SH_NRAD"]*2].reshape(PARAMS["SH_NRAD"],2).copy()
-		#PARAMS["ANES"][0] = basisParams_[PARAMS["SH_NRAD"]*2].copy()
-		#PARAMS["ANES"][5] = basisParams_[PARAMS["SH_NRAD"]*2+1].copy()
-		#PARAMS["ANES"][6] = basisParams_[PARAMS["SH_NRAD"]*2+2].copy()
-		#PARAMS["ANES"][7] = basisParams_[PARAMS["SH_NRAD"]*2+3].copy()
+		PARAMS["ANES"][0] = basisParams_[PARAMS["SH_NRAD"]*2].copy()
+		PARAMS["ANES"][5] = basisParams_[PARAMS["SH_NRAD"]*2+1].copy()
+		PARAMS["ANES"][6] = basisParams_[PARAMS["SH_NRAD"]*2+2].copy()
+		PARAMS["ANES"][7] = basisParams_[PARAMS["SH_NRAD"]*2+3].copy()
 		S_Rad = MolEmb.Overlap_RBF(PARAMS)
 		try:
 			if (np.amin(np.linalg.eigvals(S_Rad)) < 1.e-10):
@@ -97,18 +97,21 @@ class EmbeddingOptimizer:
 		Resets the parameters. Builds the overlap if neccesary. Resets the desired embeddings. Reverses the distorted set and computes an error.
 		"""
 		berror = self.SetBasisParams(basisParams_)
-		mae = 0.0
+		sqerr = 0.0
 		tset = TensorData(self.set,self.dig)
 		tset.BuildTrainMolwise(self.set.name+"_BasisOpt")
 		for ele in self.elements:
 			ele_inst = Instance_KRR(tset, ele, None)
-			mae += ele_inst.basis_opt_run()
-		print "Using params_: ", basisParams_
-		print "Got MAE: ", mae
-		return mae+berror
+			sqerr += (ele_inst.basis_opt_run())**2
+		LOGGER.info("Basis Params: %s", basisParams_)
+		LOGGER.info("SqError: %f", sqerr+berror)
+		return sqerr+berror
 
 	def PerformOptimization(self):
-		prm0 = PARAMS["RBFS"][:PARAMS["SH_NRAD"]]
+		prm0 = np.append(PARAMS["RBFS"][:PARAMS["SH_NRAD"]], PARAMS["ANES"][0])
+		prm0 = np.append(prm0, PARAMS["ANES"][5])
+		prm0 = np.append(prm0, PARAMS["ANES"][6])
+		prm0 = np.append(prm0, PARAMS["ANES"][7])
 		print prm0
 		import scipy.optimize
 		print "Optimizing RBFS."
@@ -116,8 +119,9 @@ class EmbeddingOptimizer:
 			obj = lambda x: self.Ipecac_Objective(x)
 		elif (self.method == "KRR"):
 			obj = lambda x: self.KRR_Objective(x)
-		res=scipy.optimize.minimize(obj, prm0, method='L-BFGS-B', tol=0.0001, options={'disp':True, 'maxcor':30, 'eps':0.0001})
+		res=scipy.optimize.minimize(obj, prm0, method='L-BFGS-B', tol=0.001, bounds=[(0,None) for i in range(len(prm0))], options={'disp':True, 'maxcor':30, 'eps':0.1})
 		print "Opt complete", res.message
+		LOGGER.info("Optimal Basis Parameters: %s", res.x)
 		return
 
 	def SetEmbeddings(self):
