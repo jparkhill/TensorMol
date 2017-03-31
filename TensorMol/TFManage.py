@@ -207,11 +207,11 @@ class TFManage:
 
 	def evaluate(self, mol, atom):
 		inputs = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
-		if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
-			inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
+		if (self.Instances[mol.atoms[atom]].tformer.innorm != None):
+			inputs = self.Instances[mol.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
 		outs = self.Instances[mol.atoms[atom]].evaluate(inputs)
-		if (self.Instances[mol_t.atoms[atom]].tformer.outnorm != None):
-			outs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outs)
+		if (self.Instances[mol.atoms[atom]].tformer.outnorm != None):
+			outs = self.Instances[mol.atoms[atom]].tformer.UnNormalizeOuts(outs)
 		return outs[0]
 
 	def EvalOneAtom(self, mol, atom, maxstep = 0.2, ngrid = 50):

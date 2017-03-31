@@ -77,7 +77,7 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(0):
+if(1):
 	a=MSet("SmallMols")
 	a.Load()
 	# a = a.RotatedClone(20)
@@ -192,39 +192,63 @@ if(0):
 ##h_inst = Instance_KRR(tset, 1, None)
 ##print h_inst.basis_opt_run()
 
-def BasisOpt(method_, set_, dig_, OType = None, Elements_ = []):
+def RandomSmallSet(set_, size_):
+	""" Returns an MSet of random molecules chosen from a larger set """
+	print "Selecting a subset of %s of size %i", set_, size_
 	a=MSet(set_)
 	a.Load()
-	b=MSet("OptSet")
-	mols = random.sample(range(len(a.mols)), 10000)
+	b=MSet(set_+"_rand")
+	mols = random.sample(range(len(a.mols)), size_)
 	for i in mols:
 		b.mols.append(a.mols[i])
-	TreatedAtoms = b.AtomTypes()
-	dig = Digester(TreatedAtoms, name_=dig_, OType_ = OType)
-	eopt = EmbeddingOptimizer(method_, b, dig, OType, Elements_)
-	eopt.PerformOptimization()
+	b.Save()
+	return b
 
-BasisOpt("KRR", "SmallMols", "GauSH", OType = "Force", Elements_ = [1])
+# a=RandomSmallSet("md_set_full", 20000)
+# b=MSet("uracil")
+# b.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/md_datasets/uracil/", has_force=True)
+# b.Save()
+# b=RandomSmallSet("uracil", 10000)
+# a.AppendSet(b)
+# a.Save()
+
+# a=MSet("md_set_full_rand")
+# a.Load()
+# a=a.RotatedClone(1)
+# a.Save()
+
+def BasisOpt_KRR(method_, set_, dig_, OType = None, Elements_ = []):
+	""" Optimizes a basis based on Kernel Ridge Regression """
+	a=MSet(set_)
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	dig = Digester(TreatedAtoms, name_=dig_, OType_ = OType)
+	eopt = EmbeddingOptimizer(method_, a, dig, OType, Elements_)
+	eopt.PerformOptimization()
+	return
+
+# BasisOpt_KRR("KRR", "md_set_full_rand", "GauSH", OType = "Force", Elements_ = [6])
+
+def BasisOpt_Ipecac(method_, set_, dig_):
+	""" Optimizes a basis based on Ipecac """
+	a=MSet(set_)
+	a.Load()
+	b=MSet("SmallMolsRand")
+	mols = random.sample(range(len(a.mols)), 10)
+	#Remove half of a
+	for i in mols:
+		b.mols.append(a.mols[i])
+	# for i in range(len(c.mols)):
+	# 	b.mols.append(c.mols[i])
+	print "Number of mols: ", len(b.mols)
+	TreatedAtoms = b.AtomTypes()
+	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+	eopt = EmbeddingOptimizer(b,dig)
+	eopt.PerformOptimization()
+	return
 
 def TestIpecac(dig_ = "GauSH"):
-	# """ Tests reversal of an embedding type """
-	# a=MSet("SmallMols")
-	# a.Load()
-	# # c=MSet("OptMols")
-	# # c.ReadXYZ("OptMols")
-	# # c.mols = c.mols[-1*int(len(c.mols)/6):]
-	# b=MSet("SmallMolsRand")
-	# mols = random.sample(range(len(a.mols)), 10)
-	# #Remove half of a
-	# for i in mols:
-	# 	b.mols.append(a.mols[i])
-	# # for i in range(len(c.mols)):
-	# # 	b.mols.append(c.mols[i])
-	# print "Number of mols: ", len(b.mols)
-	# TreatedAtoms = b.AtomTypes()
-	# dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
-	# eopt = EmbeddingOptimizer(b,dig)
-	# eopt.PerformOptimization()
+	""" Tests reversal of an embedding type """
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	m = a.mols[5]
@@ -268,3 +292,26 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 	return
 
 # TestBP()
+
+# a=MSet("pentane_eq")
+# a.ReadXYZ()
+# tmol = a.mols[0]
+# b=MSet("pentane_stretch")
+# s_list = [1., 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.20, 0.15, 0.1, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.010, 0.005, 0.000,
+#  			-0.005, -0.01, -0.015, -0.02, -0.025, -0.03, -0.04, -0.05, -0.06, -0.07, -0.08, -0.09, -0.1, -0.15, -0.2, -0.25, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.]
+# for i in s_list:
+# 	nmol = Mol(tmol.atoms, tmol.coords)
+# 	for j in range(4):
+# 		nmol.coords[j] += i*(tmol.coords[1] - tmol.coords[4])
+# 	b.mols.append(nmol)
+# b.Save()
+# b.WriteXYZ()
+
+# a=MSet("pentane_stretch")
+# a.Load()
+# manager=TFManage("SmallMols_20rot_GauSH_fc_sqdiff",None,False)
+# veloc = np.zeros((len(a.mols),4))
+# for i, mol in enumerate(a.mols):
+# 	for j in range(4):
+# 		veloc[i,j] = 0.001*self.tfm.evaluate(mol,j)
+# print veloc

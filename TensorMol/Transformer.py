@@ -58,6 +58,8 @@ class Transformer:
 			return self.NormOutMeanStd(outs)
 		elif (self.outnorm == "Logarithmic"):
 			return self.NormOutLogarithmic(outs)
+		elif (self.outnorm == "Sign"):
+			return self.NormOutSign(outs)
 
 	def NormInFrobenius(self, ins):
 		for i in range(len(ins)):
@@ -85,6 +87,13 @@ class Transformer:
 			if x < 0:
 				x[...] = -np.log(np.absolute(x-1))
 		return outs
+
+	def NormOutSign(self, outs):
+		tmp_outs = outs.copy()
+		tmp_outs[tmp_outs < 0.0001]=0
+		tmp_outs = np.sign(tmp_outs)
+		print tmp_outs
+		return tmp_outs
 
 	def UnNormalizeOuts(self, outs):
 		if (self.outnorm == "MeanStd"):
