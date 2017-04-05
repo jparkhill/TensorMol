@@ -16,6 +16,7 @@ class Optimizer:
 		"""
 		self.thresh = 0.001
 		self.maxstep = 0.1
+		self.fscale = 0.1
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
 		self.max_opt_step = 100000
@@ -198,12 +199,12 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
-				veloc = 0.001*self.tfm.EvalRotAvForce(m, RotAv=10, Debug=True)
+				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=10, Debug=True)
 			elif (PARAMS["OctahedralAveraging"]):
-				veloc = 0.001*self.tfm.EvalOctAvForce(m, Debug=True)
+				veloc = self.fscale*self.tfm.EvalOctAvForce(m, Debug=True)
 			else:
 				for i in range(m.NAtoms()):
-					veloc[i] = 0.001*self.tfm.evaluate(m,i)
+					veloc[i] = self.fscale*self.tfm.evaluate(m,i)
 			if (Debug):
 				for i in range(m.NAtoms()):
 					print "TF veloc: ",m.atoms[i], ":" , veloc[i]
