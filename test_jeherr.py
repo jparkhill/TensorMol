@@ -296,6 +296,24 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 
 # TestBP()
 
+def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True):
+	if (BuildTrain_):
+		a=MSet(set_)
+		a.Load()
+		a = a.RotatedClone(1)
+		TreatedAtoms = a.AtomTypes()
+		print "Number of Mols: ", len(a.mols)
+		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
+		tset = TensorData(a,d)
+		tset.BuildTrainMolwise(set_,TreatedAtoms)
+	else:
+		tset = TensorData(None,None,set_+"_"+dig_)
+	manager=TFManage("",tset,True,"fc_sqdiff")
+	return
+
+TrainForces(set_ = "toluene", BuildTrain_=False)
+
+
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()
 # tmol = copy.deepcopy(a.mols[0])

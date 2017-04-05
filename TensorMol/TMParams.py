@@ -43,19 +43,19 @@ class TMParams(dict):
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# DATA usage parameters
 		self["InNormRoutine"] = None
-		self["OutNormRoutine"] = "Sign"
-		self["RandomizeData"] = False
+		self["OutNormRoutine"] = "MeanStd"
+		self["RandomizeData"] = True
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
 		self["RotAvOutputs"] = 0 # Rotational averaging of force outputs.
-		self["OctahedralAveraging"] = 1 # Octahedrally Average Outputs
+		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 500
-		self["test_freq"] = 5
+		self["test_freq"] = 50
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512

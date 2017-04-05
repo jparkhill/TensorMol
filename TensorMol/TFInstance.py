@@ -87,7 +87,7 @@ class Instance:
 		if (not np.all(np.isfinite(eval_input))):
 			LOGGER.error("WTF, you trying to feed me, garbage?")
 			raise Exception("bad digest.")
-		if (self.PreparedFor<eval_input.shape[0]):
+		if (self.PreparedFor != eval_input.shape[0]):
 			self.Prepare(eval_input,eval_input.shape[0])
 		return
 
