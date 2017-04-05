@@ -89,11 +89,7 @@ class Transformer:
 		return outs
 
 	def NormOutSign(self, outs):
-		tmp_outs = outs.copy()
-		tmp_outs[tmp_outs < 0.0001]=0
-		tmp_outs = np.sign(tmp_outs)
-		print tmp_outs
-		return tmp_outs
+		return np.sign(outs)
 
 	def UnNormalizeOuts(self, outs):
 		if (self.outnorm == "MeanStd"):

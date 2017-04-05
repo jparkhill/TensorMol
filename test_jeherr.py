@@ -77,7 +77,7 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(1):
+if(0):
 	a=MSet("SmallMols")
 	a.Load()
 	# a = a.RotatedClone(20)
@@ -205,10 +205,12 @@ def RandomSmallSet(set_, size_):
 	return b
 
 # a=RandomSmallSet("md_set_full", 20000)
-# b=MSet("uracil")
-# b.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/md_datasets/uracil/", has_force=True)
-# b.Save()
-# b=RandomSmallSet("uracil", 10000)
+#b=MSet("uracil")
+#b.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/md_datasets/uracil/", has_force=True)
+#b.Save()
+#b.Load()
+#b=RandomSmallSet("uracil", 20000)
+#b.Save("uracil_rand_20k")
 # a.AppendSet(b)
 # a.Save()
 
@@ -227,7 +229,8 @@ def BasisOpt_KRR(method_, set_, dig_, OType = None, Elements_ = []):
 	eopt.PerformOptimization()
 	return
 
-# BasisOpt_KRR("KRR", "md_set_full_rand", "GauSH", OType = "Force", Elements_ = [6])
+# BasisOpt_KRR("KRR", "md_set_full_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
+#BasisOpt_KRR("KRR", "uracil_rand_20k", "GauSH", OType = "Force", Elements_ = [7])
 
 def BasisOpt_Ipecac(method_, set_, dig_):
 	""" Optimizes a basis based on Ipecac """
@@ -293,16 +296,17 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 
 # TestBP()
 
-# a=MSet("pentane_eq")
+# a=MSet("pentane_eq_align")
 # a.ReadXYZ()
-# tmol = a.mols[0]
+# tmol = copy.deepcopy(a.mols[0])
+# # print tmol.coords
 # b=MSet("pentane_stretch")
-# s_list = [1., 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.20, 0.15, 0.1, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.010, 0.005, 0.000,
-#  			-0.005, -0.01, -0.015, -0.02, -0.025, -0.03, -0.04, -0.05, -0.06, -0.07, -0.08, -0.09, -0.1, -0.15, -0.2, -0.25, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.]
+# s_list = np.linspace(1,-0.75,100).tolist()
 # for i in s_list:
 # 	nmol = Mol(tmol.atoms, tmol.coords)
 # 	for j in range(4):
 # 		nmol.coords[j] += i*(tmol.coords[1] - tmol.coords[4])
+# 	# print nmol.coords
 # 	b.mols.append(nmol)
 # b.Save()
 # b.WriteXYZ()
@@ -313,5 +317,40 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 # veloc = np.zeros((len(a.mols),4))
 # for i, mol in enumerate(a.mols):
 # 	for j in range(4):
-# 		veloc[i,j] = 0.001*self.tfm.evaluate(mol,j)
+# 		veloc[i,j] = self.tfm.evaluate(mol,j)
 # print veloc
+
+# a=MSet("pentane_eq")
+# a.ReadXYZ()
+# tmol = Mol(a.mols[0].atoms, a.mols[0].coords-a.mols[0].coords[4])
+#
+# def RodriguesRot(mol, vec, axis, angle):
+# 	tmpcoords = tmol.coords.copy()
+# 	vec = vec/np.linalg.norm(vec)
+# 	k = 0.5*(vec+axis)/np.linalg.norm(0.5*(vec+axis))
+# 	for m in range(len(tmpcoords)): #rotate so oxygen is eclipsed by carbon
+# 		tmpcoords[m] = (math.cos(math.pi)*tmpcoords[m])+(numpy.cross(k,tmpcoords[m])*math.sin(math.pi))+(k*(numpy.dot(k, tmpcoords[m])*(1-math.cos(math.pi))))
+# 	return tmpcoords
+#
+# tmol.coords = RodriguesRot(tmol, (tmol.coords[1]-tmol.coords[4]), np.array((1,0,0)), np.pi)
+# tmol.WriteXYZfile(fpath="./", fname="pentane_eq_align", mode="w")
+
+# a=MSet("pentane_stretch")
+# a.Load()
+# f=open("./results/pentane_stretch.in", "w")
+# for i, mol in enumerate(a.mols):
+# 	f.write("$molecule\n")
+# 	f.write("0 1\n")
+# 	for j, atom in enumerate(mol.atoms):
+# 		if (atom == 1):
+# 			f.write("H          ")
+# 		if (atom == 6):
+# 			f.write("C          ")
+# 		f.write(str(mol.coords[j,0])+"        "+str(mol.coords[j,1])+"        "+str(mol.coords[j,2])+"\n")
+# 	f.write("$end\n\n$rem\n")
+# 	f.write("jobtype           force\n")
+# 	f.write("method            wB97X-D \n")
+# 	f.write("basis             6-311G**\n")
+# 	f.write("sym_ignore        true\n")
+# 	f.write("$end\n\n@@@\n\n")
+# f.close()
