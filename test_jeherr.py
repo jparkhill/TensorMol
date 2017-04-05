@@ -86,16 +86,16 @@ if(0):
 	#a.WriteXYZ("SmallMols_20rot")
 	##a=MSet("mddataset_smallmols")
 	##a.Load()
-	TreatedAtoms = a.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	tset = TensorData(a,d)
-	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
+	#TreatedAtoms = a.AtomTypes()
+	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+	#tset = TensorData(a,d)
+	#tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
 	# tset = TensorData(None,None,"SmallMols_"+"GauSH")
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-	# a=MSet("pentane_1")
-	# a.ReadXYZ()
+	#manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	# a=MSet("toluene")
+	# a.Load()
 	# test_mol = a.mols[0]
-	# manager=TFManage("SmallMols_20rot_GauSH_fc_sqdiff",None,False)
+	# manager=TFManage("md_set_full_rot_log_GauSH_fc_sqdiff",None,False)
 	# optimizer = Optimizer(manager)
 	# optimizer.OptTFRealForce(test_mol)
 
