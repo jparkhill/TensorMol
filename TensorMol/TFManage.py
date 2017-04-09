@@ -206,10 +206,10 @@ class TFManage:
 		return p/(len(ops))
 
 	def evaluate(self, mol, atom):
-		inputs = self.TData.dig.Emb(mol, atom, mol.coords[0],False)
+		inputs = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		if (self.Instances[mol.atoms[atom]].tformer.innorm != None):
 			inputs = self.Instances[mol.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
-		outs = self.Instances[mol.atoms[atom]].evaluate(inputs)
+		outs = self.Instances[mol.atoms[atom]].evaluate(inputs[atom].reshape((1,128)))
 		if (self.Instances[mol.atoms[atom]].tformer.outnorm != None):
 			outs = self.Instances[mol.atoms[atom]].tformer.UnNormalizeOuts(outs)
 		return outs[0]
