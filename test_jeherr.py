@@ -296,23 +296,56 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 
 # TestBP()
 
-def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True):
-	if (BuildTrain_):
-		a=MSet(set_)
-		a.Load()
-		a = a.RotatedClone(1)
-		TreatedAtoms = a.AtomTypes()
-		print "Number of Mols: ", len(a.mols)
-		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
-		tset = TensorData(a,d)
-		tset.BuildTrainMolwise(set_,TreatedAtoms)
-	else:
-		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,True,"fc_sqdiff")
-	return
+# def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True):
+# 	if (BuildTrain_):
+# 		a=MSet(set_)
+# 		a.Load()
+# 		a = a.RotatedClone(1)
+# 		TreatedAtoms = a.AtomTypes()
+# 		print "Number of Mols: ", len(a.mols)
+# 		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
+# 		tset = TensorData(a,d)
+# 		tset.BuildTrainMolwise(set_,TreatedAtoms)
+# 	else:
+# 		tset = TensorData(None,None,set_+"_"+dig_)
+# 	manager=TFManage("",tset,True,"fc_sqdiff")
+#
+# TrainForces(set_ = "toluene", BuildTrain_=True)
 
-TrainForces(set_ = "toluene", BuildTrain_=False)
+def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
+	a=MSet(set_)
+	a.Load()
+	tmol=copy.deepcopy(a.mols[mol])
+	manager=TFManage(set_+dig_+"fc_sqdiff", None, False)
+	opt=Optimizer(manager)
+	opt.OptTFRealForce(tmol)
 
+TestForces(set_ = "toluene")
+
+# a=MSet("toluene_0")
+# a.Load()
+# tmol = copy.deepcopy(a.mols[0])
+# manager=TFManage("toluene_0_GauSH_fc_sqdiff", None, False)
+# for i in range(len(tmol.atoms)):
+# 	outs = manager.TData.dig.Emb(tmol, i, tmol.coords[i],False)
+# 	print outs
+
+# a=MSet("toluene_0")
+# a.Load()
+# b=MSet("toluene_1")
+# b.mols.append(copy.deepcopy(a.mols[0]))
+# TreatedAtoms = b.AtomTypes()
+# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+# tset=TensorData(b,d)
+# tset.BuildTrainMolwise(b, TreatedAtoms)
+# tset.BuildTrain(b, TreatedAtoms)
+
+# a=MSet("toluene")
+# a.Load()
+# b=MSet("toluene_0")
+# for i in range(6000):
+# 	b.mols.append(copy.deepcopy(a.mols[0]))
+# b.Save()
 
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()

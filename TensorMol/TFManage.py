@@ -206,7 +206,7 @@ class TFManage:
 		return p/(len(ops))
 
 	def evaluate(self, mol, atom):
-		inputs = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
+		inputs = self.TData.dig.Emb(mol, atom, mol.coords[0],False)
 		if (self.Instances[mol.atoms[atom]].tformer.innorm != None):
 			inputs = self.Instances[mol.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
 		outs = self.Instances[mol.atoms[atom]].evaluate(inputs)

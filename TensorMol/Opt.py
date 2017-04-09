@@ -14,9 +14,9 @@ class Optimizer:
 		Args:
 			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
 		"""
-		self.thresh = 0.001
+		self.thresh = 0.0001
 		self.maxstep = 0.1
-		self.fscale = 0.1
+		self.fscale = 0.001
 		self.momentum = 0.9
 		self.momentum_decay = 0.2
 		self.max_opt_step = 100000

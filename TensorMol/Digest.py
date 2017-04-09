@@ -264,7 +264,6 @@ class Digester:
 				ins[casep:casep+self.NTrainSamples] = np.array(inputs)
 				outs[casep:casep+self.NTrainSamples] = outputs
 				casep += self.NTrainSamples
-
 		if (MakeDebug):
 			return ins,outs,dbg
 		else:
