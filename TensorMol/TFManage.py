@@ -31,7 +31,6 @@ class TFManage:
 		if (RandomTData_==False):
 			self.TData.Randomize=False
 		self.NetType = NetType_
-		self.n_train = ntrain_
 		# All done if you're doing molecular calculations
 		print self.TData.AvailableElements
 		print self.TData.AvailableDataFiles
@@ -209,7 +208,7 @@ class TFManage:
 		inputs = self.TData.dig.Emb(mol, atom, mol.coords[atom],False)
 		if (self.Instances[mol.atoms[atom]].tformer.innorm != None):
 			inputs = self.Instances[mol.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
-		outs = self.Instances[mol.atoms[atom]].evaluate(inputs[atom].reshape((1,128)))
+		outs = self.Instances[mol.atoms[atom]].evaluate(inputs)
 		if (self.Instances[mol.atoms[atom]].tformer.outnorm != None):
 			outs = self.Instances[mol.atoms[atom]].tformer.UnNormalizeOuts(outs)
 		return outs[0]

@@ -307,8 +307,8 @@ class Mol:
 		""" Cartesian coordinate difference. """
 		err  = 0.0
 		for i in range (0, (self.coords).shape[0]):
-			err += (np.sum((m.coords[i] - self.coords[i])**2))**0.5
-		return err/float((self.coords).shape[0])
+			err += np.linalg.norm(m.coords[i] - self.coords[i])
+		return err/self.coords.shape[0]
 
 	def rms_inv(self, m):
 		""" Invariant coordinate difference. """

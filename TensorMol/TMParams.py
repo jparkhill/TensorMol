@@ -20,9 +20,7 @@ class TMParams(dict):
 		#self["RBFS"] = np.array([[0.33177521, 0.50949676], [0.74890231, 0.99964731], [0.52021807, 0.42015268],
 		#			[0.6151809, 0.39502989], [1.26607895, 1.24048779], [2.19569368, 2.39738431], [4.4, 2.4],
 		#			[6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		self["ERBFS"] = np.zeros((self["MAX_ATOMIC_NUMBER"],self["RBFS"].shape[0],self["RBFS"].shape[0])) # element specific version.
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
-		self["ORBFS"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		#self["ANES"] = np.array([0.50068655, 1., 1., 1., 1., 1.12237954, 0.90361766, 1.06592739])
 		self["ANES"] = np.array([1., 1., 1., 1., 1., 1., 1., 1.])
 		self["SH_LMAX"]=3

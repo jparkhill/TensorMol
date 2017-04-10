@@ -188,8 +188,10 @@ class Optimizer:
 			m: A distorted molecule to optimize
 		"""
 		# Sweeps one at a time
-		err=10.0
-		lasterr=10.0
+		rmsdisp = 10.0
+		maxdisp = 10.0
+		rmsgrad = 10.0
+		maxgrad = 10.0
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
@@ -197,7 +199,7 @@ class Optimizer:
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
-		while(err>self.thresh and step < self.max_opt_step):
+		while(rmsdisp>self.thresh and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
 				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=10, Debug=True)
 			elif (PARAMS["OctahedralAveraging"]):
@@ -214,11 +216,14 @@ class Optimizer:
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords = m.coords + c_veloc
 			# old_veloc = self.momentum_decay*c_veloc
-			err = m.rms(prev_m)
+			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
+			maxgrad = np.amax(np.linalg.norm(veloc,axis=1))
+			rmsdisp = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
+			maxdisp = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+			print "Step:", step, " RMS Disp: ", rmsdisp, " Max Disp: ", maxdisp, " RMS Gradient: ", rmsgrad, " Max Gradient: ", maxgrad, " Coords: ", m.coords
 		return
 
 	def OptProb(self,m):

@@ -34,7 +34,6 @@ public:
 	int SH_MAXNR;
 	double* RBFS;
 	double* SRBF;
-	double* ORBFS;
 	double* ANES;
 };
 

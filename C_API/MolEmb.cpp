@@ -24,11 +24,6 @@ static SHParams ParseParams(PyObject *Pdict)
 		tore.SRBF = (double*)RBFa->data;
 	}
 	{
-		PyObject* RBFo = PyDict_GetItemString(Pdict, "ORBFS");
-		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
-		tore.ORBFS = (double*)RBFa->data;
-	}
-	{
 		PyObject* RBFo = PyDict_GetItemString(Pdict, "ANES");
 		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
 		tore.ANES = (double*)RBFa->data;
