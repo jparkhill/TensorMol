@@ -77,9 +77,9 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(0):
-	a=MSet("SmallMols")
-	a.Load()
+if(1):
+	# a=MSet("SmallMols")
+	# a.Load()
 	# a = a.RotatedClone(20)
 	#print "nmols:",len(a.mols)
 	#a.Save("SmallMols_20rot")
@@ -90,8 +90,8 @@ if(0):
 	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
 	#tset = TensorData(a,d)
 	#tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
-	# tset = TensorData(None,None,"SmallMols_"+"GauSH")
-	#manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+	tset = TensorData(None,None,"SmallMols_20rot_"+"GauSH")
+	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
 	# a=MSet("toluene")
 	# a.Load()
 	# test_mol = a.mols[0]
@@ -320,7 +320,7 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	opt=Optimizer(manager)
 	opt.OptTFRealForce(tmol)
 
-TestForces(set_ = "toluene")
+# TestForces(set_ = "toluene")
 
 # a=MSet("toluene_0")
 # a.Load()

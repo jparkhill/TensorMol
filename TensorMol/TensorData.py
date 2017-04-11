@@ -26,6 +26,8 @@ class TensorData():
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
+		if (self.set != None):
+			self.set_name = MSet_.name # Check to make sure the name can recall the set.
 		self.dig = Dig_
 		self.type = type_
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
@@ -68,6 +70,15 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
+		self.set=None
+		return
+
+	def ReloadSet(self):
+		"""
+		Recalls the MSet to build training data etc.
+		"""
+		self.set = MSet(self.set_name)
+		self.set.Load()
 		return
 
 	def PrintStatus(self):
@@ -99,6 +110,11 @@ class TensorData():
 			The other version builds each element separately
 			If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
 		self.CheckShapes()
 		self.name=name_
 		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
@@ -186,6 +202,11 @@ class TensorData():
 				If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 				The code that uses ab-initio samples isn't written yet, but should be.
 		"""
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
 		self.CheckShapes()
 		self.name=name_
 		print "Generating Train set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
