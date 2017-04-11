@@ -93,6 +93,7 @@ class Mol:
 		self.Calculate_Bond_Type()
 		self.Find_Bond_Index()
 		self.Define_Conjugation()
+		self.Make_Nx_Graph()
 		return
 
 	def Make_Nx_Graph(self):
@@ -106,7 +107,10 @@ class Mol:
 		for i in range (0, self.NAtoms()):
 			self.shortest_path[i] = []
                         for j in range (i+1, self.NAtoms()):
-                        	self.shortest_path[i].append(nx.shortest_path(self.mol_graph,i,j))
+				try:
+                        		self.shortest_path[i].append(nx.shortest_path(self.mol_graph,i,j))
+				except:
+					self.shortest_path[i].append(None)
 		return
 	
 	def Calculate_Bond_Type(self):
@@ -1150,7 +1154,7 @@ class Mol:
 		if self.energy:
 			for i in range (0, self.atoms.shape[0]):
                         	self.energy = self.energy - ele_U[self.atoms[i]]
-			print "after self.energy:", self.energy
+			#print "after self.energy:", self.energy
 		return
 
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):

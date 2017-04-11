@@ -31,6 +31,7 @@ class MSet:
 		print "Loaded, ", len(self.mols), " molecules "
 		print self.NAtoms(), " Atoms total"
 		print self.AtomTypes(), " Types "
+		print self.BondTypes(), " Types "
 		return
 
 	def DistortAlongNormals(self, npts=8, random=True, disp=.2):

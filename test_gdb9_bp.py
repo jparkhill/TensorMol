@@ -260,7 +260,7 @@ if (1):
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a)
 
-	if (1):
+	if (0):
                 a = MSet("SNB_bondstrength")
 		a.ReadXYZ("SNB_bondstrength")
                 a.Make_Graphs()
@@ -268,6 +268,7 @@ if (1):
 		a.Load()
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a, True)
+
 	if (0):
                 a = MSet("aminoacids")
                 a.ReadXYZ("aminoacids")
@@ -332,6 +333,176 @@ if (1):
                 a.Load()
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ethy_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a, True)
+
+
+# Graph subsampling
+if (1):
+	if (0):
+                tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP")
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+		manager.name = manager.name + "_1percent"
+                manager.Train(maxstep=50001)
+
+	if (0):
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1_1percent" , None, False)
+                manager.Continue_Training(maxsteps=10001)
+
+
+	if (0):
+                a = MSet("chemspider_9heavy_tmcleaned_opt")
+                a.ReadXYZ("chemspider_9heavy_tmcleaned_opt")
+                a.Make_Graphs()
+		allowed_bonds = [2,3,4,5,6,7,8,9]
+		new_set = []
+		for mol in a.mols:
+			flag = True
+			for i in range (0, mol.NAtoms()-1):
+				if  None  in mol.shortest_path[i]:
+					print "not connected bond:", mol.shortest_path[i]
+					flag = False
+					break 
+			for i in range (0, mol.bonds.shape[0]):
+				if mol.bonds[i][0] not in allowed_bonds:
+					print "not allowed bond:", mol.bonds[i][0]
+					flag = False
+					break
+			if flag:
+				new_set.append(mol)
+		a.name = a.name + "_allowedbond"
+		print "number of mol in old set:", len(a.mols)
+		a.mols = new_set
+		print "number of mol in new set:", len(a.mols)
+		print a.BondTypes()
+		a.WriteXYZ()
+                a.Save()
+	
+	if (0):
+		a = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond")
+                a.Load()
+		flag = pickle.load(open("chemspider_in_gdb9_flag.dat","rb"))
+		contained = []
+		not_contained = []
+		for mol_index, mol in enumerate(a.mols):
+			if flag[mol_index]:
+				contained.append(mol)
+			else:
+				not_contained.append(mol)
+		old_name = a.name
+		a.name = old_name + "_ingdb9"
+		a.mols = contained
+		a.Save()
+		a.name = old_name + "_not_ingdb9"
+		a.mols = not_contained
+		a.Save()
+
+	if (0):
+		a = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond")
+                a.Load()
+		b = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond_ingdb9")
+                b.Load()	
+		c = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond_not_ingdb9")
+                c.Load()
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                abs_all = manager.Eval_Bond_BP(a, True)
+		abs_in = manager.Eval_Bond_BP(b, True)
+		abs_not_in = manager.Eval_Bond_BP(c, True)
+		print "MAE all:", abs_all
+		print "MAE in:", abs_in
+		print "MAE not in:", abs_not_in
+
+
+        if (0):
+                a = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond")
+                a.Load()
+                b = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond_ingdb9")
+                b.Load()
+                c = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond_not_ingdb9")
+                c.Load()
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1_1percent" , None, False)
+                abs_all = manager.Eval_Bond_BP(a, True)
+                abs_in = manager.Eval_Bond_BP(b, True)
+                abs_not_in = manager.Eval_Bond_BP(c, True)
+                print "MAE all:", abs_all
+                print "MAE in:", abs_in
+                print "MAE not in:", abs_not_in
+
+	if (0): # Mol_gdb9_energy_1_6_7_8_cleaned_with_GA_sample_fixparam_step2k_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1
+		a = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond")
+                a.Load()
+                b = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond_ingdb9")
+                b.Load()
+                c = MSet("chemspider_9heavy_tmcleaned_opt_allowedbond_not_ingdb9")
+                c.Load()
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_with_GA_sample_leastconn_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                abs_all = manager.Eval_Bond_BP(a, True)
+                abs_in = manager.Eval_Bond_BP(b, True)
+                abs_not_in = manager.Eval_Bond_BP(c, True)
+                print "MAE all:", abs_all
+                print "MAE in:", abs_in
+                print "MAE not in:", abs_not_in
+
+
+	if (0):
+                a = MSet("chemspider_9heavy_tmcleaned_all")
+                a.ReadXYZ("chemspider_9heavy_tmcleaned_all")
+                a.Make_Graphs()
+                allowed_bonds = [2,3,4,5,6,7,8,9]
+                new_set = []
+                for mol in a.mols:
+                        flag = True
+                        for i in range (0, mol.NAtoms()-1):
+                                if  None  in mol.shortest_path[i]:
+                                        print "not connected bond:", mol.shortest_path[i]
+                                        flag = False
+                                        break
+                        for i in range (0, mol.bonds.shape[0]):
+                                if mol.bonds[i][0] not in allowed_bonds:
+                                        print "not allowed bond:", mol.bonds[i][0]
+                                        flag = False
+                                        break
+                        if flag:
+                                new_set.append(mol)
+                a.name = a.name + "_allowedbond"
+                print "number of mol in old set:", len(a.mols)
+                a.mols = new_set
+                print "number of mol in new set:", len(a.mols)
+                print a.BondTypes()
+                a.WriteXYZ()
+                a.Save()
+	
+	if (0):
+                # 1 - Get molecules into memory
+                a=MSet("chemspider_9heavy_tmcleaned_all_allowedbond")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                print "TreatedAtoms ", TreatedAtoms
+                TreatedBonds = list(a.BondTypes())
+                print "TreatedBonds ", TreatedBonds
+                d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_Bond_BP", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
+                tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+                tset.BuildTrain("chemspider_9heavy_tmcleaned_all_allowedbond")
+        if (0):
+                tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"chemspider_9heavy_tmcleaned_all_allowedbond_ConnectedBond_Angle_Bond_BP")
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+                manager.Train(maxstep=2501)
+	
+
+ 	if (0):
+                a = MSet("1_1_Ostrech")
+                a.ReadXYZ("1_1_Ostrech")
+                a.Make_Graphs()
+                a.Save()
+                a.Load()
+                manager= TFMolManage("Mol_chemspider_9heavy_tmcleaned_all_allowedbond_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Eval_Bond_BP(a)
+	
+	if (1): # Mol_gdb9_energy_1_6_7_8_cleaned_with_GA_sample_fixparam_step2k_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1
+		a = MSet("chemspider_9heavy_tmcleaned_all_fortest")
+                a.ReadXYZ("chemspider_9heavy_tmcleaned_all_fortest")
+                a.Make_Graphs()
+                manager= TFMolManage("Mol_chemspider_9heavy_tmcleaned_all_allowedbond_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                abs_all = manager.Eval_Bond_BP(a, True)
+                print "MAE all:", abs_all
 
 
 # Kun's tests.
