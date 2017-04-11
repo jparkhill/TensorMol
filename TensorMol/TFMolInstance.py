@@ -436,6 +436,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		if Name_:  # already loaded 
 			return
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		print ("instance name:", self.name)
 		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
 		self.momentum = 0.95
@@ -454,12 +455,13 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.atom_outputs = None
 
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 4000
+		#self.batch_size = 4000
+		self.batch_size = 10000
 		#self.batch_size = 50000
 		self.batch_size_output = 0
-		self.hidden1 = 100
-                self.hidden2 = 100
-                self.hidden3 = 100
+		self.hidden1 = 200
+		self.hidden2 = 200
+		self.hidden3 = 200
 		#self.hidden1 = 1000
 		#self.hidden2 = 1000
 		#self.hidden3 = 1000
