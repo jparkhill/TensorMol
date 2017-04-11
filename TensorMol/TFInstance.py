@@ -197,7 +197,7 @@ class Instance:
 		"""
 		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev), name=var_name)
 		if var_wd is not None:
-			weight_decay = tf.mul(tf.nn.l2_loss(var), var_wd, name='weight_loss')
+			weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
 			tf.add_to_collection('losses', weight_decay)
 		return var
 
@@ -574,7 +574,7 @@ class Instance_fc_sqdiff(Instance):
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
-		diff  = tf.slice(tf.sub(output, labels),[0,self.outshape[0]-3],[-1,-1])
+		diff  = tf.slice(tf.subtract(output, labels),[0,self.outshape[0]-3],[-1,-1])
 		# this only compares direct displacement predictions.
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
@@ -738,7 +738,7 @@ class Instance_3dconv_sqdiff(Instance):
 		return
 
 	def loss_op(self, output, labels):
-		diff  = tf.slice(tf.sub(output, labels),[0,self.outshape[0]-3],[-1,-1])
+		diff  = tf.slice(tf.subtract(output, labels),[0,self.outshape[0]-3],[-1,-1])
 		# this only compares direct displacement predictions.
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)

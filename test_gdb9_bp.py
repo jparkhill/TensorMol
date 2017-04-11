@@ -268,6 +268,16 @@ if (1):
 		a.Load()
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a, True)
+
+	if (0):
+                a = MSet("CH_bondstrength")
+                a.ReadXYZ("CH_bondstrength")
+                a.Make_Graphs()
+                a.Save()
+                a.Load()
+                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                manager.Eval_Bond_BP(a, True)
+
 	if (0):
                 a = MSet("aminoacids")
                 a.ReadXYZ("aminoacids")

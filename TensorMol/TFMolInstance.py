@@ -75,7 +75,7 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 10
+		test_freq = 1000
 		mini_test_loss = float('inf') # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -83,7 +83,7 @@ class MolInstance(Instance):
 				test_loss, feed_dict = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					if (step > 100):
+					if (step > 1000):
 						self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
@@ -347,7 +347,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
-		diff  = tf.sub(output, labels)
+		diff  = tf.subtract(output, labels)
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
@@ -454,11 +454,15 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.atom_outputs = None
 
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 50000
+		self.batch_size = 4000
+		#self.batch_size = 50000
 		self.batch_size_output = 0
-		self.hidden1 = 1000
-		self.hidden2 = 1000
-		self.hidden3 = 1000
+		self.hidden1 = 100
+                self.hidden2 = 100
+                self.hidden3 = 100
+		#self.hidden1 = 1000
+		#self.hidden2 = 1000
+		#self.hidden3 = 1000
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -524,7 +528,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return
 
 	def loss_op(self, output, labels):
-		diff  = tf.sub(output, labels)
+		diff  = tf.subtract(output, labels)
 		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)
 		#tf.Print(labels, [labels], message="This is labels: ",first_n=10000000,summarize=100000000)
 		loss = tf.nn.l2_loss(diff)
