@@ -46,6 +46,15 @@ class MolDigester:
 		SYM_deri = np.zeros((SYM.shape[0], SYM.shape[1])) # debug, it will take some work to implement to derivative of sym func.
 		return SYM, SYM_deri
 
+	def make_ANI1_sym(self, mol, r_Rc = 4.6, a_Rc = 3.1, eta = 4.00, zeta = 8.00, num_r_Rs = 32, num_a_Rs = 8, num_a_As =8):  # ANI-1 default setting
+		eles = list(set(list(mol.atoms)))
+		r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
+		a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
+		a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
+		ANI_1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, , -1) # -1 means do it for all atoms
+		return ANI_1_Ins 
+
+
 	def make_cm_bp(self, mol):
 		CM_BP = []
 		ngrids = 10

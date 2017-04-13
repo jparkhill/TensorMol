@@ -1080,6 +1080,74 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 	return  nlist;
 }
 
+static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
+
+        PyArrayObject   *xyz, *atoms, *elements;
+        PyObject    *radius_Rs_py, *angle_Rs_py, *angle_As_py;
+        double   radius_Rc, angle_Rc, eta, zeta;
+        int theatom;
+        if (!PyArg_ParseTuple(args, "O!O!OddO!O!O!ddi",
+        &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &radius_Rc, &angle_Rc,  &PyList_Type, &radius_Rs__py,  &PyList_Type, &angle_Rs_py,  &PyList_Type, &angle_As_py,  eta, zeta, theatom))  return NULL;
+
+        int dim_radius_Rs = PyList_Size(radius_Rs_py);
+	int dim_angle_Rs = PyList_Size(Angle_Rs_py);
+	int dim_angle_As = PyList_Size(angle_As_py);
+        double  radius_Rs[dim_radius_Rs], angle_Rs[dim_angle_Rs], angle_As[dim_angle_As];
+	for (int i = 0; i < dim_radius_Rs; i++)
+        	radius_Rs[i] = PyFloat_AsDouble(PyList_GetItem(radius_Rs_py, i));	
+	for (int i = 0; i < dim_angle_Rs; i++)
+                angle_Rs[i] = PyFloat_AsDouble(PyList_GetItem(angle_Rs_py, i));
+	for (int i = 0; i < dim_angle_As; i++)
+                angle_As[i] = PyFloat_AsDouble(PyList_GetItem(angle_As_py, i));
+
+        const int nele = (elements->dimensions)[0];
+        double  *xyz_data, *AN1_Sym_data;
+	xyz_data = (double*) xyz->data;
+        uint8_t* ele=(uint8_t*)elements->data;
+        uint8_t* atoms=(uint8_t*)atoms_->data;
+
+        int natom;
+	natom = Nxyz[0];
+	int SYMdim = nele*dim_radius_Rs + nele*(nele+1)/2*dim_angle_Rs*dim_angle_As;
+        npy_intp outdim[2] = {1, SYMdim};
+        if (theatom<0)
+                outdim[0] = natom;
+	PyObject* ANI1_Sym = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	ANI1_Sym_data = (double*) ((PyArrayObject*)ANI1_Sym)->data;
+
+	if (theatom < 0) {
+		for (int i=0; i < natom;  i++) {
+			array<std::vector<int>, 10> ele_index;  // hold max 10 elements most
+			for (int j = 0; j < natom; j++) {
+                		if (j==i)
+                		continue;
+                		for (int k=0; k < nele; k++) {
+                        		if (atoms[j] == ele[k])
+                        		ele_index[k].push_back(j);
+                		}
+        		}
+			ANI1_SymFunction(ANI1_Sym_data, i, ele_index, radius_Rc, angle_Rc, radius_Rs, angle_Rs, angle_As, eta, zeta)	
+
+		}
+			
+
+	}
+	else {
+		array<std::vector<int>, 10> ele_index;  // hold max 10 elements most
+                for (int j = 0; j < natom; j++) {
+                	if (j==theatom)
+                        continue;
+                        for (int k=0; k < nele; k++) {
+                        	if (atoms[j] == ele[k])
+                              	ele_index[k].push_back(j);
+                        }
+              	}
+	
+	}
+
+	array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
+
+
 static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 
 	PyArrayObject   *xyz, *grids, *atoms_, *elements;
