@@ -77,7 +77,7 @@ if(0):
 	optimizer=Optimizer(manager)
 	optimizer.OptRealForce(test_mol)
 
-if(1):
+if(0):
 	# a=MSet("SmallMols")
 	# a.Load()
 	# a = a.RotatedClone(20)
@@ -296,31 +296,31 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 
 # TestBP()
 
-# def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True):
-# 	if (BuildTrain_):
-# 		a=MSet(set_)
-# 		a.Load()
-# 		a = a.RotatedClone(1)
-# 		TreatedAtoms = a.AtomTypes()
-# 		print "Number of Mols: ", len(a.mols)
-# 		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
-# 		tset = TensorData(a,d)
-# 		tset.BuildTrainMolwise(set_,TreatedAtoms)
-# 	else:
-# 		tset = TensorData(None,None,set_+"_"+dig_)
-# 	manager=TFManage("",tset,True,"fc_sqdiff")
-#
-# TrainForces(set_ = "toluene", BuildTrain_=True)
+def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True):
+	if (BuildTrain_):
+		a=MSet(set_)
+		a.Load()
+		a = a.RotatedClone(1)
+		TreatedAtoms = a.AtomTypes()
+		print "Number of Mols: ", len(a.mols)
+		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
+		tset = TensorData(a,d)
+		tset.BuildTrainMolwise(set_,TreatedAtoms)
+	else:
+		tset = TensorData(None,None,set_+"_"+dig_)
+	manager=TFManage("",tset,True,"fc_sqdiff")
+
+# TrainForces(set_ = "toluene", BuildTrain_=False)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
 	a.Load()
 	tmol=copy.deepcopy(a.mols[mol])
-	manager=TFManage(set_+dig_+"fc_sqdiff", None, False)
+	manager=TFManage(set_+"_"+dig_+"_"+"fc_sqdiff", None, False)
 	opt=Optimizer(manager)
 	opt.OptTFRealForce(tmol)
 
-# TestForces(set_ = "toluene")
+TestForces(set_ = "toluene")
 
 # a=MSet("toluene_0")
 # a.Load()

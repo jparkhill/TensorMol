@@ -31,6 +31,7 @@ class TFManage:
 		if (RandomTData_==False):
 			self.TData.Randomize=False
 		self.NetType = NetType_
+		self.n_train = ntrain_
 		# All done if you're doing molecular calculations
 		print self.TData.AvailableElements
 		print self.TData.AvailableDataFiles
