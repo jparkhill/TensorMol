@@ -51,7 +51,7 @@ class MolDigester:
 		r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
 		a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
 		a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
-		ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, , -1) # -1 means do it for all atoms
+		ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
 		ANI1_Ins_deri = np.zeros((ANI1_Ins.shape[0], ANI1_Ins.shape[1]))
 		return ANI1_Ins, ANI1_Ins_deri
 
