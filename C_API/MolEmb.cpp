@@ -1082,15 +1082,15 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 
 static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
 
-        PyArrayObject   *xyz, *atoms, *elements;
+        PyArrayObject   *xyz, *atoms_, *elements;
         PyObject    *radius_Rs_py, *angle_Rs_py, *angle_As_py;
         double   radius_Rc, angle_Rc, eta, zeta;
         int theatom;
-        if (!PyArg_ParseTuple(args, "O!O!OddO!O!O!ddi",
-        &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &radius_Rc, &angle_Rc,  &PyList_Type, &radius_Rs__py,  &PyList_Type, &angle_Rs_py,  &PyList_Type, &angle_As_py,  eta, zeta, theatom))  return NULL;
+        if (!PyArg_ParseTuple(args, "O!O!O!ddO!O!O!ddi",
+        &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &radius_Rc, &angle_Rc,  &PyList_Type, &radius_Rs_py,  &PyList_Type, &angle_Rs_py,  &PyList_Type, &angle_As_py,  eta, zeta, theatom))  return NULL;
 
         int dim_radius_Rs = PyList_Size(radius_Rs_py);
-	int dim_angle_Rs = PyList_Size(Angle_Rs_py);
+	int dim_angle_Rs = PyList_Size(angle_Rs_py);
 	int dim_angle_As = PyList_Size(angle_As_py);
         double  radius_Rs[dim_radius_Rs], angle_Rs[dim_angle_Rs], angle_As[dim_angle_As];
 	for (int i = 0; i < dim_radius_Rs; i++)
@@ -1101,8 +1101,9 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
                 angle_As[i] = PyFloat_AsDouble(PyList_GetItem(angle_As_py, i));
 
         const int nele = (elements->dimensions)[0];
-        double  *xyz_data, *AN1_Sym_data;
+        double  *xyz_data, *ANI1_Sym_data;
 	xyz_data = (double*) xyz->data;
+	npy_intp* Nxyz = xyz->dimensions;
         uint8_t* ele=(uint8_t*)elements->data;
         uint8_t* atoms=(uint8_t*)atoms_->data;
 
@@ -1114,6 +1115,11 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
                 outdim[0] = natom;
 	PyObject* ANI1_Sym = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	ANI1_Sym_data = (double*) ((PyArrayObject*)ANI1_Sym)->data;
+	for (int k=0; k < nele; k++)
+		std::cout<<ele[k]<<std::endl;
+	for (int k=0; k < natom; k++)
+                std::cout<<atoms[k]<<std::endl;
+
 
 	if (theatom < 0) {
 		for (int i=0; i < natom;  i++) {
@@ -1126,7 +1132,7 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
                         		ele_index[k].push_back(j);
                 		}
         		}
-			ANI1_SymFunction(ANI1_Sym_data, i, ele_index, radius_Rc, angle_Rc, radius_Rs, angle_Rs, angle_As, eta, zeta)	
+			//ANI1_SymFunction(ANI1_Sym_data, i, ele_index, radius_Rc, angle_Rc, radius_Rs, angle_Rs, angle_As, eta, zeta)	
 
 		}
 			
@@ -1145,8 +1151,9 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
 	
 	}
 
-	array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
+	return ANI1_Sym;
 
+}
 
 static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 
@@ -1293,6 +1300,8 @@ static PyMethodDef EmbMethods[] =
 	"Make_PGaussian method"},
 	{"Make_Sym", Make_Sym, METH_VARARGS,
 	"Make_Sym method"},
+	{"Make_ANI1_Sym", Make_ANI1_Sym, METH_VARARGS,
+        "Make_ANI1_Sym method"},
 	{"Make_CM_vary_coords", Make_CM_vary_coords, METH_VARARGS,
 	"Make_CM_vary_coords method"},
 	{NULL, NULL, 0, NULL}
