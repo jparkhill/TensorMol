@@ -260,7 +260,7 @@ if (1):
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a)
 
-	if (0):
+	if (1):
                 a = MSet("SNB_bondstrength")
 		a.ReadXYZ("SNB_bondstrength")
                 a.Make_Graphs()
@@ -345,7 +345,7 @@ if (1):
 
 
 # Graph subsampling
-if (1):
+if (0):
 	if (0):
                 tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
@@ -505,7 +505,7 @@ if (1):
                 manager= TFMolManage("Mol_chemspider_9heavy_tmcleaned_all_allowedbond_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a)
 	
-	if (1): # Mol_gdb9_energy_1_6_7_8_cleaned_with_GA_sample_fixparam_step2k_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1
+	if (0): # Mol_gdb9_energy_1_6_7_8_cleaned_with_GA_sample_fixparam_step2k_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1
 		a = MSet("chemspider_9heavy_tmcleaned_all_fortest")
                 a.ReadXYZ("chemspider_9heavy_tmcleaned_all_fortest")
                 a.Make_Graphs()

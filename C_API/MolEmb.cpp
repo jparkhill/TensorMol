@@ -127,6 +127,62 @@ void  G2(double *data, const double *zeta, const double *eta, int dim_zeta, int 
 	}
 }
 
+
+void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const double *xyz, const uint8_t *atoms, const int natom, const uint8_t *ele, const int nele, const int atom_num, const array<std::vector<int>, 10> ele_index, const double radius_Rc, const double angle_Rc, const double *radius_Rs, const int radius_Rs_dim, const double *angle_Rs, const int angle_Rs_dim, const double *angle_As, const int angle_As_dim, const double eta, const double zeta) {
+	double dist1, fc1, dist2, fc2, dist3, fc3, theta, A, C ,B;
+	int g1_size = radius_Rs_dim;
+	int g2_size = angle_Rs_dim * angle_As_dim;
+	int bond_index = 0;
+	int SYMdim = nele*radius_Rs_dim + nele*(nele+1)/2*angle_Rs_dim*angle_As_dim;
+	for (int j = 0; j < nele; j++ ) {
+		for ( int k = 0;  k < ele_index[j].size(); k++) {
+			if (ele_index[j][k] != atom_num) {
+				dist1 = sqrt(pow(xyz[ele_index[j][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][k]*3+2] - xyz[atom_num*3+2],2));	
+				if ( dist1 > radius_Rc)
+					continue;
+				else {
+					fc1 = fc(dist1, radius_Rc);
+					for (int m = 0; m < radius_Rs_dim; m++) {
+						ANI1_Sym_data[data_pointer + radius_Rs_dim*j + m] = ANI1_Sym_data[data_pointer + radius_Rs_dim*j + m] + exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*fc1;
+					}
+				}					
+			}	
+		}
+	}
+	for (int i = 0; i < nele; i++) {
+		for (int j = i; j < nele; j++) {
+			bond_index = bond_index + 1;
+			for ( int k =0; k < ele_index[i].size(); k++)  {
+				dist1 = sqrt(pow(xyz[ele_index[i][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[i][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[i][k]*3+2] - xyz[atom_num*3+2],2));
+				if (dist1 > angle_Rc or ele_index[i][k] == atom_num) 
+					continue;
+				else {
+					for (int l = 0; l < ele_index[j].size(); l++) {
+						dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2],2));
+						dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[ele_index[i][k]*3+2],2));
+						if ((dist2 > angle_Rc) || (i == j && l == k) || ele_index[j][l] == atom_num) 
+							continue;
+						else {
+							fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc), fc3 = fc(dist3, angle_Rc);
+							theta = acos((dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2));
+							C = fc1*fc2;
+							for (int m = 0; m < angle_As_dim; m++) {
+								A = pow(2.0, 1-zeta)*pow(1+cos(theta-angle_As[m]), zeta);	
+								for (int n = 0; n < angle_Rs_dim; n++) {
+									B = exp(-eta*((dist1+dist2)/2.0-angle_Rs[n])*((dist1+dist2)/2.0-angle_Rs[n]));
+									ANI1_Sym_data[data_pointer+radius_Rs_dim*nele+bond_index*angle_Rs_dim*angle_As_dim+m*angle_Rs_dim+n] = ANI1_Sym_data[data_pointer+radius_Rs_dim*nele+bond_index*angle_Rs_dim*angle_As_dim+m*angle_Rs_dim+n] + A*B*C;
+								}
+							} 
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+}
+
 //
 // This isn't an embedding; it's fast code to make a go-model potential for a molecule.
 //
@@ -1119,8 +1175,8 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
 		std::cout<<ele[k]<<std::endl;
 	for (int k=0; k < natom; k++)
                 std::cout<<atoms[k]<<std::endl;
-
-
+	
+	int data_pointer = 0;
 	if (theatom < 0) {
 		for (int i=0; i < natom;  i++) {
 			array<std::vector<int>, 10> ele_index;  // hold max 10 elements most
@@ -1132,8 +1188,8 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
                         		ele_index[k].push_back(j);
                 		}
         		}
-			//ANI1_SymFunction(ANI1_Sym_data, i, ele_index, radius_Rc, angle_Rc, radius_Rs, angle_Rs, angle_As, eta, zeta)	
-
+			data_pointer += SYMdim;
+			ANI1_SymFunction(ANI1_Sym_data, data_pointer, xyz_data, atoms, natom,  ele, nele, i, ele_index, radius_Rc, angle_Rc, radius_Rs, dim_radius_Rs, angle_Rs, dim_angle_Rs, angle_As, dim_angle_As, eta, zeta);	
 		}
 			
 
