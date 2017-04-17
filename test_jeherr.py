@@ -407,4 +407,4 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 # f.close()
 
 b = Basis_GauSH(Name_=None)
-print b.rbfs
+b.Orthogonalize()

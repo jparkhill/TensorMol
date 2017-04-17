@@ -143,8 +143,8 @@ class TensorData():
 					cases_list[ai][casep_list[ai]] = ins[i]
 					labels_list[ai][casep_list[ai]] = outs[i]
 					casep_list[ai] = casep_list[ai]+1
-				if (mols_done%10000==0 and mols_done>0):
-					gc.collect()
+				# if (mols_done%10000==0 and mols_done>0):
+				# 	gc.collect()
 				if (mols_done%10000==0 and mols_done>0):
 					print mols_done
 				if (mols_done==400):

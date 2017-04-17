@@ -1049,6 +1049,49 @@ static PyObject* Overlap_RBF(PyObject *self, PyObject  *args)
 	return SRBF;
 }
 
+static PyObject* Overlap_RBFS(PyObject *self, PyObject  *args)
+{
+	PyObject *Prm_, *RBF_obj;
+	if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &Prm_, &PyArray_Type, &RBF_obj))
+		return NULL;
+
+	PyObject *RBF_array = PyArray_FROM_OTF(RBF_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+
+	if (RBF_array == NULL) {
+		Py_XDECREF(RBF_array);
+		return NULL;
+	}
+
+	int Nele = (int)PyArray_DIM(RBF_array, 0);
+	int BasMax = (int)PyArray_DIM(RBF_array, 1);
+	int Bassz = (int)PyArray_DIM(RBF_array, 2);
+
+	// std::cout << "Nele: " << Nele << " BasMax: " << BasMax << " L: " << L << std::endl;
+
+	double *RBF = (double*)PyArray_DATA(RBF_array);
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
+	int nbas = Prm->SH_NRAD;
+	npy_intp outdim[3] = {Nele,nbas,nbas};
+	PyObject* SRBF = PyArray_ZEROS(3, outdim, NPY_DOUBLE, 0);
+	double *SRBF_data;
+	SRBF_data = (double*) ((PyArrayObject*)SRBF)->data;
+	// for (int i=0; i<100; ++i)
+	// 	std::cout << RBF[i] << std::endl;
+	for (int k=0; k<Nele ; ++k)
+	{
+		for (int i=0; i<Prm->SH_NRAD ; ++i)
+		{
+			for (int j=0; j<Prm->SH_NRAD ; ++j)
+			{
+				// std::cout << "k: " << k << " i: " << i << " RBFS_i: " << RBFS_data[k*12*2+i*2] << " " << RBFS_data[k*12*2+i*2+1] << " RBFS_j: " << RBFS_data[k*12*2+j*2] << " " << RBFS_data[k*12*2+j*2+1] << std::endl;
+				SRBF_data[k*nbas*nbas+i*nbas+j] = GOverlap(RBF[k*BasMax*Bassz+i*2],RBF[k*BasMax*Bassz+j*2],RBF[k*BasMax*Bassz+i*2+1],RBF[k*BasMax*Bassz+j*2+1]);
+			}
+		}
+	}
+	Py_DECREF(RBF_array);
+	return SRBF;
+}
+
 static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 {
 	//     printtest();
@@ -1355,6 +1398,8 @@ static PyMethodDef EmbMethods[] =
 	"Overlap_SH method"},
 	{"Overlap_RBF", Overlap_RBF, METH_VARARGS,
 	"Overlap_RBF method"},
+	{"Overlap_RBFS", Overlap_RBFS, METH_VARARGS,
+	"Overlap_RBFS method"},
 	{"Project_SH", Project_SH, METH_VARARGS,
 	"Project_SH method"},
 	{"Make_PGaussian", Make_PGaussian, METH_VARARGS,
