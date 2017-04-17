@@ -16,7 +16,6 @@ static SHParams ParseParams(PyObject *Pdict)
 		PyObject* RBFo = PyDict_GetItemString(Pdict, "RBFS");
 		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
 		tore.RBFS = (double*)RBFa->data;
-		tore.SH_NRAD = (RBFa->dimensions)[0];
 	}
 	{
 		PyObject* RBFo = PyDict_GetItemString(Pdict, "SRBF");

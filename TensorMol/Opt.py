@@ -215,7 +215,7 @@ class Optimizer:
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords = m.coords + c_veloc
-			# old_veloc = self.momentum_decay*c_veloc
+			old_veloc = self.momentum_decay*c_veloc
 			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
 			maxgrad = np.amax(np.linalg.norm(veloc,axis=1))
 			rmsdisp = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]

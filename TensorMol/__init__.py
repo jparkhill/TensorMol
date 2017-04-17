@@ -10,3 +10,4 @@ from TensorMol.TFInstance import *
 from TensorMol.TFMolInstance import *
 from TensorMol.Ipecac import *
 from TensorMol.EmbOpt import *
+from TensorMol.Basis import *

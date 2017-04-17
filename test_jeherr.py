@@ -320,7 +320,7 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	opt=Optimizer(manager)
 	opt.OptTFRealForce(tmol)
 
-TestForces(set_ = "toluene")
+# TestForces(set_ = "toluene")
 
 # a=MSet("toluene_0")
 # a.Load()
@@ -405,3 +405,6 @@ TestForces(set_ = "toluene")
 # 	f.write("sym_ignore        true\n")
 # 	f.write("$end\n\n@@@\n\n")
 # f.close()
+
+b = Basis_GauSH(Name_=None)
+print b.rbfs
