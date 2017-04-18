@@ -21,8 +21,8 @@ else:
         sources=['MolEmb.cpp'],
         extra_compile_args=['-std=c++0x'],
         extra_link_args=[],
-        include_dirs=[numpy.get_include()])
-
+        #include_dirs=[numpy.get_include()])
+	include_dirs=["./"])
 
 # run the setup
 setup(ext_modules=[MolEmb])

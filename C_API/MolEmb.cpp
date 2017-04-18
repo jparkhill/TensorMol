@@ -135,8 +135,10 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 	int bond_index = 0;
 	int SYMdim = nele*radius_Rs_dim + nele*(nele+1)/2*angle_Rs_dim*angle_As_dim;
 	for (int j = 0; j < nele; j++ ) {
+		//std::cout<<"radius part: "<<j<<std::endl;
 		for ( int k = 0;  k < ele_index[j].size(); k++) {
 			if (ele_index[j][k] != atom_num) {
+				//std::cout<<"the atom belong to the ele:"<<ele_index[j][k]<<std::endl;
 				dist1 = sqrt(pow(xyz[ele_index[j][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][k]*3+2] - xyz[atom_num*3+2],2));	
 				if ( dist1 > radius_Rc)
 					continue;
@@ -144,6 +146,7 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 					fc1 = fc(dist1, radius_Rc);
 					for (int m = 0; m < radius_Rs_dim; m++) {
 						ANI1_Sym_data[data_pointer + radius_Rs_dim*j + m] = ANI1_Sym_data[data_pointer + radius_Rs_dim*j + m] + exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*fc1;
+						//std::cout<<"value to be added:"<<exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*fc1<<std::endl;
 					}
 				}					
 			}	
@@ -151,7 +154,6 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 	}
 	for (int i = 0; i < nele; i++) {
 		for (int j = i; j < nele; j++) {
-			bond_index = bond_index + 1;
 			for ( int k =0; k < ele_index[i].size(); k++)  {
 				dist1 = sqrt(pow(xyz[ele_index[i][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[i][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[i][k]*3+2] - xyz[atom_num*3+2],2));
 				if (dist1 > angle_Rc or ele_index[i][k] == atom_num) 
@@ -159,17 +161,23 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 				else {
 					for (int l = 0; l < ele_index[j].size(); l++) {
 						dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2],2));
-						dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[ele_index[i][k]*3+2],2));
+						dist3 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[ele_index[i][k]*3+2],2));
 						if ((dist2 > angle_Rc) || (i == j && l == k) || ele_index[j][l] == atom_num) 
 							continue;
 						else {
 							fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc), fc3 = fc(dist3, angle_Rc);
+							//std::cout<<"dist1: "<<dist1<<"dist2: "<<dist2<<" dist3:"<<dist3<<std::endl;
 							theta = acos((dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2));
+							//std::cout<<" theta"<<theta<<" zeta:"<<zeta<<std::endl;
 							C = fc1*fc2;
+							//std::cout<<"fc1:"<<fc1<<" dist1:"<<dist1<<" fc2:"<<fc2<<" dist2:"<<dist2<<std::endl;
 							for (int m = 0; m < angle_As_dim; m++) {
-								A = pow(2.0, 1-zeta)*pow(1+cos(theta-angle_As[m]), zeta);	
+								A = pow(2.0, 1-zeta)*pow(1+cos(theta-angle_As[m]), zeta);
+								//std::cout<<"A:"<<A<<" pow(2.0, 1-zeta)"<<pow(2.0, 1-zeta)<<" pow(1+cos(theta-angle_As[m]), zeta)"<<pow(1+cos(theta-angle_As[m]), zeta)<<" cos(theta-angle_As[m])"<<cos(theta-angle_As[m])<<" angle_As[m]"<<angle_As[m]<<" theta:"<<theta<<std::endl;	
 								for (int n = 0; n < angle_Rs_dim; n++) {
 									B = exp(-eta*((dist1+dist2)/2.0-angle_Rs[n])*((dist1+dist2)/2.0-angle_Rs[n]));
+									//std::cout<<"-eta*((dist1+dist2)/2.0-angle_Rs[n])*((dist1+dist2)/2.0-angle_Rs[n])"<<-eta*((dist1+dist2)/2.0-angle_Rs[n])*((dist1+dist2)/2.0-angle_Rs[n])<<"  ((dist1+dist2)/2.0-angle_Rs[n])"<<((dist1+dist2)/2.0-angle_Rs[n])<<std::endl;
+									//std::cout<<"A:"<<A<<" B:"<<B<<" C:"<<C<<" A*B*C"<<A*B*C<<std::endl;
 									ANI1_Sym_data[data_pointer+radius_Rs_dim*nele+bond_index*angle_Rs_dim*angle_As_dim+m*angle_Rs_dim+n] = ANI1_Sym_data[data_pointer+radius_Rs_dim*nele+bond_index*angle_Rs_dim*angle_As_dim+m*angle_Rs_dim+n] + A*B*C;
 								}
 							} 
@@ -177,6 +185,7 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 					}
 				}
 			}
+			bond_index = bond_index + 1;
 		}
 
 	}
@@ -1143,8 +1152,7 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
         double   radius_Rc, angle_Rc, eta, zeta;
         int theatom;
         if (!PyArg_ParseTuple(args, "O!O!O!ddO!O!O!ddi",
-        &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &radius_Rc, &angle_Rc,  &PyList_Type, &radius_Rs_py,  &PyList_Type, &angle_Rs_py,  &PyList_Type, &angle_As_py,  eta, zeta, theatom))  return NULL;
-
+        &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &radius_Rc, &angle_Rc,  &PyList_Type, &radius_Rs_py,  &PyList_Type, &angle_Rs_py,  &PyList_Type, &angle_As_py,  &eta, &zeta, &theatom))  return NULL;
         int dim_radius_Rs = PyList_Size(radius_Rs_py);
 	int dim_angle_Rs = PyList_Size(angle_Rs_py);
 	int dim_angle_As = PyList_Size(angle_As_py);
@@ -1153,29 +1161,24 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
         	radius_Rs[i] = PyFloat_AsDouble(PyList_GetItem(radius_Rs_py, i));	
 	for (int i = 0; i < dim_angle_Rs; i++)
                 angle_Rs[i] = PyFloat_AsDouble(PyList_GetItem(angle_Rs_py, i));
-	for (int i = 0; i < dim_angle_As; i++)
+	for (int i = 0; i < dim_angle_As; i++) {
                 angle_As[i] = PyFloat_AsDouble(PyList_GetItem(angle_As_py, i));
-
+	}
         const int nele = (elements->dimensions)[0];
         double  *xyz_data, *ANI1_Sym_data;
 	xyz_data = (double*) xyz->data;
 	npy_intp* Nxyz = xyz->dimensions;
+	const int natom = Nxyz[0];
         uint8_t* ele=(uint8_t*)elements->data;
         uint8_t* atoms=(uint8_t*)atoms_->data;
 
-        int natom;
-	natom = Nxyz[0];
 	int SYMdim = nele*dim_radius_Rs + nele*(nele+1)/2*dim_angle_Rs*dim_angle_As;
         npy_intp outdim[2] = {1, SYMdim};
         if (theatom<0)
                 outdim[0] = natom;
 	PyObject* ANI1_Sym = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	ANI1_Sym_data = (double*) ((PyArrayObject*)ANI1_Sym)->data;
-	for (int k=0; k < nele; k++)
-		std::cout<<ele[k]<<std::endl;
-	for (int k=0; k < natom; k++)
-                std::cout<<atoms[k]<<std::endl;
-	
+		
 	int data_pointer = 0;
 	if (theatom < 0) {
 		for (int i=0; i < natom;  i++) {
@@ -1188,8 +1191,8 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
                         		ele_index[k].push_back(j);
                 		}
         		}
+			ANI1_SymFunction(ANI1_Sym_data, data_pointer, xyz_data, atoms, natom,  ele, nele, i, ele_index, radius_Rc, angle_Rc, radius_Rs, dim_radius_Rs, angle_Rs, dim_angle_Rs, angle_As, dim_angle_As, eta, zeta);
 			data_pointer += SYMdim;
-			ANI1_SymFunction(ANI1_Sym_data, data_pointer, xyz_data, atoms, natom,  ele, nele, i, ele_index, radius_Rc, angle_Rc, radius_Rs, dim_radius_Rs, angle_Rs, dim_angle_Rs, angle_As, dim_angle_As, eta, zeta);	
 		}
 			
 
