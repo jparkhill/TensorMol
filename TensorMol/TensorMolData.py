@@ -303,12 +303,17 @@ class TensorMolData_BP(TensorMolData):
 		# Generate the set in a random order.
 		ord=np.random.permutation(len(self.set.mols))
 		mols_done = 0
+		start_time = time.time()
 		for mi in ord:
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
-			if (mols_done%10000==0):
-				print "Mol:", mols_done
+			if (mols_done%1000==0):
+				print "Mol:", mols_done, " Time cost:", time.time() - start_time, " Anticipate time cost:", len(self.set.mols)/1000*(time.time() - start_time)
+				start_time = time.time()
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+			if not np.all(np.isfinite(ins)):
+				print "find a bad case, writting down xyz.."
+				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
 			#print "ins:", ins, " cases:", cases[casep:casep+nat]

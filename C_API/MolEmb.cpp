@@ -129,7 +129,7 @@ void  G2(double *data, const double *zeta, const double *eta, int dim_zeta, int 
 
 
 void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const double *xyz, const uint8_t *atoms, const int natom, const uint8_t *ele, const int nele, const int atom_num, const array<std::vector<int>, 10> ele_index, const double radius_Rc, const double angle_Rc, const double *radius_Rs, const int radius_Rs_dim, const double *angle_Rs, const int angle_Rs_dim, const double *angle_As, const int angle_As_dim, const double eta, const double zeta) {
-	double dist1, fc1, dist2, fc2, dist3, fc3, theta, A, C ,B;
+	double dist1, fc1, dist2, fc2, dist3, fc3, theta, A, C ,B, tmp_v ;
 	int g1_size = radius_Rs_dim;
 	int g2_size = angle_Rs_dim * angle_As_dim;
 	int bond_index = 0;
@@ -167,7 +167,9 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 						else {
 							fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc), fc3 = fc(dist3, angle_Rc);
 							//std::cout<<"dist1: "<<dist1<<"dist2: "<<dist2<<" dist3:"<<dist3<<std::endl;
-							theta = acos((dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2));
+							//std::cout<<"(dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2)"<<(dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2)<<std::endl;
+							tmp_v = (dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2);
+							theta = acos(roundf(tmp_v * 10000000) / 10000000); // round to 7 decimal place
 							//std::cout<<" theta"<<theta<<" zeta:"<<zeta<<std::endl;
 							C = fc1*fc2;
 							//std::cout<<"fc1:"<<fc1<<" dist1:"<<dist1<<" fc2:"<<fc2<<" dist2:"<<dist2<<std::endl;

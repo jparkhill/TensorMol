@@ -75,7 +75,7 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
-		test_freq = 1000
+		test_freq = 10
 		mini_test_loss = float('inf') # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
@@ -83,7 +83,7 @@ class MolInstance(Instance):
 				test_loss, feed_dict = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					if (step > 1000):
+					if (step > 100):
 						self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
