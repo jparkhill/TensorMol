@@ -59,6 +59,45 @@ class MolDigester:
 		return ANI1_Ins, ANI1_Ins_deri
 
 
+        def make_ANI1_sym_bond_bp(self, mol, r_Rc = 4.6, a_Rc = 3.1, eta = 4.00, zeta = 8.00, num_r_Rs = 32, num_a_Rs = 8, num_a_As =8):  # ANI-1 default setting
+                r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
+                a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
+                a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
+		ANI1_Ins_bond_bp = [] 
+		for i in range (0, mol.NBonds()):
+                	ANI1_Ins_1 = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, int(mol.bonds[i][2])) # -1 means do it for all atoms
+			ANI1_Ins_2 = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, int(mol.bonds[i][3])) # -1 means do it for all atoms
+			dist = mol.bonds[i][1]
+			ANI1_Ins_1 = ANI1_Ins_1.reshape((-1))
+			ANI1_Ins_2 = ANI1_Ins_2.reshape((-1))
+			ANI1_Ins_bond_bp.append(np.asarray(list(ANI1_Ins_1)+list(ANI1_Ins_2)+[1.0/dist], dtype=np.float32))
+		ANI1_Ins_bond_bp = np.asarray(ANI1_Ins_bond_bp)
+                ANI1_Ins_bond_bp_deri = np.zeros((ANI1_Ins_bond_bp.shape[0], ANI1_Ins_bond_bp.shape[1]))
+                return ANI1_Ins_bond_bp, ANI1_Ins_bond_bp_deri
+
+
+        def make_ANI1_sym_center_bond_bp(self, mol, r_Rc = 5.3, a_Rc = 3.8, eta = 4.00, zeta = 8.00, num_r_Rs = 32, num_a_Rs = 8, num_a_As =8):  # ANI-1 default setting
+                r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
+                a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
+                a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
+                ANI1_Ins_bond_bp = []
+                for i in range (0, mol.NBonds()):
+			center = (mol.coords[ int(mol.bonds[i][2])] + mol.coords[ int(mol.bonds[i][3])] ) /2.0
+			tmpcoords = np.zeros((mol.NAtoms()+1, 3))
+			tmpcoords[:-1] = mol.coords
+			tmpcoords[-1] = center
+			tmpatoms = np.zeros(mol.NAtoms()+1)
+			tmpatoms[:-1] = mol.atoms
+			tmpatoms[-1] = 0
+                        ANI1_Ins = MolEmb.Make_ANI1_Sym(tmpcoords, tmpatoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, mol.NAtoms()) # -1 means do it for all atoms
+                        dist = mol.bonds[i][1]
+			ANI1_Ins = ANI1_Ins.reshape((-1))
+                        ANI1_Ins_bond_bp.append(np.asarray(list(ANI1_Ins)+[1.0/dist], dtype=np.float32))
+                ANI1_Ins_bond_bp = np.asarray(ANI1_Ins_bond_bp)
+                ANI1_Ins_bond_bp_deri = np.zeros((ANI1_Ins_bond_bp.shape[0], ANI1_Ins_bond_bp.shape[1]))
+                return ANI1_Ins_bond_bp, ANI1_Ins_bond_bp_deri
+
+
 	def make_cm_bp(self, mol):
 		CM_BP = []
 		ngrids = 10
@@ -843,6 +882,10 @@ class MolDigester:
                         Ins, deri_BP = self.make_connectedbond_angle_dihed_2_cm_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym"):
 			Ins, deri_BP = self.make_ANI1_sym(mol_)
+		elif(self.name == "ANI1_Sym_Bond_BP"):
+                        Ins, deri_BP = self.make_ANI1_sym_bond_bp(mol_)
+		elif(self.name == "ANI1_Sym_Center_Bond_BP"):
+                        Ins, deri_BP = self.make_ANI1_sym_center_bond_bp(mol_)
 		else:
 			raise Exception("Unknown MolDigester Type.", self.name)
 

@@ -635,6 +635,27 @@ class TensorMolData_BP(TensorMolData):
 		#print "self.test_ScratchPointer",self.test_ScratchPointer
 
 
+        def Init_TraceBack(self):
+                num_eles = [0 for ele in self.eles]
+                for mol_index in self.test_mols:
+                        for ele in list(self.set.mols[mol_index].atoms):
+                                num_eles[self.eles.index(ele)] += 1
+                self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
+
+                pointer = [0 for ele in self.eles]
+                for mol_index in self.test_mols:
+                        mol = self.set.mols[mol_index]
+                        for i in range (0, mol.atoms.shape[0]):
+                                atom_type = mol.atoms[i]
+                                self.test_atom_index[self.eles.index(atom_type)][pointer[self.eles.index(atom_type)]] = [int(mol_index), i]
+                                pointer[self.eles.index(atom_type)] += 1
+                print self.test_atom_index
+                f  = open("test_energy_real_atom_index_for_test.dat","wb")
+                pickle.dump(self.test_atom_index, f)
+                f.close()
+                return
+
+
 	def Save(self):
 	    self.CleanScratch()
 	    f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
@@ -736,7 +757,7 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
                                 self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
                                 pointer[self.eles.index(bond_type)] += 1
                 print self.test_atom_index
-                f  = open("test_energy_atom_index_for_test.dat","wb")
+                f  = open("test_energy_bond_index_for_test.dat","wb")
                 pickle.dump(self.test_atom_index, f)
                 f.close()
                 return

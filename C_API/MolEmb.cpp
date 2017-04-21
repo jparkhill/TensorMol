@@ -1183,6 +1183,7 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
 		
 	int data_pointer = 0;
 	if (theatom < 0) {
+		#pragma omp parallel for 
 		for (int i=0; i < natom;  i++) {
 			array<std::vector<int>, 10> ele_index;  // hold max 10 elements most
 			for (int j = 0; j < natom; j++) {
@@ -1193,8 +1194,8 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
                         		ele_index[k].push_back(j);
                 		}
         		}
-			ANI1_SymFunction(ANI1_Sym_data, data_pointer, xyz_data, atoms, natom,  ele, nele, i, ele_index, radius_Rc, angle_Rc, radius_Rs, dim_radius_Rs, angle_Rs, dim_angle_Rs, angle_As, dim_angle_As, eta, zeta);
-			data_pointer += SYMdim;
+			ANI1_SymFunction(ANI1_Sym_data, i*SYMdim, xyz_data, atoms, natom,  ele, nele, i, ele_index, radius_Rc, angle_Rc, radius_Rs, dim_radius_Rs, angle_Rs, dim_angle_Rs, angle_As, dim_angle_As, eta, zeta);
+			//data_pointer += SYMdim;
 		}
 			
 
@@ -1209,6 +1210,7 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
                               	ele_index[k].push_back(j);
                         }
               	}
+		ANI1_SymFunction(ANI1_Sym_data, 0, xyz_data, atoms, natom,  ele, nele, theatom, ele_index, radius_Rc, angle_Rc, radius_Rs, dim_radius_Rs, angle_Rs, dim_angle_Rs, angle_As, dim_angle_As, eta, zeta);
 	
 	}
 
