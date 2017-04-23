@@ -67,6 +67,71 @@ class TFMolManage(TFManage):
 		return self.Instances.evaluate(test_input)   
 
 
+        def Eval_BP(self, mol_set, total_energy = False):
+                nmols = len(mol_set.mols)
+                natoms = mol_set.NAtoms()
+                cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+                dummy_outputs = np.zeros((nmols))
+                meta = np.zeros((natoms, 4), dtype = np.int)
+                casep = 0
+                mols_done = 0
+                for mol in mol_set.mols:
+                        ins = self.TData.dig.EvalDigest(mol)
+                        nat = mol.NAtoms()
+                        cases[casep:casep+nat] = ins
+                        for i in range (casep, casep+nat):
+                                meta[i, 0] = mols_done
+                                meta[i, 1] = mol.atoms[i - casep]
+                                meta[i, 2] = casep
+                                meta[i, 3] = casep + nat
+                        casep += nat
+                        mols_done += 1
+                sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+                offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+                inputs = []
+                matrices = []
+                outputpointer = 0
+                for i in range (0, natoms):
+                        sto[self.TData.eles.index(meta[i, 1])] += 1
+                currentmol = 0
+                for e in range (len(self.TData.eles)):
+                        inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+                        matrices.append(np.zeros((sto[e], nmols)))
+                for i in range (0, natoms):
+                        if currentmol != meta[i, 0]:
+                                outputpointer += 1
+                                currentmol = meta[i, 0]
+                        e = meta[i, 1]
+                        ei = self.TData.eles.index(e)
+                        inputs[ei][offsets[ei], :] = cases[i]
+                        matrices[ei][offsets[ei], outputpointer] = 1.0
+                        offsets[ei] += 1
+                #print "[inputs, matrices, dummy_outputs]", [inputs, matrices, dummy_outputs]
+                mol_out, atom_out = self.Instances.evaluate([inputs, matrices, dummy_outputs])
+
+                pointers = [0 for ele in self.TData.eles]
+                diff = 0
+                for i in range (0, nmols):
+                        mol = mol_set.mols[i]
+                        print "for mol :", mol.name," energy:", mol.energy
+                        print "total atomization energy:", mol_out[0][i]
+                        #diff += abs(mol.energy - mol_out[0][i])
+                        if total_energy:
+                                total = mol_out[0][i]
+                                for j in range (0, mol.NAtoms()):
+                                        total += ele_U[mol.atoms[j]]
+                                print "total electronic energy:", total
+                        for j in range (0, mol.atoms.shape[0]):
+                                atom_type = mol.atoms[j]
+                                atom_index = self.TData.eles.index(atom_type)
+                                print "atom: ", mol.atoms[j], " energy:", atom_out[atom_index][0][pointers[atom_index]]
+                                pointers[atom_index] += 1
+                #print "mol out:", mol_out, " atom_out", atom_out
+                #return diff / nmols
+                return
+
+
+
 	def Eval_Bond_BP(self, mol_set, total_energy = False):
 		nmols = len(mol_set.mols)
 		nbonds = mol_set.NBonds()

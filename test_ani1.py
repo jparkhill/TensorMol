@@ -66,6 +66,17 @@ if (1):
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=501)
 
+	if (0):
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                manager.Continue_Training(maxsteps=1001)
+        if (1):
+                a = MSet("CCdihe")
+                a.ReadXYZ("CCdihe")
+                a.Make_Graphs()
+                a.Save()
+                a.Load()
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                manager.Eval_BP(a)
 
 
 	if (0):
@@ -160,7 +171,7 @@ if (1):
                 manager.Train(maxstep=501)
 		
 
-	if (1):
+	if (0):
                 # 1 - Get molecules into memory
                 a=MSet("uneq_chemspider")
                 a.Load()
@@ -172,7 +183,7 @@ if (1):
                 tset = TensorMolData_Bond_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
                 tset.BuildTrain("uneq_chemspider")
 
-        if (1):
+        if (0):
                 tset = TensorMolData_Bond_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym_Center_Bond_BP")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=501)
