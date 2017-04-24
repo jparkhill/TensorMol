@@ -14,6 +14,7 @@ class Optimizer:
 		Args:
 			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
 		"""
+		# These params should go into TMParams.
 		self.thresh = 0.0005
 		self.maxstep = 0.1
 		self.fscale = 0.001
@@ -201,7 +202,7 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(rmsdisp>self.thresh and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
-				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=10, Debug=True)
+				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=30, Debug=True)
 			elif (PARAMS["OctahedralAveraging"]):
 				veloc = self.fscale*self.tfm.EvalOctAvForce(m, Debug=True)
 			else:
