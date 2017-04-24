@@ -167,7 +167,7 @@ def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	a.ReadXYZ("OptMols")
 	test_mol = a.mols[11]
 	print "Orig Coords", test_mol.coords
-	test_mol.Distort()
+	test_mol.Distort(0.2,0.2)
 	print test_mol.coords
 	print test_mol.atoms
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
