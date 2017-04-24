@@ -139,8 +139,10 @@ void SymFunction(double *Sym_data, const int data_pointer, const double *xyz, co
                                         continue;
 				else {
 					fc1 = fc(dist1, Rc);				
-					for (int m = 0; m <  g1_dim; m++) 
+					for (int m = 0; m <  g1_dim; m++)  {
+						//std::cout<<"g1_param_data[m*2]"<<g1_param_data[m*2]<<"   "<<"<g1_param_data[m*2+1]"<<g1_param_data[m*2+1]<<std::endl;
 						Sym_data[data_pointer + g1_dim*j + m] = Sym_data[data_pointer + g1_dim*j + m] + exp(-g1_param_data[m*2+1]*(dist1 - g1_param_data[m*2])*(dist1 - g1_param_data[m*2]))*fc1;
+					}
 				}
 			}
 		}
@@ -166,8 +168,9 @@ void SymFunction(double *Sym_data, const int data_pointer, const double *xyz, co
 								A2 = pow(2.0, 1-g2_param_data[n*2])*pow((1-theta), g2_param_data[n*2]);
 								B = exp(-g2_param_data[n*2+1]*(dist1*dist1+dist2*dist2+dist3*dist3));
 								C = fc1*fc2*fc3;
-								Sym_data[data_pointer + g2_dim*bond_index + n] = Sym_data[data_pointer + g2_dim*bond_index + n] + A1*B*C;
-								Sym_data[data_pointer + half_total_g2 + g2_dim*bond_index + n] = Sym_data[data_pointer + half_total_g2 + g2_dim*bond_index + n] + A1*B*C;		
+								//std::cout<<" g2_dim*bond_index + n" << g2_dim*bond_index + n << "ele:"<<i<<" "<<j<<std::endl; 
+								Sym_data[data_pointer + g1_dim*nele + g2_dim*bond_index + n] = Sym_data[data_pointer + g1_dim*nele + g2_dim*bond_index + n] + A1*B*C;
+								Sym_data[data_pointer + g1_dim*nele + half_total_g2 + g2_dim*bond_index + n] = Sym_data[data_pointer + g1_dim*nele + half_total_g2 + g2_dim*bond_index + n] + A2*B*C;		
 							}
 						}
 					}
@@ -1277,11 +1280,10 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
 
 
 static PyObject*  Make_Sym_Update (PyObject *self, PyObject  *args) {
-
         PyArrayObject   *xyz, *atoms_, *elements, *g1_param, *g2_param;
         double   Rc;
         int theatom;
-        if (!PyArg_ParseTuple(args, "O!O!O!ddO!O!O!ddi",
+        if (!PyArg_ParseTuple(args, "O!O!O!dO!O!i",
         &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &Rc, &PyArray_Type, &g1_param, &PyArray_Type, &g2_param, &theatom))  return NULL;
 	const int g1_dim = (g1_param -> dimensions)[0];
 	const int g2_dim = (g2_param -> dimensions)[0];
@@ -1289,8 +1291,8 @@ static PyObject*  Make_Sym_Update (PyObject *self, PyObject  *args) {
         double  *xyz_data, *Sym_data, *g1_param_data, *g2_param_data;
         xyz_data = (double*) xyz->data;
         npy_intp* Nxyz = xyz->dimensions;
-	g1_param_data = (double*) g1_param;
-	g2_param_data = (double*) g2_param;
+	g1_param_data = (double*) g1_param -> data;
+	g2_param_data = (double*) g2_param -> data;
         const int natom = Nxyz[0];
         uint8_t* ele=(uint8_t*)elements->data;
         uint8_t* atoms=(uint8_t*)atoms_->data;
