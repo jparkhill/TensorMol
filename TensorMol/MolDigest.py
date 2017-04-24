@@ -15,13 +15,28 @@ class MolDigester:
 		self.SensRadius = SensRadius_
 		self.eles = eles_
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
-		self.ngrid = 3 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
+		self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced. debug
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
 
 	def AssignNormalization(self,mn,sn):
 		self.MeanNorm=mn
 		self.StdNorm=sn
 		return
+
+	def make_sym_update(self, mol, Rc = 4.0, g1_para_mat = None, g2_para_mat = None): # para_mat should contains the parameters of Sym_Func, on the order of: G1:Rs, eta1 ; G2: zeta, eta2
+		if g1_para_mat == None or g2_para_mat == None: # use the default setting
+			ngrid = 5
+			Rs = []; eta1 = []; zeta = []; eta2 = []
+			for i in range (0, ngrid):
+				zeta.append(1.5**i); eta1.append(0.008*(2**i)); eta2.append(0.002*(2**i)); Rs.append(i*Rc/float(ngrid))
+			g1_para_mat = np.array(np.meshgrid(Rs, eta1)).T.reshape((-1,2))
+			g2_para_mat = np.array(np.meshgrid(zeta, eta2)).T.reshape((-1,2))
+		SYM_Ins = MolEmb.Make_Sym_Update(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), Rc, g1_para_mat,g2_para_mat,  -1) # -1 means do it for all atoms
+                SYM_Ins_deri = np.zeros((SYM_Ins.shape[0], SYM_Ins.shape[1]))
+                #print "ANI1_Ins",ANI1_Ins, ANI1_Ins_deri.shape
+                return SYM_Ins, SYM_Ins_deri
+
+		
 
 	def make_sym(self, mol):
 		zeta=[]
@@ -855,6 +870,8 @@ class MolDigester:
                         Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "SymFunc"):
 			Ins, SYM_deri = self.make_sym(mol_)
+		elif(self.name == "SymFunc_Update"):
+			Ins, SYM_deri = self.make_sym_update(mol_)
 		elif(self.name == "GauInv_BP"):
 			Ins =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1)
 		elif(self.name == "ConnectedBond_Bond_BP"):

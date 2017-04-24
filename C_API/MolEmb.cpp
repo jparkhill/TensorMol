@@ -128,6 +128,63 @@ void  G2(double *data, const double *zeta, const double *eta, int dim_zeta, int 
 }
 
 
+void SymFunction(double *Sym_data, const int data_pointer, const double *xyz, const uint8_t *atoms, const int natom,  const uint8_t *ele, const int nele, const int atom_num, const array<std::vector<int>, 10> ele_index, const double Rc, const double *g1_param_data, const int g1_dim, const double *g2_param_data, const int g2_dim) {
+	double dist1, fc1, dist2, fc2, dist3, fc3, A1, A2,  B, C, theta;
+	int bond_index = 0; 
+	for (int j = 0; j < nele; j++) {
+		for (int k = 0; k < ele_index[j].size(); k++) {
+			if (ele_index[j][k] != atom_num) {
+				dist1 = sqrt(pow(xyz[ele_index[j][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][k]*3+2] - xyz[atom_num*3+2],2));
+                                if ( dist1 > Rc)
+                                        continue;
+				else {
+					fc1 = fc(dist1, Rc);				
+					for (int m = 0; m <  g1_dim; m++) 
+						Sym_data[data_pointer + g1_dim*j + m] = Sym_data[data_pointer + g1_dim*j + m] + exp(-g1_param_data[m*2+1]*(dist1 - g1_param_data[m*2])*(dist1 - g1_param_data[m*2]))*fc1;
+				}
+			}
+		}
+	}	
+	int half_total_g2 = g2_dim*nele*(nele+1)/2;
+	for (int i = 0; i < nele; i++) {
+                for (int j = i; j < nele; j++) {
+			for ( int k =0; k < ele_index[i].size(); k++)  {
+				dist1 = sqrt(pow(xyz[ele_index[i][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[i][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[i][k]*3+2] - xyz[atom_num*3+2],2));
+                                if (dist1 > Rc or ele_index[i][k] == atom_num)
+					continue;
+				else {
+					for (int l = 0; l < ele_index[j].size(); l++) {
+                                                dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2],2));
+                                                dist3 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[ele_index[i][k]*3+2],2));
+						if ((dist2 > Rc) || (dist3 > Rc) || (i == j && l <= k) || ele_index[j][l] == atom_num)   // v1 and v2 are same kind of elements, do not revisit.
+                                                        continue;
+						else {
+							fc1=fc(dist1, Rc),fc2=fc(dist2, Rc),fc3=fc(dist3, Rc);
+							theta = (dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2);
+							for (int n = 0; n < g2_dim; n++) {
+								A1 = pow(2.0, 1-g2_param_data[n*2])*pow((1+theta), g2_param_data[n*2]);
+								A2 = pow(2.0, 1-g2_param_data[n*2])*pow((1-theta), g2_param_data[n*2]);
+								B = exp(-g2_param_data[n*2+1]*(dist1*dist1+dist2*dist2+dist3*dist3));
+								C = fc1*fc2*fc3;
+								Sym_data[data_pointer + g2_dim*bond_index + n] = Sym_data[data_pointer + g2_dim*bond_index + n] + A1*B*C;
+								Sym_data[data_pointer + half_total_g2 + g2_dim*bond_index + n] = Sym_data[data_pointer + half_total_g2 + g2_dim*bond_index + n] + A1*B*C;		
+							}
+						}
+					}
+
+
+				}
+			}	
+
+		bond_index = bond_index + 1;
+		}
+
+	}
+
+
+
+}
+
 void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const double *xyz, const uint8_t *atoms, const int natom, const uint8_t *ele, const int nele, const int atom_num, const array<std::vector<int>, 10> ele_index, const double radius_Rc, const double angle_Rc, const double *radius_Rs, const int radius_Rs_dim, const double *angle_Rs, const int angle_Rs_dim, const double *angle_As, const int angle_As_dim, const double eta, const double zeta) {
 	double dist1, fc1, dist2, fc2, dist3, fc3, theta, A, C ,B, tmp_v ;
 	int g1_size = radius_Rs_dim;
@@ -162,7 +219,7 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 					for (int l = 0; l < ele_index[j].size(); l++) {
 						dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2],2));
 						dist3 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[ele_index[i][k]*3+2],2));
-						if ((dist2 > angle_Rc) || (i == j && l == k) || ele_index[j][l] == atom_num) 
+						if ((dist2 > angle_Rc) || (i == j && l <= k) || ele_index[j][l] == atom_num) // change to <= since when v1 and v2 are same kind of element, do not revisit. diff by a factor of two
 							continue;
 						else {
 							fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc), fc3 = fc(dist3, angle_Rc);
@@ -1218,6 +1275,68 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args) {
 
 }
 
+
+static PyObject*  Make_Sym_Update (PyObject *self, PyObject  *args) {
+
+        PyArrayObject   *xyz, *atoms_, *elements, *g1_param, *g2_param;
+        double   Rc;
+        int theatom;
+        if (!PyArg_ParseTuple(args, "O!O!O!ddO!O!O!ddi",
+        &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &Rc, &PyArray_Type, &g1_param, &PyArray_Type, &g2_param, &theatom))  return NULL;
+	const int g1_dim = (g1_param -> dimensions)[0];
+	const int g2_dim = (g2_param -> dimensions)[0];
+        const int nele = (elements->dimensions)[0];
+        double  *xyz_data, *Sym_data, *g1_param_data, *g2_param_data;
+        xyz_data = (double*) xyz->data;
+        npy_intp* Nxyz = xyz->dimensions;
+	g1_param_data = (double*) g1_param;
+	g2_param_data = (double*) g2_param;
+        const int natom = Nxyz[0];
+        uint8_t* ele=(uint8_t*)elements->data;
+        uint8_t* atoms=(uint8_t*)atoms_->data;
+
+        int SYMdim = nele*g1_dim + nele*(nele+1)*g2_dim;
+        npy_intp outdim[2] = {1, SYMdim};
+        if (theatom<0)
+                outdim[0] = natom;
+        PyObject* Sym = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+        Sym_data = (double*) ((PyArrayObject*)Sym)->data;
+	
+	if (theatom < 0) { 
+                #pragma omp parallel for 
+                for (int i=0; i < natom;  i++) {
+                        array<std::vector<int>, 10> ele_index;  // hold max 10 elements most
+                        for (int j = 0; j < natom; j++) {
+                                if (j==i)
+                                	continue;
+                                for (int k=0; k < nele; k++) {
+                                        if (atoms[j] == ele[k])
+                                        	ele_index[k].push_back(j);
+                                }
+                        }
+                        SymFunction(Sym_data, i*SYMdim, xyz_data, atoms, natom,  ele, nele, i, ele_index, Rc, g1_param_data, g1_dim, g2_param_data, g2_dim);
+                        //data_pointer += SYMdim; 
+                } 
+
+
+        }
+        else {
+                array<std::vector<int>, 10> ele_index;  // hold max 10 elements most
+                for (int j = 0; j < natom; j++) {
+                        if (j==theatom)
+                        continue;
+                        for (int k=0; k < nele; k++) {
+                                if (atoms[j] == ele[k])
+                                ele_index[k].push_back(j);
+                        }
+                }
+		SymFunction(Sym_data, 0 , xyz_data, atoms, natom,  ele, nele, theatom, ele_index, Rc, g1_param_data, g1_dim, g2_param_data, g2_dim);
+        }
+
+        return Sym;
+
+}
+
 static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 
 	PyArrayObject   *xyz, *grids, *atoms_, *elements;
@@ -1363,6 +1482,8 @@ static PyMethodDef EmbMethods[] =
 	"Make_PGaussian method"},
 	{"Make_Sym", Make_Sym, METH_VARARGS,
 	"Make_Sym method"},
+	{"Make_Sym_Update", Make_Sym_Update, METH_VARARGS,
+        "Make_Sym_Update method"},
 	{"Make_ANI1_Sym", Make_ANI1_Sym, METH_VARARGS,
         "Make_ANI1_Sym method"},
 	{"Make_CM_vary_coords", Make_CM_vary_coords, METH_VARARGS,
