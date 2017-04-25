@@ -44,13 +44,13 @@ class TMParams(dict):
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
-		self["RotAvOutputs"] = 0 # Rotational averaging of force outputs.
+		self["RotAvOutputs"] = 30 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
 		self["OptThresh"]=0.0005
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.001
-		self["OptMomentum"] = 0.8
+		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		# Training Parameters
 		self["learning_rate"] = 0.001
@@ -82,19 +82,22 @@ def TMBanner():
 	print("--------------------------")
 
 def TMLogger(path_):
-    #Delete Jupyter notebook root logger handler
-    logger = logging.getLogger()
-    logger.handlers = []
-    tore=logging.getLogger('TensorMol')
-    tore.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(filename=path_+time.ctime()+'.log')
-    fh.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    pformatter = logging.Formatter('%(message)s')
-    fh.setFormatter(fformatter)
-    ch.setFormatter(pformatter)
-    tore.addHandler(fh)
-    tore.addHandler(ch)
-    return tore
+	#Delete Jupyter notebook root logger handler
+	logger = logging.getLogger()
+	logger.handlers = []
+	tore=logging.getLogger('TensorMol')
+	tore.setLevel(logging.DEBUG)
+	# Check path and make if it doesn't exist...
+	if not os.path.exists(path_):
+		os.makedirs(path_)
+	fh = logging.FileHandler(filename=path_+time.ctime()+'.log')
+	fh.setLevel(logging.DEBUG)
+	ch = logging.StreamHandler()
+	ch.setLevel(logging.INFO)
+	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+	pformatter = logging.Formatter('%(message)s')
+	fh.setFormatter(fformatter)
+	ch.setFormatter(pformatter)
+	tore.addHandler(fh)
+	tore.addHandler(ch)
+	return tore

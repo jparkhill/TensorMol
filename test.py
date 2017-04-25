@@ -163,11 +163,12 @@ def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	Test John Herr's first Optimized Force Network.
 	"""
 	# This Tests the optimizer.
-	a=MSet("OptMols")
-	a.ReadXYZ("OptMols")
-	test_mol = a.mols[11]
+	#test_mol = a.mols[0]
+	#a=MSet("OptMols")
+	#a.ReadXYZ("OptMols")
+	test_mol = a.mols[0]
 	print "Orig Coords", test_mol.coords
-	test_mol.Distort(0.2,0.2)
+	#test_mol.Distort(0.25,0.2)
 	print test_mol.coords
 	print test_mol.atoms
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
