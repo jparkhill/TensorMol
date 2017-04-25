@@ -272,9 +272,6 @@ class Mol:
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
 
-	def NEle(self):
-		return np.sum(self.atoms)
-
 	def XYZtoGridIndex(self, xyz, ngrids = 250,padding = 2.0):
 		Max = (self.coords).max() + padding
                 Min = (self.coords).min() - padding
@@ -631,7 +628,7 @@ class Mol:
 		try:
 			mol.build()
 			en=0.0
-			if (disp>0.08 or self.NEle()%2 == 1):
+			if (disp>0.08 or (np.sum(self.atoms))%2 == 1):
 				mf = dft.UKS(mol)
 				mf.xc = 'PBE'
 				en=mf.kernel()

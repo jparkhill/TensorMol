@@ -87,7 +87,7 @@ class Instance:
 		if (not np.all(np.isfinite(eval_input))):
 			LOGGER.error("WTF, you trying to feed me, garbage?")
 			raise Exception("bad digest.")
-		if (self.PreparedFor != eval_input.shape[0]):
+		if (self.PreparedFor < eval_input.shape[0]):
 			self.Prepare(eval_input,eval_input.shape[0])
 		return
 
@@ -410,7 +410,7 @@ class Instance_fc_classify(Instance):
 			LOGGER.error("TFsession returned garbage")
 			LOGGER.error("TFInputs: "+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
 			raise Exception("Garbage...")
-		if (self.PreparedFor>eval_input.shape[0]):
+		if (self.PreparedFor > eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
 
@@ -541,10 +541,12 @@ class Instance_fc_sqdiff(Instance):
 	def evaluate(self, eval_input):
 		# Check sanity of input
 		Instance.evaluate(self, eval_input)
-		eval_input_ = eval_input
-		if (self.PreparedFor>eval_input.shape[0]):
-			eval_input_ =np.copy(eval_input)
-			eval_input_.resize(([self.PreparedFor]+self.inshape))
+		given_cases = eval_input.shape[0]
+		#print "given_cases:", given_cases
+		eis = list(eval_input.shape)
+		eval_input_ = eval_input.copy()
+		if (self.PreparedFor > given_cases):
+			eval_input_.resize(([self.PreparedFor]+eis[1:]))
 			# pad with zeros
 		eval_labels = np.zeros(tuple([self.PreparedFor]+list(self.outshape)))  # dummy labels
 		batch_data = [eval_input_, eval_labels]
@@ -554,9 +556,7 @@ class Instance_fc_sqdiff(Instance):
 		if (not np.all(np.isfinite(tmp))):
 			LOGGER.error("TFsession returned garbage")
 			LOGGER.error("TFInputs"+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
-		if (self.PreparedFor>eval_input.shape[0]):
-			return tmp[:eval_input.shape[0]]
-		return tmp
+		return tmp[0,:given_cases]
 
 	def Save(self):
 		self.summary_op =None
