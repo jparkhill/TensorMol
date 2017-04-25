@@ -164,9 +164,9 @@ def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
 	# This Tests the optimizer.
 	#test_mol = a.mols[0]
-	#a=MSet("OptMols")
-	#a.ReadXYZ("OptMols")
-	test_mol = a.mols[0]
+	a=MSet("OptMols")
+	a.ReadXYZ("OptMols")
+	test_mol = a.mols[5]
 	print "Orig Coords", test_mol.coords
 	#test_mol.Distort(0.25,0.2)
 	print test_mol.coords
@@ -174,6 +174,33 @@ def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
 	optimizer  = Optimizer(manager)
 	optimizer.OptTFRealForce(test_mol)
+	return
+
+def OCSDBTest(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test John Herr's first Optimized Force Network.
+	OCSDB_test contains good crystal structures.
+	- Evaluate RMS forces on them.
+	- Optimize OCSDB_Dist02
+	- Evaluate the relative RMS's of these two.
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	a=MSet("OCSDB_test")
+	a.ReadXYZ("OCSDB_test")
+	b=MSet("OCSDB_Dist02")
+	b.ReadXYZ("OCSDB_Dist02")
+	print "A,B RMS (Angstrom): ",a.rms(b)
+	frcs = np.zeros(shape=(1,3))
+	for m in a.mols:
+		frc = tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
+		frcs=np.append(frcs,frc,axis=0)
+	print "RMS Force of crystal structures:",np.sqrt(np.sum(frcs*frcs,axis=(0,1))/(frcs.shape[0]-1))
+	b.name = "OCSDB_Dist02_OPTd"
+	optimizer  = Optimizer(tfm)
+	for m in b.mols:
+		m = optimizer.OptTFRealForce(m)
+	b.WriteXYZ()
+	print "A,B (optd) RMS (Angstrom): ",a.rms(b)
 	return
 
 #
@@ -184,8 +211,8 @@ def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()
-TestHerrNet1()
-
+#TestHerrNet1()
+OCSDBTest()
 
 # This visualizes the go potential and projections on to basis vectors.
 if (0):

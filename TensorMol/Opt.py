@@ -19,7 +19,7 @@ class Optimizer:
 		self.fscale = PARAMS["OptStepSize"]
 		self.momentum = PARAMS["OptMomentum"]
 		self.momentum_decay = PARAMS["OptMomentumDecay"]
-		self.max_opt_step = 100000
+		self.max_opt_step = PARAMS["OptMaxCycles"]
 		self.step = self.maxstep
 		self.ngrid = 10 # Begin with 500 pts sampled 0.2A in each direction.
 		self.probtype = 0 # 0 = one atom probability, 1 = product of all probabilities for each sample.
@@ -201,7 +201,7 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(rmsdisp>self.thresh and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
-				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=60, Debug=False)
+				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
 			elif (PARAMS["OctahedralAveraging"]):
 				veloc = self.fscale*self.tfm.EvalOctAvForce(m, Debug=True)
 			else:
@@ -224,7 +224,7 @@ class Optimizer:
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
 			print "Step:", step, " RMS Disp: ", rmsdisp, " Max Disp: ", maxdisp, " RMS Gradient: ", rmsgrad, " Max Gradient: ", maxgrad, " Coords: ", m.coords
-		return
+		return prev_m
 
 	def OptProb(self,m):
 		''' This version tests if the Go-opt converges when atoms are moved to

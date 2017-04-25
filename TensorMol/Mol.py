@@ -267,10 +267,7 @@ class Mol:
 					raise
 		with open(fpath+"/"+fname+".xyz", mode) as f:
 			natom = self.atoms.shape[0]
-			if ("energy" in self.properties.keys()):
-				f.write(str(natom)+"\nComment: "+str(self.properties["energy"])+"\n")
-			else:
-				f.write(str(natom)+"\nComment:\n")
+			f.write(str(natom)+"\nComment: "+str(self.properties)+"\n")
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
@@ -315,7 +312,7 @@ class Mol:
 		mdm = MolEmb.Make_DistMat(self.coords)
 		odm = MolEmb.Make_DistMat(m.coords)
 		tmp = (mdm-odm)
-		return np.sqrt(np.sum(tmp*tmp))
+		return np.sqrt(np.sum(tmp*tmp)/(mdm.shape[0]*mdm.shape[0]))
 
 	def MolGrids(self, ngrids = 250):
 		grids = np.zeros((ngrids, ngrids, ngrids), dtype=np.uint8)
