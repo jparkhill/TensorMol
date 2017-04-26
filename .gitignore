@@ -17,7 +17,7 @@ results/*log
 __pycache__/
 *.py[cod]
 *$py.class
-results/*.log
+networks
 
 # C extensions
 *.so
