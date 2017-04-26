@@ -44,15 +44,18 @@ class TMParams(dict):
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
-		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
+		self["RotAvOutputs"] = 20 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
 		self["OptMaxCycles"]=400
-		self["OptThresh"]=0.0005
+		self["OptThresh"]=0.0002
 		self["OptMaxStep"]=0.1
-		self["OptStepSize"] = 0.001
+		self["OptStepSize"] = 0.002
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
+		self["OptPrintLvl"] = 1
+		self["NebNumBeads"] = 25
+		self["NebK"] = 2.0
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
@@ -67,11 +70,11 @@ class TMParams(dict):
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 
-def __str__(self):
-	tore=""
-	for k in self.keys():
-		tore = tore+k+":"+str(self[k])+"\n"
-	return tore
+	def __str__(self):
+		tore=""
+		for k in self.keys():
+			tore = tore+k+":"+str(self[k])+"\n"
+		return tore
 
 def TMBanner():
 	print("--------------------------")

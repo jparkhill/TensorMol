@@ -106,7 +106,7 @@ class Instance:
 			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 			if (len(metafiles)>0):
 				most_recent_meta_file=metafiles[0]
-				LOGGER.info("Restoring training from Meta file: "+most_recent_meta_file)
+				LOGGER.debug("Restoring training from Meta file: "+most_recent_meta_file)
 				config = tf.ConfigProto(allow_soft_placement=True)
 				self.sess = tf.Session(config=config)
 				self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
@@ -278,9 +278,9 @@ class Instance:
 		hidden1_units = PARAMS["hidden1"]
 		hidden2_units = PARAMS["hidden2"]
 		hidden3_units = PARAMS["hidden3"]
-		LOGGER.info("hidden1_units: "+str(hidden1_units))
-		LOGGER.info("hidden2_units: "+str(hidden2_units))
-		LOGGER.info("hidden3_units: "+str(hidden3_units))
+		LOGGER.debug("hidden1_units: "+str(hidden1_units))
+		LOGGER.debug("hidden2_units: "+str(hidden2_units))
+		LOGGER.debug("hidden3_units: "+str(hidden3_units))
 		# Hidden 1
 		with tf.name_scope('hidden1'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)

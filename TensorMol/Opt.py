@@ -223,7 +223,7 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
-			print "Step:", step, " RMS Disp: ", rmsdisp, " Max Disp: ", maxdisp, " RMS Gradient: ", rmsgrad, " Max Gradient: ", maxgrad, " Coords: ", m.coords
+			LOGGER.info("Step: %i RMS Disp: %.5f Max Disp: %.5f RMS Gradient: %.5f  Max Gradient: %.5f ", step, rmsdisp, maxdisp, rmsgrad, maxgrad)
 		return prev_m
 
 	def OptProb(self,m):
