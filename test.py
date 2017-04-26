@@ -176,7 +176,7 @@ def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	optimizer.OptTFRealForce(test_mol)
 	return
 
-def OCSDBTest(dig_ = "GauSH", net_ = "fc_sqdiff"):
+def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
 	Test John Herr's first Optimized Force Network.
 	OCSDB_test contains good crystal structures.
@@ -203,6 +203,19 @@ def OCSDBTest(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	print "A,B (optd) RMS (Angstrom): ",a.rms(b)
 	return
 
+def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test NudgedElasticBand
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	a=MSet("NEB")
+	a.ReadXYZ("NEB")
+	m0 = a.mols[0]
+	m1 = a.mols[1]
+	neb = NudgedElasticBand(tfm, m0, m1)
+	neb.OptNeb()
+	return
+
 #
 # Tests to run.
 #
@@ -212,7 +225,8 @@ def OCSDBTest(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #TestPotential()
 #TestIpecac()
 #TestHerrNet1()
-OCSDBTest()
+#TestOCSDB()
+TestNeb()
 
 # This visualizes the go potential and projections on to basis vectors.
 if (0):
