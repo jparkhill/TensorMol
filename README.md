@@ -1,5 +1,5 @@
-# TensorMol 0.0
-##A Statistical Model of Molecular Structure
+# &#9658;TensorMol 0.0
+A Statistical Model of Molecular Structure
 
 ### Authors:
 	Kun Yao (kyao@nd.edu), John Herr

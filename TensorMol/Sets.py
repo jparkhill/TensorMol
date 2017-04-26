@@ -182,48 +182,19 @@ class MSet:
 		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 
-	def Read_Jcoupling(self, path):
-		from os import listdir
-		from os.path import isdir, join, isfile
-		onlyfolders = [folder for folder in listdir(path) if isdir(join(path, folder))]
-		files = []
-		for subfolder in onlyfolders:
-			onlyfiles = [f for f in listdir(join(path, subfolder)) if isfile(join(path, subfolder, f))]
-			files += onlyfiles
-		for file in files:
-			if (file[-2:]!='.z'):
-				continue
-			else:
-				self.mols.append(Mol())
-				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)
+	def AppendFromDirectory(self, apath_):
+		"""
+		Append all xyz files in apath_ to this set.
+		"""
+		for file in os.listdir(apath_):
+			if file.endswith(".xyz"):
+				m = Mol()
+				m.properties = {"from_file":file}
+				f = open(file,'r')
+				fs = f.read()
+				m.FromXYZString(fs)
+				self.mols.append(m)
 		return
-
-	def Analysis_Jcoupling(self):
-
-		J_value = []
-		for i in range (0, self.mols[0].NAtoms()):
-			for j in range (i+1, self.mols[0].NAtoms()):
-					J_value.append([])
-
-		Bonds_Between = []
-		H_Bonds_Between = []
-		paris = []
-		for i in range (0, self.mols[0].NAtoms()):
-			for j in range (i+1, self.mols[0].NAtoms()):
-				Bonds_Between.append(self.mols[0].properties["Bonds_Between"][i][j])
-				H_Bonds_Between.append(self.mols[0].properties["H_Bonds_Between"][i][j])
-				paris.append([self.mols[0].atoms[i], self.mols[0].atoms[j]])
-		for mol in self.mols:
-			index = 0
-                        for i in range (0, mol.NAtoms()):
-                                for j in range (i+1, mol.NAtoms()):
-					J_value[index].append(mol.J_coupling[i][j])
-					index += 1
-
-		for i in range(0,len(J_value)):
-			J = np.asarray(J_value[i])
-			#print J
-			print  '{:10}{:12}'.format("mean:", np.mean(J)), '{:10}{:12}'.format("ratio:", np.std(J)/np.mean(J)), paris[i], Bonds_Between[i]-H_Bonds_Between[i]
 
 	def WriteXYZ(self,filename=None):
 		if filename == None:
@@ -263,6 +234,12 @@ class MSet:
 			self.name = self.name + b.name
 		self.mols = self.mols+b.mols
 		return
+
+	def rms(self,other_):
+		if (len(self.mols) != len(other_.mols)):
+			raise Exception("Bad Comparison")
+		rmss = [self.mols[i].rms_inv(other_.mols[i]) for i in range(len(self.mols))]
+		return rmss
 
 	def Statistics(self):
 		""" Return some energy information about the samples we have... """
@@ -345,3 +322,44 @@ class MSet:
 		for mol in self.mols:
 			mol.Set_Qchem_Data_Path()
 		return
+
+
+	def Read_Jcoupling(self, path):
+		from os import listdir
+		from os.path import isdir, join, isfile
+		onlyfolders = [folder for folder in listdir(path) if isdir(join(path, folder))]
+		files = []
+		for subfolder in onlyfolders:
+			onlyfiles = [f for f in listdir(join(path, subfolder)) if isfile(join(path, subfolder, f))]
+			files += onlyfiles
+		for file in files:
+			if (file[-2:]!='.z'):
+				continue
+			else:
+				self.mols.append(Mol())
+				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)
+		return
+
+	def Analysis_Jcoupling(self):
+		J_value = []
+		for i in range (0, self.mols[0].NAtoms()):
+			for j in range (i+1, self.mols[0].NAtoms()):
+					J_value.append([])
+		Bonds_Between = []
+		H_Bonds_Between = []
+		paris = []
+		for i in range (0, self.mols[0].NAtoms()):
+			for j in range (i+1, self.mols[0].NAtoms()):
+				Bonds_Between.append(self.mols[0].properties["Bonds_Between"][i][j])
+				H_Bonds_Between.append(self.mols[0].properties["H_Bonds_Between"][i][j])
+				paris.append([self.mols[0].atoms[i], self.mols[0].atoms[j]])
+		for mol in self.mols:
+			index = 0
+                        for i in range (0, mol.NAtoms()):
+                                for j in range (i+1, mol.NAtoms()):
+					J_value[index].append(mol.J_coupling[i][j])
+					index += 1
+		for i in range(0,len(J_value)):
+			J = np.asarray(J_value[i])
+			#print J
+			print  '{:10}{:12}'.format("mean:", np.mean(J)), '{:10}{:12}'.format("ratio:", np.std(J)/np.mean(J)), paris[i], Bonds_Between[i]-H_Bonds_Between[i]

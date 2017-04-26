@@ -458,4 +458,3 @@ d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 tset=TensorData(a,d)
 tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
 manager.TrainElement(8)
-

@@ -14,12 +14,12 @@ class Optimizer:
 		Args:
 			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
 		"""
-		self.thresh = 0.0005
-		self.maxstep = 0.1
-		self.fscale = 0.001
-		self.momentum = 0.9
-		self.momentum_decay = 0.2
-		self.max_opt_step = 100000
+		self.thresh = PARAMS["OptThresh"]
+		self.maxstep = PARAMS["OptMaxStep"]
+		self.fscale = PARAMS["OptStepSize"]
+		self.momentum = PARAMS["OptMomentum"]
+		self.momentum_decay = PARAMS["OptMomentumDecay"]
+		self.max_opt_step = PARAMS["OptMaxCycles"]
 		self.step = self.maxstep
 		self.ngrid = 10 # Begin with 500 pts sampled 0.2A in each direction.
 		self.probtype = 0 # 0 = one atom probability, 1 = product of all probabilities for each sample.
@@ -180,7 +180,7 @@ class Optimizer:
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
-	def OptTFRealForce(self,m, filename="OptLog",Debug=True):
+	def OptTFRealForce(self,m, filename="OptLog",Debug=False):
 		"""
 		Optimize using force output of an atomwise network.
 		now also averages over rotations...
@@ -201,7 +201,7 @@ class Optimizer:
 		old_veloc=np.zeros(m.coords.shape)
 		while(rmsdisp>self.thresh and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
-				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=10, Debug=True)
+				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
 			elif (PARAMS["OctahedralAveraging"]):
 				veloc = self.fscale*self.tfm.EvalOctAvForce(m, Debug=True)
 			else:
@@ -210,12 +210,12 @@ class Optimizer:
 			if (Debug):
 				for i in range(m.NAtoms()):
 					print "TF veloc: ",m.atoms[i], ":" , veloc[i]
+			veloc = veloc - np.average(veloc,axis=0)
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
+			old_veloc = self.momentum_decay*c_veloc
 			#Remove translation.
-			c_veloc = c_veloc - np.average(c_veloc,axis=0)
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords = m.coords + c_veloc
-			old_veloc = self.momentum_decay*c_veloc
 			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
 			maxgrad = np.amax(np.linalg.norm(veloc,axis=1))
 			rmsdisp = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
@@ -223,8 +223,8 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
-			print "Step:", step, " RMS Disp: ", rmsdisp, " Max Disp: ", maxdisp, " RMS Gradient: ", rmsgrad, " Max Gradient: ", maxgrad, " Coords: ", m.coords
-		return
+			LOGGER.info("Step: %i RMS Disp: %.5f Max Disp: %.5f RMS Gradient: %.5f  Max Gradient: %.5f ", step, rmsdisp, maxdisp, rmsgrad, maxgrad)
+		return prev_m
 
 	def OptProb(self,m):
 		''' This version tests if the Go-opt converges when atoms are moved to
