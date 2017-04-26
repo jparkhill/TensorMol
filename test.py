@@ -197,8 +197,8 @@ def OCSDBTest(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	print "RMS Force of crystal structures:",np.sqrt(np.sum(frcs*frcs,axis=(0,1))/(frcs.shape[0]-1))
 	b.name = "OCSDB_Dist02_OPTd"
 	optimizer  = Optimizer(tfm)
-	for m in b.mols:
-		m = optimizer.OptTFRealForce(m)
+	for i,m in enumerate(b.mols):
+		m = optimizer.OptTFRealForce(m,str(i))
 	b.WriteXYZ()
 	print "A,B (optd) RMS (Angstrom): ",a.rms(b)
 	return
