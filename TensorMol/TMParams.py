@@ -55,7 +55,7 @@ class TMParams(dict):
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
 		self["NebNumBeads"] = 25
-		self["NebK"] = 2.0
+		self["NebK"] = 0.05
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
