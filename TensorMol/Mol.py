@@ -416,7 +416,6 @@ class Mol:
 				mones = complement(mones,assignedmones)
 			self.coords[mtwos] = self.coords[assignedmones]
 			m.coords[mtwos] = m.coords[assignedmtwos]
-
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		m.DistMatrix = MolEmb.Make_DistMat(m.coords)
 		diff = np.linalg.norm(self.DistMatrix - m.DistMatrix)

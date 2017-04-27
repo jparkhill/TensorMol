@@ -212,6 +212,11 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	a.ReadXYZ("NEB")
 	m0 = a.mols[0]
 	m1 = a.mols[1]
+	m0.AlignAtoms(m1)
+	PARAMS["NebK"] = 0.1
+	PARAMS["OptStepSize"] = 0.01
+	PARAMS["OptMomentum"] = 0.5
+	PARAMS["OptMomentumDecay"] = 0.8
 	neb = NudgedElasticBand(tfm, m0, m1)
 	neb.OptNeb()
 	return
