@@ -38,6 +38,11 @@ class NudgedElasticBand:
 		self.Ts = np.zeros(self.beads.shape) # Tangents.
 		self.Es = np.zeros(self.nbeads)
 		self.Rs = np.zeros(self.nbeads) # Distance between beads.
+
+		# These are for BGFS optimization.
+		self.R_Hist = np.zeros(([self.m_max]+list(self.beads.shape)))
+		self.F_Hist = np.zeros(([self.m_max]+list(self.beads.shape)))
+
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.WriteXYZfile("./results/", "NebTraj0")
@@ -167,12 +172,10 @@ class NudgedElasticBand:
 		rmsgrad = np.array([10.0 for i in range(self.nbeads)])
 		maxgrad = np.array([10.0 for i in range(self.nbeads)])
 		step=0
-		traj_hist = [self.beads.copy()]
 		forces = np.zeros(self.beads.shape)
 		old_forces = np.zeros(self.beads.shape)
 		while(np.mean(rmsgrad)>self.thresh and step < self.max_opt_step):
 			# Update the positions of every bead together.
-			traj_hist.append(self.beads)
 			old_force = self.momentum_decay*forces
 			beadSfs = [np.linalg.norm(self.SpringDeriv(i)) for i in range(1,self.nbeads-1)]
 			for i,bead in enumerate(self.beads):
@@ -211,12 +214,13 @@ class NudgedElasticBand:
 		rmsgrad = np.array([10.0 for i in range(self.nbeads)])
 		maxgrad = np.array([10.0 for i in range(self.nbeads)])
 		step=0
-		traj_hist = [self.beads.copy()]
 		forces = np.zeros(self.beads.shape)
 		old_forces = np.zeros(self.beads.shape)
 		while(np.mean(rmsgrad)>self.thresh and step < self.max_opt_step):
 			# Update the positions of every bead together.
-			traj_hist.append(self.beads)
+            if step < self.m_max:
+				self.R_Hist =
+				self.F_Hist = 
 			old_force = self.momentum_decay*forces
 			beadSfs = [np.linalg.norm(self.SpringDeriv(i)) for i in range(1,self.nbeads-1)]
 			for i,bead in enumerate(self.beads):
