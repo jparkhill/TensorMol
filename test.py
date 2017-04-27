@@ -208,14 +208,15 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	Test NudgedElasticBand
 	"""
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
-	a=MSet("NEB")
-	a.ReadXYZ("NEB")
+	a=MSet("NEB_Berg")
+	a.ReadXYZ("NEB_Berg")
 	m0 = a.mols[0]
 	m1 = a.mols[1]
 	m0.AlignAtoms(m1)
-	PARAMS["NebK"] = 3.0
+	PARAMS["NebNumBeads"] = 10
+	PARAMS["NebK"] = 0.5
 	PARAMS["OptStepSize"] = 0.01
-	PARAMS["OptMomentum"] = 0.5
+	PARAMS["OptMomentum"] = 0.0
 	PARAMS["OptMomentumDecay"] = 0.8
 	neb = NudgedElasticBand(tfm, m0, m1)
 	neb.OptNeb()

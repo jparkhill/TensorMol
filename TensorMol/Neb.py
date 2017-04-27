@@ -32,8 +32,10 @@ class NudgedElasticBand:
 		self.atoms = g0_.atoms.copy()
 		self.natoms = len(self.atoms)
 		self.beads=np.array([(1.-l)*g0_.coords+l*g1_.coords for l in np.linspace(0.,1.,self.nbeads)])
-		self.Fs = np.zeros(self.beads.shape)
-		self.Ss = np.zeros(self.beads.shape)
+		self.Fs = np.zeros(self.beads.shape) # Real forces.
+		self.Ss = np.zeros(self.beads.shape) # Spring Forces.
+		self.Ts = np.zeros(self.beads.shape) # Tangents.
+		self.Es = np.zeros(self.nbeads)
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.WriteXYZfile("./results/", "NebTraj0")
@@ -83,18 +85,49 @@ class NudgedElasticBand:
 		return (v_ - t_*(np.einsum("ia,ia",v_,t_)))
 
 	def NebForce(self,i):
+		"""
+		This uses the mixing of Perpendicular spring force
+		to reduce kinks
+		"""
 		if (i==0 or i==(self.nbeads-1)):
 			return np.zeros(self.beads[0].shape)
 		m=Mol(self.atoms,self.beads[i])
 		F = self.tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
+		self.Fs[i] = F.copy()
 		t = self.Tangent(i)
+		self.Ts[i] = t
 		S = -1.0*self.SpringDeriv(i)
 		S = self.Parallel(S,t)
+		v1 = (self.beads[i+1] - self.beads[i])
+		v2 = (self.beads[i] - self.beads[i-1])
+		BeadAngleCosine = np.einsum('ia,ia',v1,v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
+		Sperp = ((1./2.)*np.cos(Pi*BeadAngleCosine))*(self.Perpendicular(S,t))
 		F = self.Perpendicular(F,t)
 		self.Ss[i] = S
-		self.Fs[i] = F
-		Fneb = self.PauliForce(i)+S+F
+		Fneb = self.PauliForce(i)+S+Sperp+F
 		return Fneb
+
+	def IntegrateEnergy(self):
+		"""
+		Use the fundamental theorem of line integrals to calculate an energy.
+		An interpolated path could improve this a lot.
+		"""
+		self.Es[0] = 0
+		for i in range(1,self.nbeads):
+			dR = self.beads[i] - self.beads[i-1]
+			dV = -1*(self.Fs[i] - self.Fs[i-1])/2. # midpoint rule.
+			self.Es[i] = self.Es[i-1]+np.einsum("ia,ia",dR,dV)
+
+	def IntegrateEnergyHIGH(self):
+		"""
+		This uses a much higher quality integrator.
+		It Splines the path.
+		"""
+		self.Es[0] = 0
+		for i in range(1,self.nbeads):
+			dR = self.beads[i] - self.beads[i-1]
+			F = (self.Fs[i] - self.Fs[i-1])/2. # midpoint rule.
+			self.Es[i] = self.Es[i-1]+np.einsum("ia,ia",dR,F)
 
 	def WriteTrajectory(self):
 		for i,bead in enumerate(self.beads):
@@ -128,9 +161,14 @@ class NudgedElasticBand:
 				self.beads[i] += forces[i]
 				rmsgrad[i] = np.sum(np.linalg.norm(forces[i],axis=1))/forces[i].shape[0]
 				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
+			self.IntegrateEnergy()
+			print "Rxn Profile (kcal/mol): ", self.Es
+			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-2]]
+			print "Force Profile (kcal/mol): ", beadFs
+			minforce = np.min(beadFs)
 				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
 			self.WriteTrajectory()
 			step+=1
-			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_parallel| : %.5f |F_spring|: %.5f ", step, np.mean(rmsgrad), np.max(maxgrad),np.linalg.norm(self.Fs),np.linalg.norm(self.Ss))
+			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_TS| : %.5f |F_spring|: %.5f ", step, np.mean(rmsgrad), np.max(maxgrad),minforce,np.linalg.norm(self.Ss))
 		return
