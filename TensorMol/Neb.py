@@ -36,6 +36,7 @@ class NudgedElasticBand:
 		self.Ss = np.zeros(self.beads.shape) # Spring Forces.
 		self.Ts = np.zeros(self.beads.shape) # Tangents.
 		self.Es = np.zeros(self.nbeads)
+		self.Rs = np.zeros(self.nbeads) # Distance between beads.
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.WriteXYZfile("./results/", "NebTraj0")
@@ -56,7 +57,7 @@ class NudgedElasticBand:
 	def SpringDeriv(self,i):
 		if (i==0 or i==(self.nbeads-1)):
 			return np.zeros(self.beads[0].shape)
-		tmp = (self.nbeads*2.0*self.beads[i] - self.beads[i+1] - self.beads[i-1])
+		tmp = self.k*self.nbeads*(2.0*self.beads[i] - self.beads[i+1] - self.beads[i-1])
 		return tmp
 
 	def PauliForce(self,i):
@@ -84,6 +85,14 @@ class NudgedElasticBand:
 	def Perpendicular(self,v_,t_):
 		return (v_ - t_*(np.einsum("ia,ia",v_,t_)))
 
+	def BeadAngleCosine(self,i):
+		v1 = (self.beads[i+1] - self.beads[i])
+		v2 = (self.beads[i-1] - self.beads[i])
+		return np.einsum('ia,ia',v1,v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
+
+	def CornerPenalty(self,x):
+		return 1./(1.+np.exp(-5.0*(x-0.5)))
+
 	def NebForce(self,i):
 		"""
 		This uses the mixing of Perpendicular spring force
@@ -98,11 +107,12 @@ class NudgedElasticBand:
 		self.Ts[i] = t
 		S = -1.0*self.SpringDeriv(i)
 		S = self.Parallel(S,t)
-		v1 = (self.beads[i+1] - self.beads[i])
-		v2 = (self.beads[i] - self.beads[i-1])
-		BeadAngleCosine = np.einsum('ia,ia',v1,v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
-		Sperp = ((1./2.)*np.cos(Pi*BeadAngleCosine))*(self.Perpendicular(S,t))
 		F = self.Perpendicular(F,t)
+		#Sperp = self.CornerPenalty(self.BeadAngleCosine(i))*(self.Perpendicular(S,t))
+		# Instead use Wales' DNEB
+		Fn = F/np.linalg.norm(F)
+		Sperp = self.Perpendicular(S,t)
+		Sperp = self.Perpendicular(S,Fn)
 		self.Ss[i] = S
 		Fneb = self.PauliForce(i)+S+Sperp+F
 		return Fneb
@@ -115,19 +125,29 @@ class NudgedElasticBand:
 		self.Es[0] = 0
 		for i in range(1,self.nbeads):
 			dR = self.beads[i] - self.beads[i-1]
-			dV = -1*(self.Fs[i] - self.Fs[i-1])/2. # midpoint rule.
+			dV = -1*(self.Fs[i] + self.Fs[i-1])/2. # midpoint rule.
 			self.Es[i] = self.Es[i-1]+np.einsum("ia,ia",dR,dV)
 
-	def IntegrateEnergyHIGH(self):
+	def HighQualityPES(self,npts_ = 100):
 		"""
-		This uses a much higher quality integrator.
-		It Splines the path.
+		Do a high-quality integration of the path and forces.
 		"""
-		self.Es[0] = 0
-		for i in range(1,self.nbeads):
-			dR = self.beads[i] - self.beads[i-1]
-			F = (self.Fs[i] - self.Fs[i-1])/2. # midpoint rule.
-			self.Es[i] = self.Es[i-1]+np.einsum("ia,ia",dR,F)
+		from scipy.interpolate import CubicSpline
+		ls = np.linspace(0.,1.,self.nbeads)
+		Rint = CubicSpline(self.beads)
+		Fint = CubicSpline(self.Fs)
+		Es = np.zeros(npts_)
+		Es[0] = 0
+		ls = np.linspace(0.,1.,npts_)
+		for i,l in enumerate(ls):
+			if (i==0):
+				continue
+			else:
+				Es[i] = Es[i-1] + np.einsum("ia,ia", Rint(l) - Rint(ls[i-1]), -1.0*Fint(l))
+			m=Mol(self.atoms,Rint(l))
+			m.properties["Energy"] = Es[i]
+			m.properties["Force"] = Fint(l)
+			m.WriteXYZfile("./results/", "NebHQTraj")
 
 	def WriteTrajectory(self):
 		for i,bead in enumerate(self.beads):
@@ -154,6 +174,7 @@ class NudgedElasticBand:
 			# Update the positions of every bead together.
 			traj_hist.append(self.beads)
 			old_force = self.momentum_decay*forces
+			beadSfs = [np.linalg.norm(self.SpringDeriv(i)) for i in range(1,self.nbeads-1)]
 			for i,bead in enumerate(self.beads):
 				forces[i] = self.NebForce(i)
 			forces = (1.0-self.momentum)*self.fscale*forces + self.momentum*old_force
@@ -162,13 +183,65 @@ class NudgedElasticBand:
 				rmsgrad[i] = np.sum(np.linalg.norm(forces[i],axis=1))/forces[i].shape[0]
 				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
 			self.IntegrateEnergy()
-			print "Rxn Profile (kcal/mol): ", self.Es
-			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-2]]
-			print "Force Profile (kcal/mol): ", beadFs
+			print "Rexn Profile: ", self.Es
+			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
+			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
+			beadRs = [np.linalg.norm(self.beads[x+1]-self.beads[x]) for x in range(self.nbeads-1)]
+			beadCosines = [self.BeadAngleCosine(i) for i in range(1,self.nbeads-1)]
+			print "Frce Profile: ", beadFs
+			print "F_|_ Profile: ", beadFperp
+			print "SFrc Profile: ", beadSfs
+			print "Dist Profile: ", beadRs
+			print "BCos Profile: ", beadCosines
 			minforce = np.min(beadFs)
 				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
 			self.WriteTrajectory()
 			step+=1
-			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_TS| : %.5f |F_spring|: %.5f ", step, np.mean(rmsgrad), np.max(maxgrad),minforce,np.linalg.norm(self.Ss))
+			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.mean(rmsgrad), np.max(maxgrad),np.mean(beadFperp),np.linalg.norm(self.Ss))
+		#self.HighQualityPES()
+		return
+
+	def OptNebGLBFGS(self, filename="Neb",Debug=False):
+		"""
+		Optimize using a globalLBFGS
+		Some light code-borrowing from Kun's MBE_Opt.py...
+		"""
+		# Sweeps one at a time
+		rmsgrad = np.array([10.0 for i in range(self.nbeads)])
+		maxgrad = np.array([10.0 for i in range(self.nbeads)])
+		step=0
+		traj_hist = [self.beads.copy()]
+		forces = np.zeros(self.beads.shape)
+		old_forces = np.zeros(self.beads.shape)
+		while(np.mean(rmsgrad)>self.thresh and step < self.max_opt_step):
+			# Update the positions of every bead together.
+			traj_hist.append(self.beads)
+			old_force = self.momentum_decay*forces
+			beadSfs = [np.linalg.norm(self.SpringDeriv(i)) for i in range(1,self.nbeads-1)]
+			for i,bead in enumerate(self.beads):
+				forces[i] = self.NebForce(i)
+			forces = (1.0-self.momentum)*self.fscale*forces + self.momentum*old_force
+			for i,bead in enumerate(self.beads):
+				self.beads[i] += forces[i]
+				rmsgrad[i] = np.sum(np.linalg.norm(forces[i],axis=1))/forces[i].shape[0]
+				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
+			self.IntegrateEnergy()
+			print "Rexn Profile: ", self.Es
+			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
+			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
+			beadRs = [np.linalg.norm(self.beads[x+1]-self.beads[x]) for x in range(self.nbeads-1)]
+			beadCosines = [self.BeadAngleCosine(i) for i in range(1,self.nbeads-1)]
+			print "Frce Profile: ", beadFs
+			print "F_|_ Profile: ", beadFperp
+			print "SFrc Profile: ", beadSfs
+			print "Dist Profile: ", beadRs
+			print "BCos Profile: ", beadCosines
+			minforce = np.min(beadFs)
+				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
+				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
+			self.WriteTrajectory()
+			step+=1
+			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.mean(rmsgrad), np.max(maxgrad),np.mean(beadFperp),np.linalg.norm(self.Ss))
+		#self.HighQualityPES()
 		return
