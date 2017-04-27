@@ -25,6 +25,7 @@ class NudgedElasticBand:
 		self.momentum_decay = PARAMS["OptMomentumDecay"]
 		self.max_opt_step = PARAMS["OptMaxCycles"]
 		self.nbeads = PARAMS["NebNumBeads"]
+		self.m_max = PARAMS["NebMaxBFGS"]
 		self.k = PARAMS["NebK"]
 		self.step = self.maxstep
 		self.probtype = 0 # 0 = one atom probability, 1 = product of all probabilities for each sample.
@@ -106,15 +107,14 @@ class NudgedElasticBand:
 		t = self.Tangent(i)
 		self.Ts[i] = t
 		S = -1.0*self.SpringDeriv(i)
-		S = self.Parallel(S,t)
+		Spara = self.Parallel(S,t)
 		F = self.Perpendicular(F,t)
 		#Sperp = self.CornerPenalty(self.BeadAngleCosine(i))*(self.Perpendicular(S,t))
 		# Instead use Wales' DNEB
 		Fn = F/np.linalg.norm(F)
-		Sperp = self.Perpendicular(S,t)
-		Sperp = self.Perpendicular(S,Fn)
-		self.Ss[i] = S
-		Fneb = self.PauliForce(i)+S+Sperp+F
+		Sperp = self.Perpendicular(self.Perpendicular(S,t),Fn)
+		self.Ss[i] = Spara
+		Fneb = self.PauliForce(i)+Spara+Sperp+F
 		return Fneb
 
 	def IntegrateEnergy(self):

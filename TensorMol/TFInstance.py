@@ -88,7 +88,7 @@ class Instance:
 			LOGGER.error("WTF, you trying to feed me, garbage?")
 			raise Exception("bad digest.")
 		if (self.PreparedFor < eval_input.shape[0]):
-			self.Prepare(eval_input,eval_input.shape[0])
+			self.Prepare(eval_input, eval_input.shape[0])
 		return
 
 	def Prepare(self, eval_input, Ncase=1250):
@@ -299,7 +299,6 @@ class Instance:
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
 			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
-
 		# Linear
 		with tf.name_scope('regression_linear'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
@@ -542,7 +541,7 @@ class Instance_fc_sqdiff(Instance):
 		# Check sanity of input
 		Instance.evaluate(self, eval_input)
 		given_cases = eval_input.shape[0]
-		#print "given_cases:", given_cases
+		#print("given_cases:", given_cases)
 		eis = list(eval_input.shape)
 		eval_input_ = eval_input.copy()
 		if (self.PreparedFor > given_cases):

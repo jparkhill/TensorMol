@@ -199,8 +199,9 @@ class TFManage:
             # Create an index matrix to contract these down and increment the right places.
             for i,ei in enumerate(eats):
                 inputs[i*3*RotAv:(i+1)*3*RotAv] = self.TData.dig.Emb(mol, ei, mol.coords[ei], False, False, transfs)
+            #print inputs.shape, na*3*RotAv , na, 3*RotAv, 3
             outs = self.Instances[ele].evaluate(inputs)
-            # print inputs.shape, outs.shape, na, 3*RotAv, 3
+            #print inputs.shape, outs.shape, na, 3*RotAv, 3
             outs = outs.reshape(na,3*RotAv,3)
             ou = np.einsum("txy,aty->ax",itransfs,outs)/(3.*RotAv)
             for i,ei in enumerate(eats):
