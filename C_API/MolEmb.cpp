@@ -431,7 +431,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
 	npy_intp* Nxyz = xyz->dimensions; // Now assumed to be natomX3.
-	int natom, num_CM;
+	int natom;
 	natom = Nxyz[0];
 
 	//npy_intp outdim[2] = {natom,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
@@ -482,7 +482,80 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*SHdim, Prm->ANES[atoms[j]-1]);
 		}
 	}
-	//	}
+	return SH;
+}
+
+//
+// Embed molecule using Gaussian X Spherical Harmonic basis
+// Does all atoms if theatom argument < 0
+// These vectors are flattened [gau,l,m] arrays
+// This version embeds a single atom after several transformations.
+//
+static PyObject* Make_SH_Transf(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz, *grids,  *elements, *atoms_, *transfs;
+	double   dist_cut;
+	int  theatom;
+	PyObject *Prm_;
+	if (!PyArg_ParseTuple(args, "O!O!O!iO!", &PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &atoms_ , &theatom, &PyArray_Type, &transfs ))
+		return NULL;
+
+	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
+	uint8_t* atoms=(uint8_t*)atoms_->data;
+
+	npy_intp* Nxyz = xyz->dimensions; // Now assumed to be natomX3.
+	npy_intp* Ntrans = transfs->dimensions; // Now assumed to be natomX3.
+	int natom, ntr;
+
+	natom = Nxyz[0];
+	ntr = Ntrans[0];
+
+	npy_intp outdim[2] = {ntr,Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX)};
+	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+
+	double *SH_data, *xyz_data, *grids_data, *t_data;
+	double center[3]; // x y z of the center
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	t_data = (double*) ((PyArrayObject*) transfs)->data;
+	// Note that Grids are currently unused...
+	//grids_data = (double*) grids -> data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	double t_coords0[natom][3];
+	int SHdim = SizeOfGauSH(Prm);
+
+	{
+		// Center the atom and then perform the transformations.
+
+		double xc = xyz_data[theatom*3+0];
+		double yc = xyz_data[theatom*3+1];
+		double zc = xyz_data[theatom*3+2];
+
+		for (int j = 0; j < natom; j++)
+		{
+				t_coords0[j][0] = xyz_data[j*3+0] - xc;
+				t_coords0[j][1] = xyz_data[j*3+1] - yc;
+				t_coords0[j][2] = xyz_data[j*3+2] - zc;
+		}
+
+		#pragma omp parallel for
+		for (int i=0; i<ntr; ++i)
+		{
+			double* tr = t_data+i*9;
+/*
+			cout << tr[0] << tr[1] << tr[2] << endl;
+			cout << tr[3] << tr[4] << tr[5] << endl;
+			cout << tr[6] << tr[7] << tr[8] << endl;
+*/
+			for (int j = 0; j < natom; j++)
+			{
+				// Perform the transformation, embed and out...
+				double x = (tr[0*3+0]*t_coords0[j][0]+tr[0*3+1]*t_coords0[j][1]+tr[0*3+2]*t_coords0[j][2]);
+				double y = (tr[1*3+0]*t_coords0[j][0]+tr[1*3+1]*t_coords0[j][1]+tr[1*3+2]*t_coords0[j][2]);
+				double z = (tr[2*3+0]*t_coords0[j][0]+tr[2*3+1]*t_coords0[j][1]+tr[2*3+2]*t_coords0[j][2]);
+				RadSHProjection(Prm, x, y, z, SH_data + i*SHdim, Prm->ANES[atoms[j]-1]);
+			}
+		}
+	}
 	return SH;
 }
 
@@ -490,7 +563,7 @@ static PyObject* Make_SH_EleUniq(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut;
-	int  ngrids,  theatom;
+	int  theatom;
 	PyObject *Prm_;
 	if (!PyArg_ParseTuple(args, "O!O!O!i", &PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &atoms_ , &theatom))
 	return NULL;
@@ -500,7 +573,7 @@ static PyObject* Make_SH_EleUniq(PyObject *self, PyObject  *args)
 	uint8_t* ele=(uint8_t*)elements->data;
 	uint8_t* atoms=(uint8_t*)atoms_->data;
 	npy_intp* Nxyz = xyz->dimensions;
-	int natom, num_CM;
+	int natom;
 	natom = Nxyz[0];
 
 	//npy_intp outdim[2] = {natom,SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX)};
@@ -562,7 +635,7 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut,  mask, mask_prob,dist;
-	int  ngrids,  theatom;
+	int theatom;
 	PyObject* Prm_;
 	if (!PyArg_ParseTuple(args, "O!O!O!i",
 	&PyDict_Type, &Prm_, &PyArray_Type, &xyz, &PyArray_Type, &atoms_ , &theatom))
@@ -577,9 +650,9 @@ static PyObject* Make_Inv(PyObject *self, PyObject  *args)
 
 	npy_intp outdim[2];
 	if (theatom>=0)
-		outdim[0] = 1;
+	outdim[0] = 1;
 	else
-		outdim[0] = natom;
+	outdim[0] = natom;
 	outdim[1]=Prm->SH_NRAD*(1+Prm->SH_LMAX);
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 
@@ -641,7 +714,7 @@ static PyObject* Raster_SH(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz, *grids,  *elements, *atoms_;
 	double   dist_cut,  mask, mask_prob,dist;
-	int  ngrids,  theatom;
+	int theatom;
 	PyObject* Prm_;
 	if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &Prm_, &PyArray_Type, &xyz))
 	return NULL;
@@ -693,7 +766,7 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz;
 	PyObject* Prm_;
 	if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &Prm_, &PyArray_Type, &xyz))
-		return NULL;
+	return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	int nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
@@ -711,7 +784,7 @@ static PyObject* Project_SH(PyObject *self, PyObject  *args)
 	double r = sqrt(x*x+y*y+z*z);
 
 	if (r<pow(10.0,-11.0))
-		return SH;
+	return SH;
 	double theta = acos(z/r);
 	double phi = atan2(y,x);
 
@@ -780,7 +853,7 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz, *EqDistMat;
 	int at, spherical;
 	if (!PyArg_ParseTuple(args, "O!O!ii", &PyArray_Type, &xyz, &PyArray_Type, &EqDistMat, &at, &spherical))
-		return NULL;
+	return NULL;
 	const int nat = (xyz->dimensions)[0];
 	npy_intp outdim[2] = {nat,3};
 	if (at>=0)
@@ -810,8 +883,8 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 			}
 		}
 		if (spherical)
-			for (int i=0; i < nat; ++i)
-				CartToSphere(frc_data+i*3);
+		for (int i=0; i < nat; ++i)
+		CartToSphere(frc_data+i*3);
 	}
 	else
 	{
@@ -830,7 +903,7 @@ static PyObject* Make_GoForce(PyObject *self, PyObject  *args)
 			frc_data[2] += -2*(dij-d_data[i*nat+j])*u[2];
 		}
 		if (spherical)
-				CartToSphere(frc_data);
+		CartToSphere(frc_data);
 	}
 	return hess;
 }
@@ -1001,7 +1074,7 @@ static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 {
 	PyObject* Prm_;
 	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &Prm_))
-		return NULL;
+	return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
@@ -1031,7 +1104,7 @@ static PyObject* Overlap_RBF(PyObject *self, PyObject  *args)
 {
 	PyObject* Prm_;
 	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &Prm_))
-		return NULL;
+	return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	int nbas = Prm->SH_NRAD;
@@ -1053,7 +1126,7 @@ static PyObject* Overlap_RBFS(PyObject *self, PyObject  *args)
 {
 	PyObject *Prm_, *RBF_obj;
 	if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &Prm_, &PyArray_Type, &RBF_obj))
-		return NULL;
+	return NULL;
 
 	PyObject *RBF_array = PyArray_FROM_OTF(RBF_obj, NPY_DOUBLE, NPY_IN_ARRAY);
 
@@ -1097,7 +1170,7 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 	//     printtest();
 	PyArrayObject *xyz, *grids,  *elements, *atoms_; // the grids now are all the possible points where varyatom can be. and make the CM of theatom for each situation
 	double   dist_cut, dist;
-	int  ngrids,  theatom, varyatom;
+	int theatom, varyatom,ngrids;
 	if (!PyArg_ParseTuple(args, "O!O!O!O!diii", &PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &dist_cut, &ngrids, &varyatom, &theatom))
 	return NULL;
 	PyObject* CM_all = PyList_New(0);
@@ -1331,7 +1404,6 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 			}
 			PyList_Append(SYM_all, g1);
 		}
-
 		for (int m = 0; m < nele; m++)
 		for (int n =m; n < nele; n++) {
 			g2 = PyArray_SimpleNew(2, g2dim, NPY_DOUBLE);
@@ -1342,9 +1414,6 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 			if (ele_index[m].size() > 0 && ele_index[n].size() > 0)
 			G2(g2_data, zeta, eta2,  dim_zeta,  dim_eta2,  lambda,  ele_index, m, n, center, xyz_data,  dist_cut);
 			PyList_Append(SYM_all, g2);
-
-
-
 			g2 = PyArray_SimpleNew(2, g2dim, NPY_DOUBLE);
 			g2_data = (double*) ((PyArrayObject*) g2)->data;
 			for (int k = 0; k < g2dim[0]*g2dim[1]; k++)
@@ -1352,19 +1421,14 @@ static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
 			lambda = -1;
 			if (ele_index[m].size() > 0 && ele_index[n].size() > 0)
 			G2(g2_data, zeta, eta2,  dim_zeta,  dim_eta2,  lambda,  ele_index, m, n, center, xyz_data,  dist_cut);
-
 			PyList_Append(SYM_all, g2);
 		}
 	}
-
-
 	for (int j = 0; j < nele; j++)
 	ele_index[j].clear();
-
 	PyObject* nlist = PyList_New(0);
 	PyList_Append(nlist, SYM_all);
 	//         PyList_Append(nlist, AM_all);
-
 	return  nlist;
 }
 
@@ -1390,6 +1454,8 @@ static PyMethodDef EmbMethods[] =
 	"Make_LJForce method"},
 	{"Make_SH", Make_SH, METH_VARARGS,
 	"Make_SH method"},
+	{"Make_SH_Transf", Make_SH_Transf, METH_VARARGS,
+	"Make_SH_Transf method"},
 	{"Make_Inv", Make_Inv, METH_VARARGS,
 	"Make_Inv method"},
 	{"Raster_SH", Raster_SH, METH_VARARGS,

@@ -87,7 +87,7 @@ class Instance:
 		if (not np.all(np.isfinite(eval_input))):
 			LOGGER.error("WTF, you trying to feed me, garbage?")
 			raise Exception("bad digest.")
-		if (self.PreparedFor != eval_input.shape[0]):
+		if (self.PreparedFor < eval_input.shape[0]):
 			self.Prepare(eval_input,eval_input.shape[0])
 		return
 
@@ -106,7 +106,7 @@ class Instance:
 			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 			if (len(metafiles)>0):
 				most_recent_meta_file=metafiles[0]
-				LOGGER.info("Restoring training from Meta file: "+most_recent_meta_file)
+				LOGGER.debug("Restoring training from Meta file: "+most_recent_meta_file)
 				config = tf.ConfigProto(allow_soft_placement=True)
 				self.sess = tf.Session(config=config)
 				self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
@@ -185,8 +185,8 @@ class Instance:
 
 	# one of these two routines need to be removed I think. -JAP
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
-		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
-		os.system(cmd)
+		#cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
+		#os.system(cmd)
 		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
 		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)
@@ -278,9 +278,9 @@ class Instance:
 		hidden1_units = PARAMS["hidden1"]
 		hidden2_units = PARAMS["hidden2"]
 		hidden3_units = PARAMS["hidden3"]
-		LOGGER.info("hidden1_units: "+str(hidden1_units))
-		LOGGER.info("hidden2_units: "+str(hidden2_units))
-		LOGGER.info("hidden3_units: "+str(hidden3_units))
+		LOGGER.debug("hidden1_units: "+str(hidden1_units))
+		LOGGER.debug("hidden2_units: "+str(hidden2_units))
+		LOGGER.debug("hidden3_units: "+str(hidden3_units))
 		# Hidden 1
 		with tf.name_scope('hidden1'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
@@ -410,7 +410,7 @@ class Instance_fc_classify(Instance):
 			LOGGER.error("TFsession returned garbage")
 			LOGGER.error("TFInputs: "+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
 			raise Exception("Garbage...")
-		if (self.PreparedFor>eval_input.shape[0]):
+		if (self.PreparedFor > eval_input.shape[0]):
 			return tmp[:eval_input.shape[0]]
 		return tmp
 
@@ -541,10 +541,12 @@ class Instance_fc_sqdiff(Instance):
 	def evaluate(self, eval_input):
 		# Check sanity of input
 		Instance.evaluate(self, eval_input)
-		eval_input_ = eval_input
-		if (self.PreparedFor>eval_input.shape[0]):
-			eval_input_ =np.copy(eval_input)
-			eval_input_.resize(([self.PreparedFor]+self.inshape))
+		given_cases = eval_input.shape[0]
+		#print "given_cases:", given_cases
+		eis = list(eval_input.shape)
+		eval_input_ = eval_input.copy()
+		if (self.PreparedFor > given_cases):
+			eval_input_.resize(([self.PreparedFor]+eis[1:]))
 			# pad with zeros
 		eval_labels = np.zeros(tuple([self.PreparedFor]+list(self.outshape)))  # dummy labels
 		batch_data = [eval_input_, eval_labels]
@@ -554,9 +556,7 @@ class Instance_fc_sqdiff(Instance):
 		if (not np.all(np.isfinite(tmp))):
 			LOGGER.error("TFsession returned garbage")
 			LOGGER.error("TFInputs"+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
-		if (self.PreparedFor>eval_input.shape[0]):
-			return tmp[:eval_input.shape[0]]
-		return tmp
+		return tmp[0,:given_cases]
 
 	def Save(self):
 		self.summary_op =None

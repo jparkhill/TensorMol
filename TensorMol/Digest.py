@@ -98,7 +98,7 @@ class Digester:
 #  Instead call a batch digest routine.
 #
 
-	def Emb(self, mol_, at_, xyz_, MakeOutputs=True, MakeGradients=False):
+	def Emb(self, mol_, at_, xyz_, MakeOutputs=True, MakeGradients=False, Transforms=None):
 		"""
 		Generates various molecular embeddings.
 		Args:
@@ -106,6 +106,8 @@ class Digester:
 			at_: an atom to be digested or moved. if at_ < 0 it usually returns arrays for each atom in the molecule
 			xyz_: makes inputs with at_ moved to these positions.
 			MakeOutputs: generates outputs according to self.OType.
+			MakeGradients: Generate nuclear derivatives of inputs.
+			Transforms: Generate inputs for all the linear transformations appended.
 		Returns:
 			Output embeddings, and possibly labels and gradients.
 			if at_ < 0 the first dimension loops over atoms in mol_
@@ -114,7 +116,10 @@ class Digester:
 		if (self.name=="Coulomb"):
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):
-			Ins =  MolEmb.Make_SH(PARAMS, mol_.coords, mol_.atoms, at_)
+			if (Transforms == None):
+				Ins =  MolEmb.Make_SH(PARAMS, mol_.coords, mol_.atoms, at_)
+			else:
+				Ins =  MolEmb.Make_SH_Transf(PARAMS, mol_.coords, mol_.atoms, at_, Transforms)
 		elif (self.name=="GauInv"):
 			Ins= MolEmb.Make_Inv(PARAMS, mol_.coords, mol_.atoms, at_)
 		elif (self.name=="RDF"):

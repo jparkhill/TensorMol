@@ -10,14 +10,14 @@ datasets
 *.tfevents.*
 *events.out*
 datasets/*.pdb
-results/*log 
+results/*.log 
 *.pdb
 *_NEQ.pdb* # don't save random distortions. 
 *.raw
 __pycache__/
 *.py[cod]
 *$py.class
-results/*.log
+networks
 
 # C extensions
 *.so

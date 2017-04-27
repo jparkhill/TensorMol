@@ -3,6 +3,7 @@
 """
 from TensorMol.Util import *
 from TensorMol.Opt import *
+from TensorMol.Neb import *
 from TensorMol.DigestMol import *
 from TensorMol.TensorMolData import *
 from TensorMol.TFMolManage import *
