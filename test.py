@@ -213,7 +213,7 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	m0 = a.mols[0]
 	m1 = a.mols[1]
 	m0.AlignAtoms(m1)
-	PARAMS["NebK"] = 0.1
+	PARAMS["NebK"] = 3.0
 	PARAMS["OptStepSize"] = 0.01
 	PARAMS["OptMomentum"] = 0.5
 	PARAMS["OptMomentumDecay"] = 0.8
