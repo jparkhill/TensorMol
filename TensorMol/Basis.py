@@ -2,8 +2,6 @@
 Loads and handles basis sets for embeddings
 """
 
-from Util import *
-from TensorData import *
 import os, sys, re, random, math, copy
 import numpy as np
 import cPickle as pickle

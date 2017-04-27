@@ -55,18 +55,15 @@ class EmbeddingOptimizer:
 
 	def SetBasisParams(self,basisParams_):
 		PARAMS["RBFS"] = basisParams_[:PARAMS["SH_NRAD"]*2].reshape(PARAMS["SH_NRAD"],2).copy()
-		PARAMS["ANES"][0] = basisParams_[PARAMS["SH_NRAD"]*2].copy()
-		PARAMS["ANES"][5] = basisParams_[PARAMS["SH_NRAD"]*2+1].copy()
-		PARAMS["ANES"][6] = basisParams_[PARAMS["SH_NRAD"]*2+2].copy()
-		PARAMS["ANES"][7] = basisParams_[PARAMS["SH_NRAD"]*2+3].copy()
+		# PARAMS["ANES"][0] = basisParams_[0].copy()
+		# PARAMS["ANES"][5] = basisParams_[1].copy()
+		# PARAMS["ANES"][6] = basisParams_[2].copy()
+		# PARAMS["ANES"][7] = basisParams_[3].copy()
 		S_Rad = MolEmb.Overlap_RBF(PARAMS)
-		try:
-			if (np.amin(np.linalg.eigvals(S_Rad)) < 1.e-10):
-				return 100.0
-		except numpy.linalg.linalg.LinAlgError:
-			return 100.0
 		PARAMS["SRBF"] = MatrixPower(S_Rad,-1./2)
-		return 0.0
+		print "Eigenvalue Overlap Error: ", (1/np.amin(np.linalg.eigvals(S_Rad)))/1.e6
+		return (1/np.amin(np.linalg.eigvals(S_Rad)))/1.e6
+		#return 0.0
 
 	def Ipecac_Objective(self,basisParams_):
 		"""
@@ -108,10 +105,8 @@ class EmbeddingOptimizer:
 		return sqerr+berror
 
 	def PerformOptimization(self):
-		prm0 = np.append(PARAMS["RBFS"][:PARAMS["SH_NRAD"]], PARAMS["ANES"][0])
-		prm0 = np.append(prm0, PARAMS["ANES"][5])
-		prm0 = np.append(prm0, PARAMS["ANES"][6])
-		prm0 = np.append(prm0, PARAMS["ANES"][7])
+		prm0 = PARAMS["RBFS"][:PARAMS["SH_NRAD"]].flatten()
+		# prm0 = np.array((PARAMS["ANES"][0], PARAMS["ANES"][5], PARAMS["ANES"][6], PARAMS["ANES"][7]))
 		print prm0
 		import scipy.optimize
 		print "Optimizing RBFS."
@@ -119,8 +114,9 @@ class EmbeddingOptimizer:
 			obj = lambda x: self.Ipecac_Objective(x)
 		elif (self.method == "KRR"):
 			obj = lambda x: self.KRR_Objective(x)
-		res=scipy.optimize.minimize(obj, prm0, method='L-BFGS-B', tol=0.001, bounds=[(0,None) for i in range(len(prm0))], options={'disp':True, 'maxcor':30, 'eps':0.1})
-		print "Opt complete", res.message
+		res=scipy.optimize.minimize(obj, prm0, method='COBYLA', tol=0.001, options={'disp':True, 'maxiter':1000, 'rhobeg':0.1})
+		#res=scipy.optimize.minimize(obj, prm0, method='L-BFGS-B', tol=0.001, bounds=[(0.1,10) for i in range(len(prm0))], options={'disp':True, 'maxcor':30, 'eps':1.0})
+		LOGGER.info("Opt complete: %s", res.message)
 		LOGGER.info("Optimal Basis Parameters: %s", res.x)
 		return
 

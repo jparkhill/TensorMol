@@ -196,7 +196,7 @@ class TFManage:
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
 			for i in range(len(ops)):
 				pi[atom,i] = np.dot(invops[i],outs[i].T).reshape(3)
-				p[atom] += np.sum(pi[atom,i], axis=0)
+				p[atom] += np.sum(pi[atom], axis=0)
 		if (Debug):
 			print "Checking Rotations... "
 			for atom in range(mol.NAtoms()):

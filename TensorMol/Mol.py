@@ -315,7 +315,7 @@ class Mol:
 		mdm = MolEmb.Make_DistMat(self.coords)
 		odm = MolEmb.Make_DistMat(m.coords)
 		tmp = (mdm-odm)
-		return np.sqrt(np.sum(tmp*tmp))
+		return np.sqrt(np.mean(tmp*tmp))
 
 	def MolGrids(self, ngrids = 250):
 		grids = np.zeros((ngrids, ngrids, ngrids), dtype=np.uint8)
