@@ -116,5 +116,4 @@ def OctahedralOperations():
 	CornerRotations2=[RotationMatrix([1,1,1], 4.0*Pi/3.0),RotationMatrix([-1,1,1], 4.0*Pi/3.0),RotationMatrix([-1,-1,1], 4.0*Pi/3.0),RotationMatrix([-1,-1,-1], 4.0*Pi/3.0),RotationMatrix([-1,1,-1], 4.0*Pi/3.0),RotationMatrix([1,-1,-1], 4.0*Pi/3.0),RotationMatrix([1,1,-1], 4.0*Pi/3.0),RotationMatrix([1,-1,1], 4.0*Pi/3.0)]
 	EdgeRotations=[RotationMatrix([1,1,0], Pi),RotationMatrix([1,0,1], Pi),RotationMatrix([0,1,1], Pi)]
 	EdgeReflections=[ReflectionMatrix([1,0,0],[0,1,0]),ReflectionMatrix([0,0,1],[0,1,0]),ReflectionMatrix([1,0,0],[0,0,1])]
-	return FaceRotations+FaceRotations2+FaceRotations3+CornerRotations+CornerRotations2+EdgeRotations+EdgeReflections
-	 
+	return Ident+FaceRotations+FaceRotations2+FaceRotations3+CornerRotations+CornerRotations2+EdgeRotations+EdgeReflections

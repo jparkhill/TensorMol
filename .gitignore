@@ -10,7 +10,7 @@ datasets
 *.tfevents.*
 *events.out*
 datasets/*.pdb
-results/*log 
+results/*.log 
 *.pdb
 *_NEQ.pdb* # don't save random distortions. 
 *.raw
