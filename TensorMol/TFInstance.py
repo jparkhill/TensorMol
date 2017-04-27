@@ -185,8 +185,8 @@ class Instance:
 
 	# one of these two routines need to be removed I think. -JAP
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
-		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
-		os.system(cmd)
+		#cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
+		#os.system(cmd)
 		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
 		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)

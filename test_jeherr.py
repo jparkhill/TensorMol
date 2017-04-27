@@ -167,7 +167,9 @@ if(0):
 #import glob
 #a=MSet("SmallMols")
 #for dir in glob.iglob("/media/sdb1/jeherr/TensorMol/datasets/small_mol_dataset/*/*/"):
-#	a.ReadXYZUnpacked(dir, has_force=True)
+#	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True)
+#for dir in glob.iglob("/media/sdb1/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/"):
+#	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True)
 #print len(a.mols)
 #a.Save()
 #a.WriteXYZ()
@@ -296,11 +298,13 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 
 # TestBP()
 
-def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True):
+def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=1):
 	if (BuildTrain_):
 		a=MSet(set_)
 		a.Load()
-		a = a.RotatedClone(1)
+		#a = a.RotatedClone(numrot_)
+		#a.Save(a.name+"_"+str(numrot_)+"rot")
+		#a.WriteXYZ(a.name+"_"+str(numrot_)+"rot")
 		TreatedAtoms = a.AtomTypes()
 		print "Number of Mols: ", len(a.mols)
 		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
@@ -310,17 +314,17 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True):
 		tset = TensorData(None,None,set_+"_"+dig_)
 	manager=TFManage("",tset,True,"fc_sqdiff")
 
-# TrainForces(set_ = "toluene", BuildTrain_=False)
+#TrainForces(set_ = "SmallMols_20rot", BuildTrain_=True, numrot_=20)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
 	a.Load()
 	tmol=copy.deepcopy(a.mols[mol])
-	manager=TFManage(set_+"_"+dig_+"_"+"fc_sqdiff", None, False)
+	manager=TFManage("SmallMols_20rot_"+dig_+"_"+"fc_sqdiff", None, False)
 	opt=Optimizer(manager)
 	opt.OptTFRealForce(tmol)
 
-# TestForces(set_ = "toluene")
+#TestForces(set_ = "OptMols", mol=12)
 
 # a=MSet("toluene_0")
 # a.Load()
@@ -406,5 +410,51 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 # 	f.write("$end\n\n@@@\n\n")
 # f.close()
 
-b = Basis_GauSH(Name_=None)
-b.Orthogonalize()
+#b = Basis_GauSH(Name_=None)
+#print b.rbfs
+
+a=MSet("SmallMols_20rot")
+a.Load()
+TreatedAtoms = a.AtomTypes()
+from TensorMol.LinearOperations import MatrixPower
+PARAMS["RBFS"] = np.array([[0.27423683, 0.26716042],[0.47262379, 0.44923476],[0.64926441, 0.65648269],[0.74980736, 0.13155188],
+				 [1.25029559, 1.25139068], [2.16625241, 2.34563379],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+PARAMS["ANES"] = np.array([0.92957981, 1., 1., 1., 1., 1.64346076, 0.95090602, 0.95061522])
+S_Rad = MolEmb.Overlap_RBF(PARAMS)
+S_RadOrth = MatrixPower(S_Rad,-1./2)
+PARAMS["SRBF"] = S_RadOrth
+d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+tset=TensorData(a,d)
+tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
+manager=TFManage("",tset,False,"fc_sqdiff")
+manager.TrainElement(1)
+PARAMS["RBFS"] = np.array([[0.50630276, 0.51372435],[0.60102497, 0.60916403],[0.60683637, 0.612518880],[1.25727903, 1.27596384],
+				 [1.90660759, 0.77445947], [2.17229787, 2.35759726],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+PARAMS["ANES"] = np.array([0.34943752, 1., 1., 1., 1., 0.89604552,0.84949777,0.88465124])
+S_Rad = MolEmb.Overlap_RBF(PARAMS)
+S_RadOrth = MatrixPower(S_Rad,-1./2)
+PARAMS["SRBF"] = S_RadOrth
+d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+tset=TensorData(a,d)
+tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
+manager.TrainElement(6)
+PARAMS["RBFS"] = np.array([[0.33774836, 0.21398177],[0.59872225, 0.45665845],[0.76715879, 0.11947128],[0.85878283, 0.29716973],
+			[1.24966612, 1.25144069], [2.16175225, 2.33440959],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+PARAMS["ANES"] = np.array([1.15843474, 1., 1., 1., 1., 2.08340722, 1.20029765, 2.20548768])
+S_Rad = MolEmb.Overlap_RBF(PARAMS)
+S_RadOrth = MatrixPower(S_Rad,-1./2)
+PARAMS["SRBF"] = S_RadOrth
+d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+tset=TensorData(a,d)
+tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
+manager.TrainElement(7)
+PARAMS["RBFS"] = np.array([[0.50683002, 0.49276294],[0.6898681, 0.6898681],[0.74761888, 0.18893269],[0.81268781, 0.361204],
+			[1.28118363, 1.28118364], [2.19357372, 2.39155314],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+PARAMS["ANES"] = np.array([0.98552585, 1., 1., 1., 1., 1.55763799, 1.02150273, 1.01430531])
+S_Rad = MolEmb.Overlap_RBF(PARAMS)
+S_RadOrth = MatrixPower(S_Rad,-1./2)
+PARAMS["SRBF"] = S_RadOrth
+d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+tset=TensorData(a,d)
+tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
+manager.TrainElement(8)
