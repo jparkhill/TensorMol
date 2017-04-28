@@ -260,7 +260,7 @@ def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #TestHerrNet1()
 TestOCSDB()
 #TestNeb()
-#TestNebGLBFGS()
+#TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.
 if (0):

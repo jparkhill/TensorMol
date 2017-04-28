@@ -180,7 +180,7 @@ class Optimizer:
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
-	def OptTFRealForceOLD(self,m, filename="OptLog",Debug=False):
+	def OptTFRealForce(self,m, filename="OptLog",Debug=False):
 		"""
 		Optimize using force output of an atomwise network.
 		now also averages over rotations...
@@ -227,7 +227,7 @@ class Optimizer:
 		return prev_m
 
 
-	def OptTFRealForce(self,m, filename="OptLog",Debug=False):
+	def OptTFRealForceLBFGS(self,m, filename="OptLog",Debug=False):
 		"""
 		Optimize using force output of an atomwise network.
 		now also averages over rotations...
