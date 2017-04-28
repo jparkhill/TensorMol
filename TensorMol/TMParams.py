@@ -50,10 +50,11 @@ class TMParams(dict):
 		self["OptMaxCycles"]=400
 		self["OptThresh"]=0.0004
 		self["OptMaxStep"]=0.1
-		self["OptStepSize"] = 0.0025
+		self["OptStepSize"] = 0.05
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
+		self["OptMaxBFGS"] = 7
 		self["NebNumBeads"] = 10
 		self["NebK"] = 0.01
 		self["NebMaxBFGS"] = 12

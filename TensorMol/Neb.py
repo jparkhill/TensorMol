@@ -38,11 +38,6 @@ class NudgedElasticBand:
 		self.Ts = np.zeros(self.beads.shape) # Tangents.
 		self.Es = np.zeros(self.nbeads)
 		self.Rs = np.zeros(self.nbeads) # Distance between beads.
-
-		# These are for BGFS optimization.
-		self.R_Hist = np.zeros(([self.m_max]+list(self.beads.shape)))
-		self.F_Hist = np.zeros(([self.m_max]+list(self.beads.shape)))
-
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.WriteXYZfile("./results/", "NebTraj0")
@@ -113,12 +108,12 @@ class NudgedElasticBand:
 		self.Ts[i] = t
 		S = -1.0*self.SpringDeriv(i)
 		Spara = self.Parallel(S,t)
+		self.Ss[i] = Spara
 		F = self.Perpendicular(F,t)
 		#Sperp = self.CornerPenalty(self.BeadAngleCosine(i))*(self.Perpendicular(S,t))
 		# Instead use Wales' DNEB
 		Fn = F/np.linalg.norm(F)
 		Sperp = self.Perpendicular(self.Perpendicular(S,t),Fn)
-		self.Ss[i] = Spara
 		Fneb = self.PauliForce(i)+Spara+Sperp+F
 		return Fneb
 
@@ -215,37 +210,57 @@ class NudgedElasticBand:
 		maxgrad = np.array([10.0 for i in range(self.nbeads)])
 		step=0
 		forces = np.zeros(self.beads.shape)
-		old_forces = np.zeros(self.beads.shape)
+		R_Hist = np.zeros(([self.m_max]+list(self.beads.shape)))
+		F_Hist = np.zeros(([self.m_max]+list(self.beads.shape)))
 		while(np.mean(rmsgrad)>self.thresh and step < self.max_opt_step):
 			# Update the positions of every bead together.
-            if step < self.m_max:
-				self.R_Hist =
-				self.F_Hist = 
-			old_force = self.momentum_decay*forces
-			beadSfs = [np.linalg.norm(self.SpringDeriv(i)) for i in range(1,self.nbeads-1)]
 			for i,bead in enumerate(self.beads):
 				forces[i] = self.NebForce(i)
-			forces = (1.0-self.momentum)*self.fscale*forces + self.momentum*old_force
+			if step < self.m_max:
+				R_Hist[step] = self.beads.copy()
+				F_Hist[step] = forces.copy()
+			else:
+				R_Hist = np.roll(R_Hist,-1,axis=0)
+				F_Hist = np.roll(R_Hist,-1,axis=0)
+				R_Hist[-1] = self.beads.copy()
+				F_Hist[-1] = forces.copy()
+			# Quasi Newton L-BFGS global step.
+			q = forces.copy()
+			for i in range(min(self.m_max,step)-1, 0, -1):
+				s = R_Hist[i] - R_Hist[i-1]
+				y = F_Hist[i] - F_Hist[i-1]
+				rho = 1.0/np.einsum("qia,qia",y,s)#y.dot(s)
+				a = rho * np.einsum("qia,qia",s,q)#s.dot(q)
+				#print "a ",a
+				q -= a*y
+			if step < 1:
+				H=1.0
+			else:
+				num = min(self.m_max-1,step)
+				v1 = (R_Hist[num] - R_Hist[num-1])
+				v2 = (F_Hist[num] - F_Hist[num-1])
+				H = (np.einsum("qia,qia",v1,v2))/(np.einsum("qia,qia",v2,v2))
+				#print "H:", H
+			z = H*q
+			for i in range (1,min(self.m_max,step)):
+				s = (R_Hist[i] - R_Hist[i-1])
+				y = (F_Hist[i] - F_Hist[i-1])
+				rho = 1.0/np.einsum("qia,qia",y,s)#y.dot(s)
+				a=rho*np.einsum("qia,qia",s,q)#s.dot(q)
+				beta = rho*np.einsum("qia,qia",y,z)#(force_his[i] - force_his[i-1]).dot(z)
+				#print "a-b: ", (a-beta)
+				z += s*(a-beta)
+			self.beads += self.fscale*z
 			for i,bead in enumerate(self.beads):
-				self.beads[i] += forces[i]
 				rmsgrad[i] = np.sum(np.linalg.norm(forces[i],axis=1))/forces[i].shape[0]
 				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
 			self.IntegrateEnergy()
 			print "Rexn Profile: ", self.Es
-			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
 			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
-			beadRs = [np.linalg.norm(self.beads[x+1]-self.beads[x]) for x in range(self.nbeads-1)]
-			beadCosines = [self.BeadAngleCosine(i) for i in range(1,self.nbeads-1)]
-			print "Frce Profile: ", beadFs
-			print "F_|_ Profile: ", beadFperp
-			print "SFrc Profile: ", beadSfs
-			print "Dist Profile: ", beadRs
-			print "BCos Profile: ", beadCosines
-			minforce = np.min(beadFs)
-				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
-				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
+			#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
+			#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
 			self.WriteTrajectory()
 			step+=1
-			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.mean(rmsgrad), np.max(maxgrad),np.mean(beadFperp),np.linalg.norm(self.Ss))
+			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f ", step, np.mean(rmsgrad), np.max(maxgrad),np.mean(beadFperp))
 		#self.HighQualityPES()
 		return

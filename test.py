@@ -226,6 +226,29 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	neb.OptNeb()
 	return
 
+def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test NudgedElasticBand
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	optimizer  = Optimizer(tfm)
+	a=MSet("NEB_Berg")
+	a.ReadXYZ("NEB_Berg")
+	m0 = a.mols[0]
+	m1 = a.mols[1]
+	# These have to be aligned and optimized if you want a good PES.
+	m0.AlignAtoms(m1)
+	m0 = optimizer.OptTFRealForce(m0,"NebOptM0")
+	m1 = optimizer.OptTFRealForce(m1,"NebOptM1")
+	PARAMS["NebNumBeads"] = 30
+	PARAMS["NebK"] = 2.0
+	PARAMS["OptStepSize"] = 0.001
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 1.0
+	neb = NudgedElasticBand(tfm, m0, m1)
+	neb.OptNebGLBFGS()
+	return
+
 #
 # Tests to run.
 #
@@ -235,8 +258,9 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #TestPotential()
 #TestIpecac()
 #TestHerrNet1()
-#TestOCSDB()
-TestNeb()
+TestOCSDB()
+#TestNeb()
+#TestNebGLBFGS()
 
 # This visualizes the go potential and projections on to basis vectors.
 if (0):

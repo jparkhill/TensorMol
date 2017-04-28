@@ -180,7 +180,7 @@ class Optimizer:
 			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
 		return
 
-	def OptTFRealForce(self,m, filename="OptLog",Debug=False):
+	def OptTFRealForceOLD(self,m, filename="OptLog",Debug=False):
 		"""
 		Optimize using force output of an atomwise network.
 		now also averages over rotations...
@@ -214,6 +214,87 @@ class Optimizer:
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			old_veloc = self.momentum_decay*c_veloc
 			#Remove translation.
+			prev_m = Mol(m.atoms, m.coords)
+			m.coords = m.coords + c_veloc
+			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
+			maxgrad = np.amax(np.linalg.norm(veloc,axis=1))
+			rmsdisp = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
+			maxdisp = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./results/", filename)
+			step+=1
+			LOGGER.info("Step: %i RMS Disp: %.5f Max Disp: %.5f RMS Gradient: %.5f  Max Gradient: %.5f ", step, rmsdisp, maxdisp, rmsgrad, maxgrad)
+		return prev_m
+
+
+	def OptTFRealForce(self,m, filename="OptLog",Debug=False):
+		"""
+		Optimize using force output of an atomwise network.
+		now also averages over rotations...
+		Args:
+			m: A distorted molecule to optimize
+		"""
+		# Sweeps one at a time
+		rmsdisp = 10.0
+		maxdisp = 10.0
+		rmsgrad = 10.0
+		maxgrad = 10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		print "Orig Coords", m.coords
+		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		veloc=np.zeros(m.coords.shape)
+		self.m_max = PARAMS["OptMaxBFGS"]
+		R_Hist = np.zeros(([self.m_max]+list(m.coords.shape)))
+		F_Hist = np.zeros(([self.m_max]+list(m.coords.shape)))
+		while(rmsdisp>self.thresh and step < self.max_opt_step):
+			if (PARAMS["RotAvOutputs"]):
+				veloc = self.tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
+			elif (PARAMS["OctahedralAveraging"]):
+				veloc = self.tfm.EvalOctAvForce(m, Debug=True)
+			else:
+				for i in range(m.NAtoms()):
+					veloc[i] = self.tfm.evaluate(m,i)
+			if (Debug):
+				for i in range(m.NAtoms()):
+					print "TF veloc: ",m.atoms[i], ":" , veloc[i]
+			veloc = veloc - np.average(veloc,axis=0)
+			if step < self.m_max:
+				R_Hist[step] = m.coords.copy()
+				F_Hist[step] = veloc.copy()
+			else:
+				R_Hist = np.roll(R_Hist,-1,axis=0)
+				F_Hist = np.roll(R_Hist,-1,axis=0)
+				R_Hist[-1] = m.coords.copy()
+				F_Hist[-1] = veloc.copy()
+			# Quasi Newton L-BFGS global step.
+			q = veloc.copy()
+			for i in range(min(self.m_max,step)-1, 0, -1):
+				s = R_Hist[i] - R_Hist[i-1]
+				y = F_Hist[i] - F_Hist[i-1]
+				rho = 1.0/np.einsum("ia,ia",y,s)#y.dot(s)
+				a = rho * np.einsum("ia,ia",s,q)#s.dot(q)
+				#print "a ",a
+				q -= a*y
+			if step < 1:
+				H=1.0
+			else:
+				num = min(self.m_max-1,step)
+				v1 = (R_Hist[num] - R_Hist[num-1])
+				v2 = (F_Hist[num] - F_Hist[num-1])
+				H = (np.einsum("ia,ia",v1,v2))/(np.einsum("ia,ia",v2,v2))
+				#print "H:", H
+			z = H*q
+			for i in range (1,min(self.m_max,step)):
+				s = (R_Hist[i] - R_Hist[i-1])
+				y = (F_Hist[i] - F_Hist[i-1])
+				rho = 1.0/np.einsum("ia,ia",y,s)#y.dot(s)
+				a=rho*np.einsum("ia,ia",s,q)#s.dot(q)
+				beta = rho*np.einsum("ia,ia",y,z)#(force_his[i] - force_his[i-1]).dot(z)
+				#print "a-b: ", (a-beta)
+				z += s*(a-beta)
+			c_veloc = self.fscale*z
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords = m.coords + c_veloc
 			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
