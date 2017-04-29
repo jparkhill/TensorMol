@@ -1,28 +1,40 @@
+"""
+The Units chosen are Angstrom * Fs.
+But I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
+The f_ are in kcal/angstrom. = 4.184e+13 joules/meter  = 4184 joules/angstrom
+Kb = 8.314 J/Mol K
+"""
+
 from Sets import *
 from TFManage import *
 
 def VelocityVerletstep(f_, a_, x_, v_, m_, dt_ ):
 	""" A Velocity Verlet Step
 	Args:
-	f_: The force function
-	a_: The acceleration at current step.
+	f_: The force function (returns Joules/Angstrom)
+	a_: The acceleration at current step. (A^2/fs^2)
 	x_: Current coordinates
 	v_: Velocities
 	m_: the mass vector.
 	"""
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
-
-	a = np.einsum("ax,a->ax", f_(x), 1.0/m_)
+	a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
+	#print "dt", dt_ # fs
+	#print "a", a
+	#print "v", v_
 	v = v_ + (1./2.)*(a_+a)*dt_
 	return x,v,a
 
 def KineticEnergy(v_, m_):
 	""" The KineticEnergy
 	Args:
-	v_: Velocities
-	m_: the mass vector.
+		The masses are in kg.
+		v_: Velocities (A/fs)
+		m_: the mass vector. (kg/mol)
+	Returns:
+		The kinetic energy per atom (J/mol)
 	"""
-	return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_),m_)
+	return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_)*pow(10.0,10.0),m_)/len(m_)
 
 class VelocityVerlet:
 	def __init__(self,f_,g0_):
@@ -63,8 +75,9 @@ class VelocityVerlet:
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/8.314
 			self.x , self.v, self.a = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
 			self.WriteTrajectory()
 			step+=1
-			LOGGER.info("Step: %i KE: %.5f ", step, self.KE)
+			LOGGER.info("Step: %i time: %.5f(fs) <KE>(J): %.5f Teff(K): %.5f", step, self.t, self.KE,Teff)
 		return
