@@ -4,6 +4,7 @@ Changes that need to be made:
 
 from Sets import *
 from TFManage import *
+from DIIS import *
 import random
 import time
 
@@ -195,27 +196,34 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
+		diis = DIIS()
 		print "Orig Coords", m.coords
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
-		while(rmsdisp>self.thresh and step < self.max_opt_step):
+		while((rmsdisp>self.thresh or rmsgrad>self.thresh)  and step < self.max_opt_step):
 			if (PARAMS["RotAvOutputs"]):
-				veloc = self.fscale*self.tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
+				veloc = self.tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
 			elif (PARAMS["OctahedralAveraging"]):
-				veloc = self.fscale*self.tfm.EvalOctAvForce(m, Debug=True)
+				veloc = self.tfm.EvalOctAvForce(m, Debug=True)
 			else:
 				for i in range(m.NAtoms()):
-					veloc[i] = self.fscale*self.tfm.evaluate(m,i)
+					veloc[i] = self.tfm.evaluate(m,i)
 			if (Debug):
 				for i in range(m.NAtoms()):
 					print "TF veloc: ",m.atoms[i], ":" , veloc[i]
 			veloc = veloc - np.average(veloc,axis=0)
-			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
-			old_veloc = self.momentum_decay*c_veloc
 			#Remove translation.
 			prev_m = Mol(m.atoms, m.coords)
-			m.coords = m.coords + c_veloc
+
+			#ForceFunction = lambda x: self.tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=1, Debug=False)
+			#DHess = DiagHess(ForceFunction,m.coords,veloc)
+			if (rmsgrad > 0.06):
+				m.coords = diis.NextStep(m.coords,veloc)
+			else:
+				c_veloc = (1.0-self.momentum)*self.fscale*veloc+self.momentum*old_veloc
+				old_veloc = self.momentum_decay*c_veloc
+				m.coords = m.coords + c_veloc
 			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
 			maxgrad = np.amax(np.linalg.norm(veloc,axis=1))
 			rmsdisp = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]

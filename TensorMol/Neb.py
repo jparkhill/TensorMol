@@ -4,6 +4,7 @@ Changes that need to be made:
 
 from Sets import *
 from TFManage import *
+from DIIS import *
 import random
 import time
 
@@ -168,16 +169,20 @@ class NudgedElasticBand:
 		maxgrad = np.array([10.0 for i in range(self.nbeads)])
 		step=0
 		forces = np.zeros(self.beads.shape)
-		old_forces = np.zeros(self.beads.shape)
-		while(np.mean(rmsgrad)>self.thresh and step < self.max_opt_step):
+		diis = DIIS()
+		while(np.mean(beadFperp)>self.thresh and step < self.max_opt_step):
 			# Update the positions of every bead together.
 			old_force = self.momentum_decay*forces
 			beadSfs = [np.linalg.norm(self.SpringDeriv(i)) for i in range(1,self.nbeads-1)]
 			for i,bead in enumerate(self.beads):
 				forces[i] = self.NebForce(i)
-			forces = (1.0-self.momentum)*self.fscale*forces + self.momentum*old_force
+
+
+			#forces = (1.0-self.momentum)*self.fscale*forces + self.momentum*old_force
+			#self.beads += forces
+			self.beads = diis.NextStep(self.beads,forces)
+
 			for i,bead in enumerate(self.beads):
-				self.beads[i] += forces[i]
 				rmsgrad[i] = np.sum(np.linalg.norm(forces[i],axis=1))/forces[i].shape[0]
 				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
 			self.IntegrateEnergy()
@@ -234,7 +239,7 @@ class NudgedElasticBand:
 				#print "a ",a
 				q -= a*y
 			if step < 1:
-				H=1.0
+				H=12.0
 			else:
 				num = min(self.m_max-1,step)
 				v1 = (R_Hist[num] - R_Hist[num-1])

@@ -44,13 +44,13 @@ class TMParams(dict):
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
-		self["RotAvOutputs"] = 20 # Rotational averaging of force outputs.
+		self["RotAvOutputs"] = 10 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
 		self["OptMaxCycles"]=400
 		self["OptThresh"]=0.0004
 		self["OptMaxStep"]=0.1
-		self["OptStepSize"] = 0.05
+		self["OptStepSize"] = 0.004
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
