@@ -106,15 +106,14 @@ class TFMolManage(TFManage):
                         inputs[ei][offsets[ei], :] = cases[i]
                         matrices[ei][offsets[ei], outputpointer] = 1.0
                         offsets[ei] += 1
-                #print "[inputs, matrices, dummy_outputs]", [inputs, matrices, dummy_outputs]
-                mol_out, atom_out = self.Instances.evaluate([inputs, matrices, dummy_outputs])
+                mol_out, atom_out, gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
 
                 pointers = [0 for ele in self.TData.eles]
                 diff = 0
                 for i in range (0, nmols):
                         mol = mol_set.mols[i]
-                        print "for mol :", mol.name," energy:", mol.energy
-                        print "total atomization energy:", mol_out[0][i]
+                        print "for mol :", mol.name," energy:", mol.energy, "  gradient:", gradient
+                        print "total atomization energy: %.10f"%mol_out[0][i]
                         #diff += abs(mol.energy - mol_out[0][i])
                         if total_energy:
                                 total = mol_out[0][i]
@@ -178,7 +177,7 @@ class TFMolManage(TFManage):
 		diff = 0
 		for i in range (0, nmols):
 			mol = mol_set.mols[i]
-			print "for mol :", mol.name," energy:", mol.energy 
+			print "for mol :", mol.name," energy:", mol.energy
 			print "total atomization energy:", mol_out[0][i]
 			#diff += abs(mol.energy - mol_out[0][i])
 			if total_energy:

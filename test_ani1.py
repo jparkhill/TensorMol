@@ -69,9 +69,19 @@ if (1):
 	if (0):
                 manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 manager.Continue_Training(maxsteps=1001)
-        if (1):
+        if (0):
                 a = MSet("CCdihe")
                 a.ReadXYZ("CCdihe")
+                a.Make_Graphs()
+                a.Save()
+                a.Load()
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                manager.Eval_BP(a)
+
+
+        if (1):
+                a = MSet("gradient_test")
+                a.ReadXYZ("gradient_test")
                 a.Make_Graphs()
                 a.Save()
                 a.Load()

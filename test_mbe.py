@@ -73,7 +73,7 @@ if (1):
 		a.mols[5].MOB_Monomer()
 		a.mols[5].MOB_Monomer_Overlap()
 		a.mols[5].Connected_MOB_Dimer()
-		a.mols[5].Calculate_MOB_Frags(basis="cc-pvtz")
+		a.mols[5].Calculate_MOB_Frags(basis="cc-pvdz")
 		a.mols[5].MOB_Energy()
 
 		#print "pyscf energy first:", a.mols[2].PySCF_Energy("cc-pvdz")

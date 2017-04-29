@@ -16,6 +16,7 @@ class Mol:
 		else:
 			self.coords=np.zeros(shape=(1,1),dtype=np.float)
 		self.properties = {"MW":0}
+		self.graph  = None
 		self.name=None
 		self.num_atom_connected = None # connected  atoms of each atom 
 		#things below here are sometimes populated if it is useful.
@@ -84,7 +85,7 @@ class Mol:
 				if pair_index not in visited_pairs:
 					visited_pairs.append(pair_index)
                                 	atom_pair.sort()
-                                	bond_name = self.AtomName_From_List(atom_pair)
+                                	bond_name = AtomName_From_List(atom_pair)
 					bond_type = bond_index[bond_name]
 					dist = self.DistMatrix[i][j]
 					self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
@@ -324,7 +325,7 @@ class Mol:
 				dist = dist_mat[i][j]
 				atom_pair=[self.atoms[i], self.atoms[j]]
 				atom_pair.sort()
-				bond_name = self.AtomName_From_List(atom_pair)
+				bond_name = AtomName_From_List(atom_pair)
 				if dist <= bond_length_thresh[bond_name]:
 					(self.atom_nodes[i]).Append(self.atom_nodes[j])
 					(self.atom_nodes[j]).Append(self.atom_nodes[i])
@@ -1774,11 +1775,6 @@ class Mol:
 		return atoi.keys()[atoi.values().index(self.atoms[i])]
 
 
-	def AtomName_From_List(self, atom_list):
-		name = ""
-		for i in atom_list:
-			name += atoi.keys()[atoi.values().index(i)]
-		return name
 
 	def AllAtomNames(self):
 		names=[]
