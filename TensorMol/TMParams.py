@@ -58,6 +58,11 @@ class TMParams(dict):
 		self["NebNumBeads"] = 10
 		self["NebK"] = 0.01
 		self["NebMaxBFGS"] = 12
+		self["DiisSize"] = 20
+		# MD Parameters
+		self["MDMaxStep"] = 1000
+		self["MDdt"] = 0.005  # units are kcal / angstrom defined.
+		self["MDTemp"] = 300.0 # units are kcal / angstrom defined.
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9

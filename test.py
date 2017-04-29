@@ -228,7 +228,7 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 
 def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
-	Test NudgedElasticBand
+	Test NudgedElasticBand with LBFGS... not working :(
 	"""
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
 	optimizer  = Optimizer(tfm)
@@ -238,15 +238,31 @@ def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	m1 = a.mols[1]
 	# These have to be aligned and optimized if you want a good PES.
 	m0.AlignAtoms(m1)
+	PARAMS["RotAvOutputs"] = 10
+	PARAMS["DiisSize"] = 20
 	m0 = optimizer.OptTFRealForce(m0,"NebOptM0")
 	m1 = optimizer.OptTFRealForce(m1,"NebOptM1")
 	PARAMS["NebNumBeads"] = 30
 	PARAMS["NebK"] = 2.0
 	PARAMS["OptStepSize"] = 0.001
 	PARAMS["OptMomentum"] = 0.0
+	PARAMS["RotAvOutputs"] = 10
 	PARAMS["OptMomentumDecay"] = 1.0
 	neb = NudgedElasticBand(tfm, m0, m1)
 	neb.OptNebGLBFGS()
+	return
+
+def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test MolecularDynamics
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	a=MSet("OCSDB_test")
+	a.ReadXYZ("OCSDB_test")
+	m = a.mols[1]
+	ForceField = lambda x: tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
+	md = VelocityVerlet(ForceField,m)
+	md.Prop()
 	return
 
 #
@@ -259,7 +275,8 @@ def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #TestIpecac()
 #TestHerrNet1()
 #TestOCSDB()
-TestNeb()
+#TestNeb()
+TestMD()
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.

@@ -16,7 +16,7 @@ class DIIS:
 		"""
 		Simplest Possible DIIS
 		"""
-		self.m_max = 20
+		self.m_max = PARAMS["DiisSize"]
 		self.n_now = 0
 		self.v_shp = None
 		self.Vs = None

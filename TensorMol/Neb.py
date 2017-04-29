@@ -169,22 +169,19 @@ class NudgedElasticBand:
 		maxgrad = np.array([10.0 for i in range(self.nbeads)])
 		step=0
 		forces = np.zeros(self.beads.shape)
-		diis = DIIS()
+		beadFperp = 10.0
 		while(np.mean(beadFperp)>self.thresh and step < self.max_opt_step):
 			# Update the positions of every bead together.
 			old_force = self.momentum_decay*forces
 			beadSfs = [np.linalg.norm(self.SpringDeriv(i)) for i in range(1,self.nbeads-1)]
 			for i,bead in enumerate(self.beads):
 				forces[i] = self.NebForce(i)
-
-
-			#forces = (1.0-self.momentum)*self.fscale*forces + self.momentum*old_force
-			#self.beads += forces
-			self.beads = diis.NextStep(self.beads,forces)
-
+			self.beads += self.fscale*forces
+			#self.beads = diis.NextStep(self.beads,forces)
 			for i,bead in enumerate(self.beads):
 				rmsgrad[i] = np.sum(np.linalg.norm(forces[i],axis=1))/forces[i].shape[0]
 				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
+
 			self.IntegrateEnergy()
 			print "Rexn Profile: ", self.Es
 			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
