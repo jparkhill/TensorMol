@@ -60,9 +60,10 @@ class TMParams(dict):
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		# MD Parameters
-		self["MDMaxStep"] = 1000
-		self["MDdt"] = 2.0 # In fs.
-		self["MDTemp"] = 300.0 # units are kcal / angstrom defined.
+		self["MDMaxStep"] = 1500
+		self["MDdt"] = 0.5 # In fs.
+		self["MDTemp"] = 200.0
+		self["MDThermostat"] = "Nose"
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
