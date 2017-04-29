@@ -33,7 +33,6 @@ class MolDigester:
 			g2_para_mat = np.array(np.meshgrid(zeta, eta2)).T.reshape((-1,2))
 		SYM_Ins = MolEmb.Make_Sym_Update(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), Rc, g1_para_mat,g2_para_mat,  -1) # -1 means do it for all atoms
                 SYM_Ins_deri = np.zeros((SYM_Ins.shape[0], SYM_Ins.shape[1]))
-                #print "ANI1_Ins",ANI1_Ins, ANI1_Ins_deri.shape
                 return SYM_Ins, SYM_Ins_deri
 
 		
@@ -70,8 +69,8 @@ class MolDigester:
 		#ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
 		ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
 		ANI1_Ins_deri = MolEmb.Make_ANI1_Sym_deri(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1)
-		print "ANI_INs:", ANI1_Ins
-		print "ANI1_Ins_deri", ANI1_Ins_deri, " shape:", ANI1_Ins_deri.shape
+		print "ANI_INs:", ANI1_Ins[0][250]
+		print "ANI1_Ins_deri", ANI1_Ins_deri[0][250], " shape:", ANI1_Ins_deri.shape
 		#print "ANI1_Ins",ANI1_Ins, ANI1_Ins_deri.shape
 		return ANI1_Ins, ANI1_Ins_deri
 
