@@ -69,7 +69,9 @@ class MolDigester:
 		#print "in python", mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1
 		#ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
 		ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
-		ANI1_Ins_deri = np.zeros((ANI1_Ins.shape[0], ANI1_Ins.shape[1]))
+		ANI1_Ins_deri = MolEmb.Make_ANI1_Sym_deri(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1)
+		print "ANI_INs:", ANI1_Ins
+		print "ANI1_Ins_deri", ANI1_Ins_deri, " shape:", ANI1_Ins_deri.shape
 		#print "ANI1_Ins",ANI1_Ins, ANI1_Ins_deri.shape
 		return ANI1_Ins, ANI1_Ins_deri
 

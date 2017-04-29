@@ -79,7 +79,7 @@ if (1):
                 manager.Eval_BP(a)
 
 
-        if (1):
+        if (0):
                 a = MSet("gradient_test")
                 a.ReadXYZ("gradient_test")
                 a.Make_Graphs()
@@ -88,6 +88,17 @@ if (1):
                 manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_BP(a)
 
+
+	if (1):
+                a = MSet("gradient_test")
+                a.ReadXYZ("gradient_test")
+                a.Make_Graphs()
+                TreatedAtoms = np.asarray([1,6,7,8])
+                print "TreatedAtoms ", TreatedAtoms
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
+                tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+                for mol in a.mols:
+                        ins = tset.dig.EvalDigest(mol)
 
 	if (0):
                 a = MSet("xave")
