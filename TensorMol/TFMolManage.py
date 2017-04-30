@@ -68,17 +68,21 @@ class TFMolManage(TFManage):
 
 
         def Eval_BP(self, mol_set, total_energy = False):
+		ins, grads = self.TData.dig.EvalDigest(mol_set.mols[0], True)
+		self.TData.dig.eshape = ins.shape[1:]
                 nmols = len(mol_set.mols)
                 natoms = mol_set.NAtoms()
                 cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+		cases_grads = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)+list([3*natoms])))
                 dummy_outputs = np.zeros((nmols))
                 meta = np.zeros((natoms, 4), dtype = np.int)
                 casep = 0
                 mols_done = 0
                 for mol in mol_set.mols:
-                        ins = self.TData.dig.EvalDigest(mol)
+                        ins, grads = self.TData.dig.EvalDigest(mol, True)
                         nat = mol.NAtoms()
                         cases[casep:casep+nat] = ins
+			cases_grads[casep:casep+nat] = grads
                         for i in range (casep, casep+nat):
                                 meta[i, 0] = mols_done
                                 meta[i, 1] = mol.atoms[i - casep]
@@ -89,6 +93,7 @@ class TFMolManage(TFManage):
                 sto = np.zeros(len(self.TData.eles),dtype = np.int32)
                 offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
                 inputs = []
+		inputs_grads = []
                 matrices = []
                 outputpointer = 0
                 for i in range (0, natoms):
@@ -96,6 +101,7 @@ class TFMolManage(TFManage):
                 currentmol = 0
                 for e in range (len(self.TData.eles)):
                         inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+			inputs_grads.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape), 3*natoms)))
                         matrices.append(np.zeros((sto[e], nmols)))
                 for i in range (0, natoms):
                         if currentmol != meta[i, 0]:
@@ -104,15 +110,21 @@ class TFMolManage(TFManage):
                         e = meta[i, 1]
                         ei = self.TData.eles.index(e)
                         inputs[ei][offsets[ei], :] = cases[i]
+			inputs_grads[ei][offsets[ei], :]  = cases_grads[i]
                         matrices[ei][offsets[ei], outputpointer] = 1.0
                         offsets[ei] += 1
-                mol_out, atom_out, gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
 
+                mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
                 pointers = [0 for ele in self.TData.eles]
                 diff = 0
+
+		#print inputs_grads[1].shape
+		#print inputs_grads[1][0].shape
+		#return  inputs[0][1], inputs_grads[0][1][:,1]
+
                 for i in range (0, nmols):
                         mol = mol_set.mols[i]
-                        print "for mol :", mol.name," energy:", mol.energy, "  gradient:", gradient
+                        print "for mol :", mol.name," energy:", mol.energy, "  gradient:", len(nn_gradient), " input gradient:", len(inputs_grads), inputs_grads[0][0].shape
                         print "total atomization energy: %.10f"%mol_out[0][i]
                         #diff += abs(mol.energy - mol_out[0][i])
                         if total_energy:
@@ -127,6 +139,12 @@ class TFMolManage(TFManage):
                                 pointers[atom_index] += 1
                 #print "mol out:", mol_out, " atom_out", atom_out
                 #return diff / nmols
+
+		total_gradient = np.zeros((natoms*3))
+		for i in range (0, len(nn_gradient)):
+			for j in range (0, nn_gradient[i].shape[0]):
+				total_gradient += np.sum(np.repeat(nn_gradient[i][j].reshape((nn_gradient[i][j].shape[0], 1)), natoms*3,  axis=1)*inputs_grads[i][j], axis=0)
+		print "total_gradient:", total_gradient
                 return
 
 

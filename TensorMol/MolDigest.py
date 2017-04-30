@@ -65,12 +65,11 @@ class MolDigester:
 		r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
 		a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
 		a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
+		print "running python deri"
 		#print "in python", mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1
 		#ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
 		ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
 		ANI1_Ins_deri = MolEmb.Make_ANI1_Sym_deri(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1)
-		print "ANI_INs:", ANI1_Ins[0][250]
-		print "ANI1_Ins_deri", ANI1_Ins_deri[0][250], " shape:", ANI1_Ins_deri.shape
 		#print "ANI1_Ins",ANI1_Ins, ANI1_Ins_deri.shape
 		return ANI1_Ins, ANI1_Ins_deri
 
@@ -835,8 +834,11 @@ class MolDigester:
 		#CM = CM[index].copy()  # for debug
 		return  CM  #for debug purpose, ignore the diagnoal element
 
-	def EvalDigest(self, mol_):
-		return self.Emb(mol_,False)
+	def EvalDigest(self, mol_, gradient_=False):
+		if not gradient_:
+			return self.Emb(mol_,False)
+		else:
+			return self.Emb(mol_, MakeOutputs=False, MakeGradients = True)
 
 	def Emb(self, mol_, MakeOutputs=True, MakeGradients=False):
 		"""
@@ -855,55 +857,55 @@ class MolDigester:
 		Grads=None
 		Outs=None
 		if (self.name == "Coulomb"):
-			CM, deri_CM = self.make_cm(mol_)
+			CM, Grads = self.make_cm(mol_)
 			Ins = self.GetUpTri(CM)
 		elif(self.name == "Coulomb_BP"):
-			Ins, deri_CM_BP =  self.make_cm_bp(mol_)
+			Ins, Grads =  self.make_cm_bp(mol_)
 			Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "Coulomb_Bond_BP"):
-                        Ins, deri_CM_Bond_BP =  self.make_cm_bond_bp(mol_)
+                        Ins, Grads =  self.make_cm_bond_bp(mol_)
                         Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "RDF_Bond_BP"):
-                        Ins, deri_CM_Bond_BP =  self.make_rdf_bond_bp(mol_)
+                        Ins, Grads =  self.make_rdf_bond_bp(mol_)
                         Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "Dist_Bond_BP"):
-                        Ins, deri_Dist_Bond_BP =  self.make_dist_bond_bp(mol_)
+                        Ins, Grads =  self.make_dist_bond_bp(mol_)
                         Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "SymFunc"):
-			Ins, SYM_deri = self.make_sym(mol_)
+			Ins, Grads = self.make_sym(mol_)
 		elif(self.name == "SymFunc_Update"):
-			Ins, SYM_deri = self.make_sym_update(mol_)
+			Ins, Grads = self.make_sym_update(mol_)
 		elif(self.name == "GauInv_BP"):
 			Ins =  MolEmb.Make_Inv(mol_.coords, mol_.coords, mol_.atoms ,  self.SensRadius,-1)
 		elif(self.name == "ConnectedBond_Bond_BP"):
-			Ins, deri_Dist_Bond_BP =  self.make_connectedbond_bond_bp(mol_)
+			Ins, Grads =  self.make_connectedbond_bond_bp(mol_)
                         Ins = Ins.reshape([Ins.shape[0],-1])
 		elif(self.name == "ConnectedBond_CM_Bond_BP"):
-			Ins, deri_BP = self.make_connectedbond_cm_bond_bp(mol_)
+			Ins, Grads = self.make_connectedbond_cm_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_CM_BP"):
-                        Ins, deri_BP = self.make_connectedbond_cm_bp(mol_)
+                        Ins, Grads = self.make_connectedbond_cm_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_Bond_BP"):
-			Ins, deri_BP = self.make_connectedbond_angle_bond_bp(mol_)
+			Ins, Grads = self.make_connectedbond_angle_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_2_Bond_BP"):
-                        Ins, deri_BP = self.make_connectedbond_angle_2_bond_bp(mol_)
+                        Ins, Grads = self.make_connectedbond_angle_2_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_2_CM_Bond_BP"):
-                        Ins, deri_BP = self.make_connectedbond_angle_2_cm_bond_bp(mol_)
+                        Ins, Grads = self.make_connectedbond_angle_2_cm_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_Dihed_Bond_BP"):
-			Ins, deri_BP = self.make_connectedbond_angle_dihed_bond_bp(mol_)
+			Ins, Grads = self.make_connectedbond_angle_dihed_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_CM_Bond_BP"):
-                        Ins, deri_BP = self.make_connectedbond_angle_cm_bond_bp(mol_)
+                        Ins, Grads = self.make_connectedbond_angle_cm_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_RDF_Bond_BP"):
-                        Ins, deri_BP = self.make_connectedbond_angle_rdf_bond_bp(mol_)
+                        Ins, Grads = self.make_connectedbond_angle_rdf_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_Dihed_CM_Bond_BP"):
-                        Ins, deri_BP = self.make_connectedbond_angle_dihed_cm_bond_bp(mol_)
+                        Ins, Grads = self.make_connectedbond_angle_dihed_cm_bond_bp(mol_)
 		elif(self.name == "ConnectedBond_Angle_Dihed_2_CM_Bond_BP"):
-                        Ins, deri_BP = self.make_connectedbond_angle_dihed_2_cm_bond_bp(mol_)
+                        Ins, Grads = self.make_connectedbond_angle_dihed_2_cm_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym"):
-			Ins, deri_BP = self.make_ANI1_sym(mol_)
+			Ins, Grads = self.make_ANI1_sym(mol_)
 		elif(self.name == "ANI1_Sym_Bond_BP"):
-                        Ins, deri_BP = self.make_ANI1_sym_bond_bp(mol_)
+                        Ins, Grads = self.make_ANI1_sym_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym_Center_Bond_BP"):
-                        Ins, deri_BP = self.make_ANI1_sym_center_bond_bp(mol_)
+                        Ins, Grads = self.make_ANI1_sym_center_bond_bp(mol_)
 		else:
 			raise Exception("Unknown MolDigester Type.", self.name)
 
@@ -929,7 +931,10 @@ class MolDigester:
 			else:
 				return Ins, Outs
 		else:
-			 return Ins
+			if (MakeGradients):
+                                return Ins, Grads
+                        else:
+                                return Ins
 
 	def TrainDigest(self, mol_):
 		"""

@@ -202,7 +202,7 @@ void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, 
                                         continue;
                                 else {
                                         fc1 = fc(dist1, radius_Rc);
-					fc1_deri  = -0.5*sin(PI*dist1/radius_Rc)/dist1; 
+					fc1_deri  = -0.5*sin(PI*dist1/radius_Rc)/dist1*PI/radius_Rc; 
                                         for (int m = 0; m < radius_Rs_dim; m++) {
 						//std::cout<<"fc1: "<<fc1<<"exp: "<<( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(-xyz[ele_index[j][k]*3+0])) << std::endl;
 						//std::cout<<"  part 2:"<<fc1_deri*(-xyz[ele_index[j][k]*3+0])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m])) << std::endl;
@@ -238,7 +238,7 @@ void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, 
                                                         continue;
                                                 else {
                                                         fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc);
-							fc1_deri = -0.5*sin(PI*dist1/angle_Rc)/dist1, fc2_deri = -0.5*sin(PI*dist2/angle_Rc)/dist2;
+							fc1_deri = -0.5*sin(PI*dist1/angle_Rc)/dist1*PI/angle_Rc, fc2_deri = -0.5*sin(PI*dist2/angle_Rc)/dist2*PI/angle_Rc;
                                                         tmp_v = (dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2);
                                                         theta = acos(roundf(tmp_v * 10000000) / 10000000); // round to 7 decimal place
 							theta_deri_ci = -(1/dist2-(dist1*dist1+dist2*dist2-dist3*dist3)/(2*dist1*dist1*dist2))/sqrt(1-pow(dist1*dist1+dist2*dist2-dist3*dist3,2)/(4*dist1*dist1*dist2*dist2));
@@ -258,8 +258,8 @@ void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, 
 									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[j][l]*3+2] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_cj*(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2])/dist2 + theta_deri_ij*(xyz[ele_index[j][l]*3+2]-xyz[ele_index[i][k]*3+2])/dist3)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/dist2/2.0*(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2])*C + A*B*fc2_deri*(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2])*fc1);
 
 									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+0] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+0] - xyz[ele_index[i][k]*3+0])/dist1 + theta_deri_cj*(xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+0] - xyz[ele_index[i][k]*3+0])/dist1 + (xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+0] - xyz[ele_index[i][k]*3+0])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])*fc1);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+1] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])/dist1 + theta_deri_cj*(xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])/dist1 + (xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])*fc1);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+2] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])/dist1 + theta_deri_cj*(xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])/dist1 + (xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])*fc1);
+									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+1] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])/dist1 + theta_deri_cj*(xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])/dist1 + (xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])*fc1);
+									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+2] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])/dist1 + theta_deri_cj*(xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])/dist1 + (xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])*fc1);
                                                                 }
                                                         }
                                                 }
@@ -1303,7 +1303,8 @@ static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args) {
                 angle_As[i] = PyFloat_AsDouble(PyList_GetItem(angle_As_py, i));
         }
         const int nele = (elements->dimensions)[0];
-        double  *xyz_data, *ANI1_Sym_deri_data;
+        double  *xyz_data;
+	double  *ANI1_Sym_deri_data;
         xyz_data = (double*) xyz->data;
         npy_intp* Nxyz = xyz->dimensions;
         const int natom = Nxyz[0];
