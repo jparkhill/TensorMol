@@ -278,5 +278,11 @@ def Dihed_4Points(x1, x2, x3, x4): # dihedral angle constructed by x1 - x2 - x3 
 	b2 = b2/np.linalg.norm(b2)
 	return math.atan2(np.dot(np.cross(c1, c2), b2), np.dot(c1, c2))	
 
+def AtomName_From_List(atom_list):
+        name = ""
+        for i in atom_list:
+                name += atoi.keys()[atoi.values().index(i)]
+        return name
+
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

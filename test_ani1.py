@@ -69,7 +69,7 @@ if (1):
 	if (0):
                 manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 manager.Continue_Training(maxsteps=1001)
-        if (1):
+        if (0):
                 a = MSet("CCdihe")
                 a.ReadXYZ("CCdihe")
                 a.Make_Graphs()
@@ -207,14 +207,16 @@ if (1):
                 manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
                 manager.Eval_Bond_BP(a, True)
 
-	if (0):
+	if (1):
                 a = MSet("1_1_Ostrech")
                 a.ReadXYZ("1_1_Ostrech")
-                a.Make_Graphs()
-                a.Save()
-                a.Load()
-                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
-                manager.Eval_Bond_BP(a)
+                g = a.Make_Graphs()
+		print "found?", g[4].Find_Frag(g[3])
+		g[4].Calculate_Bond_Type()
+		print "bond type:", g[4].bond_type
+                #a.Load()
+                #manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+                #manager.Eval_Bond_BP(a)
 	if (0):
 		a = MSet("SNB_bondstrength")
                 a.ReadXYZ("SNB_bondstrength")
@@ -258,9 +260,9 @@ if (1):
                 a = MSet("SNB_bondstrength")
                 a.ReadXYZ("SNB_bondstrength")
                 a.Make_Graphs()
-                a.Save()
-                a.Load()
-                manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ethy_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
-                manager.Eval_Bond_BP(a, True)
+               # a.Save()
+               # a.Load()
+               # manager= TFMolManage("Mol_gdb9_energy_1_6_7_8_cleaned_ethy_ConnectedBond_Angle_Bond_BP_fc_sqdiff_BP_1" , None, False)
+               # manager.Eval_Bond_BP(a, True)
 
 
