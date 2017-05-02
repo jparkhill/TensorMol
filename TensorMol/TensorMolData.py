@@ -18,7 +18,7 @@ class TensorMolData(TensorData):
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
 		"""
 			Args:
 				MSet_: A molecule set from which to cull data.
@@ -43,7 +43,7 @@ class TensorMolData(TensorData):
 	def CheckShapes(self):
 		# Establish case and label shapes.
 		if self.type=="frag":
-			tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_permute_frags[self.order][0])
+			tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_frags[self.order][0])
 		elif self.type=="mol":
 			tins,touts = self.dig.TrainDigest(self.set.mols[0])
 		else:
@@ -59,7 +59,7 @@ class TensorMolData(TensorData):
 		self.name=name_
 		total_case = 0
 		for mi in range(len(self.set.mols)):
-			total_case += len(self.set.mols[mi].mbe_permute_frags[self.order])
+			total_case += len(self.set.mols[mi].mbe_frags[self.order])
 		cases = np.zeros(tuple([total_case]+list(self.dig.eshape)))
 		labels = np.zeros(tuple([total_case]+list(self.dig.lshape)))
 		casep=0
@@ -67,7 +67,7 @@ class TensorMolData(TensorData):
 		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
 		if self.type=="frag":
 			for mi in range(len(self.set.mols)):
-				for frag in self.set.mols[mi].mbe_permute_frags[self.order]:
+				for frag in self.set.mols[mi].mbe_frags[self.order]:
 					#print  frag.dist[0], frag.frag_mbe_energy
 					ins,outs = self.dig.TrainDigest(frag)
 					cases[casep:casep+1] += ins
