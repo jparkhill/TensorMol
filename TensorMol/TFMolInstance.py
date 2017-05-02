@@ -774,8 +774,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.batch_size_output = nmol
 		self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
-		preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
-                return mol_output, atom_outputs
+		preds, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+                return mol_output, atom_outputs, gradient
 
 	def Eval_Prepare(self):
                 #eval_labels = np.zeros(Ncase)  # dummy labels
@@ -787,6 +787,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
                                 self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None, self.batch_size_output])))
                         self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
                         self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
+			self.gradient = tf.gradients(self.output, self.inp_pl)
                         self.check = tf.add_check_numerics_ops()
                         self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
