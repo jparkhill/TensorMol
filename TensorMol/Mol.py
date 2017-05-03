@@ -292,7 +292,7 @@ class Mol:
 				os.makedirs(os.path.dirname(fpath+"/"+fname+".dat"))
 			except OSError as exc:
 				if exc.errno != errno.EEXIST:
-				raise
+					raise
 		with open(fpath+"/"+fname+".dat", mode) as f:
 			f.write(self.name+ "  "+ self.smiles+"\n")
 			f.close()

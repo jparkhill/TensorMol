@@ -30,7 +30,9 @@ N_CORES = 1
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
-N_CORES = 1
+GRIDS = None
+HAS_GRIDS=True
+ELEHEATFORM = {1:-0.497912, 6:-37.844411, 7:-54.581501, 8:-75.062219, 9:-99.716370}     # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
 bond_length_thresh = {"HH": 1.5, "HC": 1.5, "HN": 1.5, "HO": 1.5, "CC": 1.7, "CN": 1.7, "CO": 1.7, "NN": 1.7, "NO": 1.7, "OO": 1.7 }
 ele_roomT_H = {1:-0.497912, 6:-37.844411, 7:-54.581501, 8:-75.062219, 9:-99.716370}     # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
 #ele_U = {1:-0.500273, 6:-37.846772, 7:-54.583861, 8:-75.064579, 9:-99.718730}   # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
@@ -278,7 +280,7 @@ def Dihed_4Points(x1, x2, x3, x4): # dihedral angle constructed by x1 - x2 - x3 
 	c2 = np.cross(b2, b3)
         c2 = c2/np.linalg.norm(c2)
 	b2 = b2/np.linalg.norm(b2)
-	return math.atan2(np.dot(np.cross(c1, c2), b2), np.dot(c1, c2))	
+	return math.atan2(np.dot(np.cross(c1, c2), b2), np.dot(c1, c2))
 
 def AtomName_From_List(atom_list):
         name = ""
