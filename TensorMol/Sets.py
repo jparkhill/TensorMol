@@ -1,9 +1,9 @@
 #
 # A molecule set is not a training set.
 #
-
 from Mol import *
 from Util import *
+from MolFrag import *
 import numpy as np
 import os,sys,re,copy,time
 import cPickle as pickle
@@ -149,7 +149,8 @@ class MSet:
 			if ( file[-4:]!='.xyz' ):
 					continue
 			self.mols.append(Mol())
-			self.mols[-1].ReadGDB9(path+file, file, self.name)
+			self.mols[-1].ReadGDB9(path+file, file)
+			self.mols[-1].properties["set_name"] = self.name
 			if has_force:
 				self.mols[-1].Force_from_xyz(path+file)
 			if has_energy:
@@ -269,7 +270,7 @@ class MSet:
 	def Make_Graphs(self):
 		graphs = map(MolGraph, self.mols)
 		return graphs
-	
+
 	def Clean_GDB9(self):
 		s = MSet(self.name+"_cleaned")
 		s.path = self.path
@@ -287,47 +288,51 @@ class MSet:
 			mol.Calculate_vdw()
 			print "atomization:", mol.atomization, " vdw:", mol.vdw
 		return
-	
+
 	def WriteSmiles(self):
 		for mol in self.mols:
 			mol.WriteSmiles()
-		return 
+		return
 
 
 class FragableMSet(MSet):
 	def __init__(self, name_ ="NaClH2O", path_="./datasets/"):
 		MSet.__init__(self, name_, path_)
-		return	
+		return
 
 	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/"):
-                """ Reads the GDB9 dataset as a pickled list of molecules"""
-                from os import listdir
-                from os.path import isfile, join
-                #onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
-                onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
-                for file in onlyfiles:
-                        if ( file[-4:]!='.xyz' ):
-                                        continue
-                        self.mols.append(FragableCluster())
-                        self.mols[-1].ReadGDB9(path+file, file, self.name)
-                return
+		""" Reads the GDB9 dataset as a pickled list of molecules"""
+		from os import listdir
+		from os.path import isfile, join
+		#onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+		onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+		for file in onlyfiles:
+			if ( file[-4:]!='.xyz' ):
+				continue
+			self.mols.append(FragableCluster())
+			self.mols[-1].ReadGDB9(path+file, file)
+			self.mols[-1].properties["set_name"] = self.name
+			self
+		return
 
-        def ReadXYZ(self,filename, xyz_type = 'mol'):
-                """ Reads XYZs concatenated into a single separated by \n\n file as a molset """
-                f = open(self.path+filename+".xyz","r")
-                txts = f.readlines()
-                for line in range(len(txts)):
-                        if (txts[line].count('Comment:')>0):
-                                line0=line-1
-                                nlines=int(txts[line0])
-                                if xyz_type == 'mol':
-                                        self.mols.append(FragableCluster())
-                                elif xyz_type == 'frag_of_mol':
-                                        self.mols.append(Frag_of_Mol())
-                                else:
-                                        raise Exception("Unknown Type!")
-                                self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]), set_name=self.name)
-                return
+	def ReadXYZ(self,filename, xyz_type = 'mol'):
+		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """
+		f = open(self.path+filename+".xyz","r")
+		txts = f.readlines()
+		for line in range(len(txts)):
+			if (txts[line].count('Comment:')>0):
+				line0=line-1
+				nlines=int(txts[line0])
+				if xyz_type == 'mol':
+					self.mols.append(FragableCluster())
+				elif xyz_type == 'frag_of_mol':
+					self.mols.append(Frag_of_Mol())
+				else:
+					raise Exception("Unknown Type!")
+				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+				self.mols[-1].name = str(line)
+				self.mols[-1].properties["set_name"] = self.name
+		return
 
 	def MBE(self,  atom_group=1, cutoff=10, center_atom=0):
 		for mol in self.mols:
@@ -352,14 +357,16 @@ class FragableMSet(MSet):
 	def Calculate_All_Frag_Energy(self, method="pyscf"):
 		for mol in self.mols:
 			mol.Calculate_All_Frag_Energy(method)
-               # 	mol.Set_MBE_Energy()
+			# 	mol.Set_MBE_Energy()
 		return
 
 	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
-                for mol in self.mols:
-                        mol.Calculate_All_Frag_Energy_General(method)
-               #        mol.Set_MBE_Energy()
-                return
+		for mol in self.mols:
+			#print mol.properties
+			#print "Mol set_name", mol.properties["set_name"]
+			mol.Calculate_All_Frag_Energy_General(method)
+			#        mol.Set_MBE_Energy()
+		return
 
 	def Get_All_Qchem_Frag_Energy(self):
 		for mol in self.mols:
@@ -367,9 +374,9 @@ class FragableMSet(MSet):
 		return
 
 	def Get_All_Qchem_Frag_Energy_General(self):
-                for mol in self.mols:
-                        mol.Get_All_Qchem_Frag_Energy_General()
-                return
+		for mol in self.mols:
+			mol.Get_All_Qchem_Frag_Energy_General()
+		return
 
 	def Generate_All_Pairs(self, pair_list=[]):
 		for mol in self.mols:
@@ -422,4 +429,3 @@ class GraphSet:
                 print self.NAtoms(), " Atoms total"
                 print self.AtomTypes(), " Types "
                 return
-	

@@ -36,6 +36,8 @@ class TMParams(dict):
 		self["dig_SamplingType"]="Smooth"
 		self["BlurRadius"] = 0.05
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
+		# MBE PARAMS
+		self["MBE_ORDER"] = 4
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = "MeanStd"

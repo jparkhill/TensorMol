@@ -1,7 +1,6 @@
 """
 Kun: please move your work to this separate file to keep stuff organized.
 """
-
 from Util import *
 import numpy as np
 import random, math
@@ -11,7 +10,7 @@ class FragableCluster(Mol):
 	""" Provides a cluster which can be fragmented into molecules"""
 	def __init__(self, atoms_ =  None, coords_ = None):
 		Mol.__init__(self,atoms_,coords_)
-		self.mbe_order = MBE_ORDER
+		self.mbe_order = PARAMS["MBE_ORDER"]
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
 		self.type_of_frags_dict = {}
@@ -35,7 +34,6 @@ class FragableCluster(Mol):
 		self.nn_energy=None
 		return
 
-
 	def Sort_frag_list(self):
 		a=[]
 		for dic in self.frag_list:
@@ -54,9 +52,8 @@ class FragableCluster(Mol):
 			if frag not in tmp:
 				tmp.append(frag)
 		mono = tmp
-		(mono.sort(key=lambda x:len(x)))
+		mono.sort(key=lambda x:len(x))
 		mono.reverse()
-
 		dic_mono = {}
 		dic_mono_index = {}
 		masked = []
@@ -90,22 +87,18 @@ class FragableCluster(Mol):
 	def PairUp(self, dic_mono, dic_mono_index, pair, happy_atoms):  # stable marriage pairing  Ref: https://en.wikipedia.org/wiki/Stable_marriage_problem
 		mono_1 = LtoS([atoi[atom] for atom in  String_To_Atoms(pair["mono"][0])])
 		mono_2 = LtoS([atoi[atom] for atom in  String_To_Atoms(pair["mono"][1])])
-
 		center_1 = pair["center"][0]
 		center_2 = pair["center"][1]
-
 		switched = False
 		if len(dic_mono[mono_1]) > len(dic_mono[mono_2]):
 			mono_1, mono_2 = mono_2, mono_1
 			center_1, center_2  = center_2, center_1
 			switched = True
-
 		mono_1_pair = [-1]*len(dic_mono[mono_1])
 		dist_matrix = np.zeros((len(dic_mono[mono_1]), len(dic_mono[mono_2])))
 		for i in range (0, len(dic_mono[mono_1])):
 			for j in range (0, len(dic_mono[mono_2])):
 				dist_matrix[i][j] = np.linalg.norm(dic_mono[mono_1][i][center_1] - dic_mono[mono_2][j][center_2])
-
 		mono_1_prefer = []
 		mono_2_prefer = []
 		for i in range (0, len(dic_mono[mono_1])):
@@ -114,13 +107,9 @@ class FragableCluster(Mol):
 		for i in range (0, len(dic_mono[mono_2])):
 			s = list(dist_matrix[:,i])
 			mono_2_prefer.append(sorted(range(len(s)), key=lambda k: s[k]))
-
-
 		mono_1_info = [-1]*len(dic_mono[mono_1]) # -1 means they are not paired, and the number means the Nth most prefered are chosen
 		mono_2_info = [-1]*len(dic_mono[mono_2])
-
 		mono_1_history = [0]*len(dic_mono[mono_1]) # history of the man's proposed
-
 		# first round  mono_1 is the man, mono_2 is woman,  num of man > num of woman
 		for i in range (0, len(dic_mono[mono_1])):
 			target = mono_1_prefer[i][0]
@@ -128,7 +117,6 @@ class FragableCluster(Mol):
 				mono_1_info[i] = 0
 				mono_2_info[target] = 0
 			mono_1_history[i] += 1
-
 		while (-1 in mono_1_info):
 			for i in range (0, len(dic_mono[mono_1])):
 				if mono_1_info[i] == -1:
@@ -148,12 +136,9 @@ class FragableCluster(Mol):
 						continue
 				else:
 					continue
-
 		final_pairs = []
 		for i in range (0, len(dic_mono[mono_1])):
 			final_pairs.append([i, mono_1_prefer[i][mono_1_info[i]]])
-
-
 		for i in range (0, len(final_pairs)):
 			if switched == False:
 				#print dic_mono_index[mono_1][final_pairs[i][0]], dic_mono_index[mono_2][final_pairs[i][1]]
@@ -161,11 +146,9 @@ class FragableCluster(Mol):
 				happy_atoms += dic_mono_index[mono_2][final_pairs[i][1]]
 			else:
 				happy_atoms += dic_mono_index[mono_2][final_pairs[i][1]]
-                                happy_atoms += dic_mono_index[mono_1][final_pairs[i][0]]
-
+				happy_atoms += dic_mono_index[mono_1][final_pairs[i][0]]
 		indices_1 = [item[0] for item in final_pairs]
 		indices_2 = [item[1] for item in final_pairs]
-
 		dic_mono_index[mono_1] = [i for j, i in enumerate(dic_mono_index[mono_1]) if j not in indices_1]
 		dic_mono_index[mono_2] = [i for j, i in enumerate(dic_mono_index[mono_2]) if j not in indices_2]
 		dic_mono[mono_1] = [i for j, i in enumerate(dic_mono[mono_1]) if j not in indices_1]
@@ -179,6 +162,7 @@ class FragableCluster(Mol):
 		if center_atom == []:
 			center_atom = [0]*len(frag_list)
 			for i in range (1, self.mbe_order+1):
+				print "Generating order", i
 				self.Generate_MBE_term_General(i, cutoff, center_atom)
 			return
 
@@ -190,6 +174,7 @@ class FragableCluster(Mol):
 			self.mbe_frags[order] = []
 			masked=[]
 			frag_index = 0
+			# Generating MBE frags with stable marriage
 			for i, dic in enumerate(self.frag_list):
 				self.type_of_frags_dict[i] = []
 				frag_atoms = String_To_Atoms(dic["atom"])
@@ -207,7 +192,6 @@ class FragableCluster(Mol):
 						 	self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
 							self.type_of_frags.append(i)
 							self.type_of_frags_dict[i].append(frag_index)
-
 							tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
 							tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
 							mbe_terms = [frag_index]
@@ -218,13 +202,13 @@ class FragableCluster(Mol):
 							frag_type_index = [i]
 							tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms, mbe_dist, atom_group, frag_type, frag_type_index, FragOrder_=order)
 							self.mbe_frags[order].append(tmp_mol)
-
 							j += num_frag_atoms
 							frag_index += 1
 							#print self.atoms_of_frags, tmp_list, self.type_of_frags
 							#print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
 						else:
 							j += 1
+			print "No MBE frags? ",mbe_frags, len(mbe_frags)
 		else:
 			num_of_each_frag = {}
 			frag_list_length = len(self.frag_list)
@@ -310,6 +294,7 @@ class FragableCluster(Mol):
 					pointer += atom_group[j]
 				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, frag_type_index, FragOrder_=order)
 				self.mbe_frags[order].append(tmp_mol)
+			# completed self.mbe_frags
 			del sub_combinations
 		return
 
@@ -324,14 +309,14 @@ class FragableCluster(Mol):
 		if method == "qchem":
 			order_path = self.qchem_data_path+"/"+str(order)
 			if not os.path.isdir(order_path):
-			os.mkdir(order_path)
-			os.chdir(order_path)
+				os.mkdir(order_path)
+				os.chdir(order_path)
 			time0 =time.time()
 			for frag in self.mbe_frags[order]:  # just for generating the training set..
 				fragnum += 1
 				if fragnum%100 == 0:
-				print "working on frag:", fragnum
-				print  "total time:", time.time() - time0
+					print "working on frag:", fragnum
+					print  "total time:", time.time() - time0
 				time0 = time.time()
 				frag.Write_Qchem_Frag_MBE_Input_All_General(fragnum)
 			os.chdir("../../../../")
@@ -364,7 +349,6 @@ class FragableCluster(Mol):
 		self.mbe_frags_energy[order] = mbe_frags_energy
 		return
 
-
 	def Get_All_Qchem_Frag_Energy_General(self):
 		for i in range (1, self.mbe_order+1):
 			self.Get_Qchem_Frag_Energy(i)
@@ -374,9 +358,9 @@ class FragableCluster(Mol):
 		if method == "qchem":
 			if not os.path.isdir("./qchem"):
 				os.mkdir("./qchem")
-			if not os.path.isdir("./qchem"+"/"+self.set_name):
-				os.mkdir("./qchem"+"/"+self.set_name)
-			self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+			if not os.path.isdir("./qchem"+"/"+self.properties["set_name"]):
+				os.mkdir("./qchem"+"/"+self.properties["set_name"])
+			self.qchem_data_path="./qchem"+"/"+self.properties["set_name"]+"/"+self.name
 			if not os.path.isdir(self.qchem_data_path):
 				os.mkdir(self.qchem_data_path)
 		for i in range (1, self.mbe_order+1):
@@ -389,9 +373,9 @@ class FragableCluster(Mol):
 	def Write_Qchem_Submit_Script(self):     # this is for submitting the jobs on notre dame crc
 		if not os.path.isdir("./qchem"):
 			os.mkdir("./qchem")
-			if not os.path.isdir("./qchem"+"/"+self.set_name):
-				os.mkdir("./qchem"+"/"+self.set_name)
-				self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+			if not os.path.isdir("./qchem"+"/"+self.properties["set_name"]):
+				os.mkdir("./qchem"+"/"+self.properties["set_name"])
+				self.qchem_data_path="./qchem"+"/"+self.properties["set_name"]+"/"+self.name
 		if not os.path.isdir(self.qchem_data_path):
 			os.mkdir(self.qchem_data_path)
 		os.chdir(self.qchem_data_path)

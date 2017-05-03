@@ -147,55 +147,11 @@ class Mol:
 			if (random.uniform(0, 1)<movechance):
 				self.atoms[i] = random.random_integers(1,PARAMS["MAX_ATOMIC_NUMBER"])
 
-	def Read_Gaussian_Output(self, path, filename, set_name):
-		try:
-			f = open(path, "r+")
-			lines = f.readlines()
-			print path
-			for i in range (0, len(lines)):
-				if "Multiplicity" in lines[i]:
-					atoms = []
-					coords = []
-					for j in range (i+1, len(lines)):
-						if lines[j].split():
-							atoms.append( AtomicNumber(lines[j].split()[0]))
-							coords.append([float(lines[j].split()[1]), float(lines[j].split()[2]), float(lines[j].split()[3])])
-						else:
-							self.atoms = np.asarray(atoms)
-							self.coords = np.asarray(coords)
-							break
-				if "SCF Done:"  in lines[i]:
-					self.properties["energy"]= float(lines[i].split()[4])
-				if "Total nuclear spin-spin coupling J (Hz):" in lines[i]:
-					self.J_coupling = np.zeros((self.NAtoms(), self.NAtoms()))
-					number_per_line  = len(lines[i+1].split())
-					block_num = 0
-					for j in range (i+1, len(lines)):
-						if "D" in lines[j] and "End of" not in lines[j]:
-							for k in range (1, len(lines[j].split())):
-								J_value = list(lines[j].split()[k])
-								J_value[J_value.index("D")]="E"
-                                                        	J_value="".join(J_value)
-								self.J_coupling[int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
-						elif "End of" in lines[j]:
-							break
-						else:
-							block_num += 1
-			for i in range (0, self.NAtoms()):
-				for j in range (i+1, self.NAtoms()):
-					self.J_coupling[i][j] = self.J_coupling[j][i]
-
-		except Exception as Ex:
-			print "Read Failed.", Ex
-			raise Ex
-		return
-
-	def ReadGDB9(self,path,filename, set_name):
+	def ReadGDB9(self,path,filename):
 		try:
 			f=open(path,"r")
 			lines=f.readlines()
 			natoms=int(lines[0])
-			self.set_name = set_name
 			self.name = filename[0:-4]
 			self.atoms.resize((natoms))
 			self.coords.resize((natoms,3))
@@ -738,7 +694,7 @@ class Mol:
 		return names
 
 	def Set_Qchem_Data_Path(self):
-		self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+		self.qchem_data_path="./qchem"+"/"+self.properties["set_name"]+"/"+self.name
 		return
 
 	def Set_EQ_force(self):
@@ -786,39 +742,8 @@ class Frag_of_Mol(Mol):
 		self.undefined_bonds = None  # capture the undefined bonds of each atom
 
 	def FromXYZString(self,string, set_name = None):
-		self.set_name = set_name
-		lines = string.split("\n")
-		natoms=int(lines[0])
-		self.atoms.resize((natoms))
-		self.coords.resize((natoms,3))
-		for i in range(natoms):
-		    line = lines[i+2].split()
-		    if len(line)==0:
-		            return
-		    self.atoms[i]=AtomicNumber(line[0])
-		    try:
-		            self.coords[i,0]=float(line[1])
-		    except:
-		            self.coords[i,0]=scitodeci(line[1])
-		    try:
-		            self.coords[i,1]=float(line[2])
-		    except:
-		            self.coords[i,1]=scitodeci(line[2])
-		    try:
-		            self.coords[i,2]=float(line[3])
-		    except:
-		            self.coords[i,2]=scitodeci(line[3])
-		import ast
-		try:
-			self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
-			if "type" in self.undefined_bonds.keys():
-				self.undefined_bond_type = self.undefined_bonds["type"]
-			else:
-				self.undefined_bond_type = "any"
-		except:
-			self.name = lines[1] #debug
-			self.undefined_bonds = {}
-			self.undefined_bond_type = "any"
+		Mol.FromXYZString(self,string)
+		self.properties["set_name"] = set_name
 		return
 
 	def Make_AtomNodes(self):

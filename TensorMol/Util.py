@@ -12,7 +12,7 @@ from scipy.weave import inline
 #from collections import defaultdict
 #from collections import Counter
 from TensorMol.TMParams import *
-from TensorMol.PhysicalData import * 
+from TensorMol.PhysicalData import *
 
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 #
@@ -25,7 +25,6 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 PARAMS = TMParams()
 LOGGER = TMLogger(PARAMS["results_dir"])
 MAX_ATOMIC_NUMBER = 10
-MBE_ORDER = 2
 # Derived Quantities and useful things.
 N_CORES = 1
 HAS_PYSCF = False

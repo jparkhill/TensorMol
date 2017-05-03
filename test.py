@@ -5,7 +5,7 @@ Many of these tests take a pretty significant amount of time and memory to compl
 from TensorMol import *
 
 # John's tests
-def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
+def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	"""
 	General Behler Parinello using ab-initio energies.
 	Args:
@@ -14,19 +14,43 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 	"""
 	print "Testing General Behler-Parrinello using ab-initio energies...."
 	PARAMS["NormalizeOutputs"] = True
-	if (BuildTrain_):
-		a=MSet(set_)
-		a.ReadXYZ(set_)
-		TreatedAtoms = a.AtomTypes()
-		print "TreatedAtoms ", TreatedAtoms
-		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
-		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
-		tset.BuildTrain(set_)
-	tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
+	#	if (BuildTrain_): # Need to add missing parts of set to get this separated...
+	a=MSet(set_)
+	a.ReadXYZ(set_)
+	TreatedAtoms = a.AtomTypes()
+	print "TreatedAtoms ", TreatedAtoms
+	d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
+	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+	tset.BuildTrain(set_)
+	#tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 	manager.Train(maxstep=500)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 	# We should try to get optimizations working too...
 	return
+
+def TestANI1():
+	a=MSet("gdb9")
+	a.ReadXYZ("gdb9")
+	TreatedAtoms = a.AtomTypes()
+	print "TreatedAtoms ", TreatedAtoms
+	TreatedBonds = list(a.BondTypes())
+	print "TreatedBonds ", TreatedBonds
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
+	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+	tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned")
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+	manager.Train(maxstep=501)
+
+def TestGeneralMBEandMolGraph():
+	a=FragableMSet("NaClH2O")
+	a.ReadXYZ("NaClH2O")
+	a.Generate_All_Pairs(pair_list=[{"pair":"NaCl", "mono":["Na","Cl"], "center":[0,0]}])
+	a.Generate_All_MBE_term_General([{"atom":"OHH", "charge":0}, {"atom":"NaCl", "charge":0}], cutoff=12, center_atom=[0, -1]) # Generate all the many-body terms with  certain radius cutoff.  # -1 means center of mass
+	a.Save() # Save the training set, by default it is saved in ./datasets.
+	a=FragableMSet("NaClH2O")
+	a.Load() # Load generated training set (.pdb file).
+	a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
+	a.Save()
 
 def TestAlign():
 	"""
@@ -274,13 +298,15 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
+#TestANI1()
+TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()
 #TestHerrNet1()
 #TestOCSDB()
 #TestNeb()
-TestMD()
+#TestMD()
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.

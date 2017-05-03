@@ -4,6 +4,7 @@
 """
 from TensorMol.PhysicalData import *
 from TensorMol.Util import *
+from TensorMol.MolFrag import *
 from TensorMol.Opt import *
 from TensorMol.Neb import *
 from TensorMol.SimpleMD import *

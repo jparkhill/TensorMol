@@ -10,9 +10,9 @@ from Transformer import *
 
 class TensorData():
 	"""
-		A Training Set is a Molecule set, with a sampler and an embedding
-		The sampler chooses points in the molecular volume.
-		The embedding turns that into inputs and labels for a network to regress.
+	A Training Set is a Molecule set, with a sampler and an embedding
+	The sampler chooses points in the molecular volume.
+	The embedding turns that into inputs and labels for a network to regress.
 	"""
 	def __init__(self, MSet_=None, Dig_=None, Name_=None, type_="atom"):
 		"""
@@ -27,7 +27,7 @@ class TensorData():
 		self.suffix = ".pdb"
 		self.set = MSet_
 		if (self.set != None):
-			self.set_name = MSet_.name # Check to make sure the name can recall the set.
+			self.properties["set_name"] = MSet_.name # Check to make sure the name can recall the set.
 		self.dig = Dig_
 		self.type = type_
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
@@ -77,7 +77,7 @@ class TensorData():
 		"""
 		Recalls the MSet to build training data etc.
 		"""
-		self.set = MSet(self.set_name)
+		self.set = MSet(self.properties["set_name"])
 		self.set.Load()
 		return
 

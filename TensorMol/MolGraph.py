@@ -230,7 +230,6 @@ class MolGraph:
 		        names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
 		return names
 
-
 class Frag_of_MolGraph(MolGraph):
 	def __init__(self, mol_, undefined_bonds_ = None, undefined_bond_type_ = None, bond_length_thresh_ =  None):
 		Mol.__init__(self, mol_, bond_length_thresh_)
@@ -238,7 +237,7 @@ class Frag_of_MolGraph(MolGraph):
 		self.undefined_bonds = undefined_bonds_  # capture the undefined bonds of each atom
 
 	def FromXYZString(self,string, set_name = None):
-		self.set_name = set_name
+		self.properties["set_name"] = set_name
 		lines = string.split("\n")
 		natoms=int(lines[0])
 		self.atoms.resize((natoms))
