@@ -363,13 +363,6 @@ class Mol:
 				grids[index] = int(value[i]*250)
 		return grids
 
-	def MakeStoichDict(self):
-		dict = {}
-		for i in self.AtomTypes():
-			dict[i] = self.NumOfAtomsE(i)
-		self.stoich = dict
-		return
-
 	def SortAtoms(self):
 		""" First sorts by element, then sorts by distance to the center of the molecule
 			This improves alignment. """
@@ -777,11 +770,11 @@ class Mol:
 			self.energy = en
 			return en
 		except Exception as Ex:
-				print "PYSCF Calculation error... :",Ex
-				print "Mol.atom:", mol.atom
-				print "Pyscf string:", pyscfatomstring
-				return 0.0
-				#raise Ex
+			print "PYSCF Calculation error... :",Ex
+			print "Mol.atom:", mol.atom
+			print "Pyscf string:", pyscfatomstring
+			return 0.0
+			#raise Ex
 		return
 
 
@@ -792,29 +785,29 @@ class Frag_of_Mol(Mol):
 		self.undefined_bond_type =  None # whether the dangling bond can be connected  to H or not
 		self.undefined_bonds = None  # capture the undefined bonds of each atom
 
-    def FromXYZString(self,string, set_name = None):
+	def FromXYZString(self,string, set_name = None):
 		self.set_name = set_name
-        lines = string.split("\n")
-        natoms=int(lines[0])
-        self.atoms.resize((natoms))
-        self.coords.resize((natoms,3))
-        for i in range(natoms):
-            line = lines[i+2].split()
-            if len(line)==0:
-                    return
-            self.atoms[i]=AtomicNumber(line[0])
-            try:
-                    self.coords[i,0]=float(line[1])
-            except:
-                    self.coords[i,0]=scitodeci(line[1])
-            try:
-                    self.coords[i,1]=float(line[2])
-            except:
-                    self.coords[i,1]=scitodeci(line[2])
-            try:
-                    self.coords[i,2]=float(line[3])
-            except:
-                    self.coords[i,2]=scitodeci(line[3])
+		lines = string.split("\n")
+		natoms=int(lines[0])
+		self.atoms.resize((natoms))
+		self.coords.resize((natoms,3))
+		for i in range(natoms):
+		    line = lines[i+2].split()
+		    if len(line)==0:
+		            return
+		    self.atoms[i]=AtomicNumber(line[0])
+		    try:
+		            self.coords[i,0]=float(line[1])
+		    except:
+		            self.coords[i,0]=scitodeci(line[1])
+		    try:
+		            self.coords[i,1]=float(line[2])
+		    except:
+		            self.coords[i,1]=scitodeci(line[2])
+		    try:
+		            self.coords[i,2]=float(line[3])
+		    except:
+		            self.coords[i,2]=scitodeci(line[3])
 		import ast
 		try:
 			self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
@@ -826,7 +819,7 @@ class Frag_of_Mol(Mol):
 			self.name = lines[1] #debug
 			self.undefined_bonds = {}
 			self.undefined_bond_type = "any"
-        return
+		return
 
 	def Make_AtomNodes(self):
 		atom_nodes = []

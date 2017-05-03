@@ -1,6 +1,8 @@
 """
- We should get tensormol modularized, if anyone wants to get that done quickly that'd be Grayyyytttt...
+    import TensorMol as tm
+    works as desired, don't mess that up.
 """
+from TensorMol.PhysicalData import *
 from TensorMol.Util import *
 from TensorMol.Opt import *
 from TensorMol.Neb import *

@@ -373,7 +373,6 @@ class TensorMolData_BP(TensorMolData):
 		LOGGER.debug("last train atom: %i",LastTrainCase)
 		LOGGER.debug("Num Test atoms: %i",len(tm)-LastTrainCase)
 		LOGGER.debug("Num atoms: %i",len(tm))
-
 		self.NTrain = LastTrainCase
 		self.NTest = len(tm)-LastTrainCase
 		self.scratch_inputs = ti[:LastTrainCase]
@@ -389,11 +388,9 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_test_meta[:,0] -= self.scratch_test_meta[0,0]
 		self.scratch_test_meta[:,3] -= self.scratch_test_meta[0,2]
 		self.scratch_test_meta[:,2] -= self.scratch_test_meta[0,2]
-
 		self.ScratchState = 1
 		self.ScratchPointer = 0
 		self.test_ScratchPointer=0
-
 		# Compute mean Stoichiometry and number of atoms.
 		self.eles = np.unique(tm[:,1]).tolist()
 		atomcount = np.zeros(len(self.eles))
@@ -540,7 +537,7 @@ class TensorMolData_BP(TensorMolData):
 			if not self.test_mols_done and self.test_begin_mol+currentmol not in self.test_mols:
 					self.test_mols.append(self.test_begin_mol+currentmol)
 #					if i < self.test_ScratchPointer+ignore_first_mol + 50:
-#						print "i ",i, self.set.mols[self.test_mols[-1]].bonds				
+#						print "i ",i, self.set.mols[self.test_mols[-1]].bonds
 			# metadata contains: molecule index, atom type, mol start, mol stop
 			e = (self.scratch_test_meta[i,1])
 			ei = self.eles.index(e)
@@ -558,7 +555,7 @@ class TensorMolData_BP(TensorMolData):
 		#print "outputs",outputs
 		self.test_ScratchPointer += ncases
 #		print "length of test_mols:", len(self.test_mols)
-#		print "outputpointer:", outputpointer 
+#		print "outputpointer:", outputpointer
 		return [inputs, matrices, outputs]
 
 
@@ -694,4 +691,3 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
                 pickle.dump(self.test_atom_index, f)
                 f.close()
                 return
-

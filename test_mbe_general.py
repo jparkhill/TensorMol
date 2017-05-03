@@ -6,24 +6,24 @@ from TensorMol.MBE_Opt import *
 # steps to train a NN-MBE model
 if (1):
 	#Load .xyz files.
-	if (0):
-		#a=MSet("NaCl_H2O_NaH2Ogroup") # Define our set.
-		a=MSet("NaCl_H2O_NaClgroup") # Define our set.
-		a.ReadGDB9Unpacked("./NaCl_H2O_NaClgroup/") # Load .xyz file into set and set maxinum many-body expansion order.
-		a.Generate_All_Pairs(pair_list=[{"pair":"NaCl", "mono":["Na","Cl"], "center":[0,0]}])
-		#a.Generate_All_MBE_term_General([{"atom":"OHHNa", "charge":1}, {"atom":"OHHCl", "charge":-1},{"atom":"OHH", "charge":0}], cutoff=10, center_atom=[0,0,0]) # Generate all the many-body terms with  certain radius cutoff.
-		a.Generate_All_MBE_term_General([{"atom":"OHH", "charge":0}, {"atom":"NaCl", "charge":0}], cutoff=12, center_atom=[0, -1]) # Generate all the many-body terms with  certain radius cutoff.  # -1 means center of mass
 
-		a.Save() # Save the training set, by default it is saved in ./datasets.
-
-	#Calculate the MP2 many-body energies.
 	if (1):
-		#a=MSet("NaCl_H2O_NaH2Ogroup") 
-		a=MSet("NaCl_H2O_NaClgroup")  
-		a.Load() # Load generated training set (.pdb file).
-		a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
-		#a.Get_All_Qchem_Frag_Energy_General()
-		a.Save() 
+		a=FragableMSet("NaClH2O")
+		a.ReadXYZ("NaClH2O")
+		a.Generate_All_Pairs(pair_list=[{"pair":"NaCl", "mono":["Na","Cl"], "center":[0,0]}])
+                #a.Generate_All_MBE_term_General([{"atom":"OHHNa", "charge":1}, {"atom":"OHHCl", "charge":-1},{"atom":"OHH", "charge":0}], cutoff=10, center_atom=[0,0,0]) # Generate all the many-body terms with  certain radius cutoff.
+                a.Generate_All_MBE_term_General([{"atom":"OHH", "charge":0}, {"atom":"NaCl", "charge":0}], cutoff=12, center_atom=[0, -1]) # Generate all the many-body terms with  certain radius cutoff.  # -1 means center of mass
+                a.Save() # Save the training set, by default it is saved in ./datasets.
+
+	if (1):
+                #a=MSet("NaCl_H2O_NaH2Ogroup") 
+                a=FragableMSet("NaClH2O")
+                a.Load() # Load generated training set (.pdb file).
+                a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
+                #a.Get_All_Qchem_Frag_Energy_General()
+                a.Save()
+
+
 
 	# Do the permutation if it is necessary.
 	if (0):

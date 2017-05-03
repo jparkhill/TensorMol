@@ -9,15 +9,11 @@ if (HAS_EMB):
 
 class Digester:
 	"""
-	 An Embedding gives some chemical description of a molecular
-	 Environment around a point. This one is for networks that will embed properties of atoms.
-	 Molecule embeddings and Behler-Parrinello are in DigestMol.
+	An Embedding gives some chemical description of a molecular
+	Environment around a point. This one is for networks that will embed properties of atoms.
+	please refer to /C_API/setup.py
 
-	 A Digester samples a molecule using an embedding.
-	 Because the embedding is evaluated so much, it's written in C.
-	 please refer to /C_API/setup.py
-	 The Default is Coulomb, but this is also the gen. interface
-	 The embedding does not provide labels.
+	note: Molecule embeddings and Behler-Parrinello are in DigestMol.
 	"""
 	def __init__(self, eles_, name_="GauSH", OType_="Disp"):
 		"""
@@ -50,14 +46,8 @@ class Digester:
 		self.ngrid = PARAMS["dig_ngrid"] #this is a shitty parameter if we go with anything other than RDF and should be replaced.
 		self.BlurRadius = PARAMS["BlurRadius"] # Stdev of gaussian used as prob of atom
 		self.SensRadius=6.0 # Distance which is used for input.
-
-		# These are used to normalize data.
-		self.MeanNorm=0.0
-		self.StdNorm=1.0
-
 		self.embtime=0.0
 		self.outtime=0.0
-
 		self.Print()
 		return
 
