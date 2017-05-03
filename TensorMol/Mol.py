@@ -67,11 +67,6 @@ class Mol:
 		self.properties["vdw"] += -s6*c*((C6_coff[atom1]*C6_coff[atom2])**0.5)/(self.DistMatrix[i][j])**6 * (1.0/(1.0+6.0*(self.DistMatrix[i][j]/(atomic_vdw_radius[atom1]+atomic_vdw_radius[atom2]))**-12))
 		return
 
-	def AtomsWithin(self,rad, pt):
-		# Returns indices of atoms within radius of point.
-		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
-		return [i for i in range(self.NAtoms()) if dists[i]<rad]
-
 	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
 		"""
 		Rotate atomic coordinates and forces if present.
@@ -122,18 +117,10 @@ class Mol:
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(ltransf,crds[i]-center) + center
 
-	def AtomsWithin(self, SensRadius, coord):
-		''' Returns atoms within the sensory radius in sorted order. '''
-		satoms=np.arange(0,self.NAtoms())
-		diffs= self.coords-coord
-		dists= np.power(np.sum(diffs*diffs,axis=1),0.5)
-		idx=np.argsort(dists)
-		mxidx = len(idx)
-		for i in range(self.NAtoms()):
-			if (dists[idx[i]] >= SensRadius):
-				mxidx=i
-				break
-		return idx[:mxidx]
+	def AtomsWithin(self,rad, pt):
+		# Returns indices of atoms within radius of point.
+		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
+		return [i for i in range(self.NAtoms()) if dists[i]<rad]
 
 	def Distort(self,disp=0.38,movechance=.20):
 		''' Randomly distort my coords, but save eq. coords first '''
@@ -481,6 +468,7 @@ class Mol:
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
+#  all this shit should be moved into a "class Calculator"
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):
@@ -591,21 +579,6 @@ class Mol:
 				u = u/np.linalg.norm(u)
 				forces += (0.5*(dj-self.DistMatrix[at_,j])*u)*ErfSoftCut(cutdist-1, 0.5,dj)
 				print j,forces
-		return forces
-
-	def SoftCutGoForceOneAtomGrids(self, samples, at_, cutdist=6):
-		if (self.DistMatrix==None):
-				print "Build DistMatrix"
-				raise Exception("dmat")
-		forces = np.zeros(samples.shape[0],3)
-		for i in range (0, forces.shape[0]):
-			for j in range (len(self.coords)):
-				if j!=at_:
-					u = self.coords[j]-samples[i]
-					dj = np.linalg.norm(u)
-					if (dj != 0.0):
-						u = u/np.linalg.norm(u)
-						forces[i] += (0.5*(dj-self.DistMatrix[at_,j])*u)*ErfSoftCut(cutdist-1, 0.5,dj)
 		return forces
 
 	def GoForce_Scan(self, maxstep, ngrid):
@@ -815,32 +788,33 @@ class Mol:
 class Frag_of_Mol(Mol):
 	def __init__(self, atoms_=None, coords_=None):
 		Mol.__init__(self, atoms_, coords_)
+		self.atom_nodes = None
 		self.undefined_bond_type =  None # whether the dangling bond can be connected  to H or not
 		self.undefined_bonds = None  # capture the undefined bonds of each atom
 
-        def FromXYZString(self,string, set_name = None):
+    def FromXYZString(self,string, set_name = None):
 		self.set_name = set_name
-                lines = string.split("\n")
-                natoms=int(lines[0])
-                self.atoms.resize((natoms))
-                self.coords.resize((natoms,3))
-                for i in range(natoms):
-                        line = lines[i+2].split()
-                        if len(line)==0:
-                                return
-                        self.atoms[i]=AtomicNumber(line[0])
-                        try:
-                                self.coords[i,0]=float(line[1])
-                        except:
-                                self.coords[i,0]=scitodeci(line[1])
-                        try:
-                                self.coords[i,1]=float(line[2])
-                        except:
-                                self.coords[i,1]=scitodeci(line[2])
-                        try:
-                                self.coords[i,2]=float(line[3])
-                        except:
-                                self.coords[i,2]=scitodeci(line[3])
+        lines = string.split("\n")
+        natoms=int(lines[0])
+        self.atoms.resize((natoms))
+        self.coords.resize((natoms,3))
+        for i in range(natoms):
+            line = lines[i+2].split()
+            if len(line)==0:
+                    return
+            self.atoms[i]=AtomicNumber(line[0])
+            try:
+                    self.coords[i,0]=float(line[1])
+            except:
+                    self.coords[i,0]=scitodeci(line[1])
+            try:
+                    self.coords[i,1]=float(line[2])
+            except:
+                    self.coords[i,1]=scitodeci(line[2])
+            try:
+                    self.coords[i,2]=float(line[3])
+            except:
+                    self.coords[i,2]=scitodeci(line[3])
 		import ast
 		try:
 			self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
@@ -852,15 +826,14 @@ class Frag_of_Mol(Mol):
 			self.name = lines[1] #debug
 			self.undefined_bonds = {}
 			self.undefined_bond_type = "any"
-                return
-
+        return
 
 	def Make_AtomNodes(self):
-                atom_nodes = []
-                for i in range (0, self.NAtoms()):
+		atom_nodes = []
+		for i in range (0, self.NAtoms()):
 			if i in self.undefined_bonds.keys():
-                        	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
+				atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
 			else:
 				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
-                self.atom_nodes = atom_nodes
+		self.atom_nodes = atom_nodes
 		return
