@@ -161,10 +161,10 @@ class FragableCluster(Mol):
 		#self.Sort_frag_list()  # debug, not sure it is necessary
 		if center_atom == []:
 			center_atom = [0]*len(frag_list)
-			for i in range (1, self.mbe_order+1):
-				print "Generating order", i
-				self.Generate_MBE_term_General(i, cutoff, center_atom)
-			return
+		for i in range (1, self.mbe_order+1):
+			print "Generating order", i
+			self.Generate_MBE_term_General(i, cutoff, center_atom)
+		return
 
 	def Generate_MBE_term_General(self, order,  cutoff=10, center_atom=[]):
 		if order in self.mbe_frags.keys():
@@ -208,7 +208,6 @@ class FragableCluster(Mol):
 							#print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
 						else:
 							j += 1
-			print "No MBE frags? ",mbe_frags, len(mbe_frags)
 		else:
 			num_of_each_frag = {}
 			frag_list_length = len(self.frag_list)
