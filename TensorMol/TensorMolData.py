@@ -43,11 +43,15 @@ class TensorMolData(TensorData):
 	def CheckShapes(self):
 		# Establish case and label shapes.
 		if self.type=="frag":
-			tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_frags[self.order][0])
+			tins,touts = self.dig.Emb(test_mol.mbe_frags[self.order][0],False,False)
 		elif self.type=="mol":
-			tins,touts = self.dig.TrainDigest(self.set.mols[0])
+			if (self.set != None):
+				test_mol = self.set.mols[0]
+				tins,touts = self.dig.Emb(test_mol,True,False)
+			else:
+				return
 		else:
-			raise Exception("Unkown Type")
+			raise Exception("Unknown Type")
 		print "self.dig ", self.dig.name
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape

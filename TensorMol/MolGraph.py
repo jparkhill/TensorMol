@@ -2,497 +2,319 @@ from Util import *
 import numpy as np
 import random, math
 from Mol import *
-import networkx as nx
-
-
+from PhysicalData import *
 
 class MolGraph:
 	def __init__(self, mol_, bond_length_thresh_ =  None):
 		""" graph of a molecule """
-		if not bond_length_thresh_:
-                        self.bond_length_thresh = {"HH": 1.5, "HC": 1.5, "HN": 1.5, "HO": 1.5, "CC": 1.7, "CN": 1.7, "CO": 1.7, "NN": 1.7, "NO": 1.7, "OO": 1.7 }
-                else:
-                        self.bond_length_thresh = bond_length_thresh_
-                self.name= mol_.name+"_graph"
-                self.num_atom_connected = None # connected  atoms of each atom 
-                self.atom_nodes = None
+		self.name= mol_.name+"_graph"
+		self.num_atom_connected = None # connected  atoms of each atom
+		self.atom_nodes = None
 		self.atoms = np.copy(mol_.atoms)
 		self.coords = np.copy(mol_.coords)
-                self.bonds = None  #{connection type, length, atom_index_1, atom_index_2}
-                self.bond_type = None # define whether it is a single, double or triple bond
-                self.bond_conju = None # whether a bond is in a conjugated system
-                self.bond_index = None # the bond index between two atoms
-                self.Bonds_Between  = None
-                self.H_Bonds_Between = None
-                self.nx_mol_graph = None
-                self.shortest_path = None
+		self.bonds = None  #{connection type, length, atom_index_1, atom_index_2}
+		self.bond_type = None # define whether it is a single, double or triple bond
+		self.bond_conju = None # whether a bond is in a conjugated system
+		self.bond_index = None # the bond index between two atoms
+		self.Bonds_Between  = None
+		self.H_Bonds_Between = None
+		self.nx_mol_graph = None
+		self.shortest_path = None
 		self.Make_Mol_Graph(mol_)
-                return
+		return
 
+	def NAtoms(self):
+		return self.atoms.shape[0]
 
-        def NAtoms(self):
-                return self.atoms.shape[0]
+	def NBonds(self):
+		return self.bonds.shape[0]
 
-        def NBonds(self):
-                return self.bonds.shape[0]
+	def AtomTypes(self):
+		return np.unique(self.atoms)
 
-        def AtomTypes(self):
-                return np.unique(self.atoms)
-
-        def BondTypes(self):
-                return np.unique(self.bonds[:,0]).astype(int)
-
+	def BondTypes(self):
+		return np.unique(self.bonds[:,0]).astype(int)
 
 	def Make_Mol_Graph(self, mol):
-                self.Make_AtomNodes(mol)
-                self.Connect_AtomNodes(mol)
-                self.Make_Bonds(mol)
-                return
+		self.Make_AtomNodes(mol)
+		self.Connect_AtomNodes(mol)
+		self.Make_Bonds(mol)
+		return
 
-        def Make_AtomNodes(self, mol):
-                self.atom_nodes = []
-                for i in range (0, self.NAtoms()):
-                        self.atom_nodes.append(AtomNode(self.atoms[i], i))
-		return 
+	def Find_Bond_Index(self):
+		#print "name", self.name, "\n\n\nbonds", self.bonds, " bond_type:", self.bond_type
+		self.bond_index = dict()
+		for i in range (0, self.NBonds()):
+			pair = [int(self.bonds[i][2]), int(self.bonds[i][3])]
+			pair.sort()
+			self.bond_index[LtoS(pair)] = i
+		return
 
+	def Make_AtomNodes(self, mol):
+		self.atom_nodes = []
+		for i in range (0, self.NAtoms()):
+			self.atom_nodes.append(AtomNode(self.atoms[i], i))
+		return
 
-        def Connect_AtomNodes(self, mol):
-                mol.DistMatrix = MolEmb.Make_DistMat(mol.coords)
-                self.num_atom_connected = []
-                for i in range (0, self.NAtoms()):
-                        for j in range (i+1, self.NAtoms()):
-                                dist = mol.DistMatrix[i][j]
-                                atom_pair=[self.atoms[i], self.atoms[j]]
-                                atom_pair.sort()
-                                bond_name = AtomName_From_List(atom_pair)
-                                if dist <= self.bond_length_thresh[bond_name]:
-                                        self.atom_nodes[i].Append(self.atom_nodes[j])
-                                        self.atom_nodes[j].Append(self.atom_nodes[i])
-                for i in range (0, self.NAtoms()):
-                        self.num_atom_connected.append(len(self.atom_nodes[i].connected_nodes))
-                return
+	def Connect_AtomNodes(self, mol):
+		mol.DistMatrix = MolEmb.Make_DistMat(mol.coords)
+		self.num_atom_connected = []
+		for i in range (0, self.NAtoms()):
+			for j in range (i+1, self.NAtoms()):
+				dist = mol.DistMatrix[i][j]
+				atom_pair=[self.atoms[i], self.atoms[j]]
+				atom_pair.sort()
+				bond_name = AtomName_From_List(atom_pair)
+				if dist <= self.bond_length_thresh[bond_name]:
+					self.atom_nodes[i].Append(self.atom_nodes[j])
+					self.atom_nodes[j].Append(self.atom_nodes[i])
+		for i in range (0, self.NAtoms()):
+			self.num_atom_connected.append(len(self.atom_nodes[i].connected_nodes))
+		return
 
-        def Make_Bonds(self, mol):
-                self.bonds = []
-                visited_pairs = []
-                for i in range (0, self.NAtoms()):
-                        for node in self.atom_nodes[i].connected_nodes:
-                                j  = node.node_index
-                                pair_index =  [i, j]
-                                atom_pair=[self.atoms[i], self.atoms[j]]
-                                pair_index = [x for (y, x) in sorted(zip(atom_pair, pair_index))]
-                                if pair_index not in visited_pairs:
-                                        visited_pairs.append(pair_index)
-                                        atom_pair.sort()
-                                        bond_name = AtomName_From_List(atom_pair)
-                                        bond_type = bond_index[bond_name]
-                                        dist = mol.DistMatrix[i][j]
-                                        self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
-                self.bonds = np.asarray(self.bonds)
-                #self.Calculate_Bond_Type()
-                #self.Find_Bond_Index()
-                #self.Define_Conjugation()
-                self.Make_Nx_Graph()
-                return
+	def Make_Bonds(self, mol):
+		self.bonds = []
+		visited_pairs = []
+		for i in range (0, self.NAtoms()):
+			for node in self.atom_nodes[i].connected_nodes:
+				j  = node.node_index
+				pair_index =  [i, j]
+				atom_pair=[self.atoms[i], self.atoms[j]]
+				pair_index = [x for (y, x) in sorted(zip(atom_pair, pair_index))]
+				if pair_index not in visited_pairs:
+					visited_pairs.append(pair_index)
+					atom_pair.sort()
+					bond_name = AtomName_From_List(atom_pair)
+					bond_type = bond_index[bond_name]
+					dist = mol.DistMatrix[i][j]
+					self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
+		self.bonds = np.asarray(self.bonds)
+		#self.Calculate_Bond_Type()
+		#self.Find_Bond_Index()
+		#self.Define_Conjugation()
+		self.Make_Nx_Graph()
+		return
 
+	def GetNextNode_DFS(self, visited_list, node_stack):
+		node = node_stack.pop()
+		visited_list.append(node.node_index)
+		for next_node in node.connected_nodes:
+			if next_node.node_index not in visited_list and next_node not in node_stack:
+				node_stack.append(next_node)
+		return node, visited_list, node_stack
 
-	def Make_Nx_Graph(self):
-                self.mol_graph = nx.Graph()
-                self.mol_graph.add_nodes_from(range(0, self.NAtoms()))
-                for i in range (0, self.NBonds()):
-                        atom1 = int(self.bonds[i][2])
-                        atom2 = int(self.bonds[i][3])
-                        self.mol_graph.add_edge(atom1, atom2)
-                self.shortest_path = dict()
-                for i in range (0, self.NAtoms()):
-                        self.shortest_path[i] = []
-                        for j in range (i+1, self.NAtoms()):
-                                try:
-                                        self.shortest_path[i].append(nx.shortest_path(self.mol_graph,i,j))
-                                except:
-                                        self.shortest_path[i].append(None)
-                return
+	def Calculate_Bond_Type(self):
+		self.bond_type = [0 for i in range (0, self.NBonds())]
+		left_atoms = range (0, self.NAtoms())
+		left_connections = list(self.num_atom_connected)
+		left_valance = [ atom_valance[at] for at in self.atoms ]
+		bond_of_atom = [[] for i in  range (0, self.NAtoms())] # index of the bonds that the atom are connected
+		for i in range (0, self.NBonds()):
+			bond_of_atom[int(self.bonds[i][2])].append(i)
+			bond_of_atom[int(self.bonds[i][3])].append(i)
+		flag = 1
+		while (flag == 1):  # finish the easy assigment
+			flag  = self.Define_Easy_Bonds(bond_of_atom, left_connections, left_atoms, left_valance)
+			if (flag == -1):
+				print "error when define bond type.."
+				self.bond_type = [-1 for i in range (0, self.NBonds())]
+				return
+		save_bond_type = list(self.bond_type)
+		if left_atoms: # begin try and error
+			try_index = bond_of_atom[left_atoms[0]][0]
+			for try_type in range (1, left_valance[left_atoms[0]] - left_connections[left_atoms[0]]+2):
+				self.bond_type = list(save_bond_type)
+				import copy
+				cp_bond_of_atom = copy.deepcopy(bond_of_atom)
+				cp_left_connections = list(left_connections)
+				cp_left_atoms = list(left_atoms)
+				cp_left_valance = list(left_valance)
+				self.bond_type[try_index] = try_type
+				cp_bond_of_atom[left_atoms[0]].pop(0)
+				cp_left_connections[left_atoms[0]] -= 1
+				cp_left_valance[left_atoms[0]] -= try_type
+				other_at = (int(self.bonds[try_index][2]) if left_atoms[0] != int(self.bonds[try_index][2]) else int(self.bonds[try_index][3]))
+				cp_bond_of_atom[other_at].pop(cp_bond_of_atom[other_at].index(try_index))
+				cp_left_connections[other_at] -= 1
+				cp_left_valance[other_at] -= try_type
+				flag = 1
+				while(flag == 1):
+					flag  = self.Define_Easy_Bonds(cp_bond_of_atom, cp_left_connections, cp_left_atoms, cp_left_valance, True)
+				if not cp_left_atoms and flag == 0 :
+					left_atoms = []
+					break
+		if  left_atoms or flag != 0  :
+			print "error when define bond type.."
+			self.bond_type = [-1 for i in range (0, self.NBonds())]
+			return
+		return
 
-	
-        def GetNextNode_DFS(self, visited_list, node_stack):
-                node = node_stack.pop()
-                visited_list.append(node.node_index)
-                for next_node in node.connected_nodes:
-                        if next_node.node_index not in visited_list and next_node not in node_stack:
-                                node_stack.append(next_node)
-                return node, visited_list, node_stack
+	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0, avail_atoms=None):   # ignore all the H for assigment
+		if avail_atoms==None:
+		        avail_atoms = range(0, self.NAtoms())
+		frag_head_node = frag.atom_nodes[frag_head]
+		frag_node_stack = [frag_head_node]
+		frag_visited_list = []
+		all_mol_visited_list = [[]]
+		while(frag_node_stack):   # if node stack is not empty
+			current_frag_node = frag_node_stack[-1]
+			updated_all_mol_visited_list = []
+			for mol_visited_list in all_mol_visited_list:
+				possible_node = []
+				if mol_visited_list ==[]:
+					possible_node = [self.atom_nodes[i] for i in avail_atoms]
+					for mol_node in possible_node:
+						if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
+							updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
+							if mol_node.node_type in ignored_ele:# just once
+								break
+				else:
+					connected_node_index_in_frag = []
+					for connected_node_in_frag in current_frag_node.connected_nodes:
+						if connected_node_in_frag.node_index in frag_visited_list:
+							connected_node_index_in_frag.append(frag_visited_list.index(connected_node_in_frag.node_index))
+					for connected_node_index in connected_node_index_in_frag:
+						connected_node_in_mol = self.atom_nodes[mol_visited_list[connected_node_index]]
+						for target_node in connected_node_in_mol.connected_nodes:
+							if target_node.node_index not in mol_visited_list and self.Compare_Node(target_node, current_frag_node) and self.Check_Connection(target_node, current_frag_node, mol_visited_list, frag_visited_list) and target_node.node_index in avail_atoms:
+								updated_all_mol_visited_list.append(mol_visited_list+[target_node.node_index])
+								if target_node.node_type in ignored_ele:
+									break
+			all_mol_visited_list = list(updated_all_mol_visited_list)
+			next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
+		frags_in_mol = []
+		already_included = []
+		for mol_visited_list in all_mol_visited_list:
+			mol_visited_list.sort()
+			if mol_visited_list not in already_included:
+				already_included.append(mol_visited_list)
+				sorted_mol_visited_list = [x for (y, x) in sorted(zip(frag_visited_list,mol_visited_list))]## sort the index order of frags in mol to the same as the frag
+				frags_in_mol.append(sorted_mol_visited_list)
+		return frags_in_mol
 
+	def Check_Connection(self, mol_node, frag_node, mol_visited_list, frag_visited_list):  # the connection of mol_node should be the same as frag_node in the list we visited so far.
+		mol_node_connection_index_found = []
+		for node in mol_node.connected_nodes:
+			if node.node_index in mol_visited_list:
+				mol_node_connection_index_found.append(mol_visited_list.index(node.node_index))
+		frag_node_connection_index_found = []
+		for node in frag_node.connected_nodes:
+			if node.node_index in frag_visited_list:
+				frag_node_connection_index_found.append(frag_visited_list.index(node.node_index))
+		if set(mol_node_connection_index_found) == set(frag_node_connection_index_found):
+			return True
+		else:
+			return False
 
-        def Calculate_Bond_Type(self):
-                self.bond_type = [0 for i in range (0, self.NBonds())]
-                left_atoms = range (0, self.NAtoms())
-                left_connections = list(self.num_atom_connected)
-                left_valance = [ atom_valance[at] for at in self.atoms ]
-                bond_of_atom = [[] for i in  range (0, self.NAtoms())] # index of the bonds that the atom are connected
-                for i in range (0, self.NBonds()):
-                        bond_of_atom[int(self.bonds[i][2])].append(i)
-                        bond_of_atom[int(self.bonds[i][3])].append(i)
-                flag = 1
-                while (flag == 1):  # finish the easy assigment
-                        flag  = self.Define_Easy_Bonds(bond_of_atom, left_connections, left_atoms, left_valance)
-                        if (flag == -1):
-                                print "error when define bond type.."
-                                self.bond_type = [-1 for i in range (0, self.NBonds())]
-                                return
-                save_bond_type = list(self.bond_type)
-                if left_atoms: # begin try and error
-                        try_index = bond_of_atom[left_atoms[0]][0]
-                        for try_type in range (1, left_valance[left_atoms[0]] - left_connections[left_atoms[0]]+2):
-                                self.bond_type = list(save_bond_type)
-                                import copy
-                                cp_bond_of_atom = copy.deepcopy(bond_of_atom)
-                                cp_left_connections = list(left_connections)
-                                cp_left_atoms = list(left_atoms)
-                                cp_left_valance = list(left_valance)
-                                self.bond_type[try_index] = try_type
-                                cp_bond_of_atom[left_atoms[0]].pop(0)
-                                cp_left_connections[left_atoms[0]] -= 1
-                                cp_left_valance[left_atoms[0]] -= try_type
-                                other_at = (int(self.bonds[try_index][2]) if left_atoms[0] != int(self.bonds[try_index][2]) else int(self.bonds[try_index][3]))
-                                cp_bond_of_atom[other_at].pop(cp_bond_of_atom[other_at].index(try_index))
-                                cp_left_connections[other_at] -= 1
-                                cp_left_valance[other_at] -= try_type
+	def Compare_Node(self, mol_node, frag_node):
+		if mol_node.node_type == frag_node.node_type and mol_node.num_of_bonds == frag_node.num_of_bonds  and Subset(mol_node.connected_atoms, frag_node.connected_atoms):
+			if frag_node.undefined_bond_type == "heavy": #  check whether the dangling bond is connected to H in the mol
+				if 1 in Setdiff(mol_node.connected_atoms, frag_node.connected_atoms):   # the dangling bond is connected to H
+					return False
+				else:
+					return True
+			else:
+				return True
+		else:
+			return False
 
-                                flag = 1
-                                while(flag == 1):
-                                        flag  = self.Define_Easy_Bonds(cp_bond_of_atom, cp_left_connections, cp_left_atoms, cp_left_valance, True)
-                                if not cp_left_atoms and flag == 0 :
-                                        left_atoms = []
-                                        break
-                if   left_atoms or flag != 0  :
-                        print "error when define bond type.."
-                        self.bond_type = [-1 for i in range (0, self.NBonds())]
-                        return
-                return
+	def IsIsomer(self,other):
+		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
 
+	def AtomName(self, i):
+		return atoi.keys()[atoi.values().index(self.atoms[i])]
 
-        def Define_Easy_Bonds(self, bond_of_atom, left_connections, left_atoms, left_valance, ignore_error = False):  # deal with situtations that is easy to define bonds
-                try:
-                        finished_atoms = []
-                        for at in left_atoms: #
-                                if left_connections[at] == 1:
-                                        if (left_valance[at] < 1 or len(bond_of_atom[at]) !=1 ) and not ignore_error: # there is not valance available for the connections or left bonds not equal to 1, error occurs
-                                                return -1
-                                        bond_index = bond_of_atom[at][0]
-                                        self.bond_type[bond_index] = left_valance[at]
-                                        bond_of_atom[at].pop(bond_of_atom[at].index(bond_index))
-                                        left_valance[at] -= left_valance[at]
-                                        left_connections[at] -= 1
-                                        finished_atoms.append(at)
-
-                                        other_at = (int(self.bonds[bond_index][2]) if at != int(self.bonds[bond_index][2]) else int(self.bonds[bond_index][3]))
-                                        left_connections[other_at] -= 1
-                                        left_valance[other_at] -= self.bond_type[bond_index]
-                                        bond_of_atom[other_at].pop(bond_of_atom[other_at].index(bond_index))
-                                        if (left_connections[other_at] == 0):
-                                                if (len(bond_of_atom[other_at]) != 0 or left_valance[other_at] != 0) and not ignore_error:
-                                                        return -1
-                                                finished_atoms.append(other_at)
-                                elif left_connections[at] >= 2 and left_connections[at] == left_valance[at]:  # it is all single bond
-                                        finished_atoms.append(at)
-                                        while (bond_of_atom[at]):
-                                                bond_index = bond_of_atom[at].pop(-1)
-                                                self.bond_type[bond_index] = 1
-                                                left_valance[at] -= 1
-                                                left_connections[at] -= 1
-                                                other_at = (int(self.bonds[bond_index][2]) if at != int(self.bonds[bond_index][2]) else int(self.bonds[bond_index][3]))
-                                                left_connections[other_at] -= 1
-                                                left_valance[other_at] -=  1
-                                                bond_of_atom[other_at].pop(bond_of_atom[other_at].index(bond_index))
-                                                if (left_connections[other_at] == 0):
-                                                        if (len(bond_of_atom[other_at]) != 0 or left_valance[other_at] != 0 ) and not ignore_error:
-                                                                return -1
-                                                        finished_atoms.append(other_at)
-                                else:
-                                        pass
-                        if finished_atoms:
-                                for at in finished_atoms:
-                                        left_atoms.pop(left_atoms.index(at))
-                                return 1
-                        else:
-                                return 0
-                except:
-                        return -2
-
-
-        def Define_Conjugation(self):
-                self.bond_conju  = np.zeros(self.NBonds(), dtype = bool )
-                finished_bonds = []
-                for i in range (0, self.NBonds()):
-                        if i not in finished_bonds:
-                                conju = False
-                                atom1 = int(self.bonds[i][2])
-                                atom2 = int(self.bonds[i][3])
-                                bond_type = self.bond_type[i]
-                                if (bond_type == 1): # single bond
-                                        flag = 0
-                                        for node in self.atom_nodes[atom1].connected_nodes:
-                                                if node.node_index != atom2:
-                                                        pair = [atom1, node.node_index]
-                                                        pair.sort()
-                                                        bond_index = self.bond_index[LtoS(pair)]
-                                                        if (self.bond_type[bond_index] != 1):
-                                                                tmp_bond_1  = bond_index
-                                                                flag += 1
-                                                                break
-                                        if flag == 1:
-                                                for node in self.atom_nodes[atom2].connected_nodes:
-                                                        if node.node_index != atom1:
-                                                                pair = [atom2, node.node_index]
-                                                                pair.sort()
-                                                                bond_index = self.bond_index[LtoS(pair)]
-                                                                if (self.bond_type[bond_index] != 1):
-                                                                        tmp_bond_2  = bond_index
-                                                                        flag += 1
-                                                                        break
-                                        if flag == 2:
-                                                self.bond_conju[tmp_bond_1] = True
-                                                self.bond_conju[tmp_bond_2] = True
-                                                self.bond_conju[i] = True
-                                                finished_bonds += [i, tmp_bond_1, tmp_bond_2]
-
-                                elif(bond_type == 2 or bond_type == 3):
-                                        flag = 0
-                                        for node in self.atom_nodes[atom1].connected_nodes:
-                                                if flag == 1:
-                                                        break
-                                                if node.node_index != atom2:
-                                                        pair1 = [atom1, node.node_index]
-                                                        pair1.sort()
-                                                        bond_index_1 = self.bond_index[LtoS(pair1)]
-                                                        for next_node in node.connected_nodes:
-                                                                if next_node.node_index != atom1:
-                                                                        pair2 = [next_node.node_index, node.node_index]
-                                                                        pair2.sort()
-                                                                        bond_index_2 = self.bond_index[LtoS(pair2)]
-                                                                        if (self.bond_type[bond_index_2] != 1):
-                                                                                flag = 1
-                                                                                self.bond_conju[i] = True
-                                                                                self.bond_conju[bond_index_1] = True
-                                                                                self.bond_conju[bond_index_2] = True
-                                                                                finished_bonds += [i, bond_index_1, bond_index_2]
-                                                                                break
-                                        if flag != 1:
-                                                for node in self.atom_nodes[atom2].connected_nodes:
-                                                        if flag == 1:
-                                                                break
-                                                        if node.node_index != atom1:
-                                                                pair1 = [atom2, node.node_index]
-                                                                pair1.sort()
-                                                                bond_index_1 = self.bond_index[LtoS(pair1)]
-                                                                for next_node in node.connected_nodes:
-                                                                        if next_node.node_index != atom2:
-                                                                                pair2 = [next_node.node_index, node.node_index]
-                                                                                pair2.sort()
-                                                                                bond_index_2 = self.bond_index[LtoS(pair2)]
-                                                                                if (self.bond_type[bond_index_2] != 1):
-                                                                                        flag = 1
-                                                                                        self.bond_conju[i] = True
-                                                                                        self.bond_conju[bond_index_1] = True
-                                                                                        self.bond_conju[bond_index_2] = True
-                                                                                        finished_bonds += [i, bond_index_1, bond_index_2]
-                                                                                        break
-                                else:
-                                        pass
-                return
-
-
-
-        def Find_Bond_Index(self):
-                #print "name", self.name, "\n\n\nbonds", self.bonds, " bond_type:", self.bond_type
-                self.bond_index = dict()
-                for i in range (0, self.NBonds()):
-                        pair = [int(self.bonds[i][2]), int(self.bonds[i][3])]
-                        pair.sort()
-                        self.bond_index[LtoS(pair)] = i
-                return
-
-
-        def Find_Frag(self, frag, ignored_ele=[1], frag_head=0, avail_atoms=None):   # ignore all the H for assigment
-                if avail_atoms==None:
-                        avail_atoms = range(0, self.NAtoms())
-                frag_head_node = frag.atom_nodes[frag_head]
-                frag_node_stack = [frag_head_node]
-                frag_visited_list = []
-                all_mol_visited_list = [[]]
-                while(frag_node_stack):   # if node stack is not empty
-                        current_frag_node = frag_node_stack[-1]
-                        updated_all_mol_visited_list = []
-                        for mol_visited_list in all_mol_visited_list:
-                                possible_node = []
-                                if mol_visited_list ==[]:
-                                                possible_node = [self.atom_nodes[i] for i in avail_atoms]
-                                                for mol_node in possible_node:
-                                                        if mol_node.node_index not in mol_visited_list and self.Compare_Node(mol_node, current_frag_node) and self.Check_Connection(mol_node, current_frag_node, mol_visited_list, frag_visited_list):
-                                                                updated_all_mol_visited_list.append(mol_visited_list+[mol_node.node_index])
-                                                                if mol_node.node_type in ignored_ele:# just once
-                                                                        break
-                                else:
-                                        connected_node_index_in_frag = []
-                                        for connected_node_in_frag in current_frag_node.connected_nodes:
-                                                if connected_node_in_frag.node_index in frag_visited_list:
-                                                        connected_node_index_in_frag.append(frag_visited_list.index(connected_node_in_frag.node_index))
-                                        for connected_node_index in connected_node_index_in_frag:
-                                                connected_node_in_mol = self.atom_nodes[mol_visited_list[connected_node_index]]
-                                                for target_node in connected_node_in_mol.connected_nodes:
-                                                        if target_node.node_index not in mol_visited_list and self.Compare_Node(target_node, current_frag_node) and self.Check_Connection(target_node, current_frag_node, mol_visited_list, frag_visited_list) and target_node.node_index in avail_atoms:
-                                                                updated_all_mol_visited_list.append(mol_visited_list+[target_node.node_index])
-                                                                if target_node.node_type in ignored_ele:
-                                                                        break
-                        all_mol_visited_list = list(updated_all_mol_visited_list)
-                        next_frag_node, frag_visited_list, frag_node_stack  = self.GetNextNode_DFS(frag_visited_list, frag_node_stack)
-                frags_in_mol = []
-                already_included = []
-                for mol_visited_list in all_mol_visited_list:
-                        mol_visited_list.sort()
-                        if mol_visited_list not in already_included:
-                                already_included.append(mol_visited_list)
-                                sorted_mol_visited_list = [x for (y, x) in sorted(zip(frag_visited_list,mol_visited_list))]## sort the index order of frags in mol to the same as the frag
-                                frags_in_mol.append(sorted_mol_visited_list)
-                return frags_in_mol
-
-
-
-        def Check_Connection(self, mol_node, frag_node, mol_visited_list, frag_visited_list):  # the connection of mol_node should be the same as frag_node in the list we visited so far.
-                mol_node_connection_index_found = []
-                for node in mol_node.connected_nodes:
-                        if node.node_index in mol_visited_list:
-                                mol_node_connection_index_found.append(mol_visited_list.index(node.node_index))
-
-                frag_node_connection_index_found = []
-                for node in frag_node.connected_nodes:
-                        if node.node_index in frag_visited_list:
-                                frag_node_connection_index_found.append(frag_visited_list.index(node.node_index))
-
-                if set(mol_node_connection_index_found) == set(frag_node_connection_index_found):
-                        return True
-                else:
-                        return False
-
-
-        def Compare_Node(self, mol_node, frag_node):
-                if mol_node.node_type == frag_node.node_type and mol_node.num_of_bonds == frag_node.num_of_bonds  and Subset(mol_node.connected_atoms, frag_node.connected_atoms):
-                        if frag_node.undefined_bond_type == "heavy": #  check whether the dangling bond is connected to H in the mol
-                                if 1 in Setdiff(mol_node.connected_atoms, frag_node.connected_atoms):   # the dangling bond is connected to H
-                                        return False
-                                else:
-                                        return True
-                        else:
-                                return True
-                else:
-                        return False
-
-        def IsIsomer(self,other):
-                return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
-
-
-        def AtomName(self, i):
-                return atoi.keys()[atoi.values().index(self.atoms[i])]
-
-
-        def AllAtomNames(self):
-                names=[]
-                for i in range (0, self.atoms.shape[0]):
-                        names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
-                return names
+	def AllAtomNames(self):
+		names=[]
+		for i in range (0, self.atoms.shape[0]):
+		        names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
+		return names
 
 
 class Frag_of_MolGraph(MolGraph):
 	def __init__(self, mol_, undefined_bonds_ = None, undefined_bond_type_ = None, bond_length_thresh_ =  None):
 		Mol.__init__(self, mol_, bond_length_thresh_)
-                self.undefined_bond_type = undefined_bond_type_  # whether the dangling bond can be connected  to H or not
-                self.undefined_bonds = undefined_bonds_  # capture the undefined bonds of each atom
+		self.undefined_bond_type = undefined_bond_type_  # whether the dangling bond can be connected  to H or not
+		self.undefined_bonds = undefined_bonds_  # capture the undefined bonds of each atom
 
 	def FromXYZString(self,string, set_name = None):
-                self.set_name = set_name
-                lines = string.split("\n")
-                natoms=int(lines[0])
-                self.atoms.resize((natoms))
-                self.coords.resize((natoms,3))
-                for i in range(natoms):
-                        line = lines[i+2].split()
-                        if len(line)==0:
-                                return
-                        self.atoms[i]=AtomicNumber(line[0])
-                        try:
-                                self.coords[i,0]=float(line[1])
-                        except:
-                                self.coords[i,0]=scitodeci(line[1])
-                        try:
-                                self.coords[i,1]=float(line[2])
-                        except:
-                                self.coords[i,1]=scitodeci(line[2])
-                        try:
-                                self.coords[i,2]=float(line[3])
-                        except:
-                                self.coords[i,2]=scitodeci(line[3])
-                import ast
-                try:
-                        self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
-                        if "type" in self.undefined_bonds.keys():
-                                self.undefined_bond_type = self.undefined_bonds["type"]
-                        else:
-                                self.undefined_bond_type = "any"
-                except:
-                        self.name = lines[1] #debug
-                        self.undefined_bonds = {}
-                        self.undefined_bond_type = "any"
-                return
-
-
+		self.set_name = set_name
+		lines = string.split("\n")
+		natoms=int(lines[0])
+		self.atoms.resize((natoms))
+		self.coords.resize((natoms,3))
+		for i in range(natoms):
+			line = lines[i+2].split()
+			if len(line)==0:
+				return
+			self.atoms[i]=AtomicNumber(line[0])
+			try:
+				self.coords[i,0]=float(line[1])
+			except:
+				self.coords[i,0]=scitodeci(line[1])
+			try:
+				self.coords[i,1]=float(line[2])
+			except:
+				self.coords[i,1]=scitodeci(line[2])
+			try:
+				self.coords[i,2]=float(line[3])
+			except:
+				self.coords[i,2]=scitodeci(line[3])
+		import ast
+		try:
+			self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
+			if "type" in self.undefined_bonds.keys():
+				self.undefined_bond_type = self.undefined_bonds["type"]
+			else:
+				self.undefined_bond_type = "any"
+		except:
+			self.name = lines[1] #debug
+			self.undefined_bonds = {}
+			self.undefined_bond_type = "any"
+		return
 
 	def Make_AtomNodes(self):
-                atom_nodes = []
-                for i in range (0, self.NAtoms()):
-                        if i in self.undefined_bonds.keys():
-                                atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
-                        else:
-                                atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
-                self.atom_nodes = atom_nodes
-                return
+		atom_nodes = []
+		for i in range (0, self.NAtoms()):
+			if i in self.undefined_bonds.keys():
+				atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
+			else:
+				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
+		self.atom_nodes = atom_nodes
+		return
 
-	
-
-
-	
 class AtomNode:
-        """ Treat each atom as a node for the purpose of building the molecule graph """
-        def __init__(self, node_type_=None, node_index_=None, undefined_bond_type_="any", undefined_bond_ = 0):
-                self.node_type = node_type_
-                self.node_index = node_index_
-                self.connected_nodes = []
-                self.undefined_bond = undefined_bond_
-                self.undefined_bond_type = undefined_bond_type_
-                self.num_of_bonds = None
-                self.connected_atoms = None
-                self.Update_Node()
-                return
+	""" Treat each atom as a node for the purpose of building the molecule graph """
+	def __init__(self, node_type_=None, node_index_=None, undefined_bond_type_="any", undefined_bond_ = 0):
+		self.node_type = node_type_
+		self.node_index = node_index_
+		self.connected_nodes = []
+		self.undefined_bond = undefined_bond_
+		self.undefined_bond_type = undefined_bond_type_
+		self.num_of_bonds = None
+		self.connected_atoms = None
+		self.Update_Node()
+		return
 
-        def Append(self, node):
-                self.connected_nodes.append(node)
-                self.Update_Node()
-                return
+	def Append(self, node):
+		self.connected_nodes.append(node)
+		self.Update_Node()
+		return
 
-        def Num_of_Bonds(self):
-                self.num_of_bonds = len(self.connected_nodes)+self.undefined_bond
-                return len(self.connected_nodes)+self.undefined_bond
+	def Num_of_Bonds(self):
+		self.num_of_bonds = len(self.connected_nodes)+self.undefined_bond
+		return len(self.connected_nodes)+self.undefined_bond
 
-        def Connected_Atoms(self):
-                connected_atoms = []
-                for node in self.connected_nodes:
-                        connected_atoms.append(node.node_type)
-                self.connected_atoms = connected_atoms
-                return connected_atoms
+	def Connected_Atoms(self):
+		connected_atoms = []
+		for node in self.connected_nodes:
+			connected_atoms.append(node.node_type)
+		self.connected_atoms = connected_atoms
+		return connected_atoms
 
-        def Update_Node(self):
-                self.Num_of_Bonds()
-                self.Connected_Atoms()
-                self.connected_nodes = [x for (y, x) in sorted(zip(self.connected_atoms, self.connected_nodes))]
-                self.connected_atoms.sort()
-                return
-
+	def Update_Node(self):
+		self.Num_of_Bonds()
+		self.Connected_Atoms()
+		self.connected_nodes = [x for (y, x) in sorted(zip(self.connected_atoms, self.connected_nodes))]
+		self.connected_atoms.sort()
+		return

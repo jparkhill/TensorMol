@@ -94,7 +94,8 @@ class TensorData():
 
 	def CheckShapes(self):
 		# Establish case and label shapes.
-		tins,touts = self.dig.TrainDigest(self.set.mols[0],self.set.mols[0].atoms[0])
+		test_mol = Mol(np.array([1,1],dtype=np.uint8),np.array([[0.0,0.0,0.0],[0.7,0.0,0.0]]))
+		tins,touts = self.dig.TrainDigest(test_mol)
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape
 		print "TrainDigest input shape: ", tins.shape
@@ -492,7 +493,8 @@ class TensorData():
 		f.close()
 		self.CheckShapes()
 		print "Training data manager loaded."
-		print "Based on ", len(self.set.mols), " molecules "
+		if (self.set != None):
+			print "Based on ", len(self.set.mols), " molecules "
 		print "Based on files: ",self.AvailableDataFiles
 		self.QueryAvailable()
 		self.PrintSampleInformation()

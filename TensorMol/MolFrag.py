@@ -12,18 +12,17 @@ class FragableCluster(Mol):
 	def __init__(self, atoms_ =  None, coords_ = None):
 		Mol.__init__(self,atoms_,coords_)
 		self.mbe_order = MBE_ORDER
-                self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
-                self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
-                self.type_of_frags_dict = {}
-                self.atoms_of_frags = [] # store the index of atoms of each frag
-                self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
-                self.mbe_frags_deri=dict()
-                self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
-                self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
-                self.mbe_deri =None
-                self.ngroup=None
+		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
+		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
+		self.type_of_frags_dict = {}
+		self.atoms_of_frags = [] # store the index of atoms of each frag
+		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
+		self.mbe_frags_deri=dict()
+		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
+		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
+		self.mbe_deri =None
+		self.ngroup=None
 		return
-
 
 	def Reset_Frags(self):
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
@@ -98,7 +97,7 @@ class FragableCluster(Mol):
 		switched = False
 		if len(dic_mono[mono_1]) > len(dic_mono[mono_2]):
 			mono_1, mono_2 = mono_2, mono_1
-                        center_1, center_2  = center_2, center_1
+			center_1, center_2  = center_2, center_1
 			switched = True
 
 		mono_1_pair = [-1]*len(dic_mono[mono_1])
@@ -113,8 +112,8 @@ class FragableCluster(Mol):
 			s = list(dist_matrix[i])
 			mono_1_prefer.append(sorted(range(len(s)), key=lambda k: s[k]))
 		for i in range (0, len(dic_mono[mono_2])):
-                        s = list(dist_matrix[:,i])
-                        mono_2_prefer.append(sorted(range(len(s)), key=lambda k: s[k]))
+			s = list(dist_matrix[:,i])
+			mono_2_prefer.append(sorted(range(len(s)), key=lambda k: s[k]))
 
 
 		mono_1_info = [-1]*len(dic_mono[mono_1]) # -1 means they are not paired, and the number means the Nth most prefered are chosen
@@ -170,7 +169,7 @@ class FragableCluster(Mol):
 		dic_mono_index[mono_1] = [i for j, i in enumerate(dic_mono_index[mono_1]) if j not in indices_1]
 		dic_mono_index[mono_2] = [i for j, i in enumerate(dic_mono_index[mono_2]) if j not in indices_2]
 		dic_mono[mono_1] = [i for j, i in enumerate(dic_mono[mono_1]) if j not in indices_1]
-                dic_mono[mono_2] = [i for j, i in enumerate(dic_mono[mono_2]) if j not in indices_2]
+		dic_mono[mono_2] = [i for j, i in enumerate(dic_mono[mono_2]) if j not in indices_2]
 		#print dic_mono_index[mono_1], dic_mono_index[mono_2], happy_atoms
 		return happy_atoms
 
@@ -179,14 +178,14 @@ class FragableCluster(Mol):
 		#self.Sort_frag_list()  # debug, not sure it is necessary
 		if center_atom == []:
 			center_atom = [0]*len(frag_list)
-                for i in range (1, self.mbe_order+1):
-                        self.Generate_MBE_term_General(i, cutoff, center_atom)
-                return
+			for i in range (1, self.mbe_order+1):
+				self.Generate_MBE_term_General(i, cutoff, center_atom)
+			return
 
 	def Generate_MBE_term_General(self, order,  cutoff=10, center_atom=[]):
-                if order in self.mbe_frags.keys():
-                        print ("MBE order", order, "already generated..skipping..")
-                        return
+		if order in self.mbe_frags.keys():
+			print ("MBE order", order, "already generated..skipping..")
+			return
 		if order==1:
 			self.mbe_frags[order] = []
 			masked=[]
@@ -238,25 +237,20 @@ class FragableCluster(Mol):
 				if tmp_index not in tmp_index_list:
 					tmp_index_list.append(tmp_index)
 					num_of_each_frag[LtoS(tmp_index)]=0
-
-
 			self.mbe_frags[order] = []
 			mbe_terms=[]
-                	mbe_dist=[]
+			mbe_dist=[]
 			ngroup = len(self.mbe_frags[1])	#
 			atomlist=list(range(0,ngroup))
 			time_log = time.time()
-
-                        print ("generating the combinations for order: ", order)
+			print ("generating the combinations for order: ", order)
 			max_case = 5000
-
 			time_now=time.time()
 			for index_list in tmp_index_list:
 				frag_case = 0
 				sample_index = []
 				for i in index_list:
 					sample_index.append(self.type_of_frags_dict[i])
-
 				print("begin the most time consuming step: ")
 				tmp_time  = time.time()
 				sub_combinations = list(itertools.product(*sample_index))
@@ -267,40 +261,37 @@ class FragableCluster(Mol):
 				#random.shuffle(sub_combinations)  # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
 				print  "time to shuffle it", time.time()-shuffle_time
 				for i in range (0, len(sub_combinations)):
-                        	        term = list(sub_combinations[i])
+					term = list(sub_combinations[i])
 					if len(list(set(term))) < len(term):
 						continue
-                        	        pairs=list(itertools.combinations(term, 2))
-                        	        saveindex=[]
-                        	        dist = [10000000]*len(pairs)
-                        	        flag=1
-                        	        npairs=len(pairs)
-                        	        for j in range (0, npairs):
-                        	                #print self.type_of_frags[pairs[j][0]], self.type_of_frags[pairs[j][1]], pairs[j][0], pairs[j][1]
-                        	                if self.type_of_frags[pairs[j][0]] == -1 :
-                        	                        center_1 = self.Center()
-                        	                else:
-                        	                        center_1 = self.mbe_frags[1][pairs[j][0]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
-
-                        	                if self.type_of_frags[pairs[j][1]] == -1 :
-                        	                        center_2 = self.Center()
-                        	                else:
-                        	                        center_2 = self.mbe_frags[1][pairs[j][1]].coords[center_atom[self.type_of_frags[pairs[j][1]]]]
-                        	                dist[j] = np.linalg.norm(center_1- center_2)
-                        	                if dist[j] > cutoff:
-                        	                        flag = 0
-                        	                        break
-                        	        if flag == 1:   # we find a frag
+					pairs=list(itertools.combinations(term, 2))
+					saveindex=[]
+					dist = [10000000]*len(pairs)
+					flag=1
+					npairs=len(pairs)
+					for j in range (0, npairs):
+						#print self.type_of_frags[pairs[j][0]], self.type_of_frags[pairs[j][1]], pairs[j][0], pairs[j][1]
+						if self.type_of_frags[pairs[j][0]] == -1 :
+							center_1 = self.Center()
+						else:
+							center_1 = self.mbe_frags[1][pairs[j][0]].coords[center_atom[self.type_of_frags[pairs[j][0]]]]
+						if self.type_of_frags[pairs[j][1]] == -1 :
+							center_2 = self.Center()
+						else:
+							center_2 = self.mbe_frags[1][pairs[j][1]].coords[center_atom[self.type_of_frags[pairs[j][1]]]]
+						dist[j] = np.linalg.norm(center_1- center_2)
+						if dist[j] > cutoff:
+							flag = 0
+							break
+					if flag == 1:   # we find a frag
 						if frag_case%100==0:
 							print "working on frag:", frag_case, "frag_type:", index_list, " i:", i
 						frag_case  += 1
-                        	                if  frag_case >=  max_case:   # just for generating training case
-                        	                        break;
-                        	                mbe_terms.append(term)
-                        	                mbe_dist.append(dist)
-
-                        print ("finished..takes", time_log-time.time(),"second")
-
+						if  frag_case >=  max_case:   # just for generating training case
+							break;
+						mbe_terms.append(term)
+						mbe_dist.append(dist)
+			print ("finished..takes", time_log-time.time(),"second")
 			mbe_frags = []
 			for i in range (0, len(mbe_terms)):
 				frag_type = []
@@ -318,46 +309,45 @@ class FragableCluster(Mol):
 					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
 					pointer += atom_group[j]
 				tmp_mol = Frag(tmp_atom, tmp_coord, mbe_terms[i], mbe_dist[i], atom_group, frag_type, frag_type_index, FragOrder_=order)
-                                self.mbe_frags[order].append(tmp_mol)
+				self.mbe_frags[order].append(tmp_mol)
 			del sub_combinations
 		return
 
-
 	def Calculate_Frag_Energy_General(self, order, method="pyscf"):
-                if order in self.mbe_frags_energy.keys():
-                        print ("MBE order", order, "already calculated..skipping..")
-                        return 0
-                mbe_frags_energy = 0.0
-                fragnum=0
-                time_log=time.time()
-                print "length of order ", order, ":",len(self.mbe_frags[order])
-                if method == "qchem":
-                        order_path = self.qchem_data_path+"/"+str(order)
-                        if not os.path.isdir(order_path):
-                                os.mkdir(order_path)
-                        os.chdir(order_path)
+		if order in self.mbe_frags_energy.keys():
+			print ("MBE order", order, "already calculated..skipping..")
+			return 0
+		mbe_frags_energy = 0.0
+		fragnum=0
+		time_log=time.time()
+		print "length of order ", order, ":",len(self.mbe_frags[order])
+		if method == "qchem":
+			order_path = self.qchem_data_path+"/"+str(order)
+			if not os.path.isdir(order_path):
+			os.mkdir(order_path)
+			os.chdir(order_path)
 			time0 =time.time()
-                        for frag in self.mbe_frags[order]:  # just for generating the training set..
-                                fragnum += 1
+			for frag in self.mbe_frags[order]:  # just for generating the training set..
+				fragnum += 1
 				if fragnum%100 == 0:
-                               		print "working on frag:", fragnum
-					print  "total time:", time.time() - time0
-					time0 = time.time()
-                                frag.Write_Qchem_Frag_MBE_Input_All_General(fragnum)
-                        os.chdir("../../../../")
-                elif method == "pyscf":
+				print "working on frag:", fragnum
+				print  "total time:", time.time() - time0
+				time0 = time.time()
+				frag.Write_Qchem_Frag_MBE_Input_All_General(fragnum)
+			os.chdir("../../../../")
+		elif method == "pyscf":
 			for frag in self.mbe_frags[order]:
 				fragnum += 1
 				print "doing the ",fragnum
-                        	frag.PySCF_Frag_MBE_Energy_All()
-                                frag.Set_Frag_MBE_Energy()
-                                mbe_frags_energy += frag.frag_mbe_energy
-                                print "Finished, spent ", time.time()-time_log," seconds"
-                                time_log = time.time()
-                        self.mbe_frags_energy[order] = mbe_frags_energy	
-                else:
-                        raise Exception("unknow ab-initio software!")
-                return
+				frag.PySCF_Frag_MBE_Energy_All()
+				frag.Set_Frag_MBE_Energy()
+				mbe_frags_energy += frag.frag_mbe_energy
+			print "Finished, spent ", time.time()-time_log," seconds"
+			time_log = time.time()
+			self.mbe_frags_energy[order] = mbe_frags_energy
+		else:
+			raise Exception("unknow ab-initio software!")
+		return
 
 	def Get_Qchem_Frag_Energy(self, order):
 		fragnum = 0
@@ -381,27 +371,27 @@ class FragableCluster(Mol):
 		return
 
 	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
-                if method == "qchem":
-                        if not os.path.isdir("./qchem"):
-                                os.mkdir("./qchem")
-                        if not os.path.isdir("./qchem"+"/"+self.set_name):
-                                os.mkdir("./qchem"+"/"+self.set_name)
-                        self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
-                        if not os.path.isdir(self.qchem_data_path):
-                                os.mkdir(self.qchem_data_path)
-                for i in range (1, self.mbe_order+1):
-                        print "calculating for MBE order", i
-                        self.Calculate_Frag_Energy_General(i, method)
-                if method == "qchem":
-                        self.Write_Qchem_Submit_Script()
-                return
+		if method == "qchem":
+			if not os.path.isdir("./qchem"):
+				os.mkdir("./qchem")
+			if not os.path.isdir("./qchem"+"/"+self.set_name):
+				os.mkdir("./qchem"+"/"+self.set_name)
+			self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+			if not os.path.isdir(self.qchem_data_path):
+				os.mkdir(self.qchem_data_path)
+		for i in range (1, self.mbe_order+1):
+			print "calculating for MBE order", i
+			self.Calculate_Frag_Energy_General(i, method)
+		if method == "qchem":
+			self.Write_Qchem_Submit_Script()
+		return
 
 	def Write_Qchem_Submit_Script(self):     # this is for submitting the jobs on notre dame crc
 		if not os.path.isdir("./qchem"):
 			os.mkdir("./qchem")
 			if not os.path.isdir("./qchem"+"/"+self.set_name):
 				os.mkdir("./qchem"+"/"+self.set_name)
-                self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+				self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
 		if not os.path.isdir(self.qchem_data_path):
 			os.mkdir(self.qchem_data_path)
 		os.chdir(self.qchem_data_path)
@@ -434,7 +424,6 @@ class FragableCluster(Mol):
 		self.Calculate_All_Frag_Energy_General()
 		self.Set_MBE_Energy()
 		return
-
 
 	def Set_Frag_Force_with_Order(self, cm_deri, nn_deri, order):
 		self.mbe_frags_deri[order]=np.zeros((self.NAtoms(),3))
@@ -476,9 +465,9 @@ class Frag(Mol):
 		else:
 			self.frag_type = None
 		if (frag_type_!=None):
-                        self.frag_type_index = frag_type_index_
-                else:
-                        self.frag_type_index = None
+			self.frag_type_index = frag_type_index_
+		else:
+			self.frag_type_index = None
 		self.frag_mbe_energies=dict()
 		self.frag_mbe_energy = None
 		self.frag_energy = None
@@ -542,7 +531,7 @@ class Frag(Mol):
 				print "Pyscf string:", pyscfatomstring
 		"""
 		raise Exception("Pyscf for General MBE has not be implemented yet")
-		return 
+		return
 
 	def Get_Qchem_Frag_MBE_Energy(self, order, path):
 		#print "path:", path, "order:", order
@@ -578,13 +567,13 @@ class Frag(Mol):
 		return
 
 	def Write_Qchem_Frag_MBE_Input_General(self,order):   # calculate the MBE of order N of each frag
-                inner_index = range(0, self.FragOrder)
-                real_frag_index=list(itertools.combinations(inner_index,order))
-                ghost_frag_index=[]
-                for i in range (0, len(real_frag_index)):
-                        ghost_frag_index.append(list(set(inner_index)-set(real_frag_index[i])))
-                i =0
-                while(i< len(real_frag_index)):
+		inner_index = range(0, self.FragOrder)
+		real_frag_index=list(itertools.combinations(inner_index,order))
+		ghost_frag_index=[]
+		for i in range (0, len(real_frag_index)):
+			ghost_frag_index.append(list(set(inner_index)-set(real_frag_index[i])))
+		i =0
+		while(i< len(real_frag_index)):
 			charge = 0
 			num_ele = 0
 			for j in range (0, order):
@@ -594,41 +583,40 @@ class Frag(Mol):
 				spin = 1
 			else:
 				spin = 2
-
-                        qchemstring="$molecule\n"+str(charge)+" "+str(spin)+"\n"
-                        for j in range (0, order):
+			qchemstring="$molecule\n"+str(charge)+" "+str(spin)+"\n"
+			for j in range (0, order):
 				pointer = sum(self.atom_group[:real_frag_index[i][j]])
-                                for k in range (0, self.atom_group[real_frag_index[i][j]]):
-                                        s = self.coords[pointer+k]
-                                        qchemstring+=str(self.AtomName(pointer+k))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+"\n"
-                        for j in range (0, self.FragOrder - order):
+				for k in range (0, self.atom_group[real_frag_index[i][j]]):
+					s = self.coords[pointer+k]
+					qchemstring+=str(self.AtomName(pointer+k))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+"\n"
+			for j in range (0, self.FragOrder - order):
 				pointer = sum(self.atom_group[:ghost_frag_index[i][j]])
-                                for k in range (0, self.atom_group[ghost_frag_index[i][j]]):
-                                        s = self.coords[pointer+k]
-                                        qchemstring+="@"+str(self.AtomName(pointer+k))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+"\n"
-                        qchemstring += "$end\n"
-                        qchemstring += "!"+LtoS(real_frag_index[i])+"\n"
-                        qchemstring += Qchem_RIMP2_Block
-                        qchem_input=open(str(i+1)+".in","w+")
-                        qchem_input.write(qchemstring)
-                        qchem_input.close()
-                        i = i+1
-                #gc.collect()  # speed up the function by 1000 times just deleting this single line!
-                return
+				for k in range (0, self.atom_group[ghost_frag_index[i][j]]):
+					s = self.coords[pointer+k]
+					qchemstring+="@"+str(self.AtomName(pointer+k))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+"\n"
+			qchemstring += "$end\n"
+			qchemstring += "!"+LtoS(real_frag_index[i])+"\n"
+			qchemstring += Qchem_RIMP2_Block
+			qchem_input=open(str(i+1)+".in","w+")
+			qchem_input.write(qchemstring)
+			qchem_input.close()
+			i = i+1
+			#gc.collect()  # speed up the function by 1000 times just deleting this single line!
+			return
 
 
 	def Write_Qchem_Frag_MBE_Input_All_General(self, fragnum):
-                if not os.path.isdir(str(fragnum)):
-                        os.mkdir(str(fragnum))
-                os.chdir(str(fragnum))
-                for i in range (0, self.FragOrder):
-                        if not os.path.isdir(str(i+1)):
-                                os.mkdir(str(i+1))
-                        os.chdir(str(i+1))
-                        self.Write_Qchem_Frag_MBE_Input_General(i+1)
-                        os.chdir("..")
-                os.chdir("..")
-                return
+		if not os.path.isdir(str(fragnum)):
+			os.mkdir(str(fragnum))
+		os.chdir(str(fragnum))
+		for i in range (0, self.FragOrder):
+			if not os.path.isdir(str(i+1)):
+				os.mkdir(str(i+1))
+			os.chdir(str(i+1))
+			self.Write_Qchem_Frag_MBE_Input_General(i+1)
+			os.chdir("..")
+		os.chdir("..")
+		return
 
 	def Write_Qchem_Frag_MBE_Input_All(self, fragnum):
 		if not os.path.isdir(str(fragnum)):
@@ -655,14 +643,14 @@ class Frag(Mol):
 	def PySCF_Frag_MBE_Energy_All(self):
 		for i in range (0, self.FragOrder):
 			self.PySCF_Frag_MBE_Energy(i+1)
-		return  
+		return
 
 	def Set_Frag_MBE_Energy(self):
 		self.frag_mbe_energy =  self.Frag_MBE_Energy()
 		self.frag_energy = self.frag_mbe_energies[LtoS(self.permute_index)]
 		print "self.frag_type: ", self.frag_type
 		print "self.frag_mbe_energy: ", self.frag_mbe_energy
-		return 
+		return
 
 	def Frag_MBE_Energy(self,  index=None):     # Get MBE energy recursively
 		if index==None:
@@ -686,7 +674,6 @@ class Frag(Mol):
 		target.frag_mbe_energy = self.frag_mbe_energy
 		target.frag_energy = self.frag_energy
 		target.permute_index = self.permute_index
-
 
 	def Frag_Force(self, cm_deri, nn_deri):
 		return self.Combine_CM_NN_Deri(cm_deri, nn_deri)
