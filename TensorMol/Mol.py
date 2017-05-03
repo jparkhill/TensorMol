@@ -26,6 +26,9 @@ class Mol:
 	def AtomTypes(self):
 		return np.unique(self.atoms)
 
+	def Num_of_Heavy_Atom(self):
+		return len([1 for i in self.atoms if i!=1])
+
 	def NEles(self):
 		return len(self.AtomTypes())
 
@@ -51,6 +54,17 @@ class Mol:
 				if (self.atoms[i] in ELEHEATFORM):
 					AE = AE - ELEHEATFORM[self.atoms[i]]
 			self.properties["atomization"] = AE
+		return
+
+	def Calculate_vdw(self):
+		c = 0.38088
+		self.vdw = 0.0
+		s6 = S6['B3LYP']
+		for i in range (0, self.NAtoms()):
+			atom1 = self.atoms[i]
+		for j in range (i+1, self.NAtoms()):
+			atom2 = self.atoms[j]
+		self.properties["vdw"] += -s6*c*((C6_coff[atom1]*C6_coff[atom2])**0.5)/(self.DistMatrix[i][j])**6 * (1.0/(1.0+6.0*(self.DistMatrix[i][j]/(atomic_vdw_radius[atom1]+atomic_vdw_radius[atom2]))**-12))
 		return
 
 	def AtomsWithin(self,rad, pt):
@@ -271,6 +285,18 @@ class Mol:
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+
+	def WriteSmiles(self, fpath=".", fname="gdb9_smiles", mode = "a"):
+		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".dat")):
+			try:
+				os.makedirs(os.path.dirname(fpath+"/"+fname+".dat"))
+			except OSError as exc:
+				if exc.errno != errno.EEXIST:
+				raise
+		with open(fpath+"/"+fname+".dat", mode) as f:
+			f.write(self.name+ "  "+ self.smiles+"\n")
+			f.close()
+		return
 
 	def XYZtoGridIndex(self, xyz, ngrids = 250,padding = 2.0):
 		Max = (self.coords).max() + padding
@@ -671,16 +697,7 @@ class Mol:
 		'''
 			The opposite of the routine above. It takes the digested probability vectors and uses it to calculate desired new positions.
 		'''
-		#print "Inputs", inputs
 		pdisp=inputs[-3:]
-		#print "Current Pos and Predicted displacement: ", self.coords[ii], pdisp
-		#Pr = GRIDS.Rasterize(inputs[:GRIDS.NGau3])
-		#Pr /= np.sum(Pr)
-		#p=np.dot(GRIDS.MyGrid().T,Pr)
-		#print "Element Type", self.atoms[ii]
-		#print "fit disp: ", p
-		#print "Using Disp:", pdisp
-		#self.FitGoProb(ii,True)
 		return pdisp
 
 	def RunPySCFWithCoords(self,samps,i):
@@ -745,6 +762,19 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 
+	def AtomName(self, i):
+		return atoi.keys()[atoi.values().index(self.atoms[i])]
+
+	def AllAtomNames(self):
+		names=[]
+		for i in range (0, self.atoms.shape[0]):
+			names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
+		return names
+
+	def Set_Qchem_Data_Path(self):
+		self.qchem_data_path="./qchem"+"/"+self.set_name+"/"+self.name
+		return
+
 	def Set_EQ_force(self):
 		"""
 		Sets forces to 0 for equilibrium molecules with no force data.
@@ -754,3 +784,83 @@ class Mol:
 
 	def Make_Spherical_Forces(self):
 		self.properties["sphere_forces"] = CartToSphereV(self.properties["forces"])
+
+	def PySCF_Energy(self, basis_='cc-pvqz'):
+		mol = gto.Mole()
+		pyscfatomstring=""
+		for j in range(len(self.atoms)):
+			s = self.coords[j]
+			pyscfatomstring=pyscfatomstring+str(self.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(self.atoms)-1 else "")
+		mol.atom = pyscfatomstring
+		mol.basis = basis_
+		mol.verbose = 0
+		try:
+			mol.build()
+			mf=scf.RHF(mol)
+			hf_en = mf.kernel()
+			mp2 = mp.MP2(mf)
+			mp2_en = mp2.kernel()
+			en = hf_en + mp2_en[0]
+			self.energy = en
+			return en
+		except Exception as Ex:
+				print "PYSCF Calculation error... :",Ex
+				print "Mol.atom:", mol.atom
+				print "Pyscf string:", pyscfatomstring
+				return 0.0
+				#raise Ex
+		return
+
+
+class Frag_of_Mol(Mol):
+	def __init__(self, atoms_=None, coords_=None):
+		Mol.__init__(self, atoms_, coords_)
+		self.undefined_bond_type =  None # whether the dangling bond can be connected  to H or not
+		self.undefined_bonds = None  # capture the undefined bonds of each atom
+
+        def FromXYZString(self,string, set_name = None):
+		self.set_name = set_name
+                lines = string.split("\n")
+                natoms=int(lines[0])
+                self.atoms.resize((natoms))
+                self.coords.resize((natoms,3))
+                for i in range(natoms):
+                        line = lines[i+2].split()
+                        if len(line)==0:
+                                return
+                        self.atoms[i]=AtomicNumber(line[0])
+                        try:
+                                self.coords[i,0]=float(line[1])
+                        except:
+                                self.coords[i,0]=scitodeci(line[1])
+                        try:
+                                self.coords[i,1]=float(line[2])
+                        except:
+                                self.coords[i,1]=scitodeci(line[2])
+                        try:
+                                self.coords[i,2]=float(line[3])
+                        except:
+                                self.coords[i,2]=scitodeci(line[3])
+		import ast
+		try:
+			self.undefined_bonds = ast.literal_eval(lines[1][lines[1].index("{"):lines[1].index("}")+1])
+			if "type" in self.undefined_bonds.keys():
+				self.undefined_bond_type = self.undefined_bonds["type"]
+			else:
+				self.undefined_bond_type = "any"
+		except:
+			self.name = lines[1] #debug
+			self.undefined_bonds = {}
+			self.undefined_bond_type = "any"
+                return
+
+
+	def Make_AtomNodes(self):
+                atom_nodes = []
+                for i in range (0, self.NAtoms()):
+			if i in self.undefined_bonds.keys():
+                        	atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
+			else:
+				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
+                self.atom_nodes = atom_nodes
+		return

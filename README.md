@@ -6,15 +6,15 @@ A Statistical Model of Molecular Structure
 	John Parkhill (john.parkhill@gmail.com)
 
 ### Energy And Force Models:
-	- Behler-Parrinello
-	- Many Body Expansion
-	- Diatomics in Molecules NN
-	- Atomwise Forces
+ - Behler-Parrinello
+ - Many Body Expansion
+ - Diatomics in Molecules NN
+ - Atomwise Forces
 
 ### Simulation Types
-	- Optimizations (Opt.py)
-	- Nudged Elastic Band
-	- Molecular Dynamics
+ - Optimizations
+ - Nudged Elastic Band
+ - Molecular Dynamics (NVE,NVT Nose-Hoover)
 
 ### License: GPLv3
 By using this software you agree to the terms in COPYING

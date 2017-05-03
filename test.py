@@ -259,9 +259,12 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
 	a=MSet("OCSDB_test")
 	a.ReadXYZ("OCSDB_test")
-	m = a.mols[5]
+	m = a.mols[1]
 	# Convert the forces from kcal/mol ang to joules/mol ang.
 	ForceField = lambda x: 4183.9953*tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
+	PARAMS["MNHChain"] = 10
+	PARAMS["MDTemp"] = 150.0
+	PARAMS["MDThermostat"] = "NosePerParticle"
 	md = VelocityVerlet(ForceField,m)
 	md.Prop()
 	return

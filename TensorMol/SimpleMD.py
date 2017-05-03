@@ -37,29 +37,38 @@ def KineticEnergy(v_, m_):
 	return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_)*pow(10.0,10.0),m_)/len(m_)
 
 class Thermostat:
-	def __init__(self,m_):
+	def __init__(self,m_,v_):
 		"""
 		Velocity Verlet step with a Rescaling Thermostat
 		"""
+		self.N = len(m_)
 		self.m = m_.copy()
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
 		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
 		self.tau = 30*PARAMS["MDdt"]
+		self.name = "Rescaling"
+		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
+		self.Rescale(v_)
 		return
-	def VVstep(self,f_, a_, x_, v_, m_, dt_ ):
+	def step(self,f_, a_, x_, v_, m_, dt_ ):
 		x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
 		v = v_ + (1./2.)*(a_+a)*dt_
 		Teff = (2./3.)*KineticEnergy(v,self.m)/8.314
 		v *= np.sqrt(self.T/Teff)
 		return x,v,a
+	def Rescale(self,v_):
+		# Do this elementwise otherwise H's blow off.
+		for i in range(self.N):
+			Teff = (2.0/(3.0*8.314))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
+			v_[i] *= np.sqrt(self.T/Teff)
+		return
 
 class NoseThermostat(Thermostat):
-	def __init__(self,m_):
+	def __init__(self,m_,v_):
 		"""
 		Velocity Verlet step with a Nose-Hoover Thermostat.
 		"""
-		self.M = 12 # Depth of NH chain.
 		self.m = m_.copy()
 		self.N = len(m_)
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
@@ -67,9 +76,11 @@ class NoseThermostat(Thermostat):
 		self.tau = 30*PARAMS["MDdt"]
 		self.Q = self.kT*self.tau*self.tau
 		self.eta = 0.0
-		self.Peta = 0.0
-		self.Aeta = 0.0
-	def VVstep(self,f_, a_, x_, v_, m_, dt_ ):
+		self.name = "Nose"
+		self.Rescale(v_)
+		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
+		return
+	def step(self,f_, a_, x_, v_, m_, dt_ ):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
@@ -79,27 +90,147 @@ class NoseThermostat(Thermostat):
 		ke = (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_),m_)
 		etadto2 = self.eta + (dt_/(2.*self.Q))*(ke - (((3.*self.N+1)/2.))*self.kT)
 		kedto2 = (1./2.)*np.dot(np.einsum("ia,ia->i",vdto2,vdto2),m_)
-		self.eta = etadto2 + (dt_/(2.*self.Q))*(ke - (((3.*self.N+1)/2.))*self.kT)
+		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2 - (((3.*self.N+1)/2.))*self.kT)
 		v = (vdto2 + (dt_/2.)*a)/(1 + (dt_/2.)*self.eta)
 		return x,v,a
 
-class NoseChainThermostat(Thermostat):
-	def __init__(self,x_,m_):
+class NosePerParticleThermostat(Thermostat):
+	def __init__(self,m_,v_):
 		"""
-		Velocity Verlet step with a Nose-Hoover Thermostat.
+		This
 		"""
-		self.M = 12 # Depth of NH chain.
+		self.m = m_.copy()
+		self.N = len(m_)
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
 		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
-		self.tau = 30*PARAMS["MDdt"]
-		self.Qs = np.zeros(self.M) # Masses.
-		self.eta = np.zeros(self.M) # Masses.
-		self.Peta = np.zeros(self.M) # Masses.
-		self.Aeta = np.zeros(self.M) # Masses.
-	def MartynaQs(self):
-		self.Qs = self.kT*self.tau*self.tau
-		self.Qs[0] = 3.*len(x_)*self.kT*self.tau*self.tau
+		self.tau = 25*PARAMS["MDdt"]
+		self.Q = self.kT*self.tau*self.tau
+		self.eta = np.zeros(self.N)
+		self.name = "NosePerParticle"
+		self.Rescale(v_)
+		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		return
+	def step(self,f_, a_, x_, v_, m_, dt_ ):
+		"""
+		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
+		"""
+		x = x_ + v_*dt_ + (1./2.)*(a_ - np.einsum("i,ij->ij",self.eta,v_))*dt_*dt_
+		vdto2 = v_ + (1./2.)*(a_ - np.einsum("i,ij->ij",self.eta,v_))*dt_
+		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		kes = (1./2.)*np.einsum("i,i->i",np.einsum("ia,ia->i",v_,v_),m_)
+		etadto2 = self.eta + (dt_/(2.*self.Q))*(kes - (((3.*self.N+1)/2.))*self.kT)
+		kedto2s = (1./2.)*np.einsum("i,i->i",np.einsum("ia,ia->i",vdto2,vdto2),m_)
+		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2s - (((3.*self.N+1)/2.))*self.kT)
+		v = np.einsum("ij,i->ij",(vdto2 + (dt_/2.)*a),1.0/(1 + (dt_/2.)*self.eta))
+		return x,v,a
+
+class NoseChainThermostat(Thermostat):
+	def __init__(self,m_,v_):
+		"""
+		Velocity Verlet step with a Nose-Hoover Chain Thermostat.
+		Based on Appendix A of martyna 1996
+		http://dx.doi.org/10.1080/00268979600100761
+		Args:
+			x_: an example of system positions.
+			m_: system masses.
+			PARAMS["MNHChain"]: depth of the Nose Hoover Chain
+			PARAMS["MDTemp"]: Temperature of the Thermostat.
+			PARAMS["MDdt"]: Timestep of the dynamics.
+		"""
+		self.M = PARAMS["MNHChain"] # Depth of NH chain.
+		self.N = len(v_) # Number of particles.
+		self.Nf = len(v_)*3 # Number of Degrees of freedom.
+		self.T = PARAMS["MDTemp"]  # Length of NH chain.
+		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		self.GNKT = self.Nf*self.kT
+		self.nc = 2 # nc Number of Trotterizations To be increased if Q is large.
+		self.ny = 3# nys (eq. 29 of Martyna. number of quadrature points within step.)
+		self.wj = np.zeros(self.ny)
+		if (self.ny == 3):
+			self.wj[0],self.wj[1],self.wj[2] = (1./(2. - np.power(2.,1./3.))),(1.-2.*(1./(2. - np.power(2.,1./3.)))),(1./(2. - np.power(2.,1./3.)))
+		elif (self.ny == 5):
+			self.wj[0] = (1./(4. - np.power(4.,1./3.)))
+			self.wj[1] = (1./(4. - np.power(4.,1./3.)))
+			self.wj[2] = 1.-4.*self.wj[0]
+			self.wj[3] = (1./(4. - np.power(4.,1./3.)))
+			self.wj[4] = (1./(4. - np.power(4.,1./3.)))
+		self.tau = 30*PARAMS["MDdt"]
+		self.dt = PARAMS["MDdt"]
+		self.dt2 = self.dt/2.
+		self.dt22 = self.dt*self.dt/2.
+		self.Qs = None # Chain Masses.
+		self.MartynaQs() # assign the chain masses.
+		self.eta = np.zeros(self.M) # Chain positions.
+		self.Veta = np.zeros(self.M) # Chain velocities
+		self.Geta = np.zeros(self.M) # Chain forces
+		self.name = "NoseHooverChain"
+		self.Rescale(v_)
+		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
+		return
+
+	def MartynaQs(self):
+		if (self.M==0):
+			return
+		self.Qs = np.ones(self.M)*self.kT*self.tau*self.tau
+		self.Qs[0] = 3.*self.N*self.kT*self.tau*self.tau
+		return
+
+	def step(self,f_, a_, x_, v_, m_, dt_ ):
+		v = self.IntegrateChain(a_, x_, v_, m_, dt_) # half step the chain.
+		# Get KE of the chain.
+		print "Energies of the system... ", self.ke(v_,m_), " Teff ", (2./3.)*self.ke(v_,m_)*pow(10.0,10.0)/8.314/self.N
+		print "Energies along the chain... Desired:", (3./2.)*self.kT
+		for i in range(self.M):
+			print self.Veta[i]*self.Veta[i]*self.Qs[i]/2.
+		v = v + self.dt2*a_
+		x = x_ + self.dt*v
+		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		v = v + self.dt2*a
+		v = self.IntegrateChain(a, x_, v, m_, dt_) # half step the chain.
+		return x, v, a
+
+	def ke(self,v_,m_):
+		return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_),m_)
+
+	def IntegrateChain(self, a_, x_, v_, m_, dt_ ):
+		"""
+		The Nose Hoover chain is twice trotterized in Martyna's subroutine
+		So this evolves the chain a half-step, and updates v_
+		"""
+		if (self.M==0):
+			return v_
+		ake = self.ke(v_,m_) # in kg (A^2/Fs^2)
+		# Update thermostat forces.
+		self.Geta[0]  = (2.*ake - self.GNKT) / self.Qs[0]
+		scale = 1.0
+		for k in range(self.nc):
+			for j in range(self.ny):
+				# UPDATE THE THERMOSTAT VELOCITIES.
+				wdtj2 = (self.wj[j]*self.dt/self.nc)/2.
+				wdtj4 = wdtj2/2.
+				wdtj8 = wdtj4/2.
+				self.Veta[-1] += self.Geta[-1]*wdtj4
+				for i in range(self.M-1)[::-1]:
+					AA = np.exp(-wdtj8*self.Veta[i+1])
+					self.Veta[i] = self.Veta[i]*AA*AA + wdtj4*self.Geta[i]*AA
+				# Update the particle velocities.
+				AA = np.exp(-wdtj2*self.Veta[1])
+				scale *= AA
+				self.Geta[0] = (scale*scale*2.0*ake - self.GNKT)/self.Qs[0]
+				# Update the Thermostat Positions.
+				for i in range(self.M):
+					self.eta[i] += self.Veta[i]*wdtj2
+				# Update the thermostat velocities
+				for i in range(self.M-1):
+					AA = np.exp(-wdtj8*self.Veta[i+1])
+					self.Veta[i] = self.Veta[i]*AA*AA + wdtj4*self.Geta[i]*AA
+					self.Geta[i+1] = (self.Qs[i]*self.Veta[i]*self.Veta[i] - self.kT)/self.Qs[i+1]
+				self.Veta[-1] += self.Geta[-1] * wdtj4
+		print "eta",self.eta
+		print "Meta",self.Qs
+		print "Veta",self.Veta
+		print "Geta",self.Geta
+		return v_*scale
 
 class VelocityVerlet:
 	def __init__(self,f_,g0_):
@@ -138,10 +269,21 @@ class VelocityVerlet:
 		"""
 		step = 0
 		Tstat = None
+
+		if (PARAMS["MDV0"]=="Random"):
+			self.v = np.random.randn(*self.x.shape)
+
 		if (PARAMS["MDThermostat"]=="Rescaling"):
-			Tstat = Thermostat(self.m)
-		if (PARAMS["MDThermostat"]=="Nose"):
-			Tstat = NoseThermostat(self.m)
+			Tstat = Thermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="Nose"):
+			Tstat = NoseThermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="NosePerParticle"):
+			Tstat = NosePerParticleThermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="NoseHooverChain"):
+			Tstat = NoseChainThermostat(self.m, self.v)
+		else:
+			print "Unthermostated Velocity Verlet."
+
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
@@ -149,8 +291,9 @@ class VelocityVerlet:
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
 			else:
-				self.x , self.v, self.a = Tstat.VVstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
-			self.WriteTrajectory()
+				self.x , self.v, self.a = Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
+			if (step%3==0):
+				self.WriteTrajectory()
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f", step, self.t, self.KE,Teff)
 		return

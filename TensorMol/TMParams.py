@@ -60,10 +60,11 @@ class TMParams(dict):
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		# MD Parameters
-		self["MDMaxStep"] = 1500
-		self["MDdt"] = 0.5 # In fs.
-		self["MDTemp"] = 200.0
-		self["MDThermostat"] = "Nose"
+		self["MDMaxStep"] = 2000
+		self["MDdt"] = 0.2 # In fs.
+		self["MDTemp"] = 300.0
+		self["MDV0"] = "Random"
+		self["MDThermostat"] = "NoseHooverChain" # None, "Rescaling", "Nose", "NoseHooverChain"
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
