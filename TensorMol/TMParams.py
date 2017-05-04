@@ -5,6 +5,7 @@ PARAMETER CONVENTION:
 - These params should be added to a logfile of results so that we can systematically see how our approximations are doing.
 """
 import logging, time, os
+from math import pi as Pi
 import numpy as np
 
 class TMParams(dict):
@@ -31,12 +32,10 @@ class TMParams(dict):
 		self["AN1_num_r_Rs"] = 32
 		self["AN1_num_a_Rs"] = 8
 		self["AN1_num_a_As"] = 8
-		self["AN1_r_Rs"] = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
-		self["AN1_a_Rs"] = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
-		self["AN1_a_As"] = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
+		self["AN1_r_Rs"] = np.array([ self["AN1_r_Rc"]*i/self["AN1_num_r_Rs"] for i in range (0, self["AN1_num_r_Rs"])])
+		self["AN1_a_Rs"] = np.array([ self["AN1_a_Rc"]*i/self["AN1_num_a_Rs"] for i in range (0, self["AN1_num_a_Rs"])])
+		self["AN1_a_As"] = np.array([ 2.0*Pi*i/self["AN1_num_a_As"] for i in range (0, self["AN1_num_a_As"])])
 		# SET GENERATION parameters
-		self["MBE_ORDER"] = 2
-		self["KAYBEETEE"] = 0.000950048 # At 300K
 		self["RotateSet"] = 0
 		self["TransformSet"] = 1
 		self["NModePts"] = 10

@@ -32,7 +32,7 @@ class TensorMolData(TensorData):
 		self.num_indis = num_indis_
 		self.NTrain = 0
 		TensorData.__init__(self, MSet_,Dig_,Name_, type_=type_)
-		print "self.type:", self.type
+		print "TensorMolData.type:", self.type
 		return
 
 	def QueryAvailable(self):
@@ -257,8 +257,10 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_meta = None
 		self.scratch_test_meta = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
-		self.eles = list(MSet(self.set_name).AtomTypes())
-		self.eles.sort()
+		self.eles = []
+		if (MSet_ != None):
+			self.eles = list(MSet_.AtomTypes())
+			self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
 		print "TensorMolData_BP.eles", self.eles

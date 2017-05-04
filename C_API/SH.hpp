@@ -51,6 +51,21 @@ public:
 	double* r_Rs;
 	double* a_Rs;
 	double* a_As;
+	void Print(void)
+	{
+		cout << "SymParams: " << num_r_Rs << " " << num_a_Rs << " " << num_a_As << " "<< endl;
+		for (int i=0; i < num_r_Rs ; ++i)
+			cout << r_Rs[i] << " ";
+		cout << endl;
+		for (int i=0; i < num_a_Rs ; ++i)
+			cout << a_Rs[i] << " ";
+		cout << endl;
+		for (int i=0; i < num_a_As ; ++i)
+			cout << a_As[i] << " ";
+		cout << endl;
+	};
+
+
 };
 
 //

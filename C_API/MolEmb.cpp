@@ -1640,6 +1640,7 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args)
 	SymParams* Prm=&Prmo;
 	// Kun: this is why it's good to keep the same names.
 	// You could have find-replaced to get all this stuff concise, instead of this.
+	//Prm->Print();
 	radius_Rc = Prm->r_Rc;
 	angle_Rc = Prm->a_Rc;
 	eta = Prm->eta;
@@ -1652,6 +1653,11 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args)
 	int dim_angle_As = Prm->num_a_As;
 
 	const int nele = (elements->dimensions)[0];
+	if (nele < 1)
+	{
+		cout << "AN1 called without elements.... " << endl;
+		throw;
+	}
 	double  *xyz_data, *ANI1_Sym_data;
 	xyz_data = (double*) xyz->data;
 	npy_intp* Nxyz = xyz->dimensions;

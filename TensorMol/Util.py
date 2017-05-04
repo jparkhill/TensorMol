@@ -31,7 +31,7 @@ HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
 GRIDS = None
-HAS_GRIDS=True
+HAS_GRIDS=False
 Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 #
 # -- begin Environment set up.
