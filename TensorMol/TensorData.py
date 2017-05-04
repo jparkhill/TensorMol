@@ -26,9 +26,9 @@ class TensorData():
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
-		self.properties = {}
+		self.set_name = None
 		if (self.set != None):
-			self.properties["set_name"] = MSet_.name # Check to make sure the name can recall the set.
+			self.set_name = MSet_.name # Check to make sure the name can recall the set.
 		self.dig = Dig_
 		self.type = type_
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
@@ -78,7 +78,7 @@ class TensorData():
 		"""
 		Recalls the MSet to build training data etc.
 		"""
-		self.set = MSet(self.properties["set_name"])
+		self.set = MSet(self.set_name)
 		self.set.Load()
 		return
 
@@ -103,7 +103,6 @@ class TensorData():
 		print "TrainDigest output shape: ", touts.shape
 		if (self.dig.eshape == None or self.dig.lshape ==None):
 			raise Exception("Ain't got no fucking shape.")
-
 
 	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""

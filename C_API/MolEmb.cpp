@@ -311,6 +311,7 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 	int g2_size = angle_Rs_dim * angle_As_dim;
 	int bond_index = 0;
 	int SYMdim = nele*radius_Rs_dim + nele*(nele+1)/2*angle_Rs_dim*angle_As_dim;
+#pragma omp parallel for
 	for (int j = 0; j < nele; j++ ) {
 		for ( int k = 0;  k < ele_index[j].size(); k++) {
 			if (ele_index[j][k] != atom_num) {
@@ -326,6 +327,10 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 			}
 		}
 	}
+
+//
+//  Kun: this really needs to be OMP'd
+//       Are only independent i's assigned in a loop?
 	for (int i = 0; i < nele; i++) {
 		for (int j = i; j < nele; j++) {
 			for ( int k =0; k < ele_index[i].size(); k++)  {
@@ -356,9 +361,7 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 			}
 			bond_index = bond_index + 1;
 		}
-
 	}
-
 }
 
 //
