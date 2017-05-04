@@ -33,8 +33,8 @@ def TestANI1():
 	a.ReadXYZ("gdb9")
 	TreatedAtoms = a.AtomTypes()
 	print "TreatedAtoms ", TreatedAtoms
-	TreatedBonds = list(a.BondTypes())
-	print "TreatedBonds ", TreatedBonds
+	#TreatedBonds = list(a.BondTypes())
+	#print "TreatedBonds ", TreatedBonds
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
 	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
 	tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned")
@@ -53,7 +53,6 @@ def TestGeneralMBEandMolGraph():
 	g = GraphSet(a.name, a.path)
 	g.graphs = a.Make_Graphs()
 	print "found?", g.graphs[4].Find_Frag(g.graphs[3])
-
 
 def TestAlign():
 	"""
@@ -301,8 +300,8 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-#TestANI1()
-TestGeneralMBEandMolGraph()
+TestANI1()
+#TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()

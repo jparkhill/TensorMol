@@ -399,36 +399,36 @@ class FragableMSet(MSet):
 
 class GraphSet:
 	def __init__(self, name_ ="gdb9", path_="./datasets/"):
-                self.graphs=[]
-                self.path=path_
-                self.name=name_
-                self.suffix=".graph" #Pickle Database? Poor choice.
+		self.graphs=[]
+		self.path=path_
+		self.name=name_
+		self.suffix=".graph" #Pickle Database? Poor choice.
 
-        def BondTypes(self):
-                types = np.array([],dtype=np.uint8)
-                for m in self.mols:
-                        types = np.union1d(types,m.BondTypes())
-                return types
+	def BondTypes(self):
+		types = np.array([],dtype=np.uint8)
+		for m in self.mols:
+			types = np.union1d(types,m.BondTypes())
+		return types
 
 	def NBonds(self):
-                nbonds=0
-                for m in self.mols:
-                        nbonds += m.NBonds()
-                return nbonds
+		nbonds=0
+		for m in self.mols:
+			nbonds += m.NBonds()
+		return nbonds
 
-        def Save(self):
-                print "Saving set to: ", self.path+self.name+self.suffix
-                f=open(self.path+self.name+self.suffix,"wb")
-                pickle.dump(self.__dict__, f, protocol=1)
-                f.close()
-                return
+	def Save(self):
+		print "Saving set to: ", self.path+self.name+self.suffix
+		f=open(self.path+self.name+self.suffix,"wb")
+		pickle.dump(self.__dict__, f, protocol=1)
+		f.close()
+		return
 
-        def Load(self):
-                f = open(self.path+self.name+self.suffix,"rb")
-                tmp=pickle.load(f)
-                self.__dict__.update(tmp)
-                f.close()
-                print "Loaded, ", len(self.mols), " molecules "
-                print self.NAtoms(), " Atoms total"
-                print self.AtomTypes(), " Types "
-                return
+	def Load(self):
+		f = open(self.path+self.name+self.suffix,"rb")
+		tmp=pickle.load(f)
+		self.__dict__.update(tmp)
+		f.close()
+		print "Loaded, ", len(self.mols), " molecules "
+		print self.NAtoms(), " Atoms total"
+		print self.AtomTypes(), " Types "
+		return

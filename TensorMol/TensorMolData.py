@@ -569,54 +569,53 @@ class TensorMolData_BP(TensorMolData):
 		#print "self.test_ScratchPointer",self.test_ScratchPointer
 
 
-        def Init_TraceBack(self):
-                num_eles = [0 for ele in self.eles]
-                for mol_index in self.test_mols:
-                        for ele in list(self.set.mols[mol_index].atoms):
-                                num_eles[self.eles.index(ele)] += 1
-                self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
+	def Init_TraceBack(self):
+		num_eles = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			for ele in list(self.set.mols[mol_index].atoms):
+				num_eles[self.eles.index(ele)] += 1
+		self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
 
-                pointer = [0 for ele in self.eles]
-                for mol_index in self.test_mols:
-                        mol = self.set.mols[mol_index]
-                        for i in range (0, mol.atoms.shape[0]):
-                                atom_type = mol.atoms[i]
-                                self.test_atom_index[self.eles.index(atom_type)][pointer[self.eles.index(atom_type)]] = [int(mol_index), i]
-                                pointer[self.eles.index(atom_type)] += 1
-                print self.test_atom_index
-                f  = open("test_energy_real_atom_index_for_test.dat","wb")
-                pickle.dump(self.test_atom_index, f)
-                f.close()
-                return
-
+		pointer = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			mol = self.set.mols[mol_index]
+			for i in range (0, mol.atoms.shape[0]):
+				atom_type = mol.atoms[i]
+				self.test_atom_index[self.eles.index(atom_type)][pointer[self.eles.index(atom_type)]] = [int(mol_index), i]
+				pointer[self.eles.index(atom_type)] += 1
+		print self.test_atom_index
+		f  = open("test_energy_real_atom_index_for_test.dat","wb")
+		pickle.dump(self.test_atom_index, f)
+		f.close()
+		return
 
 	def Save(self):
-	    self.CleanScratch()
-	    f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
-	    pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
-	    f.close()
-	    return
+		self.CleanScratch()
+		f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
 
 
 class TensorMolData_Bond_BP(TensorMolData_BP):
-        """
-                        A tensordata for molecules and Bond-wise Behler-Parinello.
-        """
-        def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
-                TensorMolData_BP.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
-                self.eles = list(self.set.BondTypes())
-                self.eles.sort()
+	"""
+	A tensordata for molecules and Bond-wise Behler-Parinello.
+	"""
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
+		TensorMolData_BP.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
+		self.eles = list(self.set.BondTypes())
+		self.eles.sort()
 		#self. = self.set.
 		#self.bonds = list(self.set.BondTypes())
 		#self.bonds.sort()
-                return
+		return
 
-        def CleanScratch(self):
-                TensorData.CleanScratch(self)
-                self.CaseMetadata=None # case X molecule index , element type , first atom in this mol, last atom in this mol (exclusive)
-                self.scratch_meta = None
-                self.scratch_test_meta = None
-                return
+	def CleanScratch(self):
+		TensorData.CleanScratch(self)
+		self.CaseMetadata=None # case X molecule index , element type , first atom in this mol, last atom in this mol (exclusive)
+		self.scratch_meta = None
+		self.scratch_test_meta = None
+		return
 
 	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
 		self.CheckShapes()
@@ -675,23 +674,21 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 		self.Save() #write a convenience pickle.
 		return
 
-
-        def Init_TraceBack(self):
-                num_eles = [0 for ele in self.eles]
-                for mol_index in self.test_mols:
-                        for ele in list(self.set.mols[mol_index].bonds[:,0]):
-                                num_eles[self.eles.index(ele)] += 1
-                self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
-
-                pointer = [0 for ele in self.eles]
-                for mol_index in self.test_mols:
-                        mol = self.set.mols[mol_index]
-                        for i in range (0, mol.bonds.shape[0]):
-                                bond_type = mol.bonds[i,0]
-                                self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
-                                pointer[self.eles.index(bond_type)] += 1
-                print self.test_atom_index
-                f  = open("test_energy_bond_index_for_test.dat","wb")
-                pickle.dump(self.test_atom_index, f)
-                f.close()
-                return
+	def Init_TraceBack(self):
+		num_eles = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			for ele in list(self.set.mols[mol_index].bonds[:,0]):
+				num_eles[self.eles.index(ele)] += 1
+		self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
+		pointer = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			mol = self.set.mols[mol_index]
+			for i in range (0, mol.bonds.shape[0]):
+				bond_type = mol.bonds[i,0]
+				self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
+				pointer[self.eles.index(bond_type)] += 1
+		print self.test_atom_index
+		f  = open("test_energy_bond_index_for_test.dat","wb")
+		pickle.dump(self.test_atom_index, f)
+		f.close()
+		return
