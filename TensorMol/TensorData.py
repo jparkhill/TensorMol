@@ -26,6 +26,7 @@ class TensorData():
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
+		self.properties = {}
 		if (self.set != None):
 			self.properties["set_name"] = MSet_.name # Check to make sure the name can recall the set.
 		self.dig = Dig_

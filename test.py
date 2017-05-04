@@ -29,17 +29,24 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	return
 
 def TestANI1():
-	a=MSet("gdb9")
-	a.ReadXYZ("gdb9")
-	TreatedAtoms = a.AtomTypes()
-	print "TreatedAtoms ", TreatedAtoms
-	TreatedBonds = list(a.BondTypes())
-	print "TreatedBonds ", TreatedBonds
-	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
-	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-	tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned")
+	"""
+	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz 
+	"""
+	#a = MSet("uneq_chemspider")
+	#a.ReadXYZ("uneq_chemspider")
+	#a.Save()
+
+	#a = MSet("uneq_chemspider")
+	#a.Load()
+	#TreatedAtoms = a.AtomTypes()
+	#d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+	#tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+	#tset.BuildTrain("uneq_chemspider")
+
+	tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-	manager.Train(maxstep=501)
+	manager.Train(maxstep=5)
+
 
 def TestGeneralMBEandMolGraph():
 	a=FragableMSet("NaClH2O")
@@ -301,8 +308,8 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-#TestANI1()
-TestGeneralMBEandMolGraph()
+TestANI1()
+#TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()
