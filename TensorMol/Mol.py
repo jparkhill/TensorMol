@@ -262,9 +262,13 @@ class Mol:
 						grids[index] = atoc[self.atoms[i]]
 		return grids
 
-	def Center(self):
-		''' Returns the center of atom'''
-		return np.average(self.coords,axis=0)
+	def Center(self, OfMass=False):
+		''' Returns the center of atom or mass'''
+		if (not OfMass):
+			return np.average(self.coords,axis=0)
+		else:
+			m = np.array(map(lambda x: ATOMICMASSES[x],self.atoms))
+			return np.einsum("ax,a->x")/np.sum(m)
 
 	def rms(self, m):
 		""" Cartesian coordinate difference. """
@@ -733,6 +737,25 @@ class Mol:
 			#raise Ex
 		return
 
+	def MultipoleInputs(self):
+		"""
+			These are the quantities (in Atomic Units)
+			which you multiply the atomic charges by (and sum)
+			in order to calculate the multipoles of a molecule
+			up to PARAMS["EEOrder"]
+			Returns:
+				(NAtoms X (monopole, dipole x, ... quad x... etc. ))
+		"""
+		tore = None
+		com = self.Center(OfMass=True)
+		if (PARAMS["EEOrder"] == 2):
+			tore = np.zeros((self.NAtoms,4))
+			for i in range(self.NAtoms()):
+				tore[i,0] = 1.0
+				tore[i,1:] = self.coords[i]-com
+		else:
+			raise Exception("Implement... ")
+		return tore
 
 class Frag_of_Mol(Mol):
 	def __init__(self, atoms_=None, coords_=None):

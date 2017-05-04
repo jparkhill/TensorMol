@@ -341,6 +341,17 @@ class MolDigester:
 				Outs = np.array([mol_.properties["energy"]])
 			elif (self.OType == "AtomizationEnergy"):
 			    Outs = np.array([mol_.properties["atomization"]])
+			elif (self.OType == "EleEmbAtEn"):
+				if (PARAMS["EEOrder"]==2):
+					AE = mol_.properties["atomization"]
+					if (PARAMS["EEVdw"]==True):
+						AE -= mol_.properties["Vdw"]
+					Outs = np.zeros(5) # AtEnergy, monopole, 3-dipole.
+					Outs[0] = AE
+					Outs[1] = 0.0
+					Outs[1:] = mol_.properties["dipole"]
+				else:
+					raise Exception("Code higher orders... ")
 			elif (self.OType == "Atomization_novdw"):
 			    Outs = np.array([mol_.properties["atomization"] - mol_.properties["vdw"]])
 			elif (self.OType == "FragEnergy"):
