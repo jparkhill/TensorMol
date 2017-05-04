@@ -1597,7 +1597,7 @@ static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args) {
 
 	int data_pointer = 0;
 	if (theatom < 0) {
-		//#pragma omp parallel for
+		#pragma omp parallel for
 		for (int i=0; i < natom;  i++) {
 			array<std::vector<int>, 10> ele_index;  // hold max 10 elements most
 			for (int j = 0; j < natom; j++) {

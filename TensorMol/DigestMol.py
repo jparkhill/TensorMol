@@ -285,7 +285,7 @@ class MolDigester:
 		return  CM  #for debug purpose, ignore the diagnoal element
 
 	def EvalDigest(self, mol_):
-		return self.Emb(mol_,False)
+		return self.Emb(mol_,False, True)
 
 	def Emb(self, mol_, MakeOutputs=True, MakeGradients=False):
 		"""
@@ -327,7 +327,7 @@ class MolDigester:
 		elif(self.name == "ConnectedBond_Angle_Bond_BP"):
 			Ins, Grads = self.make_connectedbond_angle_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym"):
-			Ins, Grads = self.make_ANI1_sym(mol_, MakeGradients)
+			Ins, Grads = self.make_ANI1_sym(mol_, MakeGradients_ = MakeGradients)
 		elif(self.name == "ANI1_Sym_Bond_BP"):
 			Ins, Grads = self.make_ANI1_sym_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym_Center_Bond_BP"):

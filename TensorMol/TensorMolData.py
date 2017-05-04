@@ -257,7 +257,7 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_meta = None
 		self.scratch_test_meta = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
-		self.eles = list(self.set.AtomTypes())
+		self.eles = list(MSet(self.set_name).AtomTypes())
 		self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
@@ -294,7 +294,7 @@ class TensorMolData_BP(TensorMolData):
 		for mi in ord:
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
-			if (mols_done%10000==0):
+			if (mols_done%1000==0):
 				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			if not np.all(np.isfinite(ins)):

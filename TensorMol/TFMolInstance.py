@@ -344,7 +344,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
-		diff  = tf.sub(output, labels)
+		diff  = tf.subtract(output, labels)
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
@@ -454,10 +454,11 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.label_pl=None
 
 		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 3000
+		self.batch_size = 10000
 		self.batch_size_output = 0
 		self.hidden1 = 200
-		self.hidden2 = 100
+		self.hidden2 = 200
+		self.hidden3 = 200
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -472,7 +473,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
-		self.batch_size_output = int(2.3*self.batch_size/self.MeanNumAtoms)
+		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
 		print("Assigned batch input size: ",self.batch_size)
 		print("Assigned batch output size: ",self.batch_size_output)
@@ -511,7 +512,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return
 
 	def loss_op(self, output, labels):
-		diff  = tf.sub(output, labels)
+		diff  = tf.subtract(output, labels)
 		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)
 		#tf.Print(labels, [labels], message="This is labels: ",first_n=10000000,summarize=100000000)
 		loss = tf.nn.l2_loss(diff)

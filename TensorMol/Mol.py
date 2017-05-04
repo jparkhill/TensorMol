@@ -51,8 +51,8 @@ class Mol:
 		else:
 			AE = self.properties["energy"]
 			for i in range (0, self.atoms.shape[0]):
-				if (self.atoms[i] in ELEHEATFORM):
-					AE = AE - ELEHEATFORM[self.atoms[i]]
+				if (self.atoms[i] in ele_U):
+					AE = AE - ele_U[self.atoms[i]]
 			self.properties["atomization"] = AE
 		return
 
