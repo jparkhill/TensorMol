@@ -36,13 +36,16 @@ def TestANI1():
 		a = MSet("uneq_chemspider")
 		a.ReadXYZ("uneq_chemspider")
 		a.Save()
-	a = MSet("uneq_chemspider")
-	a.Load()
-	print "Set elements: ", a.AtomTypes()
-	TreatedAtoms = a.AtomTypes()
-	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
-	tset.BuildTrain("uneq_chemspider")
+		a = MSet("uneq_chemspider")
+		a.Load()
+		print "Set elements: ", a.AtomTypes()
+		TreatedAtoms = a.AtomTypes()
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+		tset.BuildTrain("uneq_chemspider")
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+		manager.Train(maxstep=5)
+
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.
 	#tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")

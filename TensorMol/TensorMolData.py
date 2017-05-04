@@ -263,6 +263,7 @@ class TensorMolData_BP(TensorMolData):
 			self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
+		self.test_mols_done = False
 		print "TensorMolData_BP.eles", self.eles
 		return
 
@@ -539,7 +540,6 @@ class TensorMolData_BP(TensorMolData):
 			if (currentmol != self.scratch_test_meta[i,0]):
 				outputpointer = outputpointer+1
 				currentmol = self.scratch_test_meta[i,0]
-
 			if not self.test_mols_done and self.test_begin_mol+currentmol not in self.test_mols:
 					self.test_mols.append(self.test_begin_mol+currentmol)
 #					if i < self.test_ScratchPointer+ignore_first_mol + 50:
@@ -552,7 +552,6 @@ class TensorMolData_BP(TensorMolData):
 			matrices[ei][offsets[ei],outputpointer] = 1.0
 			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]]
 			offsets[ei] += 1
-
 #			if i < self.test_ScratchPointer+ignore_first_mol + 50:
 #				print "first 50 meta data :", i, self.test_ScratchPointer+ignore_first_mol, self.scratch_test_meta[i]
 		#print "inputs",inputs
