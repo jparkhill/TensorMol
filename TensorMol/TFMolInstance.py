@@ -66,7 +66,7 @@ class MolInstance(Instance):
 	def train(self, mxsteps, continue_training= False):
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
-		mini_test_loss = 100000000 # some big numbers
+		mini_test_loss = float('inf') # some big numbers
 		for step in  range (0, mxsteps):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
@@ -93,6 +93,28 @@ class MolInstance(Instance):
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, total_correct, Ncase_train, duration)
 		return
+
+
+        def save_chk(self,  step, feed_dict=None):  # We need to merge this with the one in TFInstance
+                cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
+                os.system(cmd)
+                self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+                print("Saving Checkpoint file, ", self.chk_file)
+                self.saver.save(self.sess,  self.chk_file)
+                return
+
+        def Load(self):
+                print ("Unpickling TFInstance...")
+                f = open(self.path+self.name+".tfn","rb")
+                tmp=pickle.load(f)
+                tmp.pop('evaluate',None)
+                self.Clean()
+                self.__dict__.update(tmp)
+                f.close()
+                print("self.chk_file:", self.chk_file)
+                return
+
+
 
 class MolInstance_fc_classify(MolInstance):
 	def __init__(self, TData_,  Name_=None):
