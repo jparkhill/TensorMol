@@ -40,6 +40,34 @@ static SHParams ParseParams(PyObject *Pdict)
 	return tore;
 }
 
+static SymParams ParseSymParams(PyObject *Pdict)
+{
+	SymParams tore;
+	{
+		PyObject* RBFo = PyDict_GetItemString(Pdict, "AN1_r_Rs");
+		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+		tore.r_Rs = (double*)RBFa->data;
+	}
+	{
+		PyObject* RBFo = PyDict_GetItemString(Pdict, "AN1_a_Rs");
+		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+		tore.a_Rs = (double*)RBFa->data;
+	}
+	{
+		PyObject* RBFo = PyDict_GetItemString(Pdict, "AN1_a_As");
+		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
+		tore.a_As = (double*)RBFa->data;
+	}
+	tore.num_r_Rs = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"AN1_num_r_Rs")));
+	tore.num_a_Rs = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"AN1_num_a_Rs")));
+	tore.num_a_As = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"AN1_num_a_As")));
+	tore.r_Rc = PyFloat_AsDouble((PyDict_GetItemString(Pdict,"AN1_r_Rc")));
+	tore.a_Rc = PyFloat_AsDouble((PyDict_GetItemString(Pdict,"AN1_a_Rc")));
+	tore.eta = PyFloat_AsDouble((PyDict_GetItemString(Pdict,"AN1_eta")));
+	tore.zeta = PyFloat_AsDouble((PyDict_GetItemString(Pdict,"AN1_zeta")));
+	return tore;
+}
+
 inline double fc(const double &dist, const double &dist_cut) {
 	if (dist > dist_cut)
 	return(0.0);
@@ -299,11 +327,8 @@ void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, 
 			}
 			bond_index = bond_index + 1;
 		}
-
 	}
-
 }
-
 
 void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const double *xyz, const uint8_t *atoms, const int natom, const uint8_t *ele, const int nele, const int atom_num, const array<std::vector<int>, 10> ele_index, const double radius_Rc, const double angle_Rc, const double *radius_Rs, const int radius_Rs_dim, const double *angle_Rs, const int angle_Rs_dim, const double *angle_As, const int angle_As_dim, const double eta, const double zeta) {
 	double dist1, fc1, dist2, fc2, dist3, fc3, theta, A, C ,B, tmp_v ;
@@ -1536,22 +1561,24 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args) {
 
 	PyArrayObject   *xyz, *atoms_, *elements;
-	PyObject    *radius_Rs_py, *angle_Rs_py, *angle_As_py;
+	PyObject    *radius_Rs_py, *angle_Rs_py, *angle_As_py, *Prm_;
 	double   radius_Rc, angle_Rc, eta, zeta;
 	int theatom;
-	if (!PyArg_ParseTuple(args, "O!O!O!ddO!O!O!ddi",
-	&PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &radius_Rc, &angle_Rc,  &PyList_Type, &radius_Rs_py,  &PyList_Type, &angle_Rs_py,  &PyList_Type, &angle_As_py,  &eta, &zeta, &theatom))  return NULL;
-	int dim_radius_Rs = PyList_Size(radius_Rs_py);
-	int dim_angle_Rs = PyList_Size(angle_Rs_py);
-	int dim_angle_As = PyList_Size(angle_As_py);
-	double  radius_Rs[dim_radius_Rs], angle_Rs[dim_angle_Rs], angle_As[dim_angle_As];
-	for (int i = 0; i < dim_radius_Rs; i++)
-	radius_Rs[i] = PyFloat_AsDouble(PyList_GetItem(radius_Rs_py, i));
-	for (int i = 0; i < dim_angle_Rs; i++)
-	angle_Rs[i] = PyFloat_AsDouble(PyList_GetItem(angle_Rs_py, i));
-	for (int i = 0; i < dim_angle_As; i++) {
-		angle_As[i] = PyFloat_AsDouble(PyList_GetItem(angle_As_py, i));
-	}
+	if (!PyArg_ParseTuple(args, "O!O!O!O!i", &PyDict_Type, &Prm_, &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom))  return NULL;
+	SymParams Prmo = ParseSymParams(Prm_);
+	SymParams* Prm=&Prmo;
+
+	radius_Rc = Prm->r_Rc;
+	angle_Rc = Prm->a_Rc;
+	eta = Prm->eta;
+	zeta = Prm->zeta;
+	double* radius_Rs = Prm->r_Rs;
+	double* angle_Rs = Prm->a_Rs;
+	double* angle_As = Prm->a_As;
+	int dim_radius_Rs = Prm->num_r_Rs;
+	int dim_angle_Rs = Prm->num_a_Rs;
+	int dim_angle_As = Prm->num_a_As;
+
 	const int nele = (elements->dimensions)[0];
 	double  *xyz_data;
 	double  *ANI1_Sym_deri_data;
@@ -1604,21 +1631,26 @@ static PyObject*  Make_ANI1_Sym (PyObject *self, PyObject  *args)
 {
 	PyArrayObject   *xyz, *atoms_, *elements;
 	PyObject    *radius_Rs_py, *angle_Rs_py, *angle_As_py;
+	PyObject *Prm_;
 	double   radius_Rc, angle_Rc, eta, zeta;
 	int theatom;
-	if (!PyArg_ParseTuple(args, "O!O!O!ddO!O!O!ddi",
-	&PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &radius_Rc, &angle_Rc,  &PyList_Type, &radius_Rs_py,  &PyList_Type, &angle_Rs_py,  &PyList_Type, &angle_As_py,  &eta, &zeta, &theatom))  return NULL;
-	int dim_radius_Rs = PyList_Size(radius_Rs_py);
-	int dim_angle_Rs = PyList_Size(angle_Rs_py);
-	int dim_angle_As = PyList_Size(angle_As_py);
-	double  radius_Rs[dim_radius_Rs], angle_Rs[dim_angle_Rs], angle_As[dim_angle_As];
-	for (int i = 0; i < dim_radius_Rs; i++)
-	radius_Rs[i] = PyFloat_AsDouble(PyList_GetItem(radius_Rs_py, i));
-	for (int i = 0; i < dim_angle_Rs; i++)
-	angle_Rs[i] = PyFloat_AsDouble(PyList_GetItem(angle_Rs_py, i));
-	for (int i = 0; i < dim_angle_As; i++) {
-		angle_As[i] = PyFloat_AsDouble(PyList_GetItem(angle_As_py, i));
-	}
+
+	if (!PyArg_ParseTuple(args, "O!O!O!O!i", &PyDict_Type, &Prm_, &PyArray_Type, &xyz,  &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom))  return NULL;
+	SymParams Prmo = ParseSymParams(Prm_);
+	SymParams* Prm=&Prmo;
+	// Kun: this is why it's good to keep the same names.
+	// You could have find-replaced to get all this stuff concise, instead of this.
+	radius_Rc = Prm->r_Rc;
+	angle_Rc = Prm->a_Rc;
+	eta = Prm->eta;
+	zeta = Prm->zeta;
+	double* radius_Rs = Prm->r_Rs;
+	double* angle_Rs = Prm->a_Rs;
+	double* angle_As = Prm->a_As;
+	int dim_radius_Rs = Prm->num_r_Rs;
+	int dim_angle_Rs = Prm->num_a_Rs;
+	int dim_angle_As = Prm->num_a_As;
+
 	const int nele = (elements->dimensions)[0];
 	double  *xyz_data, *ANI1_Sym_data;
 	xyz_data = (double*) xyz->data;

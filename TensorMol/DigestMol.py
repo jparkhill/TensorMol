@@ -82,26 +82,20 @@ class MolDigester:
 		CM_Bond_BP_deri = np.zeros((CM_Bond_BP.shape[0], CM_Bond_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
 		return  CM_Bond_BP, CM_Bond_BP_deri
 
-	def make_ANI1_sym(self, mol, r_Rc = 4.6, a_Rc = 3.1, eta = 4.00, zeta = 8.00, num_r_Rs = 32, num_a_Rs = 8, num_a_As =8, MakeGradients_ = False):  # ANI-1 default setting
+	def make_ANI1_sym(self, mol, MakeGradients_ = False):  # ANI-1 default setting
 		eles = list(set(list(mol.atoms)))
-		r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
-		a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
-		a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
-		ANI1_Ins = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1) # -1 means do it for all atoms
+		ANI1_Ins = MolEmb.Make_ANI1_Sym(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), -1) # -1 means do it for all atoms
 		if (MakeGradients_):
-			ANI1_Ins_deri = MolEmb.Make_ANI1_Sym_deri(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, -1)
+			ANI1_Ins_deri = MolEmb.Make_ANI1_Sym_deri(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), -1)
 			return ANI1_Ins, ANI1_Ins_deri
 		else:
 			return ANI1_Ins, None
 
-	def make_ANI1_sym_bond_bp(self, mol, r_Rc = 4.6, a_Rc = 3.1, eta = 4.00, zeta = 8.00, num_r_Rs = 32, num_a_Rs = 8, num_a_As =8):  # ANI-1 default setting
-		r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
-		a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
-		a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
+	def make_ANI1_sym_bond_bp(self, mol):  # ANI-1 default setting
 		ANI1_Ins_bond_bp = []
 		for i in range (0, mol.NBonds()):
-			ANI1_Ins_1 = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, int(mol.bonds[i][2])) # -1 means do it for all atoms
-			ANI1_Ins_2 = MolEmb.Make_ANI1_Sym(mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, int(mol.bonds[i][3])) # -1 means do it for all atoms
+			ANI1_Ins_1 = MolEmb.Make_ANI1_Sym(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), int(mol.bonds[i][2])) # -1 means do it for all atoms
+			ANI1_Ins_2 = MolEmb.Make_ANI1_Sym(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), int(mol.bonds[i][3])) # -1 means do it for all atoms
 			dist = mol.bonds[i][1]
 			ANI1_Ins_1 = ANI1_Ins_1.reshape((-1))
 			ANI1_Ins_2 = ANI1_Ins_2.reshape((-1))
@@ -110,10 +104,7 @@ class MolDigester:
 		ANI1_Ins_bond_bp_deri = np.zeros((ANI1_Ins_bond_bp.shape[0], ANI1_Ins_bond_bp.shape[1]))
 		return ANI1_Ins_bond_bp, ANI1_Ins_bond_bp_deri
 
-	def make_ANI1_sym_center_bond_bp(self, mol, r_Rc = 5.3, a_Rc = 3.8, eta = 4.00, zeta = 8.00, num_r_Rs = 32, num_a_Rs = 8, num_a_As =8):  # ANI-1 default setting
-		r_Rs = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
-		a_Rs = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
-		a_As = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
+	def make_ANI1_sym_center_bond_bp(self, mol):  # ANI-1 default setting
 		ANI1_Ins_bond_bp = []
 		for i in range (0, mol.NBonds()):
 			center = (mol.coords[ int(mol.bonds[i][2])] + mol.coords[ int(mol.bonds[i][3])] ) /2.0
@@ -123,14 +114,13 @@ class MolDigester:
 			tmpatoms = np.zeros(mol.NAtoms()+1)
 			tmpatoms[:-1] = mol.atoms
 			tmpatoms[-1] = 0
-			ANI1_Ins = MolEmb.Make_ANI1_Sym(tmpcoords, tmpatoms.astype(np.uint8), self.eles.astype(np.uint8), r_Rc, a_Rc, r_Rs, a_Rs, a_As, eta, zeta, mol.NAtoms()) # -1 means do it for all atoms
+			ANI1_Ins = MolEmb.Make_ANI1_Sym(PARAMS, tmpcoords, tmpatoms.astype(np.uint8), self.eles.astype(np.uint8), mol.NAtoms()) # -1 means do it for all atoms
 			dist = mol.bonds[i][1]
 			ANI1_Ins = ANI1_Ins.reshape((-1))
 			ANI1_Ins_bond_bp.append(np.asarray(list(ANI1_Ins)+[1.0/dist], dtype=np.float32))
 		ANI1_Ins_bond_bp = np.asarray(ANI1_Ins_bond_bp)
 		ANI1_Ins_bond_bp_deri = np.zeros((ANI1_Ins_bond_bp.shape[0], ANI1_Ins_bond_bp.shape[1]))
 		return ANI1_Ins_bond_bp, ANI1_Ins_bond_bp_deri
-
 
 	def make_cm_bp(self, mol):
 		CM_BP = []
@@ -144,8 +134,6 @@ class MolDigester:
 		CM_BP = CM_BP.reshape((CM_BP.shape[0],-1))
 		CM_BP_deri = np.zeros((CM_BP.shape[0], CM_BP.shape[1])) # debug, it will take some work to implement to derivative of coloumb_bp func.
 		return 	CM_BP, CM_BP_deri
-
-
 
 	def make_connectedbond_bond_bp(self, mol):
 		ConnectedBond_Bond_BP = []

@@ -37,6 +37,22 @@ public:
 	double* ANES;
 };
 
+class SymParams
+{
+public:
+	// Read by ParseSymParams()
+	double r_Rc;
+	double a_Rc;
+	double eta;
+	double zeta;
+	int num_r_Rs;
+	int num_a_Rs;
+	int num_a_As;
+	double* r_Rs;
+	double* a_Rs;
+	double* a_As;
+};
+
 //
 // Real Spherical Harmonics...
 //

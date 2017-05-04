@@ -24,6 +24,16 @@ class TMParams(dict):
 		self["SH_NRAD"]=10
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
+		self["AN1_r_Rc"] = 4.6
+		self["AN1_a_Rc"] = 3.1
+		self["AN1_eta"] = 4.0
+		self["AN1_zeta"] = 8.0
+		self["AN1_num_r_Rs"] = 32
+		self["AN1_num_a_Rs"] = 8
+		self["AN1_num_a_As"] = 8
+		self["AN1_r_Rs"] = [ r_Rc*i/num_r_Rs for i in range (0, num_r_Rs)]
+		self["AN1_a_Rs"] = [ a_Rc*i/num_a_Rs for i in range (0, num_a_Rs)]
+		self["AN1_a_As"] = [ 2.0*math.pi*i/num_a_As for i in range (0, num_a_As)]
 		# SET GENERATION parameters
 		self["MBE_ORDER"] = 2
 		self["KAYBEETEE"] = 0.000950048 # At 300K
