@@ -2,6 +2,7 @@
 # A molecule set is not a training set.
 #
 from Mol import *
+from MolGraph import *
 from Util import *
 from MolFrag import *
 import numpy as np
@@ -176,6 +177,8 @@ class MSet:
 				else:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+				self.mols[-1].name = str(txts[line0+1])
+                                self.mols[-1].properties["set_name"] = self.name
 		if (self.center):
 			self.CenterSet()
 		if (eqforce):

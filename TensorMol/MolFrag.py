@@ -304,12 +304,11 @@ class FragableCluster(Mol):
 		mbe_frags_energy = 0.0
 		fragnum=0
 		time_log=time.time()
-		print "length of order ", order, ":",len(self.mbe_frags[order])
 		if method == "qchem":
 			order_path = self.qchem_data_path+"/"+str(order)
 			if not os.path.isdir(order_path):
 				os.mkdir(order_path)
-				os.chdir(order_path)
+			os.chdir(order_path)
 			time0 =time.time()
 			for frag in self.mbe_frags[order]:  # just for generating the training set..
 				fragnum += 1
@@ -318,7 +317,7 @@ class FragableCluster(Mol):
 					print  "total time:", time.time() - time0
 				time0 = time.time()
 				frag.Write_Qchem_Frag_MBE_Input_All_General(fragnum)
-			os.chdir("../../../../")
+			os.chdir("../../../..")
 		elif method == "pyscf":
 			for frag in self.mbe_frags[order]:
 				fragnum += 1
@@ -360,6 +359,7 @@ class FragableCluster(Mol):
 			if not os.path.isdir("./qchem"+"/"+self.properties["set_name"]):
 				os.mkdir("./qchem"+"/"+self.properties["set_name"])
 			self.qchem_data_path="./qchem"+"/"+self.properties["set_name"]+"/"+self.name
+			print "set_name",  self.properties["set_name"], " self.name", self.name
 			if not os.path.isdir(self.qchem_data_path):
 				os.mkdir(self.qchem_data_path)
 		for i in range (1, self.mbe_order+1):

@@ -20,6 +20,8 @@ class MolGraph:
 		self.H_Bonds_Between = None
 		self.nx_mol_graph = None
 		self.shortest_path = None
+		if not bond_length_thresh_:
+			self.bond_length_thresh = bond_length_thresh 
 		self.Make_Mol_Graph(mol_)
 		return
 
@@ -89,10 +91,7 @@ class MolGraph:
 					dist = mol.DistMatrix[i][j]
 					self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
 		self.bonds = np.asarray(self.bonds)
-		#self.Calculate_Bond_Type()
-		#self.Find_Bond_Index()
-		#self.Define_Conjugation()
-		self.Make_Nx_Graph()
+		self.Find_Bond_Index()
 		return
 
 	def GetNextNode_DFS(self, visited_list, node_stack):
