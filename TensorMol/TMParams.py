@@ -58,7 +58,7 @@ class TMParams(dict):
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
-		self["OptMaxCycles"]=400
+		self["OptMaxCycles"]=1000
 		self["OptThresh"]=0.0004
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.004

@@ -35,7 +35,7 @@ def TestANI1():
 	"""
 	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
 	"""
-	if (1):
+	if (0):
 		#a = MSet("uneq_chemspider")
 		#a.ReadXYZ("uneq_chemspider")
 		#a.Save()
@@ -51,7 +51,12 @@ def TestANI1():
 		manager.Train(maxstep=1500)
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 #manager.Continue_Training(maxsteps=2)
-
+	if (0):
+		a = MSet("gradient_test_opt")
+                a.ReadXYZ("gradient_test_opt")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		optimizer  = Optimizer(manager)
+		optimizer.OptANI1(a.mols[0])	
 	if (0):
                 a = MSet("gradient_test_0")
                 a.ReadXYZ("gradient_test_0")
@@ -69,6 +74,21 @@ def TestANI1():
                 t = time.time()
                 print manager.Eval_BP(a)
                 print "time cost to eval:", time.time() -t
+
+	a = MSet("gradient_test_0")
+	a.ReadXYZ("gradient_test_0")
+	m = a.mols[0]
+        tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+	# Convert the forces from kcal/mol ang to joules/mol ang.
+	ForceField = lambda x: 4183.9953*tfm.Eval_BPForce(Mol(m.atoms,x))
+	PARAMS["MNHChain"] = 0
+	PARAMS["MDTemp"] = 150.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDV0"]=None 
+	md = VelocityVerlet(ForceField,m)
+	md.Prop()
+	return
+
 
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.
