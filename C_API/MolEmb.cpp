@@ -356,6 +356,7 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 //
 //  Kun: this really needs to be OMP'd
 //       Are only independent i's assigned in a loop?
+	//#pragma omp parallel for     // do not getting any speed up
 	for (int i = 0; i < nele; i++) {
 		for (int j = i; j < nele; j++) {
 			for ( int k =0; k < ele_index[i].size(); k++)  {
@@ -384,6 +385,7 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 					}
 				}
 			}
+			//bond_index = nele*i - i*(i-1)/2 + j - i;
 			bond_index = bond_index + 1;
 		}
 	}

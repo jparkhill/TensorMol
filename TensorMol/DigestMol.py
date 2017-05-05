@@ -84,9 +84,13 @@ class MolDigester:
 
 	def make_ANI1_sym(self, mol, MakeGradients_ = False):  # ANI-1 default setting
 		eles = list(set(list(mol.atoms)))
+		t = time.time()
 		ANI1_Ins = MolEmb.Make_ANI1_Sym(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), -1) # -1 means do it for all atoms
+		print "descriptor time:", time.time() - t
 		if (MakeGradients_):
+			t = time.time()
 			ANI1_Ins_deri = MolEmb.Make_ANI1_Sym_deri(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), -1)
+			print "derivative time:", time.time() -t 
 			return ANI1_Ins, ANI1_Ins_deri
 		else:
 			return ANI1_Ins, None
