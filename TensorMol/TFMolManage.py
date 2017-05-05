@@ -22,7 +22,7 @@ class TFMolManage(TFManage):
 				NetType_: Choices of Various network architectures.
 				RandomTData_: Modifes the preparation of training batches.
 		"""
-		TFManage.__init__(self, "", TData_, False, NetType_, RandomTData_)
+		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		if (Name_!=""):
 			self.name = Name_
@@ -63,6 +63,14 @@ class TFMolManage(TFManage):
 		gc.collect()
 		return
 
+        def Continue_Training(self, maxsteps):   # test a pretrained network
+                self.Instances.TData = self.TData
+                self.Instances.TData.LoadDataToScratch(self.Instances.tformer)
+                self.Instances.Prepare()
+                self.Instances.continue_training(maxsteps)
+                self.Save()
+                return
+
 	def Eval(self, inputs):
 		if (self.Instances[mol_t.atoms[atom]].tformer.innorm != None):
 			inputs = self.Instances[mol_t.atoms[atom]].tformer.NormalizeIns(inputs, train=False)
@@ -73,8 +81,6 @@ class TFMolManage(TFManage):
 
 
         def Eval_BP(self, mol_set, total_energy = False):
-		ins, grads = self.TData.dig.EvalDigest(mol_set.mols[0], True)
-		self.TData.dig.eshape = ins.shape[1:]
                 nmols = len(mol_set.mols)
                 natoms = mol_set.NAtoms()
                 cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
@@ -83,8 +89,9 @@ class TFMolManage(TFManage):
                 meta = np.zeros((natoms, 4), dtype = np.int)
                 casep = 0
                 mols_done = 0
+		t = time.time()
                 for mol in mol_set.mols:
-                        ins, grads = self.TData.dig.EvalDigest(mol, True)
+                        ins, grads = self.TData.dig.EvalDigest(mol)
                         nat = mol.NAtoms()
                         cases[casep:casep+nat] = ins
 			cases_grads[casep:casep+nat] = grads
@@ -95,6 +102,7 @@ class TFMolManage(TFManage):
                                 meta[i, 3] = casep + nat
                         casep += nat
                         mols_done += 1
+		print ("time to make inputs and gradient:", time.time() -t )
                 sto = np.zeros(len(self.TData.eles),dtype = np.int32)
                 offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
                 inputs = []
@@ -118,8 +126,9 @@ class TFMolManage(TFManage):
 			inputs_grads[ei][offsets[ei], :]  = cases_grads[i]
                         matrices[ei][offsets[ei], outputpointer] = 1.0
                         offsets[ei] += 1
-
+		t = time.time()
                 mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
+		print ("time of evaluate in Instance:", time.time() -t )
                 pointers = [0 for ele in self.TData.eles]
                 diff = 0
 
@@ -129,18 +138,18 @@ class TFMolManage(TFManage):
 
                 for i in range (0, nmols):
                         mol = mol_set.mols[i]
-                        print "for mol :", mol.name," energy:", mol.energy, "  gradient:", len(nn_gradient), " input gradient:", len(inputs_grads), inputs_grads[0][0].shape
-                        print "total atomization energy: %.10f"%mol_out[0][i]
+                        #print "for mol :", mol.name," energy:", mol.properties["atomization"], "  gradient:", len(nn_gradient), " input gradient:", len(inputs_grads), inputs_grads[0][0].shape
+                        #print "total atomization energy: %.10f"%mol_out[0][i]
                         #diff += abs(mol.energy - mol_out[0][i])
                         if total_energy:
                                 total = mol_out[0][i]
                                 for j in range (0, mol.NAtoms()):
                                         total += ele_U[mol.atoms[j]]
-                                print "total electronic energy:", total
+                                #print "total electronic energy:", total
                         for j in range (0, mol.atoms.shape[0]):
                                 atom_type = mol.atoms[j]
                                 atom_index = self.TData.eles.index(atom_type)
-                                print "atom: ", mol.atoms[j], " energy:", atom_out[atom_index][0][pointers[atom_index]]
+                                #print "atom: ", mol.atoms[j], " energy:", atom_out[atom_index][0][pointers[atom_index]]
                                 pointers[atom_index] += 1
                 #print "mol out:", mol_out, " atom_out", atom_out
                 #return diff / nmols
@@ -149,8 +158,7 @@ class TFMolManage(TFManage):
 		for i in range (0, len(nn_gradient)):
 			for j in range (0, nn_gradient[i].shape[0]):
 				total_gradient += np.sum(np.repeat(nn_gradient[i][j].reshape((nn_gradient[i][j].shape[0], 1)), natoms*3,  axis=1)*inputs_grads[i][j], axis=0)
-		print "total_gradient:", total_gradient
-                return
+                return  mol_out[0][0], total_gradient.reshape((-1,3))
 
 
 
@@ -244,7 +252,7 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances = MolInstance_fc_sqdiff(None, self.TrainedNetworks[0], None)
 		elif (self.NetType == "fc_sqdiff_BP"):
-			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0],None)
+			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0])
 		else:
 			raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.

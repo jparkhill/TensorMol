@@ -64,6 +64,7 @@ class MolInstance(Instance):
 		return output
 
 	def train(self, mxsteps, continue_training= False):
+		print ("running the TFMolInstance train_step")
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = float('inf') # some big numbers
@@ -99,7 +100,7 @@ class MolInstance(Instance):
                 cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
                 os.system(cmd)
                 self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
-                print("Saving Checkpoint file, ", self.chk_file)
+                print("Saving Checkpoint file, in the TFMoInstance", self.chk_file)
                 self.saver.save(self.sess,  self.chk_file)
                 return
 
@@ -114,6 +115,17 @@ class MolInstance(Instance):
                 print("self.chk_file:", self.chk_file)
                 return
 
+
+        def SaveAndClose(self):
+		if (self.TData!=None):
+                        self.TData.CleanScratch()
+                print("Saving TFInstance...")
+                self.Clean()
+                #print("Going to pickle...\n",[(attr,type(ins)) for attr,ins in self.__dict__.items()])
+                f=open(self.path+self.name+".tfn","wb")
+                pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+                f.close()
+                return
 
 
 class MolInstance_fc_classify(MolInstance):
@@ -484,6 +496,20 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.summary_op =None
 		self.summary_writer=None
 
+        def Clean(self):
+                Instance.Clean(self)
+                self.summary_op =None
+                self.summary_writer=None
+                self.inp_pl=None
+                self.check = None
+                self.mats_pl=None
+                self.label_pl=None
+                self.summary_op =None
+                self.summary_writer=None
+                self.atom_outputs = None
+                return
+
+
 	def train_prepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
@@ -774,7 +800,9 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		nmol = batch_data[2].shape[0]
 		print ("nmol:", batch_data[2].shape[0])
 		self.batch_size_output = nmol
-		self.Eval_Prepare()
+		if not self.sess:
+			print ("loading the session..")	
+			self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		preds, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
                 return mol_output, atom_outputs, gradient

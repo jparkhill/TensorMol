@@ -49,7 +49,7 @@ class TMParams(dict):
 		self["MBE_ORDER"] = 4
 		# DATA usage parameters
 		self["InNormRoutine"] = None
-		self["OutNormRoutine"] = "MeanStd"
+		self["OutNormRoutine"] = None
 		self["RandomizeData"] = False
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
@@ -79,8 +79,8 @@ class TMParams(dict):
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-		self["max_steps"] = 100
-		self["test_freq"] = 50
+		self["max_steps"] = 2
+		self["test_freq"] = 1	
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512

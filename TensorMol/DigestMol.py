@@ -357,7 +357,10 @@ class MolDigester:
 			else:
 				return Ins, Outs
 		else:
-			 return Ins
+			if (MakeGradients):
+                                return Ins, Grads
+			else:
+				return Ins
 
 	def TrainDigest(self, mol_):
 		"""
