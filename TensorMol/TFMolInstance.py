@@ -792,10 +792,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
                                 if test_loss < mini_test_loss:
                                         mini_test_loss = test_loss
                                         self.save_chk(step, feed_dict)
-                self.SaveAndClose()	
-		return 	
+                self.SaveAndClose()
+		return
 
-        def evaluate(self, batch_data):   #this need to be modified 
+        def evaluate(self, batch_data):   #this need to be modified
                 # Check sanity of input
 		nmol = batch_data[2].shape[0]
 		print ("nmol:", batch_data[2].shape[0])
@@ -850,4 +850,3 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
                         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
                         self.saver.restore(self.sess, self.chk_file)
                 return
-

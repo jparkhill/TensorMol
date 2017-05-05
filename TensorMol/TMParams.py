@@ -84,6 +84,12 @@ class TMParams(dict):
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
+		# parameters of electrostatic embedding
+		self["EEOn"] = True # Whether to calculate/read in the required data at all...
+		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
+		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
+		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
+		self["EECutoff"] = 5.0 # switch between 0 and 1/r occurs at Angstroms.
 		#paths
 		self["results_dir"] = "./results/"
 		self["dens_dir"] = "./densities/"
