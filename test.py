@@ -52,8 +52,8 @@ def TestANI1():
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 #manager.Continue_Training(maxsteps=2)
 	if (0):
-		a = MSet("orgin")
-                a.ReadXYZ("orgin")
+		a = MSet("gradient_test_0")
+                a.ReadXYZ("gradient_test_0")
                 manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		optimizer  = Optimizer(manager)
 		optimizer.OptANI1(a.mols[0])	
@@ -76,8 +76,8 @@ def TestANI1():
                 print "time cost to eval:", time.time() -t
 
 	if (1):
-		a = MSet("gradient_test_0")
-		a.ReadXYZ("gradient_test_0")
+		a = MSet("md_test")
+		a.ReadXYZ("md_test")
 		m = a.mols[0]
 	        tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		# Convert the forces from kcal/mol ang to joules/mol ang.
@@ -88,7 +88,7 @@ def TestANI1():
 		PARAMS["MDV0"]=None 
 		md = VelocityVerlet(ForceField,m)
 		velo_hist = md.Prop()
-		autocorr  = AutoCorrelation(velo_hist)
+		autocorr  = AutoCorrelation(velo_hist, md.dt)
 		np.savetxt("./results/AutoCorr.dat", autocorr)
 	return
 

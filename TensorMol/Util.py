@@ -265,10 +265,11 @@ def AtomName_From_List(atom_list):
                 name += atoi.keys()[atoi.values().index(i)]
         return name
 
-def AutoCorrelation(traj): # trajectory shape: Nsteps X NAtoms X 3
+def AutoCorrelation(traj, step_size): # trajectory shape: Nsteps X NAtoms X 3
 	step = traj.shape[0]
 	traj = traj.reshape((step, -1))  
-	autocorr = np.zeros(step-1)
+	autocorr = np.zeros((step-1, 2))
+	autocorr[:,0] = np.arange(step-1)*step_size
 	t = time.time()
 	for current_p in range (0, step):
 		for autocorr_p in range (0, current_p):
