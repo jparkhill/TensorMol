@@ -1,9 +1,3 @@
-"""
-PARAMETER CONVENTION:
-- It's okay to have parameters which you pass to functions used to perform a test if you don't change them often.
-- It's NOT okay to put default parameters in __init__() and change them all the time.
-- These params should be added to a logfile of results so that we can systematically see how our approximations are doing.
-"""
 import logging, time, os
 from math import pi as Pi
 import numpy as np
