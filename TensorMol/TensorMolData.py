@@ -264,6 +264,8 @@ class TensorMolData_BP(TensorMolData):
 		self.MeanStoich=None
 		self.MeanNAtoms=None
 		self.test_mols_done = False
+		self.test_begin_mol  = None
+                self.test_mols = []
 		print "TensorMolData_BP.eles", self.eles
 		return
 

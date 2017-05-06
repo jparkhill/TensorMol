@@ -283,6 +283,9 @@ class VelocityVerlet:
 			Tstat = NoseChainThermostat(self.m, self.v)
 		else:
 			print "Unthermostated Velocity Verlet."
+			
+		if PARAMS["SaveVelocity"] == True:
+			velo_his = np.zeros((self.maxstep, self.natoms,3))
 
 		while(step < self.maxstep):
 			self.t = step*self.dt
@@ -292,8 +295,13 @@ class VelocityVerlet:
 				self.x , self.v, self.a = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
 			else:
 				self.x , self.v, self.a = Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
+			if PARAMS["SaveVelocity"] == True:
+				velo_his[step] = self.v
 			if (step%3==0):
 				self.WriteTrajectory()
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f", step, self.t, self.KE,Teff)
-		return
+		if PARAMS["SaveVelocity"] == True:
+			return velo_his
+		else:
+			return

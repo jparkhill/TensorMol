@@ -3,6 +3,9 @@ Various tests of tensormol's functionality.
 Many of these tests take a pretty significant amount of time and memory to complete.
 """
 from TensorMol import *
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 
 # John's tests
 def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
@@ -32,19 +35,63 @@ def TestANI1():
 	"""
 	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
 	"""
-	if (1):
-		a = MSet("uneq_chemspider")
-		a.ReadXYZ("uneq_chemspider")
-		a.Save()
-		a = MSet("uneq_chemspider")
-		a.Load()
-		print "Set elements: ", a.AtomTypes()
-		TreatedAtoms = a.AtomTypes()
-		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
-		tset.BuildTrain("uneq_chemspider")
+	if (0):
+		#a = MSet("uneq_chemspider")
+		#a.ReadXYZ("uneq_chemspider")
+		#a.Save()
+		#a = MSet("uneq_chemspider")
+		#a.Load()
+		#print "Set elements: ", a.AtomTypes()
+		#TreatedAtoms = a.AtomTypes()
+		#d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+		#tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+		#tset.BuildTrain("uneq_chemspider")
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-		manager.Train(maxstep=5)
+		manager.Train(maxstep=1500)
+		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                #manager.Continue_Training(maxsteps=2)
+	if (0):
+		a = MSet("gradient_test_0")
+                a.ReadXYZ("gradient_test_0")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		optimizer  = Optimizer(manager)
+		optimizer.OptANI1(a.mols[0])	
+	if (0):
+                a = MSet("gradient_test_0")
+                a.ReadXYZ("gradient_test_0")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                print manager.Eval_BP(a)
+
+                a = MSet("gradient_test_1")
+                a.ReadXYZ("gradient_test_1")
+		t = time.time()
+                print manager.Eval_BP(a)
+		print "time cost to eval:", time.time() -t
+
+		a = MSet("gradient_test_2")
+                a.ReadXYZ("gradient_test_2")
+                t = time.time()
+                print manager.Eval_BP(a)
+                print "time cost to eval:", time.time() -t
+
+	if (1):
+		a = MSet("md_test")
+		a.ReadXYZ("md_test")
+		m = a.mols[0]
+	        tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		# Convert the forces from kcal/mol ang to joules/mol ang.
+		ForceField = lambda x: 4183.9953*tfm.Eval_BPForce(Mol(m.atoms,x))
+		PARAMS["MNHChain"] = 0
+		PARAMS["MDTemp"] = 150.0
+		PARAMS["MDThermostat"] = None
+		PARAMS["MDV0"]=None 
+		md = VelocityVerlet(ForceField,m)
+		velo_hist = md.Prop()
+		autocorr  = AutoCorrelation(velo_hist, md.dt)
+		np.savetxt("./results/AutoCorr.dat", autocorr)
+	return
+
 
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.

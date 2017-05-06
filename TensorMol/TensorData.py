@@ -28,7 +28,9 @@ class TensorData():
 		self.set = MSet_
 		self.set_name = None
 		if (self.set != None):
+			print "loading the set..."
 			self.set_name = MSet_.name # Check to make sure the name can recall the set.
+			print "finished loading the set.."
 		self.dig = Dig_
 		self.type = type_
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.

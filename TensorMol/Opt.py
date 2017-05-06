@@ -235,6 +235,45 @@ class Optimizer:
 		return prev_m
 
 
+
+        def OptANI1(self,m, filename="OptLog",Debug=False):
+                """
+                Optimize using force output of an atomwise network.
+                now also averages over rotations...
+                Args:
+                        m: A distorted molecule to optimize
+                """
+                # Sweeps one at a time
+                rmsdisp = 10.0
+                maxdisp = 10.0
+                rmsgrad = 10.0
+                maxgrad = 10.0
+                step=0
+                mol_hist = []
+                prev_m = Mol(m.atoms, m.coords)
+                diis = DIIS()
+                print "Orig Coords", m.coords
+                #print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+                veloc=np.zeros(m.coords.shape)
+                old_veloc=np.zeros(m.coords.shape)
+		tmp_set = MSet()
+                while( step < self.max_opt_step):
+			tmp_set.mols = [m]
+			energy, veloc = self.tfm.Eval_BP(tmp_set)
+			print "energy:", energy
+                        veloc = veloc - np.average(veloc,axis=0)
+                        prev_m = Mol(m.atoms, m.coords)
+			c_veloc = (1.0-self.momentum)*0.01*veloc+self.momentum*old_veloc
+                        m.coords = m.coords - c_veloc
+			old_veloc = self.momentum_decay*c_veloc
+                        mol_hist.append(prev_m)
+                        prev_m.WriteXYZfile("./results/", filename)
+                        step+=1
+                return prev_m
+
+
+
+
 	def OptTFRealForceLBFGS(self,m, filename="OptLog",Debug=False):
 		"""
 		Optimize using force output of an atomwise network.
