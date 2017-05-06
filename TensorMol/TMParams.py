@@ -58,7 +58,7 @@ class TMParams(dict):
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
-		self["OptMaxCycles"]=1000
+		self["OptMaxCycles"]=10000
 		self["OptThresh"]=0.0004
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.004
@@ -71,11 +71,12 @@ class TMParams(dict):
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		# MD Parameters
-		self["MDMaxStep"] = 2000
+		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.2 # In fs.
 		self["MDTemp"] = 300.0
 		self["MDV0"] = "Random"
 		self["MDThermostat"] = "NoseHooverChain" # None, "Rescaling", "Nose", "NoseHooverChain"
+		self["SaveVelocity"] = True
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9

@@ -265,5 +265,19 @@ def AtomName_From_List(atom_list):
                 name += atoi.keys()[atoi.values().index(i)]
         return name
 
+def AutoCorrelation(traj): # trajectory shape: Nsteps X NAtoms X 3
+	step = traj.shape[0]
+	traj = traj.reshape((step, -1))  
+	autocorr = np.zeros(step-1)
+	t = time.time()
+	for current_p in range (0, step):
+		for autocorr_p in range (0, current_p):
+			autocorr[autocorr_p] += np.dot(traj[current_p], traj[current_p - autocorr_p])
+	print ("time to calculation autocorrelation function:", time.time() - t , "second")
+	#np_autocorr = np.correlate(traj, traj, mode = "full")  # not working, only work for 1D, maybe needs scipy
+	return autocorr
+
+
+
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)
