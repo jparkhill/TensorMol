@@ -75,8 +75,15 @@ class TMParams(dict):
 		self["MDdt"] = 0.2 # In fs.
 		self["MDTemp"] = 300.0
 		self["MDV0"] = "Random"
-		self["MDThermostat"] = "NoseHooverChain" # None, "Rescaling", "Nose", "NoseHooverChain"
-		self["SaveVelocity"] = True
+		self["MDThermostat"] = None # None, "Rescaling", "Nose", "NoseHooverChain"
+		self["MDLogTrajectory"] = True
+		self["MDLogVelocity"] = False
+		# MD applied pulse parameters
+		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
+		self["MDFieldAmp"] = 0.001
+		self["MDFieldFreq"] = 1.0/1.2
+		self["MDFieldTau"] = 1.2
+		self["MDFieldT0"] = 3.0
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9

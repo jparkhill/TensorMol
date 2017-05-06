@@ -36,6 +36,21 @@ def KineticEnergy(v_, m_):
 	"""
 	return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_)*pow(10.0,10.0),m_)/len(m_)
 
+def ElectricFieldForce(q_,E_):
+	"""
+	Both are received in atomic units.
+	The force should be returned in kg(m/s)^2, but I haven't fixed the units yet.
+	"""
+	tore = np.zeros((len(q_),3))
+	for i in range(len(q_))
+		tore[i] = E_*q_
+	return tore
+
+def Dipole(x_,q_):
+	""" Dipole relative to center of x_ """
+	center_ = np.average(x_,axis=0)
+	return np.einsum("ax,a", x_-center_ , q_)
+
 class Thermostat:
 	def __init__(self,m_,v_):
 		"""
@@ -239,6 +254,12 @@ class VelocityVerlet:
 		Args:
 			f_: a force routine
 			m0_: initial molecule.
+			PARAMS["MDMaxStep"]: Number of steps to take.
+			PARAMS["MDTemp"]: Temperature to initialize or Thermostat to.
+			PARAMS["MDdt"]: Timestep.
+			PARAMS["MDV0"]: Sort of velocity initialization (None, or "Random")
+			PARAMS["MDLogVelocity"]: Write MD velocities.
+			PARAMS["MDLogTrajectory"]: Write MD Trajectory.
 		Returns:
 			A reaction path.
 		"""
@@ -254,6 +275,21 @@ class VelocityVerlet:
 		self.x = g0_.coords.copy()
 		self.v = np.zeros(self.x.shape)
 		self.a = np.zeros(self.x.shape)
+		if (PARAMS["MDV0"]=="Random"):
+			self.v = np.random.randn(*self.x.shape)
+			Tstat = Thermostat(self.m, self.v) # Will rescale self.v appropriately.
+
+		self.Tstat = None
+		if (PARAMS["MDThermostat"]=="Rescaling"):
+			self.Tstat = Thermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="Nose"):
+			self.Tstat = NoseThermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="NosePerParticle"):
+			self.Tstat = NosePerParticleThermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="NoseHooverChain"):
+			self.Tstat = NoseChainThermostat(self.m, self.v)
+		else:
+			print "Unthermostated Velocity Verlet."
 		return
 
 	def WriteTrajectory(self):
@@ -268,25 +304,6 @@ class VelocityVerlet:
 		Propagate VelocityVerlet
 		"""
 		step = 0
-		Tstat = None
-
-		if (PARAMS["MDV0"]=="Random"):
-			self.v = np.random.randn(*self.x.shape)
-
-		if (PARAMS["MDThermostat"]=="Rescaling"):
-			Tstat = Thermostat(self.m,self.v)
-		elif (PARAMS["MDThermostat"]=="Nose"):
-			Tstat = NoseThermostat(self.m,self.v)
-		elif (PARAMS["MDThermostat"]=="NosePerParticle"):
-			Tstat = NosePerParticleThermostat(self.m,self.v)
-		elif (PARAMS["MDThermostat"]=="NoseHooverChain"):
-			Tstat = NoseChainThermostat(self.m, self.v)
-		else:
-			print "Unthermostated Velocity Verlet."
-			
-		if PARAMS["SaveVelocity"] == True:
-			velo_his = np.zeros((self.maxstep, self.natoms,3))
-
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
@@ -294,14 +311,92 @@ class VelocityVerlet:
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
 			else:
-				self.x , self.v, self.a = Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
-			if PARAMS["SaveVelocity"] == True:
-				velo_his[step] = self.v
-			if (step%3==0):
+				self.x , self.v, self.a = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
+			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f", step, self.t, self.KE,Teff)
-		if PARAMS["SaveVelocity"] == True:
+		if PARAMS["MDLogVelocity"] == True:
 			return velo_his
 		else:
 			return
+
+class IRTrajectory(VelocityVerlet):
+	def __init__(self,f_,q_,g0_):
+		"""
+		A specialized sort of dynamics which is appropriate for obtaining IR spectra at
+		Zero temperature.
+
+		Args:
+			f_: a function which yields the force
+			q_: a function which yields the charge.
+			g0_: an initial geometry.
+			PARAMS["MDFieldVec"]
+			PARAMS["MDFieldAmp"]
+			PARAMS["MDFieldT0"] = 3.0
+			PARAMS["MDFieldTau"] = 1.2 #1.2 fs pulse.
+			PARAMS["MDFieldFreq"] = 1/1.2 # 700nm light is about 1/1.2 fs.
+		"""
+		VelocityVerlet.__init__(self,f_, g0_)
+		self.EField = np.zeros(3)
+		self.IsOn = False
+		self.qs = None
+		self.FieldVec = PARAMS["MDFieldVec"]
+		self.FieldAmp = PARAMS["MDFieldAmp"]
+		self.FieldFreq = PARAMS["MDFieldFreq"]
+		self.Tau = PARAMS["MDFieldTau"]
+		self.TOn = PARAMS["MDFieldT0"]
+		self.FieldFreeForce = f_
+		self.ChargeFunction = q_
+		self.Mu0 = self.Dipole(self.x, q_(self.x))
+
+	def Pulse(self,t_):
+		"""
+		\delta pulse of duration
+		"""
+		amp = self.FieldAmp*np.sin(self.FieldFreq*time)*(1.0/sqrt(2.0*3.1415*self.Tau*self.Tau))*np.exp(-1.0*np.power(time-self.tOn,2.0)/(2.0*self.Tau*self.Tau))
+		if (np.abs(amp) > np.power(10.0,-6.0)):
+			return self.FieldVec*amp, True
+		return np.zeros(3), False
+
+	def ForceFunction(self,x_):
+		if (self.IsOn):
+			self.qs = self.ChargeFunction(x_)
+			return FieldFreeForce(x_) + ElectricFieldForce(self.qs, self.EField)
+		else:
+			return FieldFreeForce(x_)
+
+	def WriteTrajectory(self):
+		m=Mol(self.atoms,self.x)
+		m.properties["Time"]=self.t
+		m.properties["KineticEnergy"]=self.KE
+		m.properties["Charges"]=self.qs
+		m.WriteXYZfile("./results/", "MDTrajectory")
+		return
+
+	def Prop(self):
+		mu_his = np.zeros((self.maxstep, 5)) # time Dipoles Energy
+		step = 0
+		while(step < self.maxstep):
+			self.t = step*self.dt
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/8.314
+
+			self.EField, self.IsOn = self.Pulse(t)
+			if (not IsOn):
+				self.qs = self.ChargeFunction(x_)
+			self.Mu = Dipole(self.x, self.qs) - self.Mu0
+
+			self.mu_his[0] = self.t
+			self.mu_his[1:4] = self.Mu
+			self.mu_his[5] = self.KE
+
+			self.x , self.v, self.a = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
+			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+				self.WriteTrajectory()
+			if (step%100==0):
+				np.savetxt("./results/"+"MDLog.txt",mu_his)
+
+			step+=1
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", step, self.t, self.KE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+		return
