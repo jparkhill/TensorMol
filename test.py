@@ -75,7 +75,7 @@ def TestANI1():
                 print manager.Eval_BP(a)
                 print "time cost to eval:", time.time() -t
 
-	if (1):
+	if (0):
 		a = MSet("md_test")
 		a.ReadXYZ("md_test")
 		m = a.mols[0]
@@ -92,6 +92,19 @@ def TestANI1():
 		np.savetxt("./results/AutoCorr.dat", autocorr)
 	return
 
+
+def TestDipole():
+	if (0):
+                a = MSet("chemspider9")
+		a.Load()
+		TreatedAtoms = a.AtomTypes()
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole")
+		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain("chemspider9_multipole")
+
+	if (1):
+		tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
+		print tset.GetTrainBatch(1000, 100)
 
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.
@@ -368,7 +381,8 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-TestANI1()
+#TestANI1()
+TestDipole()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
