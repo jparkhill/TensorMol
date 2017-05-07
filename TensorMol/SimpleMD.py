@@ -7,6 +7,7 @@ Kb = 8.314 J/Mol K
 
 from Sets import *
 from TFManage import *
+from Mol_Elec import *
 
 def VelocityVerletstep(f_, a_, x_, v_, m_, dt_ ):
 	""" A Velocity Verlet Step
@@ -45,11 +46,6 @@ def ElectricFieldForce(q_,E_):
 	for i in range(len(q_)):
 		tore[i] = E_*q_
 	return tore
-
-def Dipole(x_,q_):
-	""" Dipole relative to center of x_ """
-	center_ = np.average(x_,axis=0)
-	return np.einsum("ax,a", x_-center_ , q_)
 
 class Thermostat:
 	def __init__(self,m_,v_):

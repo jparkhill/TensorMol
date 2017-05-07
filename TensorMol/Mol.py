@@ -1,7 +1,7 @@
 from Util import *
 import numpy as np
 import random, math
-import MolEmb
+import MolEmb, Mol_Elec
 from LinearOperations import *
 
 class Mol:
@@ -262,13 +262,14 @@ class Mol:
 						grids[index] = atoc[self.atoms[i]]
 		return grids
 
-	def Center(self, OfMass=False):
+	def Center(self, CenterOf="Atom"):
 		''' Returns the center of atom or mass'''
-		if (not OfMass):
-			return np.average(self.coords,axis=0)
-		else:
+		if (CenterOf == "Mass"):
 			m = np.array(map(lambda x: ATOMICMASSES[x],self.atoms))
-			return np.einsum("ax,a->x")/np.sum(m)
+			return np.einsum("ax,a->x",self.coords,m)/np.sum(m)
+		else:
+			return np.average(self.coords,axis=0)
+
 
 	def rms(self, m):
 		""" Cartesian coordinate difference. """
