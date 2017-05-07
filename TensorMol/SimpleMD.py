@@ -42,7 +42,7 @@ def ElectricFieldForce(q_,E_):
 	The force should be returned in kg(m/s)^2, but I haven't fixed the units yet.
 	"""
 	tore = np.zeros((len(q_),3))
-	for i in range(len(q_))
+	for i in range(len(q_)):
 		tore[i] = E_*q_
 	return tore
 
