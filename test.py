@@ -107,6 +107,14 @@ def TestDipole():
 		manager=TFMolManage("",tset,False,"Dipole_BP")
 		manager.Train()	
 
+	if (0):
+		a = MSet("dipole_test")
+		a.ReadXYZ("dipole_test")
+		#a = MSet("dipole_test")
+                #a.ReadXYZ("dipole_test")
+                manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+                manager.EvalBPDipole(a)
+
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.
 	#tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")

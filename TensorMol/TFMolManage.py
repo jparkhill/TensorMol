@@ -221,6 +221,62 @@ class TFMolManage(TFManage):
                 return  (-627.509*total_gradient).reshape((-1,3))
 
 
+        def EvalBPDipole(self, mol_set, total_energy = False):
+                nmols = len(mol_set.mols)
+                natoms = mol_set.NAtoms()
+                cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+                dummy_outputs = np.zeros((nmols, 4))
+                meta = np.zeros((natoms, 7))
+                casep = 0
+                mols_done = 0
+                t = time.time()
+                for mol in mol_set.mols:
+                        ins, grads = self.TData.dig.EvalDigest(mol)
+                        nat = mol.NAtoms()
+			xyz_centered = mol.coords - np.average(mol.coords, axis=0)
+                        cases[casep:casep+nat] = ins
+                        for i in range (casep, casep+nat):
+                                meta[i, 0] = mols_done
+                                meta[i, 1] = mol.atoms[i - casep]
+                                meta[i, 2] = casep
+                                meta[i, 3] = casep + nat
+				meta[i, 4:] = xyz_centered[i - casep]
+                        casep += nat
+                        mols_done += 1
+                sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+                offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+                inputs = []
+                matrices = []
+		xyz = []
+                outputpointer = 0
+                for i in range (0, natoms):
+                        sto[self.TData.eles.index(meta[i, 1])] += 1
+                currentmol = 0
+                for e in range (len(self.TData.eles)):
+                        inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+                        matrices.append(np.zeros((sto[e], nmols)))
+			xyz.append(np.zeros((sto[e], 3)))
+                for i in range (0, natoms):
+                        if currentmol != meta[i, 0]:
+                                outputpointer += 1
+                                currentmol = meta[i, 0]
+                        e = meta[i, 1]
+                        ei = self.TData.eles.index(e)
+                        inputs[ei][offsets[ei], :] = cases[i]
+                        matrices[ei][offsets[ei], outputpointer] = 1.0
+			xyz[ei][offsets[ei]] = meta[i, 4:] 
+                        offsets[ei] += 1
+                t = time.time()
+                netcharge, dipole, atomcharge = self.Instances.evaluate([inputs, matrices, xyz, dummy_outputs])
+
+		print "netcharge:\n", netcharge
+		print "dipole:\n", dipole
+		print "atom charge:\n", atomcharge
+
+		return netcharge, dipole, atomcharge
+
+
+
 	def Eval_Bond_BP(self, mol_set, total_energy = False):
 		nmols = len(mol_set.mols)
 		nbonds = mol_set.NBonds()
@@ -312,6 +368,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff(None, self.TrainedNetworks[0], None)
 		elif (self.NetType == "fc_sqdiff_BP"):
 			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0])
+		elif (self.NetType == "Dipole_BP"):
+                        self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0])
 		else:
 			raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.

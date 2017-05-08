@@ -707,8 +707,8 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.batch_size_output = nmol
 		self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
-		netcharge, dipole, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
-		return netcharge, dipole, atom_outputs
+		netcharge, dipole, total_loss_value, loss_value,  atom_outputs = self.sess.run([self.netcharge_output, self.dipole_output, self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
+		return netcharge, dipole/AUPERDEBYE, atom_outputs
 
 	def Eval_Prepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
@@ -723,7 +723,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 4]))
 			self.netcharge_output, self.dipole_output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl, self.coords_pl)
 			self.check = tf.add_check_numerics_ops()
-			self.total_loss, self.loss = self.loss_op(self.netcharge_output, self.dipole_out, self.label_pl)
+			self.total_loss, self.loss = self.loss_op(self.netcharge_output, self.dipole_output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
