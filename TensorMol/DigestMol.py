@@ -86,11 +86,9 @@ class MolDigester:
 		eles = list(set(list(mol.atoms)))
 		t = time.time()
 		ANI1_Ins = MolEmb.Make_ANI1_Sym(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), -1) # -1 means do it for all atoms
-		print "descriptor time:", time.time() - t
 		if (MakeGradients_):
 			t = time.time()
 			ANI1_Ins_deri = MolEmb.Make_ANI1_Sym_deri(PARAMS, mol.coords,  mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), -1)
-			print "derivative time:", time.time() -t 
 			return ANI1_Ins, ANI1_Ins_deri
 		else:
 			return ANI1_Ins, None
@@ -353,7 +351,14 @@ class MolDigester:
 					Outs = np.zeros(5) # AtEnergy, monopole, 3-dipole.
 					Outs[0] = AE
 					Outs[1] = 0.0
-					Outs[1:] = mol_.properties["dipole"]
+					Outs[2:] = mol_.properties["dipole"]
+				else:
+					raise Exception("Code higher orders... ")
+			elif (self.OType == "Multipole"):
+                                if (PARAMS["EEOrder"]==2):
+                                        Outs = np.zeros(4) # monopole, 3-dipole.
+                                        Outs[0] = 0.0
+                                        Outs[1:] = mol_.properties["dipole"]*AUPERDEBYE
 				else:
 					raise Exception("Code higher orders... ")
 			elif (self.OType == "Atomization_novdw"):

@@ -33,3 +33,4 @@ from TensorMol.TFMolInstance import *
 from TensorMol.Ipecac import *
 from TensorMol.EmbOpt import *
 from TensorMol.Basis import *
+from TensorMol.TensorMolData_EE import *

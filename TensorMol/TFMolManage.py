@@ -5,6 +5,8 @@
 from TFManage import *
 from TensorMolData import *
 from TFMolInstance import *
+from TFMolInstance_EE import *
+
 import numpy as np
 import gc
 
@@ -52,6 +54,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff(self.TData, None)
 		elif (self.NetType == "fc_sqdiff_BP"):
 			self.Instances = MolInstance_fc_sqdiff_BP(self.TData)
+		elif (self.NetType == "Dipole_BP"):
+			self.Instances = MolInstance_BP_Dipole(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
 		self.Instances.train(self.n_train) # Just for the sake of debugging.
