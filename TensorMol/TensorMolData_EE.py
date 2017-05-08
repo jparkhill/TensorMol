@@ -131,7 +131,7 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 			else:
 				sto[self.eles.index(self.scratch_meta[i,1])]+=1
 		currentmol=self.scratch_meta[self.ScratchPointer+ignore_first_mol,0]
-		outputs = np.zeros((noutputs))
+		outputs = np.zeros((noutputs, 4))
 		for e in range(len(self.eles)):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
 			matrices.append(np.zeros((sto[e],noutputs)))
@@ -237,4 +237,5 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 #		print "length of test_mols:", len(self.test_mols)
 #		print "outputpointer:", outputpointer
 		return [inputs, matrices, coords, outputs]
+
 

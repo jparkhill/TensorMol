@@ -104,7 +104,8 @@ def TestDipole():
 
 	if (1):
 		tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
-		print tset.GetTrainBatch(1000, 100)
+		manager=TFMolManage("",tset,False,"Dipole_BP")
+		manager.Train()	
 
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.
