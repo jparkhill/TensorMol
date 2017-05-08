@@ -226,7 +226,8 @@ class TFMolManage(TFManage):
                 natoms = mol_set.NAtoms()
                 cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
                 dummy_outputs = np.zeros((nmols, 4))
-                meta = np.zeros((natoms, 7))
+		meta = np.zeros((natoms, 4), dtype = np.int)
+		xyzmeta = np.zeros((natoms, 3))
                 casep = 0
                 mols_done = 0
                 t = time.time()
@@ -240,7 +241,7 @@ class TFMolManage(TFManage):
                                 meta[i, 1] = mol.atoms[i - casep]
                                 meta[i, 2] = casep
                                 meta[i, 3] = casep + nat
-				meta[i, 4:] = xyz_centered[i - casep]
+				xyzmeta[i] = xyz_centered[i - casep]
                         casep += nat
                         mols_done += 1
                 sto = np.zeros(len(self.TData.eles),dtype = np.int32)
@@ -264,7 +265,7 @@ class TFMolManage(TFManage):
                         ei = self.TData.eles.index(e)
                         inputs[ei][offsets[ei], :] = cases[i]
                         matrices[ei][offsets[ei], outputpointer] = 1.0
-			xyz[ei][offsets[ei]] = meta[i, 4:] 
+			xyz[ei][offsets[ei]] = xyzmeta[i] 
                         offsets[ei] += 1
                 t = time.time()
                 netcharge, dipole, atomcharge = self.Instances.evaluate([inputs, matrices, xyz, dummy_outputs])
