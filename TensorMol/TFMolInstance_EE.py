@@ -426,9 +426,9 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		# self.batch_size is still the number of inputs in a batch.
 		self.batch_size = 10000
 		self.batch_size_output = 0
-		self.hidden1 = 200
-		self.hidden2 = 200
-		self.hidden3 = 200
+		self.hidden1 = 100
+		self.hidden2 = 100
+		self.hidden3 = 100
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -650,6 +650,10 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
                 #print("train diff:", (mol_output[0]-batch_data[2])[:actual_mols], np.sum(np.square((mol_output[0]-batch_data[2])[:actual_mols])))
                 #print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
                 #print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
+		if (step % 10 ==0):
+			print ("Training result:")
+			print ("acurrate charge, dipole:", batch_data[3][:20])
+			print ("predict dipole", dipole_output[:20])
                 self.print_training(step, train_loss, num_of_mols, duration)
                 return
 
@@ -675,6 +679,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			total_loss_value, loss_value, netcharge_output, dipole_output, atom_outputs = self.sess.run([self.total_loss, self.loss, self.netcharge_output, self.dipole_output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
+		print ("testing result:")
 		print ("acurrate charge, dipole:", batch_data[3][:20])
 		print ("predict dipole", dipole_output[:20])
 		#print ("charge sum:", netcharge_output)
