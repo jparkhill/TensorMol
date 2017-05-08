@@ -17,6 +17,16 @@ def Dipole(m_):
 		if ("dipole" in m_.properties and "charges" in m_.properties):
 			print "Qchem, Calc'd", m_.properties["dipole"]*AUPERDEBYE, WeightedCoordAverage(m_.coords*BOHRPERA, m_.properties["charges"], m_.Center())
 
+def ElectricFieldForce(q_,E_):
+	"""
+	Both are received in atomic units.
+	The force should be returned in kg(m/s)^2, but I haven't fixed the units yet.
+	"""
+	tore = np.zeros((len(q_),3))
+	for i in range(len(q_)):
+		tore[i] = E_*q_
+	return tore
+
 def ECoulECutoff(m_):
 	dm = MolEmb.Make_DistMat(m_.coords)*BOHRPERA
 	dm += np.eye(len(m_.coords))

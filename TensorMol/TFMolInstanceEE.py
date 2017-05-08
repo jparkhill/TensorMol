@@ -6,7 +6,7 @@ from TensorMol.TFInstance import *
 from TensorMol.TensorMolData import *
 from TensorMol.TFMolInstance import *
 
-class MolInstance_BPEE(MolInstance_fc_sqdiff_BP):
+class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 	"""
 		calculates E_electrostatic with a cutoff coulomb interaction.
 		E_\text{electrostatic} The electrostatic energy is attenuated to only exist
@@ -21,7 +21,7 @@ class MolInstance_BPEE(MolInstance_fc_sqdiff_BP):
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
 		"""
-		self.NetType = "fc_sqdiff_BP"
+		self.NetType = "fc_sqdiff_BPEE"
 		MolInstance.__init__(self, TData_,  Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
@@ -106,7 +106,7 @@ class MolInstance_BPEE(MolInstance_fc_sqdiff_BP):
 		Because you have to construct the electrostatic energy moleculewise,
 		and the mulitpoles.
 
-		Emats and Qmats are constructed to accerate this process...   
+		Emats and Qmats are constructed to accerate this process...
 		"""
 		diff  = tf.subtract(output, labels)
 		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)

@@ -37,16 +37,6 @@ def KineticEnergy(v_, m_):
 	"""
 	return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_)*pow(10.0,10.0),m_)/len(m_)
 
-def ElectricFieldForce(q_,E_):
-	"""
-	Both are received in atomic units.
-	The force should be returned in kg(m/s)^2, but I haven't fixed the units yet.
-	"""
-	tore = np.zeros((len(q_),3))
-	for i in range(len(q_)):
-		tore[i] = E_*q_
-	return tore
-
 class Thermostat:
 	def __init__(self,m_,v_):
 		"""

@@ -6,7 +6,6 @@ from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
-
 # John's tests
 def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	"""
@@ -56,7 +55,7 @@ def TestANI1():
                 a.ReadXYZ("gradient_test_0")
                 manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		optimizer  = Optimizer(manager)
-		optimizer.OptANI1(a.mols[0])	
+		optimizer.OptANI1(a.mols[0])
 	if (0):
                 a = MSet("gradient_test_0")
                 a.ReadXYZ("gradient_test_0")
@@ -85,7 +84,7 @@ def TestANI1():
 		PARAMS["MNHChain"] = 0
 		PARAMS["MDTemp"] = 150.0
 		PARAMS["MDThermostat"] = None
-		PARAMS["MDV0"]=None 
+		PARAMS["MDV0"]=None
 		md = VelocityVerlet(ForceField,m)
 		velo_hist = md.Prop()
 		autocorr  = AutoCorrelation(velo_hist, md.dt)
