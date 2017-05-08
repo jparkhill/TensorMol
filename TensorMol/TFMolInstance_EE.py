@@ -432,6 +432,13 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.summary_op =None
 		self.summary_writer=None
 
+        def Clean(self):
+                MolInstance_fc_sqdiff_BP.Clean(self)
+		self.coords_pl = None
+		self.netcharge_output = None
+		self.dipole_output = None
+                return
+
 	def train_prepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
@@ -542,22 +549,24 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			mats = mats_pl[e]
 			coords = coords_pl[e]
 			shp_in = tf.shape(inputs)
+			shp_coords = tf.shape(coords)
 			if (PARAMS["check_level"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				mats_shape = tf.shape(mats)
 				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
+				tf.Print(tf.to_float(shp_coords), [tf.to_float(shp_coords)], message="Element "+str(e)+"coords shape ",first_n=10000000,summarize=100000000)
 			if (PARAMS["check_level"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
@@ -570,7 +579,9 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 				rshp = tf.reshape(cut,[1,shp_out[0]])
 				atom_outputs.append(rshp)
 				coords_rshp = tf.transpose(coords)
-				dipole_tmp = tf.multiply(atom_outputs, coords_rshp)
+				coords_rshp_shape = tf.shape(coords_rshp)
+
+				dipole_tmp = tf.multiply(rshp, coords_rshp)
 				dipole_tmp = tf.reshape(dipole_tmp,[3, shp_out[0]])
 				netcharge = tf.matmul(rshp,mats)
 				dipole = tf.matmul(dipole_tmp, mats)
@@ -608,10 +619,8 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		if (not np.all(np.isfinite(batch_data[3]),axis=(0,1))):
 			print("I was fed shit4")
 			raise Exception("DontEatShit")
-		print ("batch_data[3] shape", batch_data[3].shape)
 		#feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl + self.coords_pl, batch_data[0]+batch_data[1] +  batch_data[2])}
 		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+self.coords_pl+[self.label_pl], batch_data[0]+batch_data[1]+ batch_data[2] + [batch_data[3]])}
-		print ("up to here is fine")
 		return feed_dict
 
 
@@ -629,6 +638,8 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
                 for ministep in range (0, int(Ncase_train/self.batch_size)):
                         #print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
                         batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			#print ("checking shape:", batch_data[2][0].shape, batch_data[2][1].shape, batch_data[2][2].shape, batch_data[2][3].shape)
+			#print ("checking shape, input:", batch_data[0][0].shape, batch_data[0][1].shape, batch_data[0][2].shape, batch_data[0][3].shape)
                         actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
                         dump_, dump_2, total_loss_value, loss_value, netcharge_output, dipole_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.netcharge_output, self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
                         train_loss = train_loss + loss_value
@@ -660,15 +671,16 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			#print ("ministep:", ministep)
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
 			feed_dict=self.fill_feed_dict(batch_data)
-			actual_mols  = np.count_nonzero(np.any(batch_data[3], axis=1))
-			preds, total_loss_value, loss_value, netcharge_output, dipole_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.netcharge_output, self.dipole_output, self.atom_outputs],  feed_dict=feed_dict)
+			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
+			total_loss_value, loss_value, netcharge_output, dipole_output, atom_outputs = self.sess.run([self.total_loss, self.loss, self.netcharge_output, self.dipole_output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
-		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
+		print ("acurrate charge, dipole:", batch_data[3][:20])
+		print ("predict dipole", dipole_output[:20])
+		#print ("charge sum:", netcharge_output)
+		#print ("charges: ",  atom_outputs)
 		duration = time.time() - start_time
-		#print ("preds:", preds, " label:", batch_data[2])
-		#print ("diff:", preds - batch_data[2])
-		print( "testing...")
+		#print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict

@@ -358,7 +358,7 @@ class MolDigester:
                                 if (PARAMS["EEOrder"]==2):
                                         Outs = np.zeros(4) # monopole, 3-dipole.
                                         Outs[0] = 0.0
-                                        Outs[1:] = mol_.properties["dipole"]
+                                        Outs[1:] = mol_.properties["dipole"]*AUPERDEBYE
 				else:
 					raise Exception("Code higher orders... ")
 			elif (self.OType == "Atomization_novdw"):
