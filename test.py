@@ -74,7 +74,7 @@ def TestANI1():
                 print manager.Eval_BP(a)
                 print "time cost to eval:", time.time() -t
 
-	if (0):
+	if (1):
 		a = MSet("md_test")
 		a.ReadXYZ("md_test")
 		m = a.mols[0]
@@ -91,20 +91,6 @@ def TestANI1():
 		np.savetxt("./results/AutoCorr.dat", autocorr)
 	return
 
-
-def TestDipole():
-	if (0):
-                a = MSet("chemspider9")
-		a.Load()
-		TreatedAtoms = a.AtomTypes()
-		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole")
-		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
-		tset.BuildTrain("chemspider9_multipole")
-
-	if (1):
-		tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
-		manager=TFMolManage("",tset,False,"Dipole_BP")
-		manager.Train()	
 
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.
@@ -376,13 +362,78 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	md.Prop()
 	return
 
+
+def TestEE():
+	"""
+	Test an electrostatically embedded Behler-Parinello
+	"""
+	a = MSet("H2ONaCl")
+	a.Load()
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+	if (0):
+		#a = MSet("uneq_chemspider")
+		#a.ReadXYZ("uneq_chemspider")
+		#a.Save()
+		#a = MSet("uneq_chemspider")
+		#a.Load()
+		#print "Set elements: ", a.AtomTypes()
+		#TreatedAtoms = a.AtomTypes()
+		#d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+		#tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+		#tset.BuildTrain("uneq_chemspider")
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+		manager.Train(maxstep=1500)
+		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                #manager.Continue_Training(maxsteps=2)
+	if (0):
+		a = MSet("gradient_test_0")
+                a.ReadXYZ("gradient_test_0")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		optimizer  = Optimizer(manager)
+		optimizer.OptANI1(a.mols[0])
+	if (0):
+                a = MSet("gradient_test_0")
+                a.ReadXYZ("gradient_test_0")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                print manager.Eval_BP(a)
+
+                a = MSet("gradient_test_1")
+                a.ReadXYZ("gradient_test_1")
+		t = time.time()
+                print manager.Eval_BP(a)
+		print "time cost to eval:", time.time() -t
+
+		a = MSet("gradient_test_2")
+                a.ReadXYZ("gradient_test_2")
+                t = time.time()
+                print manager.Eval_BP(a)
+                print "time cost to eval:", time.time() -t
+
+	if (1):
+		a = MSet("md_test")
+		a.ReadXYZ("md_test")
+		m = a.mols[0]
+	        tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		# Convert the forces from kcal/mol ang to joules/mol ang.
+		ForceField = lambda x: 4183.9953*tfm.Eval_BPForce(Mol(m.atoms,x))
+		PARAMS["MNHChain"] = 0
+		PARAMS["MDTemp"] = 150.0
+		PARAMS["MDThermostat"] = None
+		PARAMS["MDV0"]=None
+		md = VelocityVerlet(ForceField,m)
+		velo_hist = md.Prop()
+		autocorr  = AutoCorrelation(velo_hist, md.dt)
+		np.savetxt("./results/AutoCorr.dat", autocorr)
+	return
+
+
 #
 # Tests to run.
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-#TestANI1()
-TestDipole()
+TestANI1()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
