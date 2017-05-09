@@ -84,21 +84,19 @@ class TFMolManage(TFManage):
 		return outputs
 
 
-        def Eval_BP(self, mol_set, total_energy = False):
+        def EvalBPEnergy(self, mol_set, total_energy = False):
                 nmols = len(mol_set.mols)
                 natoms = mol_set.NAtoms()
                 cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
-		cases_grads = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)+list([3*natoms])))
                 dummy_outputs = np.zeros((nmols))
                 meta = np.zeros((natoms, 4), dtype = np.int)
                 casep = 0
                 mols_done = 0
 		t = time.time()
                 for mol in mol_set.mols:
-                        ins, grads = self.TData.dig.EvalDigest(mol)
+                        ins = self.TData.dig.EvalDigest(mol, False)
                         nat = mol.NAtoms()
                         cases[casep:casep+nat] = ins
-			cases_grads[casep:casep+nat] = grads
                         for i in range (casep, casep+nat):
                                 meta[i, 0] = mols_done
                                 meta[i, 1] = mol.atoms[i - casep]
@@ -109,7 +107,6 @@ class TFMolManage(TFManage):
                 sto = np.zeros(len(self.TData.eles),dtype = np.int32)
                 offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
                 inputs = []
-		inputs_grads = []
                 matrices = []
                 outputpointer = 0
                 for i in range (0, natoms):
@@ -117,7 +114,6 @@ class TFMolManage(TFManage):
                 currentmol = 0
                 for e in range (len(self.TData.eles)):
                         inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
-			inputs_grads.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape), 3*natoms)))
                         matrices.append(np.zeros((sto[e], nmols)))
                 for i in range (0, natoms):
                         if currentmol != meta[i, 0]:
@@ -126,14 +122,11 @@ class TFMolManage(TFManage):
                         e = meta[i, 1]
                         ei = self.TData.eles.index(e)
                         inputs[ei][offsets[ei], :] = cases[i]
-			inputs_grads[ei][offsets[ei], :]  = cases_grads[i]
                         matrices[ei][offsets[ei], outputpointer] = 1.0
                         offsets[ei] += 1
 		t = time.time()
+		pointers = [0 for ele in self.TData.eles]
                 mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
-                pointers = [0 for ele in self.TData.eles]
-                diff = 0
-
                 for i in range (0, nmols):
                         mol = mol_set.mols[i]
                         if total_energy:
@@ -145,11 +138,7 @@ class TFMolManage(TFManage):
                                 atom_index = self.TData.eles.index(atom_type)
                                 pointers[atom_index] += 1
 
-		total_gradient = np.zeros((natoms*3))
-		for i in range (0, len(nn_gradient)):
-			for j in range (0, nn_gradient[i].shape[0]):
-				total_gradient += np.sum(np.repeat(nn_gradient[i][j].reshape((nn_gradient[i][j].shape[0], 1)), natoms*3,  axis=1)*inputs_grads[i][j], axis=0)
-                return  mol_out[0][0], total_gradient.reshape((-1,3))
+                return  mol_out[0]
 
 
         def Eval_BPForce(self, mol, total_energy = False):
@@ -221,7 +210,18 @@ class TFMolManage(TFManage):
                 return  (-627.509*total_gradient).reshape((-1,3))
 
 
-        def EvalBPDipole(self, mol_set, total_energy = False):
+        def EvalBPDipole(self, mol_set,  ScaleCharge_ = False):
+		"""
+		can take either a single mol or mol set
+		
+		return netcharge, dipole, atomcharge 
+		
+		Dipole has unit in debye
+		"""
+		if isinstance(mol_set, Mol):
+			tmp = MSet()
+                	tmp.mols = [mol_set]
+			mol_set = tmp
                 nmols = len(mol_set.mols)
                 natoms = mol_set.NAtoms()
                 cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
@@ -270,11 +270,29 @@ class TFMolManage(TFManage):
                 t = time.time()
                 netcharge, dipole, atomcharge = self.Instances.evaluate([inputs, matrices, xyz, dummy_outputs])
 
-		print "netcharge:\n", netcharge
-		print "dipole:\n", dipole
-		print "atom charge:\n", atomcharge
+		molatomcharge = []
+		pointers = [0 for ele in self.TData.eles]
+                for i, mol in enumerate(mol_set.mols):
+                        tmp_atomcharge = np.zeros(mol.NAtoms())
+                        for j in range (0, mol.NAtoms()):
+                                atom_type = mol.atoms[j]
+                                atom_index = self.TData.eles.index(atom_type)
+                                tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]
+                                pointers[atom_index] +=1
+                        molatomcharge.append(tmp_atomcharge)
 
-		return netcharge, dipole, atomcharge
+		if ScaleCharge_:
+			sdipole = np.zeros((dipole.shape[0], 3))
+			smolatomcharge = []
+			pointers = [0 for ele in self.TData.eles]
+			for i, mol in enumerate(mol_set.mols):
+				tmp_atomcharge = molatomcharge[i]
+				tmp_atomcharge = tmp_atomcharge - netcharge[i]/mol.NAtoms()
+				smolatomcharge.append(tmp_atomcharge)
+                		center_ = np.average(mol.coords,axis=0)
+        			sdipole[i] = np.einsum("ax,a", mol.coords - center_, tmp_atomcharge)/AUPERDEBYE 
+			return  np.zeros(nmols), sdipole, smolatomcharge		
+		return netcharge, dipole, molatomcharge
 
 
 

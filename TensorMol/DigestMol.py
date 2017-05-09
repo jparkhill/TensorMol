@@ -286,8 +286,11 @@ class MolDigester:
 		#CM = CM[index].copy()  # for debug
 		return  CM  #for debug purpose, ignore the diagnoal element
 
-	def EvalDigest(self, mol_):
-		return self.Emb(mol_,False, True)
+	def EvalDigest(self, mol_, gradient_ = True):
+		if gradient_:
+			return self.Emb(mol_,False, True)
+		else:
+			return self.Emb(mol_,False, False)
 
 	def Emb(self, mol_, MakeOutputs=True, MakeGradients=False):
 		"""

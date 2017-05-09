@@ -102,18 +102,31 @@ def TestDipole():
 		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
 		tset.BuildTrain("chemspider9_multipole")
 
-	if (1):
+	if (0):
 		tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"Dipole_BP")
 		manager.Train()	
 
 	if (0):
-		a = MSet("dipole_test")
-		a.ReadXYZ("dipole_test")
-		#a = MSet("dipole_test")
-                #a.ReadXYZ("dipole_test")
+		a = MSet("furan_md")
+                a.ReadXYZ("furan_md")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                energies = manager.EvalBPEnergy(a)
+		#np.savetxt("./results/furan_md_nn_energies.dat",energies)
+		
+		b3lyp_energies = []
+		for mol in a.mols:
+			b3lyp_energies.append(mol.properties["atomization"])
+		#np.savetxt("./results/furan_md_b3lyp_energies.dat",np.asarray(b3lyp_energies))
+
+	if (1):
+		a = MSet("furan_md")
+		a.ReadXYZ("furan_md")
                 manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
-                manager.EvalBPDipole(a)
+                net, dipole, charge = manager.EvalBPDipole(a.mols[0], True) 
+		#net, dipole, charge = manager.EvalBPDipole(a.mols, True)
+		print net, dipole, charge
+		#np.savetxt("./results/furan_md_nn_dipole.dat", dipole)
 
 	#if (1):
 	# again this will not work becuase of john's set forgetting thing.
