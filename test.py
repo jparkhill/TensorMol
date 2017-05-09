@@ -52,33 +52,31 @@ def TestANI1():
                 #manager.Continue_Training(maxsteps=2)
 	if (0):
 		a = MSet("gradient_test_0")
-                a.ReadXYZ("gradient_test_0")
-                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		a.ReadXYZ("gradient_test_0")
+		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		optimizer  = Optimizer(manager)
 		optimizer.OptANI1(a.mols[0])
 	if (0):
-                a = MSet("gradient_test_0")
-                a.ReadXYZ("gradient_test_0")
-                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
-                print manager.Eval_BP(a)
-
-                a = MSet("gradient_test_1")
-                a.ReadXYZ("gradient_test_1")
+		a = MSet("gradient_test_0")
+		a.ReadXYZ("gradient_test_0")
+		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		print manager.Eval_BP(a)
+		a = MSet("gradient_test_1")
+		a.ReadXYZ("gradient_test_1")
 		t = time.time()
-                print manager.Eval_BP(a)
+		print manager.Eval_BP(a)
 		print "time cost to eval:", time.time() -t
-
 		a = MSet("gradient_test_2")
-                a.ReadXYZ("gradient_test_2")
-                t = time.time()
-                print manager.Eval_BP(a)
-                print "time cost to eval:", time.time() -t
+		a.ReadXYZ("gradient_test_2")
+		t = time.time()
+		print manager.Eval_BP(a)
+		print "time cost to eval:", time.time() -t
 
 	if (1):
 		a = MSet("md_test")
 		a.ReadXYZ("md_test")
 		m = a.mols[0]
-	        tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		# Convert the forces from kcal/mol ang to joules/mol ang.
 		ForceField = lambda x: 4183.9953*tfm.Eval_BPForce(Mol(m.atoms,x))
 		PARAMS["MNHChain"] = 0
@@ -91,22 +89,50 @@ def TestANI1():
 		np.savetxt("./results/AutoCorr.dat", autocorr)
 	return
 
+def TestJohnson():
+	"""
+	Try to model the IR spectra of Johnson's peptides...
+	"""
+	a = MSet("johnsonmols")
+	a.ReadXYZ("johnsonmols")
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+	optimizer = Optimizer(manager)
+	optimizer.OptANI1(a.mols[0])
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+	net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
 
-	#if (1):
-	# again this will not work becuase of john's set forgetting thing.
-	#tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
-#	a=MSet("gdb9")
-#	a.ReadXYZ("gdb9")
-#	TreatedAtoms = a.AtomTypes()
-#	print "TreatedAtoms ", TreatedAtoms
-#	#TreatedBonds = list(a.BondTypes())
-#	#print "TreatedBonds ", TreatedBonds
-#	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
-#	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
-#	tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned")
-#	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-#	manager.Train(maxstep=5)
+def TestDipole():
+	if (0):
+		a = MSet("chemspider9")
+		a.Load()
+		TreatedAtoms = a.AtomTypes()
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole")
+		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain("chemspider9_multipole")
 
+	if (0):
+		tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
+		manager=TFMolManage("",tset,False,"Dipole_BP")
+		manager.Train()
+
+	if (0):
+		a = MSet("furan_md")
+		a.ReadXYZ("furan_md")
+		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		energies = manager.EvalBPEnergy(a)
+		#np.savetxt("./results/furan_md_nn_energies.dat",energies)
+		b3lyp_energies = []
+		for mol in a.mols:
+			b3lyp_energies.append(mol.properties["atomization"])
+		#np.savetxt("./results/furan_md_b3lyp_energies.dat",np.asarray(b3lyp_energies))
+	if (1):
+		a = MSet("furan_md")
+		a.ReadXYZ("furan_md")
+                manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+                net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
+		#net, dipole, charge = manager.EvalBPDipole(a.mols, True)
+		print net, dipole, charge
+		#np.savetxt("./results/furan_md_nn_dipole.dat", dipole)
 
 def TestGeneralMBEandMolGraph():
 	a=FragableMSet("NaClH2O")
@@ -433,7 +459,8 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-TestANI1()
+#TestANI1()
+TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
@@ -480,104 +507,3 @@ if (0):
 	grids = test_mol.AddPointstoMolDots(grids, xyz, p)
 	np.savetxt("./densities/morph.xyz",test_mol.coords)
 	GridstoRaw(grids,250,"Morphine")
-
-#jeherr tests
-if (0):
-	# Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
-	if (0):
-		a=MSet('cspbbr3_tess')
-		#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/pb_tess_6sc/')
-		#a.Save()
-		a.Load()
-		mol1 = a.mols[0]
-		mol2 = a.mols[1]
-		mol2.RotateX()
-		mol1.AlignAtoms(mol2)
-		optimizer = Optimizer(None)
-		optimizer.Interpolate_OptForce(mol1, mol2)
-		mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
-		# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
-
-	if (0):
-		a=MSet("OptMols")
-		a.ReadXYZ("OptMols")
-		mol = a.mols[1]
-		mol.BuildDistanceMatrix()
-		print mol.LJForce()
-
-	if (0):
-		a=MSet("OptMols")
-		a.ReadXYZ("OptMols")
-		test_mol = a.mols[10]
-		#print "Orig Coords", test_mol.coords
-		test_mol.BuildDistanceMatrix()
-		test_mol.Distort(.1,1.0)
-		# print test_mol.NumericLJHessian()
-		# print test_mol.NumericLJHessDiag()
-		#print test_mol.coords
-		# print test_mol.LJForce()
-		# print test_mol.NumericLJForce()
-		optimizer = Optimizer(None)
-		#optimizer.momentum = 0.0
-		#optimizer.OptGoForce(test_mol)
-		optimizer.OptLJForce(test_mol)
-
-	if (0):
-		a=MSet('cspbbr3_mixed')
-		a.Load()
-		mol1 = a.mols[0]
-		mol2 = a.mols[1]
-		mol1.BuildDistanceMatrix()
-		mol2.BuildDistanceMatrix()
-		#t1 = time.time()
-		#for i in range(0,10000):
-		#	a = np.linalg.norm(mol1.DistMatrix - mol2.DistMatrix)
-		#t2 = time.time()
-		#print a
-		#print t2-t1
-		t3 = time.time()
-		for i in range(0,10000):
-			b = mol1.NormMatrices(mol1.DistMatrix, mol2.DistMatrix)
-		t4 = time.time()
-		print t4-t3
-		print b
-
-	if (1):
-		"""
-		# A Network trained on Go-Force
-		# """
-		print "Testing a Network learning Go-Atom Force..."
-		a=MSet("OptMols")
-		a.ReadXYZ("OptMols")
-		print "nmols:",len(a.mols)
-		c=a.DistortedClone(200)
-		# b=a.DistortAlongNormals(80, True, 1.2)
-		# c.Statistics()
-		# b.Statistics()
-		# print len(b.mols)
-		# b.Save()
-		# b.WriteXYZ()
-		b=MSet("OptMols_NEQ")
-		b.Load()
-		TreatedAtoms = b.AtomTypes()
-		# 2 - Choose Digester
-		d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-		# 4 - Generate training set samples.
-		tset = TensorData(b,d)
-		tset.BuildTrain("OptMols_NEQ",TreatedAtoms) # generates dataset numpy arrays for each atom.
-		tset2 = TensorData(c,d)
-		tset2.BuildTrain("OptMols_NEQ",TreatedAtoms,True) # generates dataset numpy arrays for each atom.
-		#Train
-		tset = TensorData(None,None,"OptMols_NEQ_GauSH",None,6000)
-		manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-		# This Tests the optimizer.
-		a=MSet("OptMols")
-		a.ReadXYZ("OptMols")
-		test_mol = a.mols[11]
-		print "Orig Coords", test_mol.coords
-		test_mol.Distort()
-		print test_mol.coords
-		print test_mol.atoms
-		manager=TFManage("OptMols_NEQ_GauSH_fc_sqdiff",None,False)
-		optimizer  = Optimizer(manager)
-		optimizer.Opt(test_mol)

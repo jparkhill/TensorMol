@@ -20,7 +20,108 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
 		TensorMolData_BP.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
+		self.xyzMetadata=None # case X molecule index X element type (Strictly ascending)
+		self.scratch_xyzmeta = None
+		self.scratch_test_xyzmeta = None
 		return
+
+	def CleanScratch(self):
+		TensorMolData_BP.CleanScratch(self)
+		self.xyzMetadata=None # case X molecule index , element type , first atom in this mol, last atom in this mol (exclusive)
+		self.scratch_xyzmeta = None
+		self.scratch_test_xyzmeta = None
+		return
+
+
+	def LoadData(self):
+		insname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_in.npy"
+		outsname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_out.npy"
+		metasname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_meta.npy" # Used aggregate
+		xyzmetasname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_xyzmeta.npy"
+		inf = open(insname,"rb")
+		ouf = open(outsname,"rb")
+		mef = open(metasname,"rb")
+		xyzf = open(xyzmetasname,"rb")
+		ti = np.load(inf)
+		to = np.load(ouf)
+		tm = np.load(mef)
+		txyzm = np.load(xyzf)
+		inf.close()
+		ouf.close()
+		mef.close()
+		xyzf.close()
+		to = to.reshape((to.shape[0],-1))  # flat labels to [mol, 1]
+		return ti, to, tm, txyzm
+
+
+	def LoadDataToScratch(self, tformer):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+			note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		if (self.ScratchState == 1):
+			return
+		ti, to, tm, txyzm = self.LoadData()
+		if (tformer.innorm != None):
+			ti = tformer.NormalizeIns(ti)
+		if (tformer.outnorm != None):
+			to = tformer.NormalizeOuts(to)
+		self.NTestMols = int(self.TestRatio * to.shape[0])
+		self.LastTrainMol = int(to.shape[0]-self.NTestMols)
+		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
+		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
+		LOGGER.debug("Number of molecules in meta:: %i", tm[-1,0]+1)
+		LastTrainCase=0
+		#print tm
+		# Figure out the number of atoms in training and test.
+		for i in range(len(tm)):
+			if (tm[i,0] == self.LastTrainMol):
+				LastTrainCase = tm[i,2] # exclusive
+				break
+		LOGGER.debug("last train atom: %i",LastTrainCase)
+		LOGGER.debug("Num Test atoms: %i",len(tm)-LastTrainCase)
+		LOGGER.debug("Num atoms: %i",len(tm))
+		self.NTrain = LastTrainCase
+		self.NTest = len(tm)-LastTrainCase
+		self.scratch_inputs = ti[:LastTrainCase]
+		self.scratch_outputs = to[:self.LastTrainMol]
+		self.scratch_meta = tm[:LastTrainCase]
+		self.scratch_xyzmeta = txyzm[:LastTrainCase]
+		self.scratch_test_inputs = ti[LastTrainCase:]
+		self.scratch_test_outputs = to[self.LastTrainMol:]
+		# metadata contains: molecule index, atom type, mol start, mol stop
+		# these columns need to be shifted.
+		self.scratch_test_meta = tm[LastTrainCase:]
+		self.scratch_test_xyzmeta = txyzm[LastTrainCase:]
+		self.test_begin_mol = self.scratch_test_meta[0,0]
+#		print "before shift case  ", tm[LastTrainCase:LastTrainCase+30], "real", self.set.mols[tm[LastTrainCase, 0]].bonds, self.set.mols[self.test_begin_mol].bonds
+		self.scratch_test_meta[:,0] -= self.scratch_test_meta[0,0]
+		self.scratch_test_meta[:,3] -= self.scratch_test_meta[0,2]
+		self.scratch_test_meta[:,2] -= self.scratch_test_meta[0,2]
+		self.ScratchState = 1
+		self.ScratchPointer = 0
+		self.test_ScratchPointer=0
+		# Compute mean Stoichiometry and number of atoms.
+		self.eles = np.unique(tm[:,1]).tolist()
+		atomcount = np.zeros(len(self.eles))
+		self.MeanStoich = np.zeros(len(self.eles))
+		for j in range(len(self.eles)):
+			for i in range(len(ti)):
+				if (tm[i,1]==self.eles[j]):
+					atomcount[j]=atomcount[j]+1
+		self.MeanStoich=atomcount/len(to)
+		self.MeanNumAtoms = np.sum(self.MeanStoich)
+		return
+
 
 
 	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
@@ -35,10 +136,12 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 		cases = np.zeros(tuple([natoms]+list(self.dig.eshape)))
 		LOGGER.info( "cases:"+str(cases.shape))
 		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
-		self.CaseMetadata = np.zeros((natoms, 7), dtype = np.int)
+		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
+		self.xyzMetadata = np.zeros((natoms, 3))
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
 		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_out.npy"
 		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
+		xyzmetasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_xyzmeta.npy" # Used aggregate and properly sum network inputs and outputs.
 		casep=0
 		# Generate the set in a random order.
 		ord=np.random.permutation(len(self.set.mols))
@@ -55,13 +158,13 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
 			labels[mols_done] = outs
-			center_xyz	= self.set.mols[mi].coords - np.average(self.set.mols[mi].coords, axis=0)
+			center_xyz = self.set.mols[mi].coords - np.average(self.set.mols[mi].coords, axis=0)
 			for j in range(casep,casep+nat):
 				self.CaseMetadata[j,0] = mols_done
 				self.CaseMetadata[j,1] = self.set.mols[mi].atoms[j-casep]
 				self.CaseMetadata[j,2] = casep
 				self.CaseMetadata[j,3] = casep+nat
-				self.CaseMetadata[j,4:] = center_xyz[j - casep]
+				self.xyzMetadata[j] = center_xyz[j - casep]
 			casep += nat
 			mols_done = mols_done + 1
 			if (mols_done>=max_nmols_):
@@ -69,13 +172,16 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 		inf = open(insname,"wb")
 		ouf = open(outsname,"wb")
 		mef = open(metasname,"wb")
+		xyzf = open(xyzmetasname, "wb")
 		np.save(inf,cases[:casep,:])
 		np.save(ouf,labels[:mols_done,:])
 		np.save(mef,self.CaseMetadata[:casep,:])
+		np.save(xyzf, self.xyzMetadata[:casep,:])
 		inf.close()
 		ouf.close()
 		mef.close()
-		self.AvailableDataFiles.append([insname,outsname,metasname])
+		xyzf.close()
+		self.AvailableDataFiles.append([insname,outsname,metasname, xyzmetasname])
 		self.Save() #write a convenience pickle.
 		return
 
@@ -148,7 +254,7 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 			# The offset for this element should be within the bounds or something is wrong...
 			inputs[ei][offsets[ei],:] = self.scratch_inputs[i]
 			matrices[ei][offsets[ei],outputpointer] = 1.0
-			coords[ei][offsets[ei]] = self.scratch_meta[i, 4:]
+			coords[ei][offsets[ei]] = self.scratch_xyzmeta[i]
 			outputs[outputpointer] = self.scratch_outputs[self.scratch_meta[i,0]]
 			offsets[ei] += 1
 		#print "inputs",inputs
@@ -224,7 +330,7 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 			# The offset for this element should be within the bounds or something is wrong...
 			inputs[ei][offsets[ei],:] = self.scratch_test_inputs[i]
 			matrices[ei][offsets[ei],outputpointer] = 1.0
-			coords[ei][offsets[ei]] = self.scratch_meta[i, 4:]
+			coords[ei][offsets[ei]] = self.scratch_test_xyzmeta[i]
 			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]]
 			offsets[ei] += 1
 #			if i < self.test_ScratchPointer+ignore_first_mol + 50:
