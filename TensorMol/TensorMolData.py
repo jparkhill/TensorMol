@@ -18,7 +18,7 @@ class TensorMolData(TensorData):
 		The sampler chooses points in the molecular volume.
 		The embedding turns that into inputs and labels for a network to regress.
 	"""
-	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="frag"):
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
 		"""
 			Args:
 				MSet_: A molecule set from which to cull data.
@@ -32,7 +32,7 @@ class TensorMolData(TensorData):
 		self.num_indis = num_indis_
 		self.NTrain = 0
 		TensorData.__init__(self, MSet_,Dig_,Name_, type_=type_)
-		print "self.type:", self.type
+		print "TensorMolData.type:", self.type
 		return
 
 	def QueryAvailable(self):
@@ -43,11 +43,15 @@ class TensorMolData(TensorData):
 	def CheckShapes(self):
 		# Establish case and label shapes.
 		if self.type=="frag":
-			tins,touts = self.dig.TrainDigest(self.set.mols[0].mbe_permute_frags[self.order][0])
+			tins,touts = self.dig.Emb(test_mol.mbe_frags[self.order][0],False,False)
 		elif self.type=="mol":
-			tins,touts = self.dig.TrainDigest(self.set.mols[0])
+			if (self.set != None):
+				test_mol = self.set.mols[0]
+				tins,touts = self.dig.Emb(test_mol,True,False)
+			else:
+				return
 		else:
-			raise Exception("Unkown Type")
+			raise Exception("Unknown Type")
 		print "self.dig ", self.dig.name
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape
@@ -59,7 +63,7 @@ class TensorMolData(TensorData):
 		self.name=name_
 		total_case = 0
 		for mi in range(len(self.set.mols)):
-			total_case += len(self.set.mols[mi].mbe_permute_frags[self.order])
+			total_case += len(self.set.mols[mi].mbe_frags[self.order])
 		cases = np.zeros(tuple([total_case]+list(self.dig.eshape)))
 		labels = np.zeros(tuple([total_case]+list(self.dig.lshape)))
 		casep=0
@@ -67,7 +71,7 @@ class TensorMolData(TensorData):
 		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_"+str(self.order)+"_out.npy"
 		if self.type=="frag":
 			for mi in range(len(self.set.mols)):
-				for frag in self.set.mols[mi].mbe_permute_frags[self.order]:
+				for frag in self.set.mols[mi].mbe_frags[self.order]:
 					#print  frag.dist[0], frag.frag_mbe_energy
 					ins,outs = self.dig.TrainDigest(frag)
 					cases[casep:casep+1] += ins
@@ -253,10 +257,15 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_meta = None
 		self.scratch_test_meta = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
-		self.eles = list(self.set.AtomTypes())
-		self.eles.sort()
+		self.eles = []
+		if (MSet_ != None):
+			self.eles = list(MSet_.AtomTypes())
+			self.eles.sort()
 		self.MeanStoich=None
 		self.MeanNAtoms=None
+		self.test_mols_done = False
+		self.test_begin_mol  = None
+                self.test_mols = []
 		print "TensorMolData_BP.eles", self.eles
 		return
 
@@ -290,9 +299,12 @@ class TensorMolData_BP(TensorMolData):
 		for mi in ord:
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
-			if (mols_done%10000==0):
+			if (mols_done%1000==0):
 				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+			if not np.all(np.isfinite(ins)):
+				print "find a bad case, writting down xyz.."
+				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
 			labels[mols_done] = outs
@@ -370,7 +382,6 @@ class TensorMolData_BP(TensorMolData):
 		LOGGER.debug("last train atom: %i",LastTrainCase)
 		LOGGER.debug("Num Test atoms: %i",len(tm)-LastTrainCase)
 		LOGGER.debug("Num atoms: %i",len(tm))
-
 		self.NTrain = LastTrainCase
 		self.NTest = len(tm)-LastTrainCase
 		self.scratch_inputs = ti[:LastTrainCase]
@@ -381,14 +392,14 @@ class TensorMolData_BP(TensorMolData):
 		# metadata contains: molecule index, atom type, mol start, mol stop
 		# these columns need to be shifted.
 		self.scratch_test_meta = tm[LastTrainCase:]
+		self.test_begin_mol = self.scratch_test_meta[0,0]
+#		print "before shift case  ", tm[LastTrainCase:LastTrainCase+30], "real", self.set.mols[tm[LastTrainCase, 0]].bonds, self.set.mols[self.test_begin_mol].bonds
 		self.scratch_test_meta[:,0] -= self.scratch_test_meta[0,0]
 		self.scratch_test_meta[:,3] -= self.scratch_test_meta[0,2]
 		self.scratch_test_meta[:,2] -= self.scratch_test_meta[0,2]
-
 		self.ScratchState = 1
 		self.ScratchPointer = 0
 		self.test_ScratchPointer=0
-
 		# Compute mean Stoichiometry and number of atoms.
 		self.eles = np.unique(tm[:,1]).tolist()
 		atomcount = np.zeros(len(self.eles))
@@ -434,26 +445,29 @@ class TensorMolData_BP(TensorMolData):
 		# and the number of element cases.
 		# metadata contains: molecule index, atom type, mol start, mol stop
 		bmols=np.unique(self.scratch_meta[self.ScratchPointer:self.ScratchPointer+ncases,0])
-		nmols_out=len(bmols[:-1])
-		#print "batch contains",nmols_out, "Molecules in ",ncases
+		nmols_out=len(bmols[1:-1])
 		if (nmols_out > noutputs):
 			raise Exception("Insufficent Padding. "+str(nmols_out)+" is greater than "+str(noutputs))
 		inputpointer = 0
 		outputpointer = 0
-		#print "ScratchPointer",self.ScratchPointer,self.NTrain
-		currentmol=self.scratch_meta[self.ScratchPointer,0]
+		#currentmol=self.scratch_meta[self.ScratchPointer,0]
 		sto = np.zeros(len(self.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
 		destinations = np.zeros(ncases) # The index in the output of each case in the scratch.
+		ignore_first_mol = 0
 		for i in range(self.ScratchPointer,self.ScratchPointer+ncases):
 			if (self.scratch_meta[i,0] == bmols[-1]):
 				break
-			sto[self.eles.index(self.scratch_meta[i,1])]+=1
+			elif (self.scratch_meta[i,0] == bmols[0]):
+				ignore_first_mol += 1
+			else:
+				sto[self.eles.index(self.scratch_meta[i,1])]+=1
+		currentmol=self.scratch_meta[self.ScratchPointer+ignore_first_mol,0]
 		outputs = np.zeros((noutputs))
 		for e in range(len(self.eles)):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
 			matrices.append(np.zeros((sto[e],noutputs)))
-		for i in range(self.ScratchPointer,self.ScratchPointer+ncases):
+		for i in range(self.ScratchPointer+ignore_first_mol, self.ScratchPointer+ncases):
 			if (self.scratch_meta[i,0] == bmols[-1]):
 				break
 			if (currentmol != self.scratch_meta[i,0]):
@@ -487,59 +501,197 @@ class TensorMolData_BP(TensorMolData):
 		if (self.ScratchState == 0):
 			self.LoadDataToScratch()
 		reset = False
-		if (ncases > len(self.scratch_test_inputs)):
-			raise Exception("Insufficent test data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (ncases > self.NTest):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (self.test_ScratchPointer+ncases >= self.NTest):
+			self.test_ScratchPointer = 0
+			self.test_mols_done = True
 		inputs = []#np.zeros((ncases, np.prod(self.dig.eshape)))
 		matrices = []#np.zeros((len(self.eles), ncases, noutputs))
-		offsets=[]
-		# outputs = np.zeros((noutputs, np.prod(self.dig.lshape)))
+		offsets= []
 		# Get the number of molecules which would be contained in the desired batch size
 		# and the number of element cases.
 		# metadata contains: molecule index, atom type, mol start, mol stop
-		bmols=np.unique(self.scratch_test_meta[:ncases,0])
-		nmols_out=len(bmols[:-1])
+		bmols=np.unique(self.scratch_test_meta[self.test_ScratchPointer:self.test_ScratchPointer+ncases,0])
+		nmols_out=len(bmols[1:-1])
 		#print "batch contains",nmols_out, "Molecules in ",ncases
 		if (nmols_out > noutputs):
 			raise Exception("Insufficent Padding. "+str(nmols_out)+" is greater than "+str(noutputs))
 		inputpointer = 0
 		outputpointer = 0
-		#print "ScratchPointer",self.ScratchPointer,self.NTrain
-		currentmol=self.scratch_test_meta[0,0]
+		#currentmol=self.scratch_meta[self.ScratchPointer,0]
 		sto = np.zeros(len(self.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
 		destinations = np.zeros(ncases) # The index in the output of each case in the scratch.
-		for i in range(0,ncases):
+		ignore_first_mol = 0
+		for i in range(self.test_ScratchPointer,self.test_ScratchPointer+ncases):
 			if (self.scratch_test_meta[i,0] == bmols[-1]):
 				break
-			sto[self.eles.index(self.scratch_test_meta[i,1])]+=1
+			elif (self.scratch_test_meta[i,0] == bmols[0]):
+				ignore_first_mol += 1
+			else:
+				sto[self.eles.index(self.scratch_test_meta[i,1])]+=1
+		currentmol=self.scratch_test_meta[self.test_ScratchPointer+ignore_first_mol,0]
 		outputs = np.zeros((noutputs))
 		for e in range(len(self.eles)):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
 			matrices.append(np.zeros((sto[e],noutputs)))
-		for i in range(ncases):
+		for i in range(self.test_ScratchPointer+ignore_first_mol, self.test_ScratchPointer+ncases):
 			if (self.scratch_test_meta[i,0] == bmols[-1]):
 				break
 			if (currentmol != self.scratch_test_meta[i,0]):
 				outputpointer = outputpointer+1
 				currentmol = self.scratch_test_meta[i,0]
+			if not self.test_mols_done and self.test_begin_mol+currentmol not in self.test_mols:
+					self.test_mols.append(self.test_begin_mol+currentmol)
+#					if i < self.test_ScratchPointer+ignore_first_mol + 50:
+#						print "i ",i, self.set.mols[self.test_mols[-1]].bonds
 			# metadata contains: molecule index, atom type, mol start, mol stop
 			e = (self.scratch_test_meta[i,1])
 			ei = self.eles.index(e)
 			# The offset for this element should be within the bounds or something is wrong...
 			inputs[ei][offsets[ei],:] = self.scratch_test_inputs[i]
 			matrices[ei][offsets[ei],outputpointer] = 1.0
-			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]-self.scratch_test_meta[0,0]]
+			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]]
 			offsets[ei] += 1
-		return [inputs, matrices, outputs, outputpointer]
+#			if i < self.test_ScratchPointer+ignore_first_mol + 50:
+#				print "first 50 meta data :", i, self.test_ScratchPointer+ignore_first_mol, self.scratch_test_meta[i]
+		#print "inputs",inputs
+		#print "bounds",bounds
+		#print "matrices",matrices
+		#print "outputs",outputs
+		self.test_ScratchPointer += ncases
+#		print "length of test_mols:", len(self.test_mols)
+#		print "outputpointer:", outputpointer
+		return [inputs, matrices, outputs]
+
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState
 		print "self.ScratchPointer",self.ScratchPointer
-		print "self.test_ScratchPointer",self.test_ScratchPointer
+		#print "self.test_ScratchPointer",self.test_ScratchPointer
+
+
+	def Init_TraceBack(self):
+		num_eles = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			for ele in list(self.set.mols[mol_index].atoms):
+				num_eles[self.eles.index(ele)] += 1
+		self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
+
+		pointer = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			mol = self.set.mols[mol_index]
+			for i in range (0, mol.atoms.shape[0]):
+				atom_type = mol.atoms[i]
+				self.test_atom_index[self.eles.index(atom_type)][pointer[self.eles.index(atom_type)]] = [int(mol_index), i]
+				pointer[self.eles.index(atom_type)] += 1
+		print self.test_atom_index
+		f  = open("test_energy_real_atom_index_for_test.dat","wb")
+		pickle.dump(self.test_atom_index, f)
+		f.close()
+		return
 
 	def Save(self):
-	    self.CleanScratch()
-	    f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
-	    pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
-	    f.close()
-	    return
+		self.CleanScratch()
+		f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
+
+
+class TensorMolData_Bond_BP(TensorMolData_BP):
+	"""
+	A tensordata for molecules and Bond-wise Behler-Parinello.
+	"""
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
+		TensorMolData_BP.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
+		self.eles = list(self.set.BondTypes())
+		self.eles.sort()
+		#self. = self.set.
+		#self.bonds = list(self.set.BondTypes())
+		#self.bonds.sort()
+		return
+
+	def CleanScratch(self):
+		TensorData.CleanScratch(self)
+		self.CaseMetadata=None # case X molecule index , element type , first atom in this mol, last atom in this mol (exclusive)
+		self.scratch_meta = None
+		self.scratch_test_meta = None
+		return
+
+	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
+		self.CheckShapes()
+		self.name=name_
+		print "self.type:", self.type
+		if self.type=="frag":
+			raise Exception("No BP frags now")
+		nmols  = len(self.set.mols)
+		nbonds = self.set.NBonds()
+		print "self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape
+		cases = np.zeros(tuple([nbonds]+list(self.dig.eshape)))
+		print "cases:", cases.shape
+		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
+		self.CaseMetadata = np.zeros((nbonds, 4), dtype = np.int)
+		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
+		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_out.npy"
+		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
+		casep=0
+		# Generate the set in a random order.
+		#ord = range (0, len(self.set.mols))  # debug
+		ord=np.random.permutation(len(self.set.mols))
+		mols_done = 0
+		for mi in ord:
+			nbo = self.set.mols[mi].NBonds()
+			if (mi == 0 or mi == 1):
+				print "name of the first/second mol:", self.set.mols[mi].name
+			#print "casep:", casep
+			if (mols_done%1000==0):
+				print "Mol:", mols_done
+			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+			#print mi, ins.shape, outs.shape
+			cases[casep:casep+nbo] = ins
+			#if (self.set.mols[mi].name == "Comment: c60"):
+			#	np.savetxt("c60_in.dat", ins)
+			#print "ins:", ins, " cases:", cases[casep:casep+nat]
+			labels[mols_done] = outs
+			for j in range(casep,casep+nbo):
+				self.CaseMetadata[j,0] = mols_done
+				self.CaseMetadata[j,1] = self.set.mols[mi].bonds[j-casep, 0]
+				self.CaseMetadata[j,2] = casep
+				self.CaseMetadata[j,3] = casep+nbo
+			casep += nbo
+			mols_done = mols_done + 1
+			if (mols_done>=max_nmols_):
+				break
+		inf = open(insname,"wb")
+		ouf = open(outsname,"wb")
+		mef = open(metasname,"wb")
+		np.save(inf,cases[:casep,:])
+		np.save(ouf,labels[:mols_done,:])
+		np.save(mef,self.CaseMetadata[:casep,:])
+		inf.close()
+		ouf.close()
+		mef.close()
+		self.AvailableDataFiles.append([insname,outsname,metasname])
+		self.Save() #write a convenience pickle.
+		return
+
+	def Init_TraceBack(self):
+		num_eles = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			for ele in list(self.set.mols[mol_index].bonds[:,0]):
+				num_eles[self.eles.index(ele)] += 1
+		self.test_atom_index = [np.zeros((num_eles[i],2), dtype = np.int) for i in range (0, len(self.eles))]
+		pointer = [0 for ele in self.eles]
+		for mol_index in self.test_mols:
+			mol = self.set.mols[mol_index]
+			for i in range (0, mol.bonds.shape[0]):
+				bond_type = mol.bonds[i,0]
+				self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
+				pointer[self.eles.index(bond_type)] += 1
+		print self.test_atom_index
+		f  = open("test_energy_bond_index_for_test.dat","wb")
+		pickle.dump(self.test_atom_index, f)
+		f.close()
+		return

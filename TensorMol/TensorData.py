@@ -10,9 +10,9 @@ from Transformer import *
 
 class TensorData():
 	"""
-		A Training Set is a Molecule set, with a sampler and an embedding
-		The sampler chooses points in the molecular volume.
-		The embedding turns that into inputs and labels for a network to regress.
+	A Training Set is a Molecule set, with a sampler and an embedding
+	The sampler chooses points in the molecular volume.
+	The embedding turns that into inputs and labels for a network to regress.
 	"""
 	def __init__(self, MSet_=None, Dig_=None, Name_=None, type_="atom"):
 		"""
@@ -26,8 +26,11 @@ class TensorData():
 		self.path = "./trainsets/"
 		self.suffix = ".pdb"
 		self.set = MSet_
+		self.set_name = None
 		if (self.set != None):
+			print "loading the set..."
 			self.set_name = MSet_.name # Check to make sure the name can recall the set.
+			print "finished loading the set.."
 		self.dig = Dig_
 		self.type = type_
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
@@ -94,14 +97,14 @@ class TensorData():
 
 	def CheckShapes(self):
 		# Establish case and label shapes.
-		tins,touts = self.dig.TrainDigest(self.set.mols[0],self.set.mols[0].atoms[0])
+		test_mol = Mol(np.array([1,1],dtype=np.uint8),np.array([[0.0,0.0,0.0],[0.7,0.0,0.0]]))
+		tins,touts = self.dig.TrainDigest(test_mol)
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape
 		print "TrainDigest input shape: ", tins.shape
 		print "TrainDigest output shape: ", touts.shape
 		if (self.dig.eshape == None or self.dig.lshape ==None):
 			raise Exception("Ain't got no fucking shape.")
-
 
 	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
@@ -492,7 +495,8 @@ class TensorData():
 		f.close()
 		self.CheckShapes()
 		print "Training data manager loaded."
-		print "Based on ", len(self.set.mols), " molecules "
+		if (self.set != None):
+			print "Based on ", len(self.set.mols), " molecules "
 		print "Based on files: ",self.AvailableDataFiles
 		self.QueryAvailable()
 		self.PrintSampleInformation()

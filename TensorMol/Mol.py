@@ -1,7 +1,7 @@
 from Util import *
 import numpy as np
 import random, math
-import MolEmb
+import MolEmb, Mol_Elec
 from LinearOperations import *
 
 class Mol:
@@ -26,6 +26,9 @@ class Mol:
 	def AtomTypes(self):
 		return np.unique(self.atoms)
 
+	def Num_of_Heavy_Atom(self):
+		return len([1 for i in self.atoms if i!=1])
+
 	def NEles(self):
 		return len(self.AtomTypes())
 
@@ -48,15 +51,21 @@ class Mol:
 		else:
 			AE = self.properties["energy"]
 			for i in range (0, self.atoms.shape[0]):
-				if (self.atoms[i] in ELEHEATFORM):
-					AE = AE - ELEHEATFORM[self.atoms[i]]
+				if (self.atoms[i] in ele_U):
+					AE = AE - ele_U[self.atoms[i]]
 			self.properties["atomization"] = AE
 		return
 
-	def AtomsWithin(self,rad, pt):
-		# Returns indices of atoms within radius of point.
-		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
-		return [i for i in range(self.NAtoms()) if dists[i]<rad]
+	def Calculate_vdw(self):
+		c = 0.38088
+		self.vdw = 0.0
+		s6 = S6['B3LYP']
+		for i in range (0, self.NAtoms()):
+			atom1 = self.atoms[i]
+		for j in range (i+1, self.NAtoms()):
+			atom2 = self.atoms[j]
+		self.properties["vdw"] += -s6*c*((C6_coff[atom1]*C6_coff[atom2])**0.5)/(self.DistMatrix[i][j])**6 * (1.0/(1.0+6.0*(self.DistMatrix[i][j]/(atomic_vdw_radius[atom1]+atomic_vdw_radius[atom2]))**-12))
+		return
 
 	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
 		"""
@@ -108,18 +117,10 @@ class Mol:
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(ltransf,crds[i]-center) + center
 
-	def AtomsWithin(self, SensRadius, coord):
-		''' Returns atoms within the sensory radius in sorted order. '''
-		satoms=np.arange(0,self.NAtoms())
-		diffs= self.coords-coord
-		dists= np.power(np.sum(diffs*diffs,axis=1),0.5)
-		idx=np.argsort(dists)
-		mxidx = len(idx)
-		for i in range(self.NAtoms()):
-			if (dists[idx[i]] >= SensRadius):
-				mxidx=i
-				break
-		return idx[:mxidx]
+	def AtomsWithin(self,rad, pt):
+		# Returns indices of atoms within radius of point.
+		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
+		return [i for i in range(self.NAtoms()) if dists[i]<rad]
 
 	def Distort(self,disp=0.38,movechance=.20):
 		''' Randomly distort my coords, but save eq. coords first '''
@@ -146,55 +147,11 @@ class Mol:
 			if (random.uniform(0, 1)<movechance):
 				self.atoms[i] = random.random_integers(1,PARAMS["MAX_ATOMIC_NUMBER"])
 
-	def Read_Gaussian_Output(self, path, filename, set_name):
-		try:
-			f = open(path, "r+")
-			lines = f.readlines()
-			print path
-			for i in range (0, len(lines)):
-				if "Multiplicity" in lines[i]:
-					atoms = []
-					coords = []
-					for j in range (i+1, len(lines)):
-						if lines[j].split():
-							atoms.append( AtomicNumber(lines[j].split()[0]))
-							coords.append([float(lines[j].split()[1]), float(lines[j].split()[2]), float(lines[j].split()[3])])
-						else:
-							self.atoms = np.asarray(atoms)
-							self.coords = np.asarray(coords)
-							break
-				if "SCF Done:"  in lines[i]:
-					self.properties["energy"]= float(lines[i].split()[4])
-				if "Total nuclear spin-spin coupling J (Hz):" in lines[i]:
-					self.J_coupling = np.zeros((self.NAtoms(), self.NAtoms()))
-					number_per_line  = len(lines[i+1].split())
-					block_num = 0
-					for j in range (i+1, len(lines)):
-						if "D" in lines[j] and "End of" not in lines[j]:
-							for k in range (1, len(lines[j].split())):
-								J_value = list(lines[j].split()[k])
-								J_value[J_value.index("D")]="E"
-                                                        	J_value="".join(J_value)
-								self.J_coupling[int(lines[j].split()[0])-1][number_per_line * (block_num-1) + k -1] = float(J_value)
-						elif "End of" in lines[j]:
-							break
-						else:
-							block_num += 1
-			for i in range (0, self.NAtoms()):
-				for j in range (i+1, self.NAtoms()):
-					self.J_coupling[i][j] = self.J_coupling[j][i]
-
-		except Exception as Ex:
-			print "Read Failed.", Ex
-			raise Ex
-		return
-
-	def ReadGDB9(self,path,filename, set_name):
+	def ReadGDB9(self,path,filename):
 		try:
 			f=open(path,"r")
 			lines=f.readlines()
 			natoms=int(lines[0])
-			self.set_name = set_name
 			self.name = filename[0:-4]
 			self.atoms.resize((natoms))
 			self.coords.resize((natoms,3))
@@ -272,6 +229,18 @@ class Mol:
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
 
+	def WriteSmiles(self, fpath=".", fname="gdb9_smiles", mode = "a"):
+		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".dat")):
+			try:
+				os.makedirs(os.path.dirname(fpath+"/"+fname+".dat"))
+			except OSError as exc:
+				if exc.errno != errno.EEXIST:
+					raise
+		with open(fpath+"/"+fname+".dat", mode) as f:
+			f.write(self.name+ "  "+ self.smiles+"\n")
+			f.close()
+		return
+
 	def XYZtoGridIndex(self, xyz, ngrids = 250,padding = 2.0):
 		Max = (self.coords).max() + padding
                 Min = (self.coords).min() - padding
@@ -293,9 +262,14 @@ class Mol:
 						grids[index] = atoc[self.atoms[i]]
 		return grids
 
-	def Center(self):
-		''' Returns the center of atom'''
-		return np.average(self.coords,axis=0)
+	def Center(self, CenterOf="Atom"):
+		''' Returns the center of atom or mass'''
+		if (CenterOf == "Mass"):
+			m = np.array(map(lambda x: ATOMICMASSES[x],self.atoms))
+			return np.einsum("ax,a->x",self.coords,m)/np.sum(m)
+		else:
+			return np.average(self.coords,axis=0)
+
 
 	def rms(self, m):
 		""" Cartesian coordinate difference. """
@@ -349,13 +323,6 @@ class Mol:
 			if grids[index] <  int(value[i]*250):
 				grids[index] = int(value[i]*250)
 		return grids
-
-	def MakeStoichDict(self):
-		dict = {}
-		for i in self.AtomTypes():
-			dict[i] = self.NumOfAtomsE(i)
-		self.stoich = dict
-		return
 
 	def SortAtoms(self):
 		""" First sorts by element, then sorts by distance to the center of the molecule
@@ -455,6 +422,7 @@ class Mol:
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
+#  all this shit should be moved into a "class Calculator"
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):
@@ -567,21 +535,6 @@ class Mol:
 				print j,forces
 		return forces
 
-	def SoftCutGoForceOneAtomGrids(self, samples, at_, cutdist=6):
-		if (self.DistMatrix==None):
-				print "Build DistMatrix"
-				raise Exception("dmat")
-		forces = np.zeros(samples.shape[0],3)
-		for i in range (0, forces.shape[0]):
-			for j in range (len(self.coords)):
-				if j!=at_:
-					u = self.coords[j]-samples[i]
-					dj = np.linalg.norm(u)
-					if (dj != 0.0):
-						u = u/np.linalg.norm(u)
-						forces[i] += (0.5*(dj-self.DistMatrix[at_,j])*u)*ErfSoftCut(cutdist-1, 0.5,dj)
-		return forces
-
 	def GoForce_Scan(self, maxstep, ngrid):
 		#scan near by regime and return the samllest force
 		forces = np.zeros((self.NAtoms(),3))
@@ -671,16 +624,7 @@ class Mol:
 		'''
 			The opposite of the routine above. It takes the digested probability vectors and uses it to calculate desired new positions.
 		'''
-		#print "Inputs", inputs
 		pdisp=inputs[-3:]
-		#print "Current Pos and Predicted displacement: ", self.coords[ii], pdisp
-		#Pr = GRIDS.Rasterize(inputs[:GRIDS.NGau3])
-		#Pr /= np.sum(Pr)
-		#p=np.dot(GRIDS.MyGrid().T,Pr)
-		#print "Element Type", self.atoms[ii]
-		#print "fit disp: ", p
-		#print "Using Disp:", pdisp
-		#self.FitGoProb(ii,True)
 		return pdisp
 
 	def RunPySCFWithCoords(self,samps,i):
@@ -745,6 +689,19 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 
+	def AtomName(self, i):
+		return atoi.keys()[atoi.values().index(self.atoms[i])]
+
+	def AllAtomNames(self):
+		names=[]
+		for i in range (0, self.atoms.shape[0]):
+			names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
+		return names
+
+	def Set_Qchem_Data_Path(self):
+		self.qchem_data_path="./qchem"+"/"+self.properties["set_name"]+"/"+self.name
+		return
+
 	def Set_EQ_force(self):
 		"""
 		Sets forces to 0 for equilibrium molecules with no force data.
@@ -754,3 +711,71 @@ class Mol:
 
 	def Make_Spherical_Forces(self):
 		self.properties["sphere_forces"] = CartToSphereV(self.properties["forces"])
+
+	def PySCF_Energy(self, basis_='cc-pvqz'):
+		mol = gto.Mole()
+		pyscfatomstring=""
+		for j in range(len(self.atoms)):
+			s = self.coords[j]
+			pyscfatomstring=pyscfatomstring+str(self.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(self.atoms)-1 else "")
+		mol.atom = pyscfatomstring
+		mol.basis = basis_
+		mol.verbose = 0
+		try:
+			mol.build()
+			mf=scf.RHF(mol)
+			hf_en = mf.kernel()
+			mp2 = mp.MP2(mf)
+			mp2_en = mp2.kernel()
+			en = hf_en + mp2_en[0]
+			self.energy = en
+			return en
+		except Exception as Ex:
+			print "PYSCF Calculation error... :",Ex
+			print "Mol.atom:", mol.atom
+			print "Pyscf string:", pyscfatomstring
+			return 0.0
+			#raise Ex
+		return
+
+	def MultipoleInputs(self):
+		"""
+			These are the quantities (in Atomic Units)
+			which you multiply the atomic charges by (and sum)
+			in order to calculate the multipoles of a molecule
+			up to PARAMS["EEOrder"]
+			Returns:
+				(NAtoms X (monopole, dipole x, ... quad x... etc. ))
+		"""
+		tore = None
+		com = self.Center(OfMass=True)
+		if (PARAMS["EEOrder"] == 2):
+			tore = np.zeros((self.NAtoms,4))
+			for i in range(self.NAtoms()):
+				tore[i,0] = 1.0
+				tore[i,1:] = self.coords[i]-com
+		else:
+			raise Exception("Implement... ")
+		return tore
+
+class Frag_of_Mol(Mol):
+	def __init__(self, atoms_=None, coords_=None):
+		Mol.__init__(self, atoms_, coords_)
+		self.atom_nodes = None
+		self.undefined_bond_type =  None # whether the dangling bond can be connected  to H or not
+		self.undefined_bonds = None  # capture the undefined bonds of each atom
+
+	def FromXYZString(self,string, set_name = None):
+		Mol.FromXYZString(self,string)
+		self.properties["set_name"] = set_name
+		return
+
+	def Make_AtomNodes(self):
+		atom_nodes = []
+		for i in range (0, self.NAtoms()):
+			if i in self.undefined_bonds.keys():
+				atom_nodes.append(AtomNode(self.atoms[i], i,  self.undefined_bond_type, self.undefined_bonds[i]))
+			else:
+				atom_nodes.append(AtomNode(self.atoms[i], i, self.undefined_bond_type))
+		self.atom_nodes = atom_nodes
+		return

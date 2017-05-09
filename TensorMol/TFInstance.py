@@ -355,6 +355,36 @@ class Instance:
 		raise Exception("Cannot Train base...")
 		return
 
+
+	def train_prepare(self,  continue_training =False):
+		"""Train for a number of steps."""
+		with tf.Graph().as_default():
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
+			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.sess.run(init)
+			try: # I think this may be broken
+				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					print("Restoring training from Metafile: ",most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+			except Exception as Ex:
+				print("Restore Failed 2341325",Ex)
+				pass
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			return
+
 	def test(self,step):
 		raise Exception("Base Test")
 		return

@@ -1,9 +1,10 @@
 #
 # A molecule set is not a training set.
 #
-
 from Mol import *
+from MolGraph import *
 from Util import *
+from MolFrag import *
 import numpy as np
 import os,sys,re,copy,time
 import cPickle as pickle
@@ -149,7 +150,8 @@ class MSet:
 			if ( file[-4:]!='.xyz' ):
 					continue
 			self.mols.append(Mol())
-			self.mols[-1].ReadGDB9(path+file, file, self.name)
+			self.mols[-1].ReadGDB9(path+file, file)
+			self.mols[-1].properties["set_name"] = self.name
 			if has_force:
 				self.mols[-1].Force_from_xyz(path+file)
 			if has_energy:
@@ -175,6 +177,8 @@ class MSet:
 				else:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+				self.mols[-1].name = str(txts[line0+1])
+                                self.mols[-1].properties["set_name"] = self.name
 		if (self.center):
 			self.CenterSet()
 		if (eqforce):
@@ -266,6 +270,73 @@ class MSet:
 		print "RMSD Histogram", np.histogram(rmsd, 100)
 		return
 
+	def Make_Graphs(self):
+		graphs = map(MolGraph, self.mols)
+		return graphs
+
+	def Clean_GDB9(self):
+		s = MSet(self.name+"_cleaned")
+		s.path = self.path
+		for mol in self.mols:
+			if float('inf') in mol.Bonds_Between:
+				print "disconnected atoms in mol.. discard"
+			elif -1 in mol.bond_type or 0 in mol.bond_type:
+				print "allowed bond type in mol... discard"
+			else:
+				s.mols.append(mol)
+		return s
+
+	def Calculate_vdw(self):
+		for mol in self.mols:
+			mol.Calculate_vdw()
+			print "atomization:", mol.atomization, " vdw:", mol.vdw
+		return
+
+	def WriteSmiles(self):
+		for mol in self.mols:
+			mol.WriteSmiles()
+		return
+
+
+class FragableMSet(MSet):
+	def __init__(self, name_ ="NaClH2O", path_="./datasets/"):
+		MSet.__init__(self, name_, path_)
+		return
+
+	def ReadGDB9Unpacked(self, path="/Users/johnparkhill/gdb9/"):
+		""" Reads the GDB9 dataset as a pickled list of molecules"""
+		from os import listdir
+		from os.path import isfile, join
+		#onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+		onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+		for file in onlyfiles:
+			if ( file[-4:]!='.xyz' ):
+				continue
+			self.mols.append(FragableCluster())
+			self.mols[-1].ReadGDB9(path+file, file)
+			self.mols[-1].properties["set_name"] = self.name
+			self
+		return
+
+	def ReadXYZ(self,filename, xyz_type = 'mol'):
+		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """
+		f = open(self.path+filename+".xyz","r")
+		txts = f.readlines()
+		for line in range(len(txts)):
+			if (txts[line].count('Comment:')>0):
+				line0=line-1
+				nlines=int(txts[line0])
+				if xyz_type == 'mol':
+					self.mols.append(FragableCluster())
+				elif xyz_type == 'frag_of_mol':
+					self.mols.append(Frag_of_Mol())
+				else:
+					raise Exception("Unknown Type!")
+				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+				self.mols[-1].name = str(line)
+				self.mols[-1].properties["set_name"] = self.name
+		return
+
 	def MBE(self,  atom_group=1, cutoff=10, center_atom=0):
 		for mol in self.mols:
 			mol.MBE(atom_group, cutoff, center_atom)
@@ -289,14 +360,16 @@ class MSet:
 	def Calculate_All_Frag_Energy(self, method="pyscf"):
 		for mol in self.mols:
 			mol.Calculate_All_Frag_Energy(method)
-               # 	mol.Set_MBE_Energy()
+			# 	mol.Set_MBE_Energy()
 		return
 
 	def Calculate_All_Frag_Energy_General(self, method="pyscf"):
-                for mol in self.mols:
-                        mol.Calculate_All_Frag_Energy_General(method)
-               #        mol.Set_MBE_Energy()
-                return
+		for mol in self.mols:
+			#print mol.properties
+			#print "Mol set_name", mol.properties["set_name"]
+			mol.Calculate_All_Frag_Energy_General(method)
+			#        mol.Set_MBE_Energy()
+		return
 
 	def Get_All_Qchem_Frag_Energy(self):
 		for mol in self.mols:
@@ -304,9 +377,9 @@ class MSet:
 		return
 
 	def Get_All_Qchem_Frag_Energy_General(self):
-                for mol in self.mols:
-                        mol.Get_All_Qchem_Frag_Energy_General()
-                return
+		for mol in self.mols:
+			mol.Get_All_Qchem_Frag_Energy_General()
+		return
 
 	def Generate_All_Pairs(self, pair_list=[]):
 		for mol in self.mols:
@@ -324,42 +397,38 @@ class MSet:
 		return
 
 
-	def Read_Jcoupling(self, path):
-		from os import listdir
-		from os.path import isdir, join, isfile
-		onlyfolders = [folder for folder in listdir(path) if isdir(join(path, folder))]
-		files = []
-		for subfolder in onlyfolders:
-			onlyfiles = [f for f in listdir(join(path, subfolder)) if isfile(join(path, subfolder, f))]
-			files += onlyfiles
-		for file in files:
-			if (file[-2:]!='.z'):
-				continue
-			else:
-				self.mols.append(Mol())
-				self.mols[-1].Read_Gaussian_Output(join(path, subfolder, file), subfolder+file, self.name)
+class GraphSet:
+	def __init__(self, name_ ="gdb9", path_="./datasets/"):
+		self.graphs=[]
+		self.path=path_
+		self.name=name_
+		self.suffix=".graph" #Pickle Database? Poor choice.
+
+	def BondTypes(self):
+		types = np.array([],dtype=np.uint8)
+		for m in self.mols:
+			types = np.union1d(types,m.BondTypes())
+		return types
+
+	def NBonds(self):
+		nbonds=0
+		for m in self.mols:
+			nbonds += m.NBonds()
+		return nbonds
+
+	def Save(self):
+		print "Saving set to: ", self.path+self.name+self.suffix
+		f=open(self.path+self.name+self.suffix,"wb")
+		pickle.dump(self.__dict__, f, protocol=1)
+		f.close()
 		return
 
-	def Analysis_Jcoupling(self):
-		J_value = []
-		for i in range (0, self.mols[0].NAtoms()):
-			for j in range (i+1, self.mols[0].NAtoms()):
-					J_value.append([])
-		Bonds_Between = []
-		H_Bonds_Between = []
-		paris = []
-		for i in range (0, self.mols[0].NAtoms()):
-			for j in range (i+1, self.mols[0].NAtoms()):
-				Bonds_Between.append(self.mols[0].properties["Bonds_Between"][i][j])
-				H_Bonds_Between.append(self.mols[0].properties["H_Bonds_Between"][i][j])
-				paris.append([self.mols[0].atoms[i], self.mols[0].atoms[j]])
-		for mol in self.mols:
-			index = 0
-                        for i in range (0, mol.NAtoms()):
-                                for j in range (i+1, mol.NAtoms()):
-					J_value[index].append(mol.J_coupling[i][j])
-					index += 1
-		for i in range(0,len(J_value)):
-			J = np.asarray(J_value[i])
-			#print J
-			print  '{:10}{:12}'.format("mean:", np.mean(J)), '{:10}{:12}'.format("ratio:", np.std(J)/np.mean(J)), paris[i], Bonds_Between[i]-H_Bonds_Between[i]
+	def Load(self):
+		f = open(self.path+self.name+self.suffix,"rb")
+		tmp=pickle.load(f)
+		self.__dict__.update(tmp)
+		f.close()
+		print "Loaded, ", len(self.mols), " molecules "
+		print self.NAtoms(), " Atoms total"
+		print self.AtomTypes(), " Types "
+		return

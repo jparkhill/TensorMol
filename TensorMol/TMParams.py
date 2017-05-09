@@ -1,10 +1,5 @@
-"""
-PARAMETER CONVENTION:
-- It's okay to have parameters which you pass to functions used to perform a test if you don't change them often.
-- It's NOT okay to put default parameters in __init__() and change them all the time.
-- These params should be added to a logfile of results so that we can systematically see how our approximations are doing.
-"""
 import logging, time, os
+from math import pi as Pi
 import numpy as np
 
 class TMParams(dict):
@@ -41,9 +36,17 @@ class TMParams(dict):
 		self["SH_NRAD"]=10
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
+		self["AN1_r_Rc"] = 4.6
+		self["AN1_a_Rc"] = 3.1
+		self["AN1_eta"] = 4.0
+		self["AN1_zeta"] = 8.0
+		self["AN1_num_r_Rs"] = 32
+		self["AN1_num_a_Rs"] = 8
+		self["AN1_num_a_As"] = 8
+		self["AN1_r_Rs"] = np.array([ self["AN1_r_Rc"]*i/self["AN1_num_r_Rs"] for i in range (0, self["AN1_num_r_Rs"])])
+		self["AN1_a_Rs"] = np.array([ self["AN1_a_Rc"]*i/self["AN1_num_a_Rs"] for i in range (0, self["AN1_num_a_Rs"])])
+		self["AN1_a_As"] = np.array([ 2.0*Pi*i/self["AN1_num_a_As"] for i in range (0, self["AN1_num_a_As"])])
 		# SET GENERATION parameters
-		self["MBE_ORDER"] = 2
-		self["KAYBEETEE"] = 0.000950048 # At 300K
 		self["RotateSet"] = 0
 		self["TransformSet"] = 1
 		self["NModePts"] = 10
@@ -53,34 +56,59 @@ class TMParams(dict):
 		self["dig_SamplingType"]="Smooth"
 		self["BlurRadius"] = 0.05
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
+		# MBE PARAMS
+		self["MBE_ORDER"] = 4
 		# DATA usage parameters
 		self["InNormRoutine"] = None
-		self["OutNormRoutine"] = "MeanStd"
+		self["OutNormRoutine"] = None
 		self["RandomizeData"] = False
 		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
-		self["RotAvOutputs"] = 20 # Rotational averaging of force outputs.
+		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
-		self["OptMaxCycles"]=400
-		self["OptThresh"]=0.0002
+		self["OptMaxCycles"]=1000
+		self["OptThresh"]=0.0004
 		self["OptMaxStep"]=0.1
-		self["OptStepSize"] = 0.002
+		self["OptStepSize"] = 0.004
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
+		self["OptMaxBFGS"] = 7
 		self["NebNumBeads"] = 10
 		self["NebK"] = 0.01
+		self["NebMaxBFGS"] = 12
+		self["DiisSize"] = 20
+		# MD Parameters
+		self["MDMaxStep"] = 20000
+		self["MDdt"] = 0.2 # In fs.
+		self["MDTemp"] = 300.0
+		self["MDV0"] = "Random"
+		self["MDThermostat"] = None # None, "Rescaling", "Nose", "NoseHooverChain"
+		self["MDLogTrajectory"] = True
+		self["MDLogVelocity"] = False
+		# MD applied pulse parameters
+		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
+		self["MDFieldAmp"] = 0.001
+		self["MDFieldFreq"] = 1.0/1.2
+		self["MDFieldTau"] = 1.2
+		self["MDFieldT0"] = 3.0
 		# Training Parameters
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-		self["max_steps"] = 100
-		self["test_freq"] = 50
+		self["max_steps"] = 2000
+		self["test_freq"] = 10
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
+		# parameters of electrostatic embedding
+		self["EEOn"] = True # Whether to calculate/read in the required data at all...
+		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
+		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
+		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
+		self["EECutoff"] = 5.0 # switch between 0 and 1/r occurs at Angstroms.
 		#paths
 		self["results_dir"] = "./results/"
 		self["dens_dir"] = "./densities/"

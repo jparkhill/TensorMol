@@ -5,6 +5,17 @@ A Statistical Model of Molecular Structure
 	Kun Yao (kyao@nd.edu), John Herr
 	John Parkhill (john.parkhill@gmail.com)
 
+### Energy And Force Models:
+ - Behler-Parrinello
+ - Many Body Expansion
+ - Diatomics in Molecules NN
+ - Atomwise Forces
+
+### Simulation Types
+ - Optimizations
+ - Nudged Elastic Band
+ - Molecular Dynamics (NVE,NVT Nose-Hoover)
+
 ### License: GPLv3
 By using this software you agree to the terms in COPYING
 
@@ -36,11 +47,11 @@ sudo python setup.py install
 ### COMMON ISSUES
 - nan during training due to bad checkpoints in /networks (clean.sh)
 - Also crashes when reviving networks from disk.
-- if you have these issues try: 
+- if you have these issues try:
 
 ```
 cd C_API/
 sudo python setup.py install
-cd .. 
-sh clean.sh 
+cd ..
+sh clean.sh
 ```

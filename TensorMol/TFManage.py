@@ -22,16 +22,16 @@ class TFManage:
     			ntrain_: Number of steps to train an element.
     	"""
     	self.path = "./networks/"
-    	if (Name_ != ""):
-    		# This will unpickle and instantiate TData...
-    		self.name = Name_
-    		self.Prepare()
-    		return
     	self.TData = TData_
     	if (RandomTData_==False):
     		self.TData.Randomize=False
     	self.NetType = NetType_
     	self.n_train = ntrain_
+	if (Name_ != ""):
+                # This will unpickle and instantiate TData...
+                self.name = Name_
+                self.Prepare()
+                return
     	# All done if you're doing molecular calculations
     	print self.TData.AvailableElements
     	print self.TData.AvailableDataFiles

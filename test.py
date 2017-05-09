@@ -3,9 +3,12 @@ Various tests of tensormol's functionality.
 Many of these tests take a pretty significant amount of time and memory to complete.
 """
 from TensorMol import *
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 
 # John's tests
-def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
+def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	"""
 	General Behler Parinello using ab-initio energies.
 	Args:
@@ -14,19 +17,132 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 	"""
 	print "Testing General Behler-Parrinello using ab-initio energies...."
 	PARAMS["NormalizeOutputs"] = True
-	if (BuildTrain_):
-		a=MSet(set_)
-		a.ReadXYZ(set_)
-		TreatedAtoms = a.AtomTypes()
-		print "TreatedAtoms ", TreatedAtoms
-		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
-		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
-		tset.BuildTrain(set_)
-	tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
+	#	if (BuildTrain_): # Need to add missing parts of set to get this separated...
+	a=MSet(set_)
+	a.ReadXYZ(set_)
+	TreatedAtoms = a.AtomTypes()
+	print "TreatedAtoms ", TreatedAtoms
+	d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
+	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+	tset.BuildTrain(set_)
+	#tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 	manager.Train(maxstep=500)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 	# We should try to get optimizations working too...
 	return
+
+def TestANI1():
+	"""
+	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
+	"""
+	if (0):
+		#a = MSet("uneq_chemspider")
+		#a.ReadXYZ("uneq_chemspider")
+		#a.Save()
+		#a = MSet("uneq_chemspider")
+		#a.Load()
+		#print "Set elements: ", a.AtomTypes()
+		#TreatedAtoms = a.AtomTypes()
+		#d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+		#tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+		#tset.BuildTrain("uneq_chemspider")
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+		manager.Train(maxstep=1500)
+		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                #manager.Continue_Training(maxsteps=2)
+	if (0):
+		a = MSet("gradient_test_0")
+                a.ReadXYZ("gradient_test_0")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		optimizer  = Optimizer(manager)
+		optimizer.OptANI1(a.mols[0])	
+	if (0):
+                a = MSet("gradient_test_0")
+                a.ReadXYZ("gradient_test_0")
+                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                print manager.Eval_BP(a)
+
+                a = MSet("gradient_test_1")
+                a.ReadXYZ("gradient_test_1")
+		t = time.time()
+                print manager.Eval_BP(a)
+		print "time cost to eval:", time.time() -t
+
+		a = MSet("gradient_test_2")
+                a.ReadXYZ("gradient_test_2")
+                t = time.time()
+                print manager.Eval_BP(a)
+                print "time cost to eval:", time.time() -t
+
+	if (0):
+		a = MSet("md_test")
+		a.ReadXYZ("md_test")
+		m = a.mols[0]
+	        tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		# Convert the forces from kcal/mol ang to joules/mol ang.
+		ForceField = lambda x: 4183.9953*tfm.Eval_BPForce(Mol(m.atoms,x))
+		PARAMS["MNHChain"] = 0
+		PARAMS["MDTemp"] = 150.0
+		PARAMS["MDThermostat"] = None
+		PARAMS["MDV0"]=None 
+		md = VelocityVerlet(ForceField,m)
+		velo_hist = md.Prop()
+		autocorr  = AutoCorrelation(velo_hist, md.dt)
+		np.savetxt("./results/AutoCorr.dat", autocorr)
+	return
+
+
+def TestDipole():
+	if (0):
+                a = MSet("chemspider9")
+		a.Load()
+		TreatedAtoms = a.AtomTypes()
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole")
+		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain("chemspider9_multipole")
+
+	if (1):
+		tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
+		manager=TFMolManage("",tset,False,"Dipole_BP")
+		manager.Train()	
+
+	if (0):
+		a = MSet("dipole_test")
+		a.ReadXYZ("dipole_test")
+		#a = MSet("dipole_test")
+                #a.ReadXYZ("dipole_test")
+                manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+                manager.EvalBPDipole(a)
+
+	#if (1):
+	# again this will not work becuase of john's set forgetting thing.
+	#tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
+#	a=MSet("gdb9")
+#	a.ReadXYZ("gdb9")
+#	TreatedAtoms = a.AtomTypes()
+#	print "TreatedAtoms ", TreatedAtoms
+#	#TreatedBonds = list(a.BondTypes())
+#	#print "TreatedBonds ", TreatedBonds
+#	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Energy")  # Initialize a digester that apply descriptor for the fragments.
+#	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
+#	tset.BuildTrain("gdb9_energy_1_6_7_8_cleaned")
+#	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+#	manager.Train(maxstep=5)
+
+
+def TestGeneralMBEandMolGraph():
+	a=FragableMSet("NaClH2O")
+	a.ReadXYZ("NaClH2O")
+	a.Generate_All_Pairs(pair_list=[{"pair":"NaCl", "mono":["Na","Cl"], "center":[0,0]}])
+	a.Generate_All_MBE_term_General([{"atom":"OHH", "charge":0}, {"atom":"NaCl", "charge":0}], cutoff=12, center_atom=[0, -1]) # Generate all the many-body terms with  certain radius cutoff.  # -1 means center of mass
+	a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
+	a.Save() # Save the training set, by default it is saved in ./datasets.
+	a = MSet("1_1_Ostrech")
+	a.ReadXYZ("1_1_Ostrech")
+	g = GraphSet(a.name, a.path)
+	g.graphs = a.Make_Graphs()
+	print "found?", g.graphs[4].Find_Frag(g.graphs[3])
 
 def TestAlign():
 	"""
@@ -226,17 +342,65 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	neb.OptNeb()
 	return
 
+def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test NudgedElasticBand with LBFGS... not working :(
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	optimizer  = Optimizer(tfm)
+	a=MSet("NEB_Berg")
+	a.ReadXYZ("NEB_Berg")
+	m0 = a.mols[0]
+	m1 = a.mols[1]
+	# These have to be aligned and optimized if you want a good PES.
+	m0.AlignAtoms(m1)
+	PARAMS["RotAvOutputs"] = 10
+	PARAMS["DiisSize"] = 20
+	m0 = optimizer.OptTFRealForce(m0,"NebOptM0")
+	m1 = optimizer.OptTFRealForce(m1,"NebOptM1")
+	PARAMS["NebNumBeads"] = 30
+	PARAMS["NebK"] = 2.0
+	PARAMS["OptStepSize"] = 0.001
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["RotAvOutputs"] = 10
+	PARAMS["OptMomentumDecay"] = 1.0
+	neb = NudgedElasticBand(tfm, m0, m1)
+	neb.OptNebGLBFGS()
+	return
+
+def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test MolecularDynamics
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	a=MSet("OCSDB_test")
+	a.ReadXYZ("OCSDB_test")
+	m = a.mols[1]
+	# Convert the forces from kcal/mol ang to joules/mol ang.
+	ForceField = lambda x: 4183.9953*tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
+	PARAMS["MNHChain"] = 10
+	PARAMS["MDTemp"] = 150.0
+	PARAMS["MDThermostat"] = "NosePerParticle"
+	md = VelocityVerlet(ForceField,m)
+	md.Prop()
+	return
+
 #
 # Tests to run.
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
+#TestANI1()
+TestDipole()
+#TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()
 #TestHerrNet1()
 #TestOCSDB()
-TestNeb()
+#TestNeb()
+#TestMD()
+#TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.
 if (0):
