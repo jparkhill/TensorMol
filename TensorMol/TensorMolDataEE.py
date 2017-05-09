@@ -11,10 +11,12 @@ from Sets import *
 from DigestMol import *
 from TensorMolData import *
 
-
 class TensorMolData_EE(TensorMolData_BP):
 	"""
-			A tensordata for molecules and Behler-Parinello.
+			A tensordata for molecules and Behler-Parinello
+			with electrostatic embedding.
+			When training
+			this yields inputs wh
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
 		# a Case is an input to the NN.
