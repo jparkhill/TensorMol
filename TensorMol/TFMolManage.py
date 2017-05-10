@@ -254,7 +254,7 @@ class TFMolManage(TFManage):
 				for e in range (len(eles)):
 					inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
 					matrices.append(np.zeros((sto[e], nmols)))
-				xyz.append(np.zeros((sto[e], 3)))
+					xyz.append(np.zeros((sto[e], 3)))
 				for i in range (0, natoms):
 					if currentmol != meta[i, 0]:
 						outputpointer += 1

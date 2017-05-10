@@ -410,7 +410,9 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			self.TData.LoadDataToScratch(self.tformer)
 			# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 			self.inshape = np.prod(self.TData.dig.eshape)
-		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
+		# HACK something was up with the shapes in kun's saved network.
+		self.inshape = self.inshape[0]
+		print("MolInstance_BP_Dipole.inshape: ",self.inshape)
 		self.eles = self.TData.eles
 		self.n_eles = len(self.eles)
 		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
@@ -683,9 +685,6 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
-
-
-
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		if Train:
