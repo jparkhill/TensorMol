@@ -5,6 +5,7 @@ Changes that need to be made:
 from Sets import *
 from TFManage import *
 from DIIS import *
+from LinearOperations import *
 import random
 import time
 
@@ -256,16 +257,16 @@ class Optimizer:
 		while( step < self.max_opt_step):
 			prev_m = Mol(m.atoms, m.coords)
 			energy, veloc = self.tfm.Eval_BPForce(m,total_energy=True)
-			veloc = veloc - np.average(veloc,axis=0)
-			veloc *= self.fscale
+			veloc = RemoveInvariantForce(m.coords, veloc, m.atoms)
 			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
-			if (rmsgrad > 0.06):
+			veloc *= self.fscale
+			if (rmsgrad > 30.0):
 				m.coords = diis.NextStep(m.coords,veloc)
 			else:
 				c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 				old_veloc = self.momentum_decay*c_veloc
 				m.coords = m.coords + c_veloc
-			print "energy:", energy
+			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1

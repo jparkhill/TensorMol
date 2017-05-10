@@ -6,6 +6,48 @@ import random
 import math
 from math import pi as Pi
 
+def PseudoInverse(mat_):
+	U, s, V = np.linalg.svd(mat_) #M=u * np.diag(s) * v,
+	for i in range(len(s)):
+		if (s[i]!=0.0 and abs(s[i])>0.0000001):
+			s[i]=1.0/s[i]
+		else:
+			s[i] = 0.0
+	return np.dot(np.dot(U,np.diag(s)),V)
+
+def RemoveInvariantForce(x_,f_,m_):
+	#print x_, f_ , m_
+	fnet = np.sum(f_,axis=0)
+	# Remove COM force.
+	fnew_ = f_ - (np.einsum("m,f->mf",m_,fnet)/np.sum(m_))
+	torque = np.sum(np.cross(x_,fnew_),axis=0)
+	#print torque
+	# Compute inertia tensor
+	I = np.zeros((3,3))
+	for i in range(len(m_)):
+		I[0,0] += m_[i]*(x_[i,1]*x_[i,1]+x_[i,2]*x_[i,2])
+		I[1,1] += m_[i]*(x_[i,0]*x_[i,0]+x_[i,2]*x_[i,2])
+		I[2,2] += m_[i]*(x_[i,1]*x_[i,1]+x_[i,0]*x_[i,0])
+		I[0,1] -= m_[i]*(x_[i,0]*x_[i,1])
+		I[0,2] -= m_[i]*(x_[i,0]*x_[i,2])
+		I[1,2] -= m_[i]*(x_[i,1]*x_[i,2])
+	I[1,0] = I[0,1]
+	I[2,0] = I[0,2]
+	I[2,1] = I[1,2]
+	Iinv = PseudoInverse(I)
+	#print "Inertia tensor", I
+	#print "Inverse Inertia tensor", Iinv
+	# Compute angular acceleration  = torque/I
+	dwdt = np.dot(Iinv,torque)
+	#print "Angular acceleration", dwdt
+	# Compute the force correction.
+	fcorr = np.zeros(f_.shape)
+	for i in range(len(m_)):
+		fcorr[i,0] += m_[i]*(-1.0*dwdt[2]*x_[i,1] + dwdt[1]*x_[i,2])
+		fcorr[i,1] += m_[i]*(dwdt[2]*x_[i,0] - dwdt[0]*x_[i,2])
+		fcorr[i,2] += m_[i]*(-1.0*dwdt[1]*x_[i,0] + dwdt[0]*x_[i,1])
+	return fnew_ - fcorr
+
 # Simple vectorized coordinate transformations.
 def SphereToCart(arg_):
 	r = arg_[0]

@@ -92,14 +92,41 @@ def TestANI1():
 def TestJohnson():
 	"""
 	Try to model the IR spectra of Johnson's peptides...
+	Optimize, then get charges, then do an isotropic IR spectrum.
 	"""
 	a = MSet("johnsonmols")
 	a.ReadXYZ("johnsonmols")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	PARAMS["OptMomentum"] = 0.4
+	PARAMS["OptMomentumDecay"] = 0.9
+	PARAMS["OptStepSize"] = 0.0002
+	PARAMS["OptMaxCycles"]=500
+	m = a.mols[0]
 	optimizer = Optimizer(manager)
-	optimizer.OptANI1(a.mols[0])
+	optimizer.OptANI1(m)
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
+	net, dipole, charges = qmanager.EvalBPDipole(m, False)
+	print "Net, Dipole, Charge", net, dipole, charges
+	#self.tfm.Eval_BPForce(m,total_energy=True)
+	ForceField = lambda x: 4183.9953*manager.Eval_BPForce(Mol(m.atoms,x),False)
+	ChargeField = lambda x: qmanager.EvalBPDipole(Mol(m.atoms,x),False)[2][0]
+	PARAMS["MDdt"] = 0.2
+	PARAMS["MDTemp"] = 0.0
+	PARAMS["MDMaxStep"] = 8000
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDFieldAmp"] = 0.00002
+	PARAMS["MDFieldTau"] = 0.7
+	PARAMS["MDFieldFreq"] = 1.0
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	md = IRTrajectory(ForceField, ChargeField, m,"0")
+	md.Prop()
+	PARAMS["MDFieldVec"] = np.array([0.0,1.0,0.0])
+	md = IRTrajectory(ForceField, ChargeField, m,"1")
+	md.Prop()
+	PARAMS["MDFieldVec"] = np.array([0.0,0.0,1.0])
+	md = IRTrajectory(ForceField, ChargeField, m,"2")
+	md.Prop()
+	return
 
 def TestDipole():
 	if (0):

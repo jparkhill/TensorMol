@@ -234,7 +234,7 @@ class NoseChainThermostat(Thermostat):
 		return v_*scale
 
 class VelocityVerlet:
-	def __init__(self,f_,g0_):
+	def __init__(self,f_,g0_, name_ =""):
 		"""
 		Molecular dynamics
 		Args:
@@ -249,6 +249,7 @@ class VelocityVerlet:
 		Returns:
 			A reaction path.
 		"""
+		self.name = name_
 		self.maxstep = PARAMS["MDMaxStep"]
 		self.T = PARAMS["MDTemp"]
 		self.dt = PARAMS["MDdt"]
@@ -282,7 +283,7 @@ class VelocityVerlet:
 		m=Mol(self.atoms,self.x)
 		m.properties["Time"]=self.t
 		m.properties["KineticEnergy"]=self.KE
-		m.WriteXYZfile("./results/", "MDTrajectory")
+		m.WriteXYZfile("./results/", "MDTrajectory"+self.name)
 		return
 
 	def Prop(self):
@@ -308,7 +309,7 @@ class VelocityVerlet:
 			return
 
 class IRTrajectory(VelocityVerlet):
-	def __init__(self,f_,q_,g0_):
+	def __init__(self,f_,q_,g0_,name_=str(0)):
 		"""
 		A specialized sort of dynamics which is appropriate for obtaining IR spectra at
 		Zero temperature.
@@ -323,7 +324,7 @@ class IRTrajectory(VelocityVerlet):
 			PARAMS["MDFieldTau"] = 1.2 #1.2 fs pulse.
 			PARAMS["MDFieldFreq"] = 1/1.2 # 700nm light is about 1/1.2 fs.
 		"""
-		VelocityVerlet.__init__(self,f_, g0_)
+		VelocityVerlet.__init__(self,f_, g0_, name_)
 		self.EField = np.zeros(3)
 		self.IsOn = False
 		self.qs = None
@@ -332,56 +333,69 @@ class IRTrajectory(VelocityVerlet):
 		self.FieldFreq = PARAMS["MDFieldFreq"]
 		self.Tau = PARAMS["MDFieldTau"]
 		self.TOn = PARAMS["MDFieldT0"]
+		self.UpdateCharges = PARAMS["MDUpdateCharges"]
 		self.FieldFreeForce = f_
 		self.ChargeFunction = q_
-		self.Mu0 = self.Dipole(self.x, q_(self.x))
+		self.q0 = self.ChargeFunction(self.x)
+		self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
+		self.mu_his = None
 
 	def Pulse(self,t_):
 		"""
 		\delta pulse of duration
 		"""
-		amp = self.FieldAmp*np.sin(self.FieldFreq*time)*(1.0/sqrt(2.0*3.1415*self.Tau*self.Tau))*np.exp(-1.0*np.power(time-self.tOn,2.0)/(2.0*self.Tau*self.Tau))
-		if (np.abs(amp) > np.power(10.0,-6.0)):
+		sin_part = (np.sin(2.0*3.1415*self.FieldFreq*t_))
+		exp_part = (1.0/np.sqrt(2.0*3.1415*self.Tau*self.Tau))*(np.exp(-1.0*np.power(t_-self.TOn,2.0)/(2.0*self.Tau*self.Tau)))
+		amp = self.FieldAmp*sin_part*exp_part
+		if (np.abs(amp) > np.power(10.0,-12.0)):
 			return self.FieldVec*amp, True
-		return np.zeros(3), False
-
-	def ForceFunction(self,x_):
-		if (self.IsOn):
-			self.qs = self.ChargeFunction(x_)
-			return FieldFreeForce(x_) + ElectricFieldForce(self.qs, self.EField)
 		else:
-			return FieldFreeForce(x_)
+			return np.zeros(3), False
+
+	def ForcesWithCharge(self,x_):
+		if (self.IsOn):
+			FFForce = self.FieldFreeForce(x_)
+			# ElectricFieldForce Is in units of Hartree/angstrom.
+			# and must be converted to kg*Angstrom/(Fs^2)
+			ElecForce = 4184.0*np.power(10.0,10.0)*ElectricFieldForce(self.qs, self.EField)
+			print "Field Free Force", FFForce
+			print "ElecForce Force", ElecForce
+			return RemoveInvariantForce(x_, FFForce + ElecForce, self.m)
+		else:
+			return RemoveInvariantForce(x_, self.FieldFreeForce(x_), self.m)
 
 	def WriteTrajectory(self):
 		m=Mol(self.atoms,self.x)
 		m.properties["Time"]=self.t
 		m.properties["KineticEnergy"]=self.KE
-		m.properties["Charges"]=self.qs
-		m.WriteXYZfile("./results/", "MDTrajectory")
+		#m.properties["Charges"]=self.qs
+		m.WriteXYZfile("./results/", "MDTrajectory"+self.name)
 		return
 
 	def Prop(self):
-		mu_his = np.zeros((self.maxstep, 5)) # time Dipoles Energy
+		self.mu_his = np.zeros((self.maxstep, 6)) # time Dipoles Energy
 		step = 0
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/8.314
 
-			self.EField, self.IsOn = self.Pulse(t)
-			if (not IsOn):
-				self.qs = self.ChargeFunction(x_)
+			self.EField, self.IsOn = self.Pulse(self.t)
+			if (self.UpdateCharges and not self.IsOn):
+				self.qs = self.ChargeFunction(self.x)
+			else:
+				self.qs = self.q0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
+			print self.Mu
+			self.mu_his[step,0] = self.t
+			self.mu_his[step,1:4] = self.Mu
+			self.mu_his[step,5] = self.KE
 
-			self.mu_his[0] = self.t
-			self.mu_his[1:4] = self.Mu
-			self.mu_his[5] = self.KE
-
-			self.x , self.v, self.a = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
+			self.x , self.v, self.a = VelocityVerletstep(self.ForcesWithCharge, self.a, self.x, self.v, self.m, self.dt)
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%100==0):
-				np.savetxt("./results/"+"MDLog.txt",mu_his)
+				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", step, self.t, self.KE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])

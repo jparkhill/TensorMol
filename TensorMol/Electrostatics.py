@@ -9,23 +9,24 @@ import PhysicalData, MolEmb
 
 def WeightedCoordAverage(x_, q_, center_=None):
 	""" Dipole relative to center of x_ """
-	if (center_==None):
+	if (center_== None):
 		center_ = np.average(x_,axis=0)
 	return np.einsum("ax,a", x_-center_ , q_)
 
-def Dipole(m_):
+def DipoleDebug(m_):
 		if ("dipole" in m_.properties and "charges" in m_.properties):
 			print "Qchem, Calc'd", m_.properties["dipole"]*AUPERDEBYE, WeightedCoordAverage(m_.coords*BOHRPERA, m_.properties["charges"], m_.Center())
+
+def Dipole(x_, q_):
+	""" Arguments are in A, and elementary charges.  """
+ 	return WeightedCoordAverage(x_*BOHRPERA, q_)
 
 def ElectricFieldForce(q_,E_):
 	"""
 	Both are received in atomic units.
 	The force should be returned in kg(m/s)^2, but I haven't fixed the units yet.
 	"""
-	tore = np.zeros((len(q_),3))
-	for i in range(len(q_)):
-		tore[i] = E_*q_
-	return tore
+	return np.einsum("q,x->qx",q_,E_)
 
 def ECoulECutoff(m_):
 	dm = MolEmb.Make_DistMat(m_.coords)*BOHRPERA
