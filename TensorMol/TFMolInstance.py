@@ -20,11 +20,13 @@ import sys
 #
 
 class MolInstance(Instance):
-	def __init__(self, TData_,  Name_=None):
+	def __init__(self, TData_,  Name_=None, Trainable_=True):
 		Instance.__init__(self, TData_, 0, Name_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.TData.LoadDataToScratch(self.tformer)
+		self.Trainable = Trainable_
+		if (self.Trainable):
+			self.TData.LoadDataToScratch(self.tformer)
 		self.tformer.Print()
 		self.TData.PrintStatus()
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
@@ -96,45 +98,45 @@ class MolInstance(Instance):
 		return
 
 
-        def save_chk(self,  step, feed_dict=None):  # We need to merge this with the one in TFInstance
-                cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
-                os.system(cmd)
-                self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
-                print("Saving Checkpoint file, in the TFMoInstance", self.chk_file)
-                self.saver.save(self.sess,  self.chk_file)
-                return
+	def save_chk(self,  step, feed_dict=None):  # We need to merge this with the one in TFInstance
+		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
+		os.system(cmd)
+		self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+		print("Saving Checkpoint file, in the TFMoInstance", self.chk_file)
+		self.saver.save(self.sess,  self.chk_file)
+		return
 
-        def Load(self):
-                print ("Unpickling TFInstance...")
-                f = open(self.path+self.name+".tfn","rb")
-                tmp=pickle.load(f)
-                tmp.pop('evaluate',None)
-                self.Clean()
-                self.__dict__.update(tmp)
-                f.close()
-                print("self.chk_file:", self.chk_file)
-                return
+	def Load(self):
+		print ("Unpickling TFInstance...")
+		f = open(self.path+self.name+".tfn","rb")
+		tmp=pickle.load(f)
+		tmp.pop('evaluate',None)
+		tmp.pop('Prepare',None)
+		self.Clean()
+		self.__dict__.update(tmp)
+		f.close()
+		print("self.chk_file:", self.chk_file)
+		return
 
-
-        def SaveAndClose(self):
+	def SaveAndClose(self):
 		if (self.TData!=None):
-                        self.TData.CleanScratch()
-                print("Saving TFInstance...")
-                self.Clean()
-                #print("Going to pickle...\n",[(attr,type(ins)) for attr,ins in self.__dict__.items()])
-                f=open(self.path+self.name+".tfn","wb")
-                pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
-                f.close()
-                return
+			self.TData.CleanScratch()
+		print("Saving TFInstance...")
+		self.Clean()
+		#print("Going to pickle...\n",[(attr,type(ins)) for attr,ins in self.__dict__.items()])
+		f=open(self.path+self.name+".tfn","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
 
 
 class MolInstance_fc_classify(MolInstance):
-	def __init__(self, TData_,  Name_=None):
+	def __init__(self, TData_,  Name_=None, Trainable_=True):
 		"""
 		Translation of the outputs to meaningful numbers is handled by the digester and Tensordata
 		"""
 		self.NetType = "fc_classify"
-		MolInstance.__init__(self, TData_,  Name_)
+		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
@@ -299,11 +301,10 @@ class MolInstance_fc_classify(MolInstance):
 			self.print_training(step, test_loss, test_correct, Ncase_test, duration)
 		return test_loss, feed_dict
 
-
 class MolInstance_fc_sqdiff(MolInstance):
-	def __init__(self, TData_,  Name_=None):
+	def __init__(self, TData_,  Name_=None, Trainable_=True):
 		self.NetType = "fc_sqdiff"
-		MolInstance.__init__(self, TData_,  Name_)
+		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
@@ -458,7 +459,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		An instance of A fully connected Behler-Parinello network.
 		Which requires a TensorMolData to train/execute.
 	"""
-	def __init__(self, TData_, Name_=None):
+	def __init__(self, TData_, Name_=None, Trainable_=True):
 		"""
 		Raise a Behler-Parinello TensorFlow instance.
 
@@ -467,13 +468,14 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			Name_: A name for this instance.
 		"""
 		self.NetType = "fc_sqdiff_BP"
-		MolInstance.__init__(self, TData_,  Name_)
+		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
-		self.momentum = 0.95
-		self.TData.LoadDataToScratch(self.tformer)
+		self.momentum = 0.
+		if (self.Trainable):
+			self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
 		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
@@ -482,7 +484,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
 		self.AtomBranchNames=[] # a list of the layers named in each atom branch
-
 		self.inp_pl=None
 		self.mats_pl=None
 		self.label_pl=None
@@ -496,19 +497,18 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.summary_op =None
 		self.summary_writer=None
 
-        def Clean(self):
-                Instance.Clean(self)
-                self.summary_op =None
-                self.summary_writer=None
-                self.inp_pl=None
-                self.check = None
-                self.mats_pl=None
-                self.label_pl=None
-                self.summary_op =None
-                self.summary_writer=None
-                self.atom_outputs = None
-                return
-
+	def Clean(self):
+		Instance.Clean(self)
+		self.summary_op =None
+		self.summary_writer=None
+		self.inp_pl=None
+		self.check = None
+		self.mats_pl=None
+		self.label_pl=None
+		self.summary_op =None
+		self.summary_writer=None
+		self.atom_outputs = None
+		return
 
 	def train_prepare(self,  continue_training =False):
 		"""
@@ -716,7 +716,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
 
-
 	def test_after_training(self, step):   # testing in the training
 		"""
 		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
@@ -771,82 +770,79 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feed_dict
 
-
-        def print_training(self, step, loss, Ncase, duration, Train=True):
-                if Train:
-                        print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))
-                else:
-                        print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(NCase)))
-                return
-
+	def print_training(self, step, loss, Ncase, duration, Train=True):
+		if Train:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))
+		else:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(NCase)))
+		return
 
 	def continue_training(self, mxsteps):
 		self.Eval_Prepare()
 		test_loss , feed_dict = self.test(-1)
-                test_freq = 1
-                mini_test_loss = test_loss
-                for step in  range (0, mxsteps+1):
-                        self.train_step(step)
-                        if step%test_freq==0 and step!=0 :
-                                test_loss, feed_dict = self.test(step)
-                                if test_loss < mini_test_loss:
-                                        mini_test_loss = test_loss
-                                        self.save_chk(step, feed_dict)
-                self.SaveAndClose()
+		test_freq = 1
+		mini_test_loss = test_loss
+		for step in  range (0, mxsteps+1):
+			self.train_step(step)
+			if step%test_freq==0 and step!=0 :
+				test_loss, feed_dict = self.test(step)
+				if test_loss < mini_test_loss:
+					mini_test_loss = test_loss
+					self.save_chk(step, feed_dict)
+		self.SaveAndClose()
 		return
 
-        def evaluate(self, batch_data):   #this need to be modified
-                # Check sanity of input
+	def evaluate(self, batch_data):   #this need to be modified
+		# Check sanity of input
 		nmol = batch_data[2].shape[0]
 		print ("nmol:", batch_data[2].shape[0])
 		self.batch_size_output = nmol
 		if not self.sess:
-			print ("loading the session..")	
+			print ("loading the session..")
 			self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		preds, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-                return mol_output, atom_outputs, gradient
+		return mol_output, atom_outputs, gradient
 
 	def Eval_Prepare(self):
-                #eval_labels = np.zeros(Ncase)  # dummy labels
-                with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-                        self.inp_pl=[]
-                        self.mats_pl=[]
-                        for e in range(len(self.eles)):
-                                self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-                                self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None, self.batch_size_output])))
-                        self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
-                        self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
+		#eval_labels = np.zeros(Ncase)  # dummy labels
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+			self.inp_pl=[]
+			self.mats_pl=[]
+			for e in range(len(self.eles)):
+				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
+				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None, self.batch_size_output])))
+			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
 			self.gradient = tf.gradients(self.output, self.inp_pl)
-                        self.check = tf.add_check_numerics_ops()
-                        self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
-                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-                        self.summary_op = tf.summary.merge_all()
-                        init = tf.global_variables_initializer()
-                        self.saver = tf.train.Saver()
-                        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-                        self.saver.restore(self.sess, self.chk_file)
-                return
-
-
-        def Prepare(self):
-                #eval_labels = np.zeros(Ncase)  # dummy labels
-                self.MeanNumAtoms = self.TData.MeanNumAtoms
-                self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
-                with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-                        self.inp_pl=[]
-                        self.mats_pl=[]
-                        for e in range(len(self.eles)):
-                                self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-                                self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
-                        self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
-                        self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
-                        self.check = tf.add_check_numerics_ops()
-                        self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
-                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-                        self.summary_op = tf.summary.merge_all()
-                        init = tf.global_variables_initializer()
+			self.check = tf.add_check_numerics_ops()
+			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver()
-                        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-                        self.saver.restore(self.sess, self.chk_file)
-                return
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver.restore(self.sess, self.chk_file)
+		return
+
+	def Prepare(self):
+		#eval_labels = np.zeros(Ncase)  # dummy labels
+		self.MeanNumAtoms = self.TData.MeanNumAtoms
+		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
+		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+			self.inp_pl=[]
+			self.mats_pl=[]
+			for e in range(len(self.eles)):
+				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
+				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
+			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
+			self.check = tf.add_check_numerics_ops()
+			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver.restore(self.sess, self.chk_file)
+		return

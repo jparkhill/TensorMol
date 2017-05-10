@@ -95,10 +95,10 @@ def TestJohnson():
 	"""
 	a = MSet("johnsonmols")
 	a.ReadXYZ("johnsonmols")
-	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	optimizer = Optimizer(manager)
 	optimizer.OptANI1(a.mols[0])
-	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
 
 def TestDipole():

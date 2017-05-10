@@ -394,4 +394,8 @@ class MolDigester:
 
 class MolDigesterEE(MolDigester):
 	def __init__(self, eles_, name_="ANI1_Sym", OType_="EnergyChargesDipole", SensRadius_=6):
-		MolDigester.__init__(self, eles_, name_="ANI1_Sym", OType_="EnergyChargesDipole", SensRadius_=6):
+		"""
+		A digester for electrostatically embedded BP.
+		"""
+		MolDigester.__init__(self, eles_, name_="ANI1_Sym", OType_="EnergyChargesDipole", SensRadius_=6)
+		return

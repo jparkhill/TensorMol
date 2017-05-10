@@ -7,7 +7,7 @@ Kb = 8.314 J/Mol K
 
 from Sets import *
 from TFManage import *
-from Mol_Elec import *
+from Electrostatics import *
 
 def VelocityVerletstep(f_, a_, x_, v_, m_, dt_ ):
 	""" A Velocity Verlet Step

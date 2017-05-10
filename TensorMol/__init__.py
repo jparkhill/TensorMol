@@ -10,7 +10,7 @@ Code Conventions and Style Guide:
 - Keep classes to < 20 member variables.
 - Keep loops to a depth < 6
 - Use functional programming constructs whenever possible.
-- Use docstrings, you asshole and use Args: and Returns: 
+- Use docstrings, you asshole and use Args: and Returns:
 - Commit your changes once a day at least.
 - Use np.array rather than python list whenever possible.
 - It's NOT okay to put default parameters in __init__() and change them all the time
@@ -33,4 +33,4 @@ from TensorMol.TFMolInstance import *
 from TensorMol.Ipecac import *
 from TensorMol.EmbOpt import *
 from TensorMol.Basis import *
-from TensorMol.TensorMolData_EE import *
+from TensorMol.TensorMolDataEE import *

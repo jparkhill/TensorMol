@@ -13,7 +13,7 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		outside PARAMS["EECutoff"]
 		1/r => 0.5*(Tanh[(x - EECutoff)/EEdr] + 1)/r
 	"""
-	def __init__(self, TData_, Name_=None):
+	def __init__(self, TData_, Name_=None, Trainable_=True):
 		"""
 		Raise a Behler-Parinello TensorFlow instance.
 
@@ -22,7 +22,7 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 			Name_: A name for this instance.
 		"""
 		self.NetType = "fc_sqdiff_BPEE"
-		MolInstance.__init__(self, TData_,  Name_)
+		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
@@ -391,7 +391,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 	"""
 		Calculate the Dipole of Molecules
 	"""
-	def __init__(self, TData_, Name_=None):
+	def __init__(self, TData_, Name_=None, Trainable_=True):
 		"""
 		Raise a Behler-Parinello TensorFlow instance.
 
@@ -400,7 +400,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			Name_: A name for this instance.
 		"""
 		self.NetType = "fc_sqdiff_BP"
-		MolInstance.__init__(self, TData_,  Name_)
+		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
@@ -415,7 +415,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
 		self.AtomBranchNames=[] # a list of the layers named in each atom branch
-	
+
 		self.netcharge_output = None
 		self.dipole_output = None
 		self.inp_pl=None
@@ -624,37 +624,34 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		return feed_dict
 
 
-        def train_step(self, step):
-                """
-                Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
+	def train_step(self, step):
+		"""
+		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
 
-                Args:
-                        step: the index of this step.
-                """
-                Ncase_train = self.TData.NTrain
-                start_time = time.time()
-                train_loss =  0.0
-                num_of_mols = 0
-                for ministep in range (0, int(Ncase_train/self.batch_size)):
-                        #print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
-                        batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+		Args:
+		        step: the index of this step.
+		"""
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		num_of_mols = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
+			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
 			#print ("checking shape:", batch_data[2][0].shape, batch_data[2][1].shape, batch_data[2][2].shape, batch_data[2][3].shape)
 			#print ("checking shape, input:", batch_data[0][0].shape, batch_data[0][1].shape, batch_data[0][2].shape, batch_data[0][3].shape)
-                        actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
-                        dump_, dump_2, total_loss_value, loss_value, netcharge_output, dipole_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.netcharge_output, self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
-                        train_loss = train_loss + loss_value
-                        duration = time.time() - start_time
-                        num_of_mols += actual_mols
-                        #print ("atom_outputs:", atom_outputs, " mol outputs:", mol_output)
-                        #print ("atom_outputs shape:", atom_outputs[0].shape, " mol outputs", mol_output.shape)
-                #print("train diff:", (mol_output[0]-batch_data[2])[:actual_mols], np.sum(np.square((mol_output[0]-batch_data[2])[:actual_mols])))
-                #print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
-                #print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
-                self.print_training(step, train_loss, num_of_mols, duration)
-                return
-
-
-
+			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
+			dump_, dump_2, total_loss_value, loss_value, netcharge_output, dipole_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.netcharge_output, self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
+			train_loss = train_loss + loss_value
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			#print ("atom_outputs:", atom_outputs, " mol outputs:", mol_output)
+			#print ("atom_outputs shape:", atom_outputs[0].shape, " mol outputs", mol_output.shape)
+		#print("train diff:", (mol_output[0]-batch_data[2])[:actual_mols], np.sum(np.square((mol_output[0]-batch_data[2])[:actual_mols])))
+		#print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
+		#print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
+		self.print_training(step, train_loss, num_of_mols, duration)
+		return
 
 	def test(self, step):
 		"""
@@ -751,4 +748,3 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
-

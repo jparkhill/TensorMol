@@ -1,7 +1,7 @@
 from Util import *
 import numpy as np
 import random, math
-import MolEmb, Mol_Elec
+import MolEmb, Electrostatics
 from LinearOperations import *
 
 class Mol:
