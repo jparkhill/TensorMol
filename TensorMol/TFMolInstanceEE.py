@@ -337,7 +337,7 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 	def evaluate(self, batch_data):   #this need to be modified
 		# Check sanity of input
 		nmol = batch_data[2].shape[0]
-		print ("nmol:", batch_data[2].shape[0])
+		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
 		self.batch_size_output = nmol
 		self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
@@ -696,7 +696,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 	def evaluate(self, batch_data):   #this need to be modified
 		# Check sanity of input
 		nmol = batch_data[3].shape[0]
-		print ("nmol:", batch_data[3].shape[0])
+		LOGGER.debug("nmol: %i", batch_data[3].shape[0])
 		self.batch_size_output = nmol
 		self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)

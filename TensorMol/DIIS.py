@@ -1,16 +1,6 @@
 from Sets import *
 from TFManage import *
 
-def DiagHess(f_,x_,f_x_,eps_=0.001):
-	tore=np.zeros(x_.shape)
-	x_t = x_.copy()
-	it = np.nditer(x_, flags=['multi_index'])
-	while not it.finished:
-		x_t = x_
-		x_t[it.multi_index] += eps_
-		tore[it.multi_index] = ((f_(x_t) - f_x_)/eps_)[it.multi_index]
-	return tore
-
 class DIIS:
 	def __init__(self):
 		"""

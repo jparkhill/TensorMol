@@ -112,20 +112,21 @@ def TestJohnson():
 	ChargeField = lambda x: qmanager.EvalBPDipole(Mol(m.atoms,x),False)[2][0]
 	PARAMS["MDdt"] = 0.2
 	PARAMS["MDTemp"] = 0.0
-	PARAMS["MDMaxStep"] = 8000
+	PARAMS["MDMaxStep"] = 1000
 	PARAMS["MDThermostat"] = None
-	PARAMS["MDFieldAmp"] = 0.00002
-	PARAMS["MDFieldTau"] = 0.7
+	PARAMS["MDFieldAmp"] = 0.000009
+	PARAMS["MDFieldTau"] = 0.4
 	PARAMS["MDFieldFreq"] = 1.0
 	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-	md = IRTrajectory(ForceField, ChargeField, m,"0")
-	md.Prop()
+	md0 = IRTrajectory(ForceField, ChargeField, m,"0")
+	md0.Prop()
 	PARAMS["MDFieldVec"] = np.array([0.0,1.0,0.0])
-	md = IRTrajectory(ForceField, ChargeField, m,"1")
-	md.Prop()
+	md1 = IRTrajectory(ForceField, ChargeField, m,"1")
+	md1.Prop()
 	PARAMS["MDFieldVec"] = np.array([0.0,0.0,1.0])
-	md = IRTrajectory(ForceField, ChargeField, m,"2")
-	md.Prop()
+	md2 = IRTrajectory(ForceField, ChargeField, m,"2")
+	md2.Prop()
+	WriteDipoleCorrelationFunction(md0.mu_his,md1.mu_his,md2.mu_his)
 	return
 
 def TestDipole():

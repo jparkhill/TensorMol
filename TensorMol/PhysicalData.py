@@ -18,6 +18,7 @@ atomic_vdw_radius = {1:1.001, 2:1.012, 3:0.825, 4:1.408, 5:1.485, 6:1.452, 7:1.3
 C6_coff = {1:0.14, 2:0.08, 3:1.16, 4:1.61, 5:3.13, 6:1.75, 7:1.23, 8:0.70, 9:0.75, 10:0.63}  # ref: http://onlinelibrary.wiley.com/doi/10.1002/jcc.20495/epdf unit in Jnm^6/mol
 S6 = {"PBE": 0.75, "BLYP":1.2, "B-P86":1.05, "TPSS":1.0, "B3LYP":1.05}  # s6 scaler of different DF of Grimmer C6 scheme
 atomic_raidus_cho = {1:0.328, 6:0.754, 8:0.630} # roughly statisfy mp2 cc-pvtz equilibrium carbohydrate bonds.
+GOLDENRATIO = (np.sqrt(5.)+1.0)/2.0
 KAYBEETEE = 0.000950048 # At 300K
 BOHRPERA = 1.889725989
 KCALPERJOULE = 4183.9953

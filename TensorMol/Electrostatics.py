@@ -39,3 +39,21 @@ def ECoulECutoff(m_):
 	ECutoff = np.dot(m_.properties["charges"],np.dot(OneOverRScreened, m_.properties["charges"]))
 	print ECoul, ECutoff
 	return
+
+def WriteDipoleCorrelationFunction(t0,t1,t2):
+	"""
+	Args:
+		time, mux, muy, muz ...
+	Returns: \sum_i \langle \mu_i(t)\cdot \mu_i(0) \rangle
+	"""
+	dt = t0[0,0] - t0[1,0]
+	n = t0.shape[0]
+	tore = np.zeros((n,2))
+	for i in range(n):
+		tore[i,0] = t0[i,0]
+		tore[i,1] = 0.0
+		for j in range(n-i):
+			tore[i,1] +=  t0[j,1]*t0[i+j,1]+t1[j,2]*t1[i+j,2]+t2[j,2]*t2[i+j,2]
+		tore[i,1] /= 3.*float(n-i)
+	np.savetxt("./results/"+"MutMu0.txt",tore)
+	return tore

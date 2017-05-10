@@ -233,18 +233,11 @@ void SymFunction(double *Sym_data, const int data_pointer, const double *xyz, co
 							}
 						}
 					}
-
-
 				}
 			}
-
 			bond_index = bond_index + 1;
 		}
-
 	}
-
-
-
 }
 
 void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, const double *xyz, const uint8_t *atoms, const int natom, const uint8_t *ele, const int nele, const int atom_num, const array<std::vector<int>, 10> ele_index, const double radius_Rc, const double angle_Rc, const double *radius_Rs, const int radius_Rs_dim, const double *angle_Rs, const int angle_Rs_dim, const double *angle_As, const int angle_As_dim, const double eta, const double zeta) {

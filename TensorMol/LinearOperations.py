@@ -16,6 +16,9 @@ def PseudoInverse(mat_):
 	return np.dot(np.dot(U,np.diag(s)),V)
 
 def RemoveInvariantForce(x_,f_,m_):
+	"""
+	Removes center of mass motion and torque from f_, and returns the invariant bits. 
+	"""
 	#print x_, f_ , m_
 	fnet = np.sum(f_,axis=0)
 	# Remove COM force.

@@ -793,7 +793,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 	def evaluate(self, batch_data):   #this need to be modified
 		# Check sanity of input
 		nmol = batch_data[2].shape[0]
-		print ("nmol:", batch_data[2].shape[0])
+		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
 		self.batch_size_output = nmol
 		if not self.sess:
 			print ("loading the session..")

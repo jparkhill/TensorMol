@@ -267,7 +267,7 @@ def AtomName_From_List(atom_list):
 
 def AutoCorrelation(traj, step_size): # trajectory shape: Nsteps X NAtoms X 3
 	step = traj.shape[0]
-	traj = traj.reshape((step, -1))  
+	traj = traj.reshape((step, -1))
 	autocorr = np.zeros((step-1, 2))
 	autocorr[:,0] = np.arange(step-1)*step_size
 	t = time.time()

@@ -314,6 +314,10 @@ class IRTrajectory(VelocityVerlet):
 		A specialized sort of dynamics which is appropriate for obtaining IR spectra at
 		Zero temperature.
 
+		Absorption cross section is given by:
+		\alpha (\omega) = \frac{4\pi^2}{\hbar c} \omega (1 - Exp[-\beta \hbar \omega]) \sigma(\omega))
+		\sigma(\omega)  = \frac{1}{6 \pi} \mathcal{F} \{\mu(t)\mu(0)\}
+
 		Args:
 			f_: a function which yields the force
 			q_: a function which yields the charge.
@@ -386,7 +390,6 @@ class IRTrajectory(VelocityVerlet):
 			else:
 				self.qs = self.q0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
-			print self.Mu
 			self.mu_his[step,0] = self.t
 			self.mu_his[step,1:4] = self.Mu
 			self.mu_his[step,5] = self.KE
@@ -398,5 +401,5 @@ class IRTrajectory(VelocityVerlet):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 
 			step+=1
-			LOGGER.info("Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", step, self.t, self.KE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
 		return
