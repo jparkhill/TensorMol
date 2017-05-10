@@ -84,7 +84,6 @@ class TFMolManage(TFManage):
 			outputs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outputs)
 		return outputs
 
-
 	def EvalBPEnergy(self, mol_set, total_energy = False):
 		nmols = len(mol_set.mols)
 		natoms = mol_set.NAtoms()
@@ -205,8 +204,10 @@ class TFMolManage(TFManage):
 		for i in range (0, len(nn_gradient)):
 			for j in range (0, nn_gradient[i].shape[0]):
 				total_gradient += np.sum(np.repeat(nn_gradient[i][j].reshape((nn_gradient[i][j].shape[0], 1)), natoms*3,  axis=1)*inputs_grads[i][j], axis=0)
-		return  (-627.509*total_gradient).reshape((-1,3))
-
+		if (total_energy):
+			return  total, (-627.509*total_gradient).reshape((-1,3))
+		else:
+			return  (-627.509*total_gradient).reshape((-1,3))
 
 	def EvalBPDipole(self, mol_set,  ScaleCharge_ = False):
 		"""
