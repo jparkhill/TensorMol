@@ -215,6 +215,7 @@ class TFMolManage(TFManage):
 		return netcharge, dipole, atomcharge
 		Dipole has unit in debye
 		"""
+		eles = self.Instances.eles
 		if isinstance(mol_set, Mol):
 			tmp = MSet()
 			tmp.mols = [mol_set]
@@ -241,8 +242,8 @@ class TFMolManage(TFManage):
 					xyzmeta[i] = xyz_centered[i - casep]
 				casep += nat
 				mols_done += 1
-				sto = np.zeros(len(self.TData.eles),dtype = np.int32)
-				offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+				sto = np.zeros(len(eles),dtype = np.int32)
+				offsets = np.zeros(len(eles),dtype = np.int32)
 				inputs = []
 				matrices = []
 				xyz = []
@@ -250,16 +251,16 @@ class TFMolManage(TFManage):
 				for i in range (0, natoms):
 					sto[self.TData.eles.index(meta[i, 1])] += 1
 				currentmol = 0
-				for e in range (len(self.TData.eles)):
+				for e in range (len(eles)):
 					inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
 					matrices.append(np.zeros((sto[e], nmols)))
 				xyz.append(np.zeros((sto[e], 3)))
 				for i in range (0, natoms):
 					if currentmol != meta[i, 0]:
-					    outputpointer += 1
-					    currentmol = meta[i, 0]
+						outputpointer += 1
+						currentmol = meta[i, 0]
 					e = meta[i, 1]
-					ei = self.TData.eles.index(e)
+					ei = eles.index(e)
 					inputs[ei][offsets[ei], :] = cases[i]
 					matrices[ei][offsets[ei], outputpointer] = 1.0
 					xyz[ei][offsets[ei]] = xyzmeta[i]
@@ -267,19 +268,19 @@ class TFMolManage(TFManage):
 				t = time.time()
 				netcharge, dipole, atomcharge = self.Instances.evaluate([inputs, matrices, xyz, dummy_outputs])
 		molatomcharge = []
-		pointers = [0 for ele in self.TData.eles]
+		pointers = [0 for ele in eles]
 		for i, mol in enumerate(mol_set.mols):
 			tmp_atomcharge = np.zeros(mol.NAtoms())
 			for j in range (0, mol.NAtoms()):
 				atom_type = mol.atoms[j]
-				atom_index = self.TData.eles.index(atom_type)
+				atom_index = eles.index(atom_type)
 				tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]
 				pointers[atom_index] +=1
 			molatomcharge.append(tmp_atomcharge)
 		if ScaleCharge_:
 			sdipole = np.zeros((dipole.shape[0], 3))
 			smolatomcharge = []
-			pointers = [0 for ele in self.TData.eles]
+			pointers = [0 for ele in eles]
 			for i, mol in enumerate(mol_set.mols):
 				tmp_atomcharge = molatomcharge[i]
 				tmp_atomcharge = tmp_atomcharge - netcharge[i]/mol.NAtoms()
@@ -374,8 +375,6 @@ class TFMolManage(TFManage):
 	def Prepare(self):
 		self.Load()
 		self.Instances= None # In order of the elements in TData
-		print "Trainable_???", self.Trainable
-		print "HEYYYY "
 		if (self.NetType == "fc_classify"):
 			self.Instances = MolInstance_fc_classify(None,  self.TrainedNetworks[0], None, Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff"):

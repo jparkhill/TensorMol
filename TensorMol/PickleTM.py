@@ -1,0 +1,25 @@
+import pickle
+
+def PickleMapName(name):
+	renametable = {
+		'TensorMol.TensorMolData_EE': 'TensorMol.TensorMolDataEE',
+		'TensorMol.TFMolInstance_EE': 'TensorMol.TFMolInstanceEE',
+		'TensorMolData_EE': 'TensorMolDataEE'
+		}
+	if name in renametable:
+		return renametable[name]
+	return name
+
+def mapped_load_global(self):
+	module = PickleMapName(self.readline()[:-1])
+	name = PickleMapName(self.readline()[:-1])
+	klass = self.find_class(module, name)
+	self.append(klass)
+
+def UnPickleTM(file):
+	unpickler = pickle.Unpickler(file)
+	unpickler.dispatch[pickle.GLOBAL] = mapped_load_global
+	tmp = unpickler.load()
+	tmp.pop('evaluate',None)
+	tmp.pop('Prepare',None)
+	return tmp

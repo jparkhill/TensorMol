@@ -406,9 +406,10 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
 		self.momentum = 0.95
-		self.TData.LoadDataToScratch(self.tformer)
-		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
-		self.inshape = np.prod(self.TData.dig.eshape)
+		if (self.Trainable):
+			self.TData.LoadDataToScratch(self.tformer)
+			# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
+			self.inshape = np.prod(self.TData.dig.eshape)
 		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
 		self.eles = self.TData.eles
 		self.n_eles = len(self.eles)
@@ -432,12 +433,12 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.summary_op =None
 		self.summary_writer=None
 
-        def Clean(self):
-                MolInstance_fc_sqdiff_BP.Clean(self)
+	def Clean(self):
+		MolInstance_fc_sqdiff_BP.Clean(self)
 		self.coords_pl = None
 		self.netcharge_output = None
 		self.dipole_output = None
-                return
+		return
 
 	def train_prepare(self,  continue_training =False):
 		"""

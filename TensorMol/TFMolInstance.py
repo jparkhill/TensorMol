@@ -97,7 +97,6 @@ class MolInstance(Instance):
 		self.print_training(step, train_loss, total_correct, Ncase_train, duration)
 		return
 
-
 	def save_chk(self,  step, feed_dict=None):  # We need to merge this with the one in TFInstance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
@@ -109,9 +108,8 @@ class MolInstance(Instance):
 	def Load(self):
 		print ("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")
-		tmp=pickle.load(f)
-		tmp.pop('evaluate',None)
-		tmp.pop('Prepare',None)
+		import TensorMol.PickleTM
+		tmp = TensorMol.PickleTM.UnPickleTM(f)
 		self.Clean()
 		self.__dict__.update(tmp)
 		f.close()

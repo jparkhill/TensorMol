@@ -215,7 +215,6 @@ class Optimizer:
 			veloc = veloc - np.average(veloc,axis=0)
 			#Remove translation.
 			prev_m = Mol(m.atoms, m.coords)
-
 			#ForceFunction = lambda x: self.tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=1, Debug=False)
 			#DHess = DiagHess(ForceFunction,m.coords,veloc)
 			if (rmsgrad > 0.06):
@@ -255,13 +254,18 @@ class Optimizer:
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while( step < self.max_opt_step):
-			energy, veloc = self.tfm.Eval_BPForce(m,total_energy=True)
-			print "energy:", energy
-			veloc = veloc - np.average(veloc,axis=0)
 			prev_m = Mol(m.atoms, m.coords)
-			c_veloc = (1.0-self.momentum)*0.0001*veloc+self.momentum*old_veloc
-			m.coords = m.coords + c_veloc
-			old_veloc = self.momentum_decay*c_veloc
+			energy, veloc = self.tfm.Eval_BPForce(m,total_energy=True)
+			veloc = veloc - np.average(veloc,axis=0)
+			veloc *= self.fscale
+			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
+			if (rmsgrad > 0.06):
+				m.coords = diis.NextStep(m.coords,veloc)
+			else:
+				c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
+				old_veloc = self.momentum_decay*c_veloc
+				m.coords = m.coords + c_veloc
+			print "energy:", energy
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1

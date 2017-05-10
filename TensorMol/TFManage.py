@@ -68,9 +68,8 @@ class TFManage:
 	def Load(self):
 		print "Unpickling TFManager..."
 		f = open(self.path+self.name+".tfm","rb")
-		tmp=pickle.load(f)
-		tmp.pop('evaluate',None)
-		tmp.pop('Prepare',None)
+		import TensorMol.PickleTM
+		tmp = TensorMol.PickleTM.UnPickleTM(f)
 		self.__dict__.update(tmp)
 		f.close()
 		print "TFManager Metadata Loaded, Reviving Networks."
