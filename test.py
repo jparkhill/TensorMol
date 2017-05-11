@@ -56,9 +56,11 @@ def TestANI1():
 		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		optimizer  = Optimizer(manager)
 		optimizer.OptANI1(a.mols[0])
-	if (1):
+	if (0):
 		a = MSet("johnsonmols_noH")
 		a.ReadXYZ("johnsonmols_noH")
+		for mol in a.mols:
+			print "mol.coords:", mol.coords
 		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		ins, grad = manager.TData.dig.EvalDigest(a.mols[0])
 		#print manager.Eval_BPForce(a.mols[0], True)
@@ -69,14 +71,14 @@ def TestANI1():
 		gradflat =grad.reshape(-1)
 		print "grad shape:", grad.shape
 		for n in range (0, a.mols[0].NAtoms()):
-			diff = -(ins[n] - ins1[n]) /0.0001
+			diff = -(ins[n] - ins1[n]) /0.001
 			for i in range (0,diff.shape[0]):
 				if grad[n][i][2] != 0:
 					if abs((diff[i] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
 						#pass
-						print n, i , abs((diff[i] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2], gradflat[n*768*17*3 + i*17*3 +2], n*768*17*3+i*17*3+2
+						print n, i , abs((diff[i] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2], gradflat[n*768*17*3 + i*17*3 +2], n*768*17*3+i*17*3+2, ins[n][i], ins1[n][i]
 		for n in range (0, a.mols[0].NAtoms()):
-                        diff = -(ins[n] - ins1[n]) /0.0001
+                        diff = -(ins[n] - ins1[n]) /0.001
                         for i in range (0,diff.shape[0]):
                                 if grad[n][i][2] != 0:
                                         if abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
@@ -499,8 +501,8 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-TestANI1()
-#TestJohnson()
+#TestANI1()
+TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

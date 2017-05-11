@@ -263,11 +263,11 @@ class Optimizer:
 			prev_m = Mol(m.atoms, m.coords)
 			energy, veloc = self.tfm.Eval_BPForce(m,total_energy=True)
 			#energy, veloc = EnergyForceFunction(m.coords)
-			fdiff_veloc1 = FdiffGradient(EnergyFunction1 , m.coords)
-			fdiff_veloc2 = FdiffGradient(EnergyFunction2 , m.coords)
+			#fdiff_veloc1 = FdiffGradient(EnergyFunction1 , m.coords)
+			#fdiff_veloc2 = FdiffGradient(EnergyFunction2 , m.coords)
 			print veloc
-			print -1.0*fdiff_veloc1
-			print -1.0*fdiff_veloc2
+			#print -1.0*fdiff_veloc1
+			#print -1.0*fdiff_veloc2
 
 			veloc = RemoveInvariantForce(m.coords, veloc, m.atoms)
 			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
