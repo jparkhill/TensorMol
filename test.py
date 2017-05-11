@@ -56,23 +56,32 @@ def TestANI1():
 		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		optimizer  = Optimizer(manager)
 		optimizer.OptANI1(a.mols[0])
-	if (0):
-		a = MSet("gradient_test_0")
-		a.ReadXYZ("gradient_test_0")
-		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
-		print manager.Eval_BP(a)
-		a = MSet("gradient_test_1")
-		a.ReadXYZ("gradient_test_1")
-		t = time.time()
-		print manager.Eval_BP(a)
-		print "time cost to eval:", time.time() -t
-		a = MSet("gradient_test_2")
-		a.ReadXYZ("gradient_test_2")
-		t = time.time()
-		print manager.Eval_BP(a)
-		print "time cost to eval:", time.time() -t
-
 	if (1):
+		a = MSet("johnsonmols_noH")
+		a.ReadXYZ("johnsonmols_noH")
+		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		ins, grad = manager.TData.dig.EvalDigest(a.mols[0])
+		#print manager.Eval_BPForce(a.mols[0], True)
+		a = MSet("johnsonmols_noH_1")
+		a.ReadXYZ("johnsonmols_noH_1")
+		#print manager.Eval_BPForce(a.mols[0], True)	
+		ins1, grad1 = manager.TData.dig.EvalDigest(a.mols[0])
+		for n in range (0, a.mols[0].NAtoms()):
+			diff = -(ins[n] - ins1[n]) /0.0001
+			for i in range (0,diff.shape[0]):
+				if grad[n][i][2] != 0:
+					if abs((diff[i] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
+						#pass
+						print n, i , abs((diff[i] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2] 
+		for n in range (0, a.mols[0].NAtoms()):
+                        diff = -(ins[n] - ins1[n]) /0.0001
+                        for i in range (0,diff.shape[0]):
+                                if grad[n][i][2] != 0:
+                                        if abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
+                                        	print n, i , abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2] 
+		#t = time.time()
+		#print manager.Eval_BPForce(a.mols[0], True)
+	if (0):
 		a = MSet("md_test")
 		a.ReadXYZ("md_test")
 		m = a.mols[0]
@@ -94,8 +103,8 @@ def TestJohnson():
 	Try to model the IR spectra of Johnson's peptides...
 	Optimize, then get charges, then do an isotropic IR spectrum.
 	"""
-	a = MSet("johnsonmols")
-	a.ReadXYZ("johnsonmols")
+	a = MSet("johnsonmols_noH")
+	a.ReadXYZ("johnsonmols_noH")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	PARAMS["OptMomentum"] = 0.4
 	PARAMS["OptMomentumDecay"] = 0.9
@@ -153,7 +162,7 @@ def TestDipole():
 		for mol in a.mols:
 			b3lyp_energies.append(mol.properties["atomization"])
 		#np.savetxt("./results/furan_md_b3lyp_energies.dat",np.asarray(b3lyp_energies))
-	if (1):
+	if (0):
 		a = MSet("furan_md")
 		a.ReadXYZ("furan_md")
                 manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
@@ -487,8 +496,8 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-#TestANI1()
-TestJohnson()
+TestANI1()
+#TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

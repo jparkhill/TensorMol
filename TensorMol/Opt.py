@@ -255,8 +255,10 @@ class Optimizer:
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
-		EnergyFunction1 =  lambda x_: -627.509*self.tfm.EvalBPEnergySingle(Mol(m.atoms, x_),total_energy=True)
-		EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
+		EnergyFunction1 =  lambda x_: self.tfm.EvalBPEnergySingle(Mol(m.atoms, x_),total_energy=True)
+		EnergyFunction2 =  lambda x_: self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
+		#EnergyFunction1 =  lambda x_: -627.509*self.tfm.EvalBPEnergySingle(Mol(m.atoms, x_),total_energy=True)
+		#EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
 		while( step < self.max_opt_step):
 			prev_m = Mol(m.atoms, m.coords)
 			energy, veloc = self.tfm.Eval_BPForce(m,total_energy=True)

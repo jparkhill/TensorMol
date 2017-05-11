@@ -13,7 +13,7 @@ def DiagHess(f_,x_,f_x_,eps_=0.0005):
 		it.iternext()
 	return tore
 
-def FdiffGradient(f_, x_, eps_=0.005):
+def FdiffGradient(f_, x_, eps_=0.0001):
 	"""
 	Computes a finite difference gradient at x_ for debugging purposes.
 	"""

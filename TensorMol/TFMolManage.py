@@ -220,6 +220,9 @@ class TFMolManage(TFManage):
 				meta[i, 3] = casep + nat
 			casep += nat
 			mols_done += 1
+	
+                        #print "ins[500]: ", ins[0][220], "grads[500]", grads[0][220][2]
+
 		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
 		inputs = []
@@ -245,6 +248,80 @@ class TFMolManage(TFManage):
 			offsets[ei] += 1
 		t = time.time()
 		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
+		#print "nn_gradient:", nn_gradient
+
+
+	#	mol_set = MSet()
+	#	mol.coords[0][2] += 0.0001
+        #        mol_set.mols = [mol]
+        #        nmols = len(mol_set.mols)
+        #        natoms = mol_set.NAtoms()
+        #        cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+        #        cases_grads1 = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)+list([3*natoms])))
+        #        dummy_outputs = np.zeros((nmols))
+        #        meta = np.zeros((natoms, 4), dtype = np.int)
+        #        casep = 0
+        #        mols_done = 0
+        #        t = time.time()
+        #        for mol in mol_set.mols:
+        #                ins, grads1 = self.TData.dig.EvalDigest(mol)
+        #                nat = mol.NAtoms()
+        #                cases[casep:casep+nat] = ins
+        #                cases_grads1[casep:casep+nat] = grads1
+        #                for i in range (casep, casep+nat):
+        #                        meta[i, 0] = mols_done
+        #                        meta[i, 1] = mol.atoms[i - casep]
+        #                        meta[i, 2] = casep
+        #                        meta[i, 3] = casep + nat
+        #                casep += nat
+        #                mols_done += 1
+
+        #                #print "ins[500]: ", ins[0][220], "grads[500]", grads[0][220][2]
+
+        #        sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+        #        offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+        #        inputs1 = []
+        #        inputs_grads1 = []
+        #        matrices = []
+        #        outputpointer = 0
+        #        for i in range (0, natoms):
+        #                sto[self.TData.eles.index(meta[i, 1])] += 1
+        #        currentmol = 0
+        #        for e in range (len(self.TData.eles)):
+        #                inputs1.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+        #                inputs_grads1.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape), 3*natoms)))
+        #                matrices.append(np.zeros((sto[e], nmols)))
+        #        for i in range (0, natoms):
+        #                if currentmol != meta[i, 0]:
+        #                        outputpointer += 1
+        #                        currentmol = meta[i, 0]
+        #                e = meta[i, 1]
+        #                ei = self.TData.eles.index(e)
+        #                inputs1[ei][offsets[ei], :] = cases[i]
+        #                inputs_grads1[ei][offsets[ei], :]  = cases_grads1[i]
+        #                matrices[ei][offsets[ei], outputpointer] = 1.0
+        #                offsets[ei] += 1
+        #        t = time.time()
+        #        mol_out, atom_out, nn_gradient1 = self.Instances.evaluate([inputs1, matrices, dummy_outputs])
+	#	print "nn_gradient1", nn_gradient1
+	#	for i in range(0, len(nn_gradient1)):
+	#		print "element:", i
+	#		for j in range (0, nn_gradient1[i].shape[0]):
+	#			for k in range (0, nn_gradient1[i].shape[1]):
+	#				if nn_gradient[i][j][k] != 0:
+	#					if abs((nn_gradient1[i][j][k]-nn_gradient[i][j][k])/nn_gradient[i][j][k]) > 0.01 :
+	#						#print i, j, k, (nn_gradient1[i][j][k]-nn_gradient[i][j][k])/nn_gradient[i][j][k], nn_gradient[i][j][k], nn_gradient1[i][j][k]
+	#						print "ins : ", i, j, k ,  inputs[i][j][k], inputs1[i][j][k]
+
+	#	
+	#        total_gradient1 = np.zeros((natoms*3))
+        #        for i in range (0, len(nn_gradient1)):
+        #                for j in range (0, nn_gradient1[i].shape[0]):
+        #                        total_gradient1 += np.sum(np.repeat(nn_gradient1[i][j].reshape((nn_gradient1[i][j].shape[0], 1)), natoms*3,  axis=1)*inputs_grads1[i][j], axis=0)
+        #       print "total_gradient ", total_gradient, "total_gradient1 " , total_gradient1
+
+
+
 		pointers = [0 for ele in self.TData.eles]
 		diff = 0
 		for i in range (0, nmols):
@@ -257,12 +334,16 @@ class TFMolManage(TFManage):
 				atom_type = mol.atoms[j]
 				atom_index = self.TData.eles.index(atom_type)
 				pointers[atom_index] += 1
+
 		total_gradient = np.zeros((natoms*3))
 		for i in range (0, len(nn_gradient)):
 			for j in range (0, nn_gradient[i].shape[0]):
 				total_gradient += np.sum(np.repeat(nn_gradient[i][j].reshape((nn_gradient[i][j].shape[0], 1)), natoms*3,  axis=1)*inputs_grads[i][j], axis=0)
+		
+	
 		if (total_energy):
-			return  total, (-627.509*total_gradient).reshape((-1,3))
+			return  total, (-total_gradient).reshape((-1,3))
+			#return  total, (-627.509*total_gradient).reshape((-1,3))
 		else:
 			return  (-627.509*total_gradient).reshape((-1,3))
 
