@@ -2,8 +2,8 @@
 A Statistical Model of Molecular Structure
 
 ### Authors:
-	Kun Yao (kyao@nd.edu), John Herr
-	John Parkhill (john.parkhill@gmail.com)
+ Kun Yao (kyao@nd.edu), John Herr
+ John Parkhill (john.parkhill@gmail.com)
 
 ### Energy And Force Models:
  - Behler-Parrinello
@@ -15,6 +15,7 @@ A Statistical Model of Molecular Structure
  - Optimizations
  - Nudged Elastic Band
  - Molecular Dynamics (NVE,NVT Nose-Hoover)
+ - Isotropic Infared spectra
 
 ### License: GPLv3
 By using this software you agree to the terms in COPYING

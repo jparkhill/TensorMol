@@ -250,30 +250,25 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		diis = DIIS()
+		#diis = DIIS()
 		print "Orig Coords", m.coords
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
-		EnergyFunction1 =  lambda x_: -627.509*self.tfm.EvalBPEnergySingle(Mol(m.atoms, x_),total_energy=True)
-		EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
-		while( step < self.max_opt_step):
+		EnergyFunction1 =  lambda x_: self.tfm.EvalBPEnergySingle(Mol(m.atoms, x_),total_energy=True)
+		#EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
+		while( step < self.max_opt_step and rmsdisp > 0.0001):
 			prev_m = Mol(m.atoms, m.coords)
 			energy, veloc = self.tfm.Eval_BPForce(m,total_energy=True)
 			#energy, veloc = EnergyForceFunction(m.coords)
-			fdiff_veloc1 = FdiffGradient(EnergyFunction1 , m.coords)
-			fdiff_veloc2 = FdiffGradient(EnergyFunction2 , m.coords)
-			print veloc
-			print -1.0*fdiff_veloc1
-			print -1.0*fdiff_veloc2
-
+			#fdiff_veloc1 = FdiffGradient(EnergyFunction1 , m.coords)
+			#fdiff_veloc2 = FdiffGradient(EnergyFunction2 , m.coords)
+			#print veloc
+			#print -1.0*fdiff_veloc1
+			#print -1.0*fdiff_veloc2
 			veloc = RemoveInvariantForce(m.coords, veloc, m.atoms)
 			rmsgrad = np.sum(np.linalg.norm(veloc,axis=1))/veloc.shape[0]
-			if (rmsgrad > 30.0):
-				veloc *= self.fscale
-				m.coords = diis.NextStep(m.coords, veloc)
-			else:
-				m.coords = LineSearch(EnergyFunction1, m.coords, veloc)
+			m.coords = LineSearch(EnergyFunction1, m.coords, veloc)
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
 			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
 			mol_hist.append(prev_m)

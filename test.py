@@ -112,9 +112,9 @@ def TestJohnson():
 	ChargeField = lambda x: qmanager.EvalBPDipole(Mol(m.atoms,x),False)[2][0]
 	PARAMS["MDdt"] = 0.2
 	PARAMS["MDTemp"] = 0.0
-	PARAMS["MDMaxStep"] = 1000
+	PARAMS["MDMaxStep"] = 4000
 	PARAMS["MDThermostat"] = None
-	PARAMS["MDFieldAmp"] = 0.000009
+	PARAMS["MDFieldAmp"] = 0.000004
 	PARAMS["MDFieldTau"] = 0.4
 	PARAMS["MDFieldFreq"] = 1.0
 	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
