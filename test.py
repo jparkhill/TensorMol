@@ -66,18 +66,21 @@ def TestANI1():
 		a.ReadXYZ("johnsonmols_noH_1")
 		#print manager.Eval_BPForce(a.mols[0], True)	
 		ins1, grad1 = manager.TData.dig.EvalDigest(a.mols[0])
+		gradflat =grad.reshape(-1)
+		print "grad shape:", grad.shape
 		for n in range (0, a.mols[0].NAtoms()):
 			diff = -(ins[n] - ins1[n]) /0.0001
 			for i in range (0,diff.shape[0]):
 				if grad[n][i][2] != 0:
 					if abs((diff[i] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
 						#pass
-						print n, i , abs((diff[i] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2] 
+						print n, i , abs((diff[i] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2], gradflat[n*768*17*3 + i*17*3 +2], n*768*17*3+i*17*3+2
 		for n in range (0, a.mols[0].NAtoms()):
                         diff = -(ins[n] - ins1[n]) /0.0001
                         for i in range (0,diff.shape[0]):
                                 if grad[n][i][2] != 0:
                                         if abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
+						# pass
                                         	print n, i , abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2] 
 		#t = time.time()
 		#print manager.Eval_BPForce(a.mols[0], True)
