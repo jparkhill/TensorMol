@@ -62,6 +62,18 @@ class Instance:
 		self.momentum = PARAMS["momentum"]
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
+		self.activation_function = None
+		if PARAMS["NeuronType"] == "relu":
+			self.activation_function = tf.nn.relu
+		elif PARAMS["NeuronType"] == "softplus":
+			self.activation_function = tf.nn.softplus
+		elif PARAMS["NeuronType"] == "tanh":
+			self.activation_function = tf.tanh
+		elif PARAMS["NeuronType"] == "sigmoid":
+                        self.activation_function = tf.sigmoid
+		else:
+			print ("unknown activation function, set to relu")
+			self.activation_function = tf.nn.relu 
 
 		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
 		LOGGER.info("self.batch_size: "+str(self.batch_size))

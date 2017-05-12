@@ -48,7 +48,7 @@ class MolInstance(Instance):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden1_units]),
 			name='biases')
-			hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
+			hidden1 = self.activation_function(tf.matmul(images, weights) + biases)
 			tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
 			tf.histogram_summary(weights.name, weights)
 		# Hidden 2
@@ -56,7 +56,7 @@ class MolInstance(Instance):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden2_units]),
 			name='biases')
-			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
+			hidden2 = self.activation_function(tf.matmul(hidden1, weights) + biases)
 		# Linear
 		with tf.name_scope('regression_linear'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
@@ -605,15 +605,15 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
-				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
+				branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
-				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
+				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
                                 weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
                                 biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
-                                branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
+                                branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
