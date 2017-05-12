@@ -138,6 +138,12 @@ class TFMolManage(TFManage):
 		return total
 
 	def Eval_BPEnergySingle(self, mol):
+		"""
+		Args:
+			mol: a Mol.
+		Returns:
+			Energy in Hartree
+		"""
 		nmols = 1
 		natoms = mol.NAtoms()
 		cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
@@ -180,7 +186,7 @@ class TFMolManage(TFManage):
 			offsets[ei] += 1
 		t = time.time()
 		pointers = [0 for ele in self.TData.eles]
-		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
+		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=False)
 		total = mol_out[0][0]
 		for j in range (0, mol.NAtoms()):
 			total += ele_U[mol.atoms[j]]
@@ -191,6 +197,9 @@ class TFMolManage(TFManage):
 		Args:
 			mol: a Mol.
 			total_energy: whether to also return the energy as a first argument.
+		Returns:
+			(if total_energy == True): Energy in Hartree
+			and Forces (kcal/mol)
 		"""
 		nmols = 1
 		natoms = mol.NAtoms()
@@ -238,7 +247,7 @@ class TFMolManage(TFManage):
 			matrices[ei][offsets[ei], outputpointer] = 1.0
 			offsets[ei] += 1
 		t = time.time()
-		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
+		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=False)
 		total_gradient = np.zeros((natoms*3))
 		for i in range (0, len(nn_gradient)): # Loop over element types.
 			total_gradient += np.einsum("ad,adx->x",nn_gradient[i],inputs_grads[i]) # Chain rule.
@@ -249,6 +258,81 @@ class TFMolManage(TFManage):
 			return  total, (-627.509*total_gradient.reshape((-1,3)))
 		else:
 			return  (-627.509*total_gradient.reshape((-1,3)))
+
+	def Test_RawNNOutput(self,mol):
+		"""
+		Args:
+			mol: a Mol.
+		Returns:
+			Energy in Hartree
+		"""
+		nmols = 1
+		natoms = mol.NAtoms()
+		cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+		dummy_outputs = np.zeros((nmols))
+		meta = np.zeros((natoms, 4), dtype = np.int)
+		casep = 0
+		mols_done = 0
+		t = time.time()
+		#
+		ins = self.TData.dig.EvalDigest(mol, False)
+		nat = mol.NAtoms()
+		cases[casep:casep+nat] = ins
+		for i in range (casep, casep+nat):
+			meta[i, 0] = mols_done
+			meta[i, 1] = mol.atoms[i - casep]
+			meta[i, 2] = casep
+			meta[i, 3] = casep + nat
+		casep += nat
+		mols_done += 1
+		#
+		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+		inputs = []
+		matrices = []
+		outputpointer = 0
+		for i in range (0, natoms):
+			sto[self.TData.eles.index(meta[i, 1])] += 1
+		currentmol = 0
+		for e in range (len(self.TData.eles)):
+				inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+				matrices.append(np.zeros((sto[e], nmols)))
+		for i in range (0, natoms):
+			if currentmol != meta[i, 0]:
+				outputpointer += 1
+				currentmol = meta[i, 0]
+			e = meta[i, 1]
+			ei = self.TData.eles.index(e)
+			inputs[ei][offsets[ei], :] = cases[i]
+			matrices[ei][offsets[ei], outputpointer] = 1.0
+			offsets[ei] += 1
+		t = time.time()
+		pointers = [0 for ele in self.TData.eles]
+		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=False)
+
+
+	def Test_BPGrad(self,mol):
+		"""
+		Computes the gradient a couple different ways. Compares them.
+		"""
+		EnergyFunction = lambda x_: 627.509*self.Eval_BPEnergySingle(Mol(mol.atoms,x_))
+		NumForce0 = FdiffGradient(EnergyFunction, mol.coords, 0.01)
+		NumForce1 = FdiffGradient(EnergyFunction, mol.coords, 0.001)
+		NumForce2 = FdiffGradient(EnergyFunction, mol.coords, 0.0001)
+		NumForce3 = FdiffGradient(EnergyFunction, mol.coords, 0.00001)
+		print "Force Differences", RmsForce(NumForce1-NumForce0)
+		print "Force Differences", RmsForce(NumForce2-NumForce1)
+		print "Force Differences", RmsForce(NumForce3-NumForce2)
+		print "Force Differences", RmsForce(NumForce3-NumForce1)
+		AnalForce = self.Eval_BPForceSingle( mol, total_energy = False)
+		print "Force Differences2", RmsForce(NumForce0-AnalForce)
+		print "Force Differences2", RmsForce(NumForce1-AnalForce)
+		print "Force Differences2", RmsForce(NumForce2-AnalForce)
+		print "Force Differences2", RmsForce(NumForce3-AnalForce)
+		print NumForce0
+		print NumForce1
+		print AnalForce
+
 
 	def Eval_BPDipole(self, mol_set,  ScaleCharge_ = False):
 		"""

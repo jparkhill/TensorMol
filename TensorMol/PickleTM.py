@@ -1,6 +1,9 @@
 import pickle
 
 def PickleMapName(name):
+	"""
+	If you change the name of a function or module, then pickle, you can fix it with this.
+	"""
 	renametable = {
 		'TensorMol.TensorMolData_EE': 'TensorMol.TensorMolDataEE',
 		'TensorMol.TFMolInstance_EE': 'TensorMol.TFMolInstanceEE',
@@ -22,4 +25,5 @@ def UnPickleTM(file):
 	tmp = unpickler.load()
 	tmp.pop('evaluate',None)
 	tmp.pop('Prepare',None)
+	tmp.pop('__init__',None)
 	return tmp

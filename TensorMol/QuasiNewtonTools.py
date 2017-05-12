@@ -2,6 +2,9 @@ from Sets import *
 from TFManage import *
 from PhysicalData import *
 
+def RmsForce(f_):
+	return np.sum(np.linalg.norm(f_,axis=1))/f_.shape[0]
+
 def DiagHess(f_,x_,eps_=0.0005):
 	"""
 	Args:

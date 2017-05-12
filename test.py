@@ -501,8 +501,8 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-TestANI1()
-#TestJohnson()
+#TestANI1()
+TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
