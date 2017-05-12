@@ -804,7 +804,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
 			return mol_output, atom_outputs, gradient
 		else:
-			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
 			return mol_output, atom_outputs
 
 	def Eval_Prepare(self):

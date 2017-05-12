@@ -186,7 +186,7 @@ class TFMolManage(TFManage):
 			offsets[ei] += 1
 		t = time.time()
 		pointers = [0 for ele in self.TData.eles]
-		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=False)
+		mol_out, atom_out = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=False)
 		total = mol_out[0][0]
 		for j in range (0, mol.NAtoms()):
 			total += ele_U[mol.atoms[j]]
@@ -247,7 +247,7 @@ class TFMolManage(TFManage):
 			matrices[ei][offsets[ei], outputpointer] = 1.0
 			offsets[ei] += 1
 		t = time.time()
-		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=False)
+		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
 		total_gradient = np.zeros((natoms*3))
 		for i in range (0, len(nn_gradient)): # Loop over element types.
 			total_gradient += np.einsum("ad,adx->x",nn_gradient[i],inputs_grads[i]) # Chain rule.
