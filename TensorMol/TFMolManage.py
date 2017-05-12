@@ -6,6 +6,8 @@ from TFManage import *
 from TensorMolData import *
 from TFMolInstance import *
 from TFMolInstanceEE import *
+from QuasiNewtonTools import *
+
 import numpy as np
 import gc
 
@@ -84,7 +86,7 @@ class TFMolManage(TFManage):
 			outputs = self.Instances[mol_t.atoms[atom]].tformer.UnNormalizeOuts(outputs)
 		return outputs
 
-	def EvalBPEnergy(self, mol_set, total_energy = False):
+	def Eval_BPEnergy(self, mol_set, total_energy = False):
 		nmols = len(mol_set.mols)
 		natoms = mol_set.NAtoms()
 		cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
@@ -133,45 +135,40 @@ class TFMolManage(TFManage):
 				total = mol_out[0][i]
 				for j in range (0, mol.NAtoms()):
 					total += ele_U[mol.atoms[j]]
-			for j in range (0, mol.atoms.shape[0]):
-				atom_type = mol.atoms[j]
-				atom_index = self.TData.eles.index(atom_type)
-				pointers[atom_index] += 1
-		return  mol_out[0]
+		return total
 
-	def EvalBPEnergySingle(self, mol, total_energy = False):
-		mol_set = MSet()
-		mol_set.mols = [mol]
-		nmols = len(mol_set.mols)
-		natoms = mol_set.NAtoms()
+	def Eval_BPEnergySingle(self, mol):
+		nmols = 1
+		natoms = mol.NAtoms()
 		cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
 		dummy_outputs = np.zeros((nmols))
 		meta = np.zeros((natoms, 4), dtype = np.int)
 		casep = 0
 		mols_done = 0
 		t = time.time()
-		for mol in mol_set.mols:
-			ins = self.TData.dig.EvalDigest(mol, False)
-			nat = mol.NAtoms()
-			cases[casep:casep+nat] = ins
-			for i in range (casep, casep+nat):
-				meta[i, 0] = mols_done
-				meta[i, 1] = mol.atoms[i - casep]
-				meta[i, 2] = casep
-				meta[i, 3] = casep + nat
-			casep += nat
-			mols_done += 1
+		#
+		ins = self.TData.dig.EvalDigest(mol, False)
+		nat = mol.NAtoms()
+		cases[casep:casep+nat] = ins
+		for i in range (casep, casep+nat):
+			meta[i, 0] = mols_done
+			meta[i, 1] = mol.atoms[i - casep]
+			meta[i, 2] = casep
+			meta[i, 3] = casep + nat
+		casep += nat
+		mols_done += 1
+		#
 		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
 		inputs = []
 		matrices = []
 		outputpointer = 0
 		for i in range (0, natoms):
-		        sto[self.TData.eles.index(meta[i, 1])] += 1
+			sto[self.TData.eles.index(meta[i, 1])] += 1
 		currentmol = 0
 		for e in range (len(self.TData.eles)):
-		        inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
-		        matrices.append(np.zeros((sto[e], nmols)))
+				inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+				matrices.append(np.zeros((sto[e], nmols)))
 		for i in range (0, natoms):
 			if currentmol != meta[i, 0]:
 				outputpointer += 1
@@ -184,23 +181,19 @@ class TFMolManage(TFManage):
 		t = time.time()
 		pointers = [0 for ele in self.TData.eles]
 		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
-		for i in range (0, nmols):
-			mol = mol_set.mols[i]
-			if total_energy:
-				total = mol_out[0][i]
-				for j in range (0, mol.NAtoms()):
-					total += ele_U[mol.atoms[j]]
-			for j in range (0, mol.atoms.shape[0]):
-				atom_type = mol.atoms[j]
-				atom_index = self.TData.eles.index(atom_type)
-				pointers[atom_index] += 1
-		return  mol_out[0]
+		total = mol_out[0][0]
+		for j in range (0, mol.NAtoms()):
+			total += ele_U[mol.atoms[j]]
+		return total
 
-	def Eval_BPForce(self, mol, total_energy = False):
-		mol_set = MSet()
-		mol_set.mols = [mol]
-		nmols = len(mol_set.mols)
-		natoms = mol_set.NAtoms()
+	def Eval_BPForceSingle(self, mol, total_energy = False):
+		"""
+		Args:
+			mol: a Mol.
+			total_energy: whether to also return the energy as a first argument.
+		"""
+		nmols = 1
+		natoms = mol.NAtoms()
 		cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
 		cases_grads = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)+list([3*natoms])))
 		dummy_outputs = np.zeros((nmols))
@@ -208,18 +201,19 @@ class TFMolManage(TFManage):
 		casep = 0
 		mols_done = 0
 		t = time.time()
-		for mol in mol_set.mols:
-			ins, grads = self.TData.dig.EvalDigest(mol)
-			nat = mol.NAtoms()
-			cases[casep:casep+nat] = ins
-			cases_grads[casep:casep+nat] = grads
-			for i in range (casep, casep+nat):
-				meta[i, 0] = mols_done
-				meta[i, 1] = mol.atoms[i - casep]
-				meta[i, 2] = casep
-				meta[i, 3] = casep + nat
-			casep += nat
-			mols_done += 1
+		# Fictitious set loop.
+		ins, grads = self.TData.dig.EvalDigest(mol)
+		nat = mol.NAtoms()
+		cases[casep:casep+nat] = ins
+		cases_grads[casep:casep+nat] = grads
+		for i in range (casep, casep+nat):
+			meta[i, 0] = mols_done
+			meta[i, 1] = mol.atoms[i - casep]
+			meta[i, 2] = casep
+			meta[i, 3] = casep + nat
+		casep += nat
+		mols_done += 1
+		# End fictitious set loop.
 		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
 		inputs = []
@@ -245,21 +239,18 @@ class TFMolManage(TFManage):
 			offsets[ei] += 1
 		t = time.time()
 		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
-		for i in range (0, nmols):
-			mol = mol_set.mols[i]
-			if total_energy:
-				total = mol_out[0][i]
-				for j in range (0, mol.NAtoms()):
-					total += ele_U[mol.atoms[j]]
 		total_gradient = np.zeros((natoms*3))
 		for i in range (0, len(nn_gradient)): # Loop over element types.
 			total_gradient += np.einsum("ad,adx->x",nn_gradient[i],inputs_grads[i]) # Chain rule.
 		if (total_energy):
+			total = mol_out[0][0]
+			for j in range (0, mol.NAtoms()):
+				total += ele_U[mol.atoms[j]]
 			return  total, (-627.509*total_gradient.reshape((-1,3)))
 		else:
 			return  (-627.509*total_gradient.reshape((-1,3)))
 
-	def EvalBPDipole(self, mol_set,  ScaleCharge_ = False):
+	def Eval_BPDipole(self, mol_set,  ScaleCharge_ = False):
 		"""
 		can take either a single mol or mol set
 		return netcharge, dipole, atomcharge

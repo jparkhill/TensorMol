@@ -255,13 +255,13 @@ class Optimizer:
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
-		Energy = lambda x_: self.tfm.EvalBPEnergySingle(Mol(m.atoms, x_),total_energy=True)
-		EnergyAndForce =  lambda x_: self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)
-		Gradient =  lambda x_: (self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[1])
+		Energy = lambda x_: self.tfm.Eval_BPEnergySingle(Mol(m.atoms, x_))
+		EnergyAndForce =  lambda x_: self.tfm.Eval_BPForceSingle(Mol(m.atoms, x_),total_energy=True)
+		Gradient =  lambda x_: (self.tfm.Eval_BPForceSingle(Mol(m.atoms, x_),total_energy=False)[0])
 		#EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
 		while( step < self.max_opt_step and rmsgrad > 0.5):
 			prev_m = Mol(m.atoms, m.coords)
-			energy, frc = self.tfm.Eval_BPForce(m,total_energy=True)
+			energy, frc = EnergyAndForce(m.coords)
 			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			m.coords = LineSearch(Energy, m.coords, frc)
