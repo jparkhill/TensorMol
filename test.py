@@ -34,7 +34,7 @@ def TestANI1():
 	"""
 	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
 	"""
-	if (0):
+	if (1):
 		#a = MSet("uneq_chemspider")
 		#a.ReadXYZ("uneq_chemspider")
 		#a.Save()
@@ -47,7 +47,7 @@ def TestANI1():
 		#tset.BuildTrain("uneq_chemspider")
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-		manager.Train(maxstep=1500)
+		manager.Train(maxstep=2000)
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 #manager.Continue_Training(maxsteps=2)
 	if (0):
@@ -501,8 +501,8 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-#TestANI1()
-TestJohnson()
+TestANI1()
+#TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
