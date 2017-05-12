@@ -40,7 +40,7 @@ class DIIS:
 			self.S[self.n_now,self.n_now] = np.dot(new_residual_.flatten(),new_residual_.flatten())
 
 		if (self.n_now<2):
-			return new_vec_ + 0.002*new_residual_
+			return new_vec_ + 0.02*new_residual_
 
 		#print "S", self.S[:self.n_now,:self.n_now]
 		#print "Vs: ", self.Vs
@@ -79,4 +79,4 @@ class DIIS:
 		tore = np.zeros(new_vec_.shape)
 		for i in range(self.n_now):
 			tore += self.Vs[i]*next_coeffs[i]
-		return tore + 0.004*new_residual_
+		return tore

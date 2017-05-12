@@ -97,9 +97,9 @@ def TestJohnson():
 	a = MSet("johnsonmols")
 	a.ReadXYZ("johnsonmols")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	PARAMS["OptMomentum"] = 0.4
+	PARAMS["OptMomentum"] = 0.0
 	PARAMS["OptMomentumDecay"] = 0.9
-	PARAMS["OptStepSize"] = 0.0002
+	PARAMS["OptStepSize"] = 0.02
 	PARAMS["OptMaxCycles"]=500
 	m = a.mols[0]
 	optimizer = Optimizer(manager)
@@ -108,13 +108,13 @@ def TestJohnson():
 	net, dipole, charges = qmanager.EvalBPDipole(m, False)
 	print "Net, Dipole, Charge", net, dipole, charges
 	#self.tfm.Eval_BPForce(m,total_energy=True)
-	ForceField = lambda x: 4183.9953*manager.Eval_BPForce(Mol(m.atoms,x),False)
+	ForceField = lambda x: manager.Eval_BPForce(Mol(m.atoms,x),True)
 	ChargeField = lambda x: qmanager.EvalBPDipole(Mol(m.atoms,x),False)[2][0]
-	PARAMS["MDdt"] = 0.2
+	PARAMS["MDdt"] = 0.18
 	PARAMS["MDTemp"] = 0.0
 	PARAMS["MDMaxStep"] = 4000
 	PARAMS["MDThermostat"] = None
-	PARAMS["MDFieldAmp"] = 0.000004
+	PARAMS["MDFieldAmp"] = 0.0#0.00000001
 	PARAMS["MDFieldTau"] = 0.4
 	PARAMS["MDFieldFreq"] = 1.0
 	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])

@@ -338,11 +338,19 @@ class IRTrajectory(VelocityVerlet):
 		self.Tau = PARAMS["MDFieldTau"]
 		self.TOn = PARAMS["MDFieldT0"]
 		self.UpdateCharges = PARAMS["MDUpdateCharges"]
-		self.FieldFreeForce = f_
+		self.EnergyAndForce = f_
 		self.ChargeFunction = q_
+		self.EPot0 , self.f0 = self.EnergyAndForce(g0_.coords)
+		self.EPot = self.EPot0
 		self.q0 = self.ChargeFunction(self.x)
 		self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
 		self.mu_his = None
+
+	def FieldFreeForce(self,x_):
+		self.EPot, f_ = self.EnergyAndForce(x_)
+		self.EPot -= self.EPot0
+		self.EPot *= 627.509*4183.9953
+		return f_*4183.9953
 
 	def Pulse(self,t_):
 		"""
@@ -377,7 +385,7 @@ class IRTrajectory(VelocityVerlet):
 		return
 
 	def Prop(self):
-		self.mu_his = np.zeros((self.maxstep, 6)) # time Dipoles Energy
+		self.mu_his = np.zeros((self.maxstep, 7)) # time Dipoles Energy
 		step = 0
 		while(step < self.maxstep):
 			self.t = step*self.dt
@@ -392,7 +400,9 @@ class IRTrajectory(VelocityVerlet):
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
 			self.mu_his[step,0] = self.t
 			self.mu_his[step,1:4] = self.Mu
-			self.mu_his[step,5] = self.KE
+			self.mu_his[step,4] = self.KE
+			self.mu_his[step,5] = self.EPot
+			self.mu_his[step,6] = self.KE+self.EPot
 
 			self.x , self.v, self.a = VelocityVerletstep(self.ForcesWithCharge, self.a, self.x, self.v, self.m, self.dt)
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):

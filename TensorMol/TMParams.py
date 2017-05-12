@@ -77,13 +77,14 @@ class TMParams(dict):
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
 		self["OptMaxBFGS"] = 7
+		self["GSSearchAlpha"] = 0.005
 		self["NebNumBeads"] = 10
 		self["NebK"] = 0.01
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		# MD Parameters
 		self["MDMaxStep"] = 20000
-		self["MDdt"] = 0.2 # In fs.
+		self["MDdt"] = 0.05 # In fs.
 		self["MDTemp"] = 300.0
 		self["MDV0"] = "Random"
 		self["MDThermostat"] = None # None, "Rescaling", "Nose", "NoseHooverChain"

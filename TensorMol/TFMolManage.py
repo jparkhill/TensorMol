@@ -245,26 +245,19 @@ class TFMolManage(TFManage):
 			offsets[ei] += 1
 		t = time.time()
 		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs])
-		pointers = [0 for ele in self.TData.eles]
-		diff = 0
 		for i in range (0, nmols):
 			mol = mol_set.mols[i]
 			if total_energy:
 				total = mol_out[0][i]
 				for j in range (0, mol.NAtoms()):
 					total += ele_U[mol.atoms[j]]
-			for j in range (0, mol.atoms.shape[0]):
-				atom_type = mol.atoms[j]
-				atom_index = self.TData.eles.index(atom_type)
-				pointers[atom_index] += 1
 		total_gradient = np.zeros((natoms*3))
-		for i in range (0, len(nn_gradient)):
-			for j in range (0, nn_gradient[i].shape[0]):
-				total_gradient += np.sum(np.repeat(nn_gradient[i][j].reshape((nn_gradient[i][j].shape[0], 1)), natoms*3,  axis=1)*inputs_grads[i][j], axis=0)
+		for i in range (0, len(nn_gradient)): # Loop over element types.
+			total_gradient += np.einsum("ad,adx->x",nn_gradient[i],inputs_grads[i]) # Chain rule.
 		if (total_energy):
-			return  total, (-627.509*total_gradient).reshape((-1,3))
+			return  total, (-627.509*total_gradient.reshape((-1,3)))
 		else:
-			return  (-627.509*total_gradient).reshape((-1,3))
+			return  (-627.509*total_gradient.reshape((-1,3)))
 
 	def EvalBPDipole(self, mol_set,  ScaleCharge_ = False):
 		"""

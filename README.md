@@ -5,7 +5,7 @@ A Statistical Model of Molecular Structure
  Kun Yao (kyao@nd.edu), John Herr
  John Parkhill (john.parkhill@gmail.com)
 
-### Energy And Force Models:
+### Model Chemistries:
  - Behler-Parrinello
  - Many Body Expansion
  - Diatomics in Molecules NN
