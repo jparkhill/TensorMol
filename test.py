@@ -66,7 +66,7 @@ def TestANI1():
 		#print manager.Eval_BPForce(a.mols[0], True)
 		a = MSet("johnsonmols_noH_1")
 		a.ReadXYZ("johnsonmols_noH_1")
-		#print manager.Eval_BPForce(a.mols[0], True)	
+		#print manager.Eval_BPForce(a.mols[0], True)
 		ins1, grad1 = manager.TData.dig.EvalDigest(a.mols[0])
 		gradflat =grad.reshape(-1)
 		print "grad shape:", grad.shape
@@ -83,7 +83,7 @@ def TestANI1():
                                 if grad[n][i][2] != 0:
                                         if abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
 						# pass
-                                        	print n, i , abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2] 
+                                        	print n, i , abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2]
 		#t = time.time()
 		#print manager.Eval_BPForce(a.mols[0], True)
 	if (0):
@@ -108,8 +108,8 @@ def TestJohnson():
 	Try to model the IR spectra of Johnson's peptides...
 	Optimize, then get charges, then do an isotropic IR spectrum.
 	"""
-	a = MSet("johnsonmols_noH")
-	a.ReadXYZ("johnsonmols_noH")
+	a = MSet("johnsonmols")
+	a.ReadXYZ("johnsonmols")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	PARAMS["OptMomentum"] = 0.0
 	PARAMS["OptMomentumDecay"] = 0.9
@@ -119,26 +119,29 @@ def TestJohnson():
 	optimizer = Optimizer(manager)
 	optimizer.OptANI1(m)
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	net, dipole, charges = qmanager.EvalBPDipole(m, False)
+	net, dipole, charges = qmanager.Eval_BPDipole(m, False)
 	print "Net, Dipole, Charge", net, dipole, charges
 	#self.tfm.Eval_BPForce(m,total_energy=True)
-	ForceField = lambda x: manager.Eval_BPForce(Mol(m.atoms,x),True)
-	ChargeField = lambda x: qmanager.EvalBPDipole(Mol(m.atoms,x),False)[2][0]
-	PARAMS["MDdt"] = 0.18
-	PARAMS["MDTemp"] = 0.0
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),True)
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
+	PARAMS["MDdt"] = 0.2
+	PARAMS["MDTemp"] = 10.0
+	PARAMS["MDMaxStep"] = 1500
+	PARAMS["MDThermostat"] = "Nose"
+	md_warm = VelocityVerlet(ForceField, m,"0",ForceField)
+	md_warm.Prop()
 	PARAMS["MDMaxStep"] = 4000
-	PARAMS["MDThermostat"] = None
 	PARAMS["MDFieldAmp"] = 0.0#0.00000001
 	PARAMS["MDFieldTau"] = 0.4
 	PARAMS["MDFieldFreq"] = 1.0
 	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-	md0 = IRTrajectory(ForceField, ChargeField, m,"0")
+	md0 = IRTrajectory(ForceField, ChargeField, m, "0", md_warm.v)
 	md0.Prop()
 	PARAMS["MDFieldVec"] = np.array([0.0,1.0,0.0])
-	md1 = IRTrajectory(ForceField, ChargeField, m,"1")
+	md1 = IRTrajectory(ForceField, ChargeField, m,"1", md_warm.v)
 	md1.Prop()
 	PARAMS["MDFieldVec"] = np.array([0.0,0.0,1.0])
-	md2 = IRTrajectory(ForceField, ChargeField, m,"2")
+	md2 = IRTrajectory(ForceField, ChargeField, m,"2", md_warm.v)
 	md2.Prop()
 	WriteDipoleCorrelationFunction(md0.mu_his,md1.mu_his,md2.mu_his)
 	return
@@ -171,8 +174,8 @@ def TestDipole():
 		a = MSet("furan_md")
 		a.ReadXYZ("furan_md")
                 manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
-                net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
-		#net, dipole, charge = manager.EvalBPDipole(a.mols, True)
+                net, dipole, charge = manager.Eval_BPDipole(a.mols[0], True)
+		#net, dipole, charge = manager.Eval_BPDipole(a.mols, True)
 		print net, dipole, charge
 		#np.savetxt("./results/furan_md_nn_dipole.dat", dipole)
 
@@ -547,8 +550,8 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-TestDipole()
-#TestJohnson()
+#TestDipole()
+TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

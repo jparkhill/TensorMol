@@ -63,18 +63,7 @@ class Instance:
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
 		self.activation_function = None
-		if PARAMS["NeuronType"] == "relu":
-			self.activation_function = tf.nn.relu
-		elif PARAMS["NeuronType"] == "softplus":
-			self.activation_function = tf.nn.softplus
-		elif PARAMS["NeuronType"] == "tanh":
-			self.activation_function = tf.tanh
-		elif PARAMS["NeuronType"] == "sigmoid":
-                        self.activation_function = tf.sigmoid
-		else:
-			print ("unknown activation function, set to relu")
-			self.activation_function = tf.nn.relu 
-
+		self.AssignActivation()
 		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
 		LOGGER.info("self.batch_size: "+str(self.batch_size))
 
@@ -93,6 +82,21 @@ class Instance:
 		if (self.sess != None):
 			self.sess.close()
 		self.Clean()
+
+	def AssignActivation(self):
+		LOGGER.info("Assigning Activation... %s", PARAMS["NeuronType"])
+		if PARAMS["NeuronType"] == "relu":
+			self.activation_function = tf.nn.relu
+		elif PARAMS["NeuronType"] == "softplus":
+			self.activation_function = tf.nn.softplus
+		elif PARAMS["NeuronType"] == "tanh":
+			self.activation_function = tf.tanh
+		elif PARAMS["NeuronType"] == "sigmoid":
+			self.activation_function = tf.sigmoid
+		else:
+			print ("unknown activation function, set to relu")
+			self.activation_function = tf.nn.relu
+		return
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
@@ -209,9 +213,7 @@ class Instance:
 	def Load(self):
 		LOGGER.info("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")
-		tmp=pickle.load(f)
-		# This is just to use an updated version of evaluate and should be removed after I re-train...
-		tmp.pop('evaluate',None)
+		tmp = UnPickleTM(f)
 		self.Clean()
 		# All this shit should be deleteable after re-training.
 		self.__dict__.update(tmp)

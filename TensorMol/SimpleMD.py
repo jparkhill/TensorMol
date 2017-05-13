@@ -9,7 +9,7 @@ from Sets import *
 from TFManage import *
 from Electrostatics import *
 
-def VelocityVerletstep(f_, a_, x_, v_, m_, dt_ ):
+def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	""" A Velocity Verlet Step
 	Args:
 	f_: The force function (returns Joules/Angstrom)
@@ -19,12 +19,14 @@ def VelocityVerletstep(f_, a_, x_, v_, m_, dt_ ):
 	m_: the mass vector. (kg)
 	"""
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
-	a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
-	#print "dt", dt_ # fs
-	#print "a", a
-	#print "v", v_
+	e, f_x_ = 0.0, None
+	if (fande_==None):
+		f_x_ = f_(x)
+	else:
+		e, f_x_ = fande_(x)
+	a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
 	v = v_ + (1./2.)*(a_+a)*dt_
-	return x,v,a
+	return x,v,a,e
 
 def KineticEnergy(v_, m_):
 	""" The KineticEnergy
@@ -51,13 +53,20 @@ class Thermostat:
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		self.Rescale(v_)
 		return
-	def step(self,f_, a_, x_, v_, m_, dt_ ):
+
+	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None):
 		x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
-		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		e, f_x_ = 0.0, None
+		if (fande_==None):
+			f_x_ = f_(x)
+		else:
+			e, f_x_ = fande_(x)
+		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
 		v = v_ + (1./2.)*(a_+a)*dt_
 		Teff = (2./3.)*KineticEnergy(v,self.m)/8.314
 		v *= np.sqrt(self.T/Teff)
-		return x,v,a
+		return x,v,a,e
+
 	def Rescale(self,v_):
 		# Do this elementwise otherwise H's blow off.
 		for i in range(self.N):
@@ -81,19 +90,24 @@ class NoseThermostat(Thermostat):
 		self.Rescale(v_)
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		return
-	def step(self,f_, a_, x_, v_, m_, dt_ ):
+	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
 		x = x_ + v_*dt_ + (1./2.)*(a_ - self.eta*v_)*dt_*dt_
 		vdto2 = v_ + (1./2.)*(a_ - self.eta*v_)*dt_
-		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		e, f_x_ = 0.0, None
+		if (fande_==None):
+			f_x_ = f_(x)
+		else:
+			e, f_x_ = fande_(x)
+		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
 		ke = (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_),m_)
 		etadto2 = self.eta + (dt_/(2.*self.Q))*(ke - (((3.*self.N+1)/2.))*self.kT)
 		kedto2 = (1./2.)*np.dot(np.einsum("ia,ia->i",vdto2,vdto2),m_)
 		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2 - (((3.*self.N+1)/2.))*self.kT)
 		v = (vdto2 + (dt_/2.)*a)/(1 + (dt_/2.)*self.eta)
-		return x,v,a
+		return x,v,a,e
 
 class NosePerParticleThermostat(Thermostat):
 	def __init__(self,m_,v_):
@@ -111,19 +125,24 @@ class NosePerParticleThermostat(Thermostat):
 		self.Rescale(v_)
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		return
-	def step(self,f_, a_, x_, v_, m_, dt_ ):
+	def step(self,f_, a_, x_, v_, m_, dt_, fande_=None ):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
 		x = x_ + v_*dt_ + (1./2.)*(a_ - np.einsum("i,ij->ij",self.eta,v_))*dt_*dt_
 		vdto2 = v_ + (1./2.)*(a_ - np.einsum("i,ij->ij",self.eta,v_))*dt_
-		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		e, f_x_ = 0.0, None
+		if (fande_==None):
+			f_x_ = f_(x)
+		else:
+			e, f_x_ = fande_(x)
+		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
 		kes = (1./2.)*np.einsum("i,i->i",np.einsum("ia,ia->i",v_,v_),m_)
 		etadto2 = self.eta + (dt_/(2.*self.Q))*(kes - (((3.*self.N+1)/2.))*self.kT)
 		kedto2s = (1./2.)*np.einsum("i,i->i",np.einsum("ia,ia->i",vdto2,vdto2),m_)
 		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2s - (((3.*self.N+1)/2.))*self.kT)
 		v = np.einsum("ij,i->ij",(vdto2 + (dt_/2.)*a),1.0/(1 + (dt_/2.)*self.eta))
-		return x,v,a
+		return x,v,a,e
 
 class NoseChainThermostat(Thermostat):
 	def __init__(self,m_,v_):
@@ -176,7 +195,7 @@ class NoseChainThermostat(Thermostat):
 		self.Qs[0] = 3.*self.N*self.kT*self.tau*self.tau
 		return
 
-	def step(self,f_, a_, x_, v_, m_, dt_ ):
+	def step(self,f_, a_, x_, v_, m_, dt_ ,fande_=None):
 		v = self.IntegrateChain(a_, x_, v_, m_, dt_) # half step the chain.
 		# Get KE of the chain.
 		print "Energies of the system... ", self.ke(v_,m_), " Teff ", (2./3.)*self.ke(v_,m_)*pow(10.0,10.0)/8.314/self.N
@@ -185,10 +204,17 @@ class NoseChainThermostat(Thermostat):
 			print self.Veta[i]*self.Veta[i]*self.Qs[i]/2.
 		v = v + self.dt2*a_
 		x = x_ + self.dt*v
-		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_(x), 1.0/m_) # m^2/s^2 => A^2/Fs^2
+
+		e, f_x_ = 0.0, None
+		if (fande_==None):
+			f_x_ = f_(x)
+		else:
+			e, f_x_ = fande_(x)
+
+		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
 		v = v + self.dt2*a
 		v = self.IntegrateChain(a, x_, v, m_, dt_) # half step the chain.
-		return x, v, a
+		return x, v, a, e
 
 	def ke(self,v_,m_):
 		return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_),m_)
@@ -234,12 +260,13 @@ class NoseChainThermostat(Thermostat):
 		return v_*scale
 
 class VelocityVerlet:
-	def __init__(self,f_,g0_, name_ =""):
+	def __init__(self, f_, g0_, name_ ="", EandF_=None):
 		"""
 		Molecular dynamics
 		Args:
 			f_: a force routine
-			m0_: initial molecule.
+			g0_: initial molecule.
+			EandF_: An energy,force routine.
 			PARAMS["MDMaxStep"]: Number of steps to take.
 			PARAMS["MDTemp"]: Temperature to initialize or Thermostat to.
 			PARAMS["MDdt"]: Timestep.
@@ -254,6 +281,11 @@ class VelocityVerlet:
 		self.T = PARAMS["MDTemp"]
 		self.dt = PARAMS["MDdt"]
 		self.ForceFunction = f_
+		self.EnergyAndForce = EandF_
+		self.EPot0 = 0.0
+		if (EandF_ != None):
+			self.EPot0 , self.f0 = self.EnergyAndForce(g0_.coords)
+		self.EPot = self.EPot0
 		self.t = 0.0
 		self.KE = 0.0
 		self.atoms = g0_.atoms.copy()
@@ -262,10 +294,10 @@ class VelocityVerlet:
 		self.x = g0_.coords.copy()
 		self.v = np.zeros(self.x.shape)
 		self.a = np.zeros(self.x.shape)
+
 		if (PARAMS["MDV0"]=="Random"):
 			self.v = np.random.randn(*self.x.shape)
 			Tstat = Thermostat(self.m, self.v) # Will rescale self.v appropriately.
-
 		self.Tstat = None
 		if (PARAMS["MDThermostat"]=="Rescaling"):
 			self.Tstat = Thermostat(self.m,self.v)
@@ -296,9 +328,9 @@ class VelocityVerlet:
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/8.314
 			if (PARAMS["MDThermostat"]==None):
-				self.x , self.v, self.a = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
+				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
-				self.x , self.v, self.a = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt)
+				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
@@ -309,7 +341,7 @@ class VelocityVerlet:
 			return
 
 class IRTrajectory(VelocityVerlet):
-	def __init__(self,f_,q_,g0_,name_=str(0)):
+	def __init__(self,f_,q_,g0_,name_=str(0),v0_=None):
 		"""
 		A specialized sort of dynamics which is appropriate for obtaining IR spectra at
 		Zero temperature.
@@ -329,6 +361,8 @@ class IRTrajectory(VelocityVerlet):
 			PARAMS["MDFieldFreq"] = 1/1.2 # 700nm light is about 1/1.2 fs.
 		"""
 		VelocityVerlet.__init__(self,f_, g0_, name_)
+		if (v0_!=None):
+			self.v = v0_.copy()
 		self.EField = np.zeros(3)
 		self.IsOn = False
 		self.qs = None
@@ -404,7 +438,7 @@ class IRTrajectory(VelocityVerlet):
 			self.mu_his[step,5] = self.EPot
 			self.mu_his[step,6] = self.KE+self.EPot
 
-			self.x , self.v, self.a = VelocityVerletstep(self.ForcesWithCharge, self.a, self.x, self.v, self.m, self.dt)
+			self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForcesWithCharge, self.a, self.x, self.v, self.m, self.dt)
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%100==0):

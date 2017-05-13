@@ -22,6 +22,7 @@ import sys
 class MolInstance(Instance):
 	def __init__(self, TData_,  Name_=None, Trainable_=True):
 		Instance.__init__(self, TData_, 0, Name_)
+		self.AssignActivation()
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.Trainable = Trainable_
@@ -612,9 +613,9 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
-                                weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
-                                biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
-                                branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
+				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
+				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
@@ -791,7 +792,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.SaveAndClose()
 		return
 
-	def evaluate(self, batch_data):   #this need to be modified
+	def evaluate(self, batch_data, IfGrad=True):   #this need to be modified
 		# Check sanity of input
 		nmol = batch_data[2].shape[0]
 		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
@@ -800,8 +801,12 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			print ("loading the session..")
 			self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
-		preds, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-		return mol_output, atom_outputs, gradient
+		if (IfGrad):
+			mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+			return mol_output, atom_outputs, gradient
+		else:
+			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
+			return mol_output, atom_outputs
 
 	def Eval_Prepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels

@@ -70,9 +70,9 @@ static SymParams ParseSymParams(PyObject *Pdict)
 
 inline double fc(const double &dist, const double &dist_cut) {
 	if (dist > dist_cut)
-	return(0.0);
+		return(0.0);
 	else
-	return (0.5*(cos(PI*dist/dist_cut)+1));
+		return (0.5*(cos(PI*dist/dist_cut)+1));
 };
 
 inline double gaussian(const double dist_cut, const int ngrids, double dist, const int j,  const double  width, const double height)  {
@@ -192,8 +192,9 @@ void SymFunction(double *Sym_data, const int data_pointer, const double *xyz, co
 	int bond_index = 0;
 	for (int j = 0; j < nele; j++) {
 		for (int k = 0; k < ele_index[j].size(); k++) {
-			if (ele_index[j][k] != atom_num) {
-				dist1 = sqrt(pow(xyz[ele_index[j][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][k]*3+2] - xyz[atom_num*3+2],2));
+			int ejk = ele_index[j][k];
+			if (ejk != atom_num) {
+				dist1 = sqrt(pow(xyz[ejk*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ejk*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ejk*3+2] - xyz[atom_num*3+2],2));
 				if ( dist1 > Rc)
 				continue;
 				else {
@@ -245,32 +246,41 @@ void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, 
 	int g1_size = radius_Rs_dim;
 	int g2_size = angle_Rs_dim * angle_As_dim;
 	int bond_index = 0;
+	int at3 = atom_num*3;
+	int at31 = at3+1;
+	int at32 = at3+2;
 	int SYMdim = nele*radius_Rs_dim + nele*(nele+1)/2*angle_Rs_dim*angle_As_dim;
 	for (int j = 0; j < nele; j++ ) {
 		for ( int k = 0;  k < ele_index[j].size(); k++) {
-			if (ele_index[j][k] != atom_num) {
-				dist1 = sqrt(pow(xyz[ele_index[j][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][k]*3+2] - xyz[atom_num*3+2],2));
+			int ejk = ele_index[j][k];
+			if (ejk != atom_num) {
+				dist1 = sqrt(pow(xyz[ejk*3+0] - xyz[at3+0],2)+pow(xyz[ejk*3+1] - xyz[at31],2)+pow(xyz[ejk*3+2] - xyz[at32],2));
 				if ( dist1 > radius_Rc)
-				continue;
+					continue;
 				else {
 					fc1 = fc(dist1, radius_Rc);
 					fc1_deri  = -0.5*sin(PI*dist1/radius_Rc)/dist1*PI/radius_Rc;
 					for (int m = 0; m < radius_Rs_dim; m++) {
-						//std::cout<<"fc1: "<<fc1<<"exp: "<<( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(-xyz[ele_index[j][k]*3+0])) << std::endl;
-						//std::cout<<"  part 2:"<<fc1_deri*(-xyz[ele_index[j][k]*3+0])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m])) << std::endl;
-						//std::cout<<"workiing on atom:"<<ele_index[j][k]<<" and atom:"<<atom_num<<"  index:"<<data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + ele_index[j][k]*3 + 0<<" and index:"<<data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + atom_num*3 + 1<<std::endl;
-						//std::cout<<"term1: "<<fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(-xyz[ele_index[j][k]*3+2]))  <<" term2:" << fc1_deri*(-xyz[ele_index[j][k]*3+2])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))<<std::endl;
-						//std::cout<<xyz[ele_index[j][k]*3+2]<<std::endl;
-						//std::cout<<"term3: "<<fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[atom_num*3+2])) <<"term4 :" << fc1_deri*(xyz[atom_num*3+2])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))<<std::endl;
-						ANI1_Sym_deri_data[data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + ele_index[j][k]*3 + 0] += fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[ele_index[j][k]*3+0]-xyz[atom_num*3+0]))  + fc1_deri*(xyz[ele_index[j][k]*3+0] - xyz[atom_num*3+0])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]));
-						ANI1_Sym_deri_data[data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + ele_index[j][k]*3 + 1] += fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[ele_index[j][k]*3+1]-xyz[atom_num*3+1]))  + fc1_deri*(xyz[ele_index[j][k]*3+1] - xyz[atom_num*3+1])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]));
-						ANI1_Sym_deri_data[data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + ele_index[j][k]*3 + 2] += fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[ele_index[j][k]*3+2]-xyz[atom_num*3+2]))  + fc1_deri*(xyz[ele_index[j][k]*3+2] - xyz[atom_num*3+2])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]));
+						int mshift = data_pointer + radius_Rs_dim*3*natom*j + m*3*natom;
+						//std::cout<<"fc1: "<<fc1<<"exp: "<<( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(-xyz[ejk*3+0])) << std::endl;
+						//std::cout<<"  part 2:"<<fc1_deri*(-xyz[ejk*3+0])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m])) << std::endl;
+						//std::cout<<"workiing on atom:"<<ejk<<" and atom:"<<atom_num<<"  index:"<<mshift + ejk*3 + 0<<" and index:"<<mshift + at3 + 1<<std::endl;
+						//std::cout<<"term1: "<<fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(-xyz[ejk*3+2]))  <<" term2:" << fc1_deri*(-xyz[ejk*3+2])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))<<std::endl;
+						//std::cout<<xyz[ejk*3+2]<<std::endl;
+						//std::cout<<"term3: "<<fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[at32])) <<"term4 :" << fc1_deri*(xyz[at32])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))<<std::endl;
 
-						ANI1_Sym_deri_data[data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + atom_num*3 + 0] += fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[atom_num*3+0] - xyz[ele_index[j][k]*3+0]))  + fc1_deri*(xyz[atom_num*3+0] - xyz[ele_index[j][k]*3+0])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]));
-						ANI1_Sym_deri_data[data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + atom_num*3 + 1] += fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[atom_num*3+1] - xyz[ele_index[j][k]*3+1]))  + fc1_deri*(xyz[atom_num*3+1] - xyz[ele_index[j][k]*3+1])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]));
-						ANI1_Sym_deri_data[data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + atom_num*3 + 2] += fc1*( exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]))*(-2*eta*(dist1 - radius_Rs[m]))/dist1*(xyz[atom_num*3+2] - xyz[ele_index[j][k]*3+2]))  + fc1_deri*(xyz[atom_num*3+2] - xyz[ele_index[j][k]*3+2])*exp(-eta*(dist1-radius_Rs[m])*(dist1-radius_Rs[m]));
-						//if (data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + atom_num*3 + 2 == 2)
-						//        std::cout<<ANI1_Sym_deri_data[data_pointer + radius_Rs_dim*3*natom*j + m*3*natom + atom_num*3 + 2]<<std::endl;
+						double d1mrs = dist1-radius_Rs[m];
+						double expgau = exp(-eta*(d1mrs)*(d1mrs));
+
+						ANI1_Sym_deri_data[mshift + ejk*3 + 0] += fc1*( expgau)*(-2*eta*d1mrs)/dist1*(xyz[ejk*3+0]-xyz[at3+0]) + fc1_deri*(xyz[ejk*3+0] - xyz[at3+0])*expgau;
+						ANI1_Sym_deri_data[mshift + ejk*3 + 1] += fc1*( expgau)*(-2*eta*d1mrs)/dist1*(xyz[ejk*3+1]-xyz[at31]) + fc1_deri*(xyz[ejk*3+1] - xyz[at31])*expgau;
+						ANI1_Sym_deri_data[mshift + ejk*3 + 2] += fc1*( expgau)*(-2*eta*d1mrs)/dist1*(xyz[ejk*3+2]-xyz[at32]) + fc1_deri*(xyz[ejk*3+2] - xyz[at32])*expgau;
+
+						ANI1_Sym_deri_data[mshift + at3 + 0] += fc1*( expgau)*(-2*eta*d1mrs)/dist1*(xyz[at3+0] - xyz[ejk*3+0]) + fc1_deri*(xyz[at3+0] - xyz[ejk*3+0])*expgau;
+						ANI1_Sym_deri_data[mshift + at3 + 1] += fc1*( expgau)*(-2*eta*d1mrs)/dist1*(xyz[at31] - xyz[ejk*3+1]) + fc1_deri*(xyz[at31] - xyz[ejk*3+1])*expgau;
+						ANI1_Sym_deri_data[mshift + at3 + 2] += fc1*( expgau)*(-2*eta*d1mrs)/dist1*(xyz[at32] - xyz[ejk*3+2]) + fc1_deri*(xyz[at32] - xyz[ejk*3+2])*expgau;
+						//if (mshift + at3 + 2 == 2)
+						//        std::cout<<ANI1_Sym_deri_data[mshift + at3 + 2]<<std::endl;
 					}
 				}
 			}
@@ -279,46 +289,65 @@ void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, 
 	for (int i = 0; i < nele; i++) {
 		for (int j = i; j < nele; j++) {
 			for ( int k =0; k < ele_index[i].size(); k++)  {
-				dist1 = sqrt(pow(xyz[ele_index[i][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[i][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[i][k]*3+2] - xyz[atom_num*3+2],2));
-				if (dist1 > angle_Rc or ele_index[i][k] == atom_num)
-				continue;
+				int eik = ele_index[i][k];
+				int eik3 = 3*eik;
+				dist1 = sqrt(pow(xyz[eik3+0] - xyz[at3+0],2)+pow(xyz[eik3+1] - xyz[at31],2)+pow(xyz[eik3+2] - xyz[at32],2));
+				double dist1sq = dist1*dist1;
+				if (dist1 > angle_Rc or eik == atom_num)
+					continue;
 				else {
 					for (int l = 0; l < ele_index[j].size(); l++) {
-						dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2],2));
-						dist3 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[ele_index[i][k]*3+2],2));
-						if ((dist2 > angle_Rc) || (i == j && l <= k) || ele_index[j][l] == atom_num) // change to <= since when v1 and v2 are same kind of element, do not revisit. diff by a factor of two
-						continue;
+						int ejl = ele_index[j][l];
+						int ejl3 = 3*ejl;
+						dist2 = sqrt(pow(xyz[ejl3+0] - xyz[at3+0],2)+pow(xyz[ejl3+1] - xyz[at31],2)+pow(xyz[ejl3+2] - xyz[at32],2));
+						double d1pd2 = (dist1+dist2);
+						dist3 = sqrt(pow(xyz[ejl3+0] - xyz[eik3+0],2)+pow(xyz[ejl3+1] - xyz[eik3+1],2)+pow(xyz[ejl3+2] - xyz[eik3+2],2));
+						double dist2sq = dist2*dist2;
+						double dist3sq = dist3*dist3;
+						if ((dist2 > angle_Rc) || (i == j && l <= k) || ejl == atom_num) // change to <= since when v1 and v2 are same kind of element, do not revisit. diff by a factor of two
+							continue;
 						else {
 							fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc);
 							fc1_deri = -0.5*sin(PI*dist1/angle_Rc)/dist1*PI/angle_Rc, fc2_deri = -0.5*sin(PI*dist2/angle_Rc)/dist2*PI/angle_Rc;
-							tmp_v = (dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2);
+							tmp_v = (dist1sq+dist2sq-dist3sq)/(2.0*dist1*dist2);
+
+							if (tmp_v<-1.0)
+								tmp_v =-1.0;
+							else if (tmp_v > 1.0)
+									tmp_v = 1.0;
 							//theta = acos(tmp_v);
-							theta = acos(roundf(tmp_v * 1000000000) / 1000000000); // round to 7 decimal place
-							theta_deri_ci = -(1/dist2-(dist1*dist1+dist2*dist2-dist3*dist3)/(2*dist1*dist1*dist2))/sqrt(1-pow(dist1*dist1+dist2*dist2-dist3*dist3,2)/(4*dist1*dist1*dist2*dist2));
-							theta_deri_cj = -(1/dist1-(dist1*dist1+dist2*dist2-dist3*dist3)/(2*dist1*dist2*dist2))/sqrt(1-pow(dist1*dist1+dist2*dist2-dist3*dist3,2)/(4*dist1*dist1*dist2*dist2));
-							theta_deri_ij = dist3/(dist1*dist2*sqrt(1-pow(dist1*dist1+dist2*dist2-dist3*dist3,2)/(4*dist1*dist1*dist2*dist2)));
+							theta = acos(tmp_v); // round to 7 decimal place
+							theta_deri_ci = -(1.0/dist2-(dist1sq+dist2sq-dist3sq)/(2.0*dist1sq*dist2))/sqrt(1-pow(dist1sq+dist2sq-dist3sq,2.0)/(4.0*dist1sq*dist2sq));
+							theta_deri_cj = -(1.0/dist1-(dist1sq+dist2sq-dist3sq)/(2.0*dist1*dist2sq))/sqrt(1-pow(dist1sq+dist2sq-dist3sq,2.0)/(4.0*dist1sq*dist2sq));
+							theta_deri_ij = dist3/(dist1*dist2*sqrt(1.0-pow(dist1sq+dist2sq-dist3sq,2.0)/(4.0*dist1sq*dist2sq)));
 							C = fc1*fc2;
 							for (int m = 0; m < angle_As_dim; m++) {
 								A = pow(1+cos(theta-angle_As[m]), zeta);
+								double ttomz = pow(2.0, 1-zeta);
+								double p1pc = pow(1+cos(theta-angle_As[m]), zeta-1);
+								double stam = (-sin(theta-angle_As[m]));
+								double zps = zeta*p1pc*stam;
 								for (int n = 0; n < angle_Rs_dim; n++) {
-									B = exp(-eta*((dist1+dist2)/2.0-angle_Rs[n])*((dist1+dist2)/2.0-angle_Rs[n]));
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[i][k]*3+0] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[ele_index[i][k]*3+0] - xyz[atom_num*3+0])/dist1 + theta_deri_ij*(xyz[ele_index[i][k]*3+0]-xyz[ele_index[j][l]*3+0])/dist3)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/dist1/2.0*(xyz[ele_index[i][k]*3+0] - xyz[atom_num*3+0])*C + A*B*fc1_deri*(xyz[ele_index[i][k]*3+0]- xyz[atom_num*3+0])*fc2);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[i][k]*3+1] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[ele_index[i][k]*3+1] - xyz[atom_num*3+1])/dist1 + theta_deri_ij*(xyz[ele_index[i][k]*3+1]-xyz[ele_index[j][l]*3+1])/dist3)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/dist1/2.0*(xyz[ele_index[i][k]*3+1] - xyz[atom_num*3+1])*C + A*B*fc1_deri*(xyz[ele_index[i][k]*3+1]- xyz[atom_num*3+1])*fc2);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[i][k]*3+2] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[ele_index[i][k]*3+2] - xyz[atom_num*3+2])/dist1 + theta_deri_ij*(xyz[ele_index[i][k]*3+2]-xyz[ele_index[j][l]*3+2])/dist3)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/dist1/2.0*(xyz[ele_index[i][k]*3+2] - xyz[atom_num*3+2])*C + A*B*fc1_deri*(xyz[ele_index[i][k]*3+2]- xyz[atom_num*3+2])*fc2);
+									B = exp(-eta*(d1pd2/2.0-angle_Rs[n])*(d1pd2/2.0-angle_Rs[n]));
+									int mnshift = data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom;
+									double tedd2a = (-2*eta*(d1pd2/2.0-angle_Rs[n]));
+									ANI1_Sym_deri_data[mnshift + eik3+0] +=  ttomz*(zps*(theta_deri_ci*(xyz[eik3+0] - xyz[at3+0])/dist1 + theta_deri_ij*(xyz[eik3+0]-xyz[ejl3+0])/dist3)*B*C + A*B*tedd2a/dist1/2.0*(xyz[eik3+0] - xyz[at3+0])*C + A*B*fc1_deri*(xyz[eik3+0]- xyz[at3+0])*fc2);
+									ANI1_Sym_deri_data[mnshift + eik3+1] +=  ttomz*(zps*(theta_deri_ci*(xyz[eik3+1] - xyz[at31])/dist1 + theta_deri_ij*(xyz[eik3+1]-xyz[ejl3+1])/dist3)*B*C + A*B*tedd2a/dist1/2.0*(xyz[eik3+1] - xyz[at31])*C + A*B*fc1_deri*(xyz[eik3+1]- xyz[at31])*fc2);
+									ANI1_Sym_deri_data[mnshift + eik3+2] +=  ttomz*(zps*(theta_deri_ci*(xyz[eik3+2] - xyz[at32])/dist1 + theta_deri_ij*(xyz[eik3+2]-xyz[ejl3+2])/dist3)*B*C + A*B*tedd2a/dist1/2.0*(xyz[eik3+2] - xyz[at32])*C + A*B*fc1_deri*(xyz[eik3+2]- xyz[at32])*fc2);
 
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[j][l]*3+0] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_cj*(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0])/dist2 + theta_deri_ij*(xyz[ele_index[j][l]*3+0]-xyz[ele_index[i][k]*3+0])/dist3)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/dist2/2.0*(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0])*C + A*B*fc2_deri*(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0])*fc1);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[j][l]*3+1] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_cj*(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1])/dist2 + theta_deri_ij*(xyz[ele_index[j][l]*3+1]-xyz[ele_index[i][k]*3+1])/dist3)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/dist2/2.0*(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1])*C + A*B*fc2_deri*(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1])*fc1);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[j][l]*3+2] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_cj*(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2])/dist2 + theta_deri_ij*(xyz[ele_index[j][l]*3+2]-xyz[ele_index[i][k]*3+2])/dist3)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/dist2/2.0*(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2])*C + A*B*fc2_deri*(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2])*fc1);
+									ANI1_Sym_deri_data[mnshift + ejl3+0] +=  ttomz*(zps*(theta_deri_cj*(xyz[ejl3+0] - xyz[at3+0])/dist2 + theta_deri_ij*(xyz[ejl3+0]-xyz[eik3+0])/dist3)*B*C + A*B*tedd2a/dist2/2.0*(xyz[ejl3+0] - xyz[at3+0])*C + A*B*fc2_deri*(xyz[ejl3+0] - xyz[at3+0])*fc1);
+									ANI1_Sym_deri_data[mnshift + ejl3+1] +=  ttomz*(zps*(theta_deri_cj*(xyz[ejl3+1] - xyz[at31])/dist2 + theta_deri_ij*(xyz[ejl3+1]-xyz[eik3+1])/dist3)*B*C + A*B*tedd2a/dist2/2.0*(xyz[ejl3+1] - xyz[at31])*C + A*B*fc2_deri*(xyz[ejl3+1] - xyz[at31])*fc1);
+									ANI1_Sym_deri_data[mnshift + ejl3+2] +=  ttomz*(zps*(theta_deri_cj*(xyz[ejl3+2] - xyz[at32])/dist2 + theta_deri_ij*(xyz[ejl3+2]-xyz[eik3+2])/dist3)*B*C + A*B*tedd2a/dist2/2.0*(xyz[ejl3+2] - xyz[at32])*C + A*B*fc2_deri*(xyz[ejl3+2] - xyz[at32])*fc1);
 
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+0] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+0] - xyz[ele_index[i][k]*3+0])/dist1 + theta_deri_cj*(xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+0] - xyz[ele_index[i][k]*3+0])/dist1 + (xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+0] - xyz[ele_index[i][k]*3+0])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+0] - xyz[ele_index[j][l]*3+0])*fc1);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+1] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])/dist1 + theta_deri_cj*(xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])/dist1 + (xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+1] - xyz[ele_index[i][k]*3+1])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+1] - xyz[ele_index[j][l]*3+1])*fc1);
-									ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + atom_num*3+2] +=  pow(2.0, 1-zeta)*(zeta*pow(1+cos(theta-angle_As[m]), zeta-1)*(-sin(theta-angle_As[m]))*(theta_deri_ci*(xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])/dist1 + theta_deri_cj*(xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])/dist2)*B*C + A*B*(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))/2.0*((xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])/dist1 + (xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])/dist2)*C + A*B*fc1_deri*(xyz[atom_num*3+2] - xyz[ele_index[i][k]*3+2])*fc2 + A*B*fc2_deri*(xyz[atom_num*3+2] - xyz[ele_index[j][l]*3+2])*fc1);
+									ANI1_Sym_deri_data[mnshift + at3+0] +=  ttomz*(zps*(theta_deri_ci*(xyz[at3+0] - xyz[eik3+0])/dist1 + theta_deri_cj*(xyz[at3+0] - xyz[ejl3+0])/dist2)*B*C + A*B*tedd2a/2.0*((xyz[at3+0] - xyz[eik3+0])/dist1 + (xyz[at3+0] - xyz[ejl3+0])/dist2)*C + A*B*fc1_deri*(xyz[at3+0] - xyz[eik3+0])*fc2 + A*B*fc2_deri*(xyz[at3+0] - xyz[ejl3+0])*fc1);
+									ANI1_Sym_deri_data[mnshift + at31] +=  ttomz*(zps*(theta_deri_ci*(xyz[at31] - xyz[eik3+1])/dist1 + theta_deri_cj*(xyz[at31] - xyz[ejl3+1])/dist2)*B*C + A*B*tedd2a/2.0*((xyz[at31] - xyz[eik3+1])/dist1 + (xyz[at31] - xyz[ejl3+1])/dist2)*C + A*B*fc1_deri*(xyz[at31] - xyz[eik3+1])*fc2 + A*B*fc2_deri*(xyz[at31] - xyz[ejl3+1])*fc1);
+									ANI1_Sym_deri_data[mnshift + at32] +=  ttomz*(zps*(theta_deri_ci*(xyz[at32] - xyz[eik3+2])/dist1 + theta_deri_cj*(xyz[at32] - xyz[ejl3+2])/dist2)*B*C + A*B*tedd2a/2.0*((xyz[at32] - xyz[eik3+2])/dist1 + (xyz[at32] - xyz[ejl3+2])/dist2)*C + A*B*fc1_deri*(xyz[at32] - xyz[eik3+2])*fc2 + A*B*fc2_deri*(xyz[at32] - xyz[ejl3+2])*fc1);
 //									 if (   bond_index == 8 && m == 1 && n ==5 && atom_num == 7)  {
 //										std::cout<<"zeta: "<<zeta<<"  angle_As[m]"<<angle_As[m]<<"   angle_Rs[n]"<<angle_Rs[n]<<"  angle_Rc"<<angle_Rc<<"  eta:"<<eta<<std::endl;
-//										std::cout<<"ele_index[i][k]"<<ele_index[i][k]<<"  "<<" ele_index[j][l]"<<ele_index[j][l]<<std::endl;
-//										std::cout<<"N:"<<xyz[ele_index[i][k]*3+2]<<" O "<<xyz[ele_index[j][l]*3+2]<<" H:"<<xyz[atom_num*3+2]<<std::endl;
-//										std::cout<<ANI1_Sym_deri_data[data_pointer+radius_Rs_dim*nele*3*natom+bond_index*angle_Rs_dim*angle_As_dim*3*natom+ (m*angle_Rs_dim+n)*3*natom + ele_index[i][k]*3+2]<<std::endl;
-//										std::cout<<"pow(2.0, 1-zeta)"<<pow(2.0, 1-zeta)<<"  pow(1+cos(theta-angle_As[m]), zeta-1)"<<pow(1+cos(theta-angle_As[m]), zeta-1)<<"  -sin(theta-angle_As[m])"<<-sin(theta-angle_As[m])<<"  theta_deri_ci"<<theta_deri_ci<<"  theta_deri_ij"<<theta_deri_ij<<"  (-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))"<<(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))<<"  fc1_deri"<<fc1_deri<<" A:"<<A<<"  B:"<<B<<" C:"<<C<<" (dist1+dist2)/2.0-angle_Rs[n]"<<(dist1+dist2)/2.0-angle_Rs[n]<<"    deri theta"<<(theta_deri_ci*(xyz[ele_index[i][k]*3+2] - xyz[atom_num*3+2])/dist1 + theta_deri_ij*(xyz[ele_index[i][k]*3+2]-xyz[ele_index[j][l]*3+2])/dist3)<<std::endl;
+//										std::cout<<"ele_index[i][k]"<<ele_index[i][k]<<"  "<<" ejl"<<ejl<<std::endl;
+//										std::cout<<"N:"<<xyz[ele_index[i][k]*3+2]<<" O "<<xyz[ejl*3+2]<<" H:"<<xyz[at32]<<std::endl;
+//										std::cout<<ANI1_Sym_deri_data[mnshift + ele_index[i][k]*3+2]<<std::endl;
+//										std::cout<<"pow(2.0, 1-zeta)"<<pow(2.0, 1-zeta)<<"  pow(1+cos(theta-angle_As[m]), zeta-1)"<<pow(1+cos(theta-angle_As[m]), zeta-1)<<"  -sin(theta-angle_As[m])"<<-sin(theta-angle_As[m])<<"  theta_deri_ci"<<theta_deri_ci<<"  theta_deri_ij"<<theta_deri_ij<<"  (-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))"<<(-2*eta*((dist1+dist2)/2.0-angle_Rs[n]))<<"  fc1_deri"<<fc1_deri<<" A:"<<A<<"  B:"<<B<<" C:"<<C<<" (dist1+dist2)/2.0-angle_Rs[n]"<<(dist1+dist2)/2.0-angle_Rs[n]<<"    deri theta"<<(theta_deri_ci*(xyz[ele_index[i][k]*3+2] - xyz[at32])/dist1 + theta_deri_ij*(xyz[ele_index[i][k]*3+2]-xyz[ejl*3+2])/dist3)<<std::endl;
 //
 //}
 //
@@ -338,14 +367,18 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 	int g1_size = radius_Rs_dim;
 	int g2_size = angle_Rs_dim * angle_As_dim;
 	int bond_index = 0;
+	int an3 = atom_num*3;
 	int SYMdim = nele*radius_Rs_dim + nele*(nele+1)/2*angle_Rs_dim*angle_As_dim;
 #pragma omp parallel for
 	for (int j = 0; j < nele; j++ ) {
 		for ( int k = 0;  k < ele_index[j].size(); k++) {
-			if (ele_index[j][k] != atom_num) {
-				dist1 = sqrt(pow(xyz[ele_index[j][k]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][k]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][k]*3+2] - xyz[atom_num*3+2],2));
+			int ejk = ele_index[j][k];
+			if (ejk != atom_num)
+			{
+				dist1 = sqrt(pow(xyz[ejk*3+0] - xyz[an3+0],2)+pow(xyz[ejk*3+1] - xyz[an3+1],2)+pow(xyz[ejk*3+2] - xyz[an3+2],2));
+				// Have to kill this hard cutoff...
 				if ( dist1 > radius_Rc)
-				continue;
+					continue;
 				else {
 					fc1 = fc(dist1, radius_Rc);
 					for (int m = 0; m < radius_Rs_dim; m++) {
@@ -376,7 +409,11 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 							fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc), fc3 = fc(dist3, angle_Rc);
 							tmp_v = (dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2);
 							//theta = acos(tmp_v);
-							theta = acos(roundf(tmp_v * 1000000000) / 1000000000); // round to 9 decimal place
+							if (tmp_v<-1.0)
+								tmp_v =-1.0;
+							else if (tmp_v > 1.0)
+									tmp_v = 1.0;
+							theta = acos(tmp_v); // round to 9 decimal place
 							C = fc1*fc2;
 							for (int m = 0; m < angle_As_dim; m++) {
 								A = pow(2.0, 1-zeta)*pow(1+cos(theta-angle_As[m]), zeta);
