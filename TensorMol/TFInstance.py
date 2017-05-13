@@ -62,6 +62,7 @@ class Instance:
 		self.momentum = PARAMS["momentum"]
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
+		self.activation_function_type = PARAMS["NeuronType"]
 		self.activation_function = None
 		self.AssignActivation()
 		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
@@ -85,16 +86,20 @@ class Instance:
 
 	def AssignActivation(self):
 		LOGGER.info("Assigning Activation... %s", PARAMS["NeuronType"])
-		if PARAMS["NeuronType"] == "relu":
-			self.activation_function = tf.nn.relu
-		elif PARAMS["NeuronType"] == "softplus":
-			self.activation_function = tf.nn.softplus
-		elif PARAMS["NeuronType"] == "tanh":
-			self.activation_function = tf.tanh
-		elif PARAMS["NeuronType"] == "sigmoid":
-			self.activation_function = tf.sigmoid
-		else:
-			print ("unknown activation function, set to relu")
+		try:
+			if self.activation_function_type == "relu":
+				self.activation_function = tf.nn.relu
+			elif self.activation_function_type == "softplus":
+				self.activation_function = tf.nn.softplus
+			elif self.activation_function_type == "tanh":
+				self.activation_function = tf.tanh
+			elif self.activation_function_type == "sigmoid":
+				self.activation_function = tf.sigmoid
+			else:
+				print ("unknown activation function, set to relu")
+				self.activation_function = tf.nn.relu
+		except:
+			print ("activation function not assigned, set to relu")
 			self.activation_function = tf.nn.relu
 		return
 

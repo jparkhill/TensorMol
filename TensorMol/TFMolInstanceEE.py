@@ -699,7 +699,9 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		nmol = batch_data[3].shape[0]
 		LOGGER.debug("nmol: %i", batch_data[3].shape[0])
 		self.batch_size_output = nmol
-		self.Eval_Prepare()
+		if not self.sess:
+                        print ("loading the session..")
+                        self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		netcharge, dipole, total_loss_value, loss_value,  atom_outputs = self.sess.run([self.netcharge_output, self.dipole_output, self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
 		return netcharge, dipole/AUPERDEBYE, atom_outputs

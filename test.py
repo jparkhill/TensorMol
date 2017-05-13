@@ -207,11 +207,14 @@ def TestDipole():
 
 
 	if (1):
-		a = MSet("thf_dimer")
-                a.ReadXYZ("thf_dimer")
+		a = MSet("CH3OH_dimer")
+                a.ReadXYZ("CH3OH_dimer")
 		manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
-                net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
-		print dipole
+		nn_dip = np.zeros((len(a.mols),3))
+		for i, mol in enumerate(a.mols):
+                	net, dipole, charge = manager.Eval_BPDipole(mol, True)
+			nn_dip[i] = dipole
+		np.savetxt("CH3OH_dimer_nn_dip.dat", nn_dip)
 		#f = open("thf_dimer.in","w+")
 		#for mol in a.mols:
 	#		f.write("$molecule\n0 1\n")
@@ -550,8 +553,8 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-#TestDipole()
-TestJohnson()
+TestDipole()
+#TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
