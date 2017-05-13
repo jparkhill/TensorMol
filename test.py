@@ -4,7 +4,7 @@ Many of these tests take a pretty significant amount of time and memory to compl
 """
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
 # John's tests
 def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
@@ -175,6 +175,51 @@ def TestDipole():
 		#net, dipole, charge = manager.EvalBPDipole(a.mols, True)
 		print net, dipole, charge
 		#np.savetxt("./results/furan_md_nn_dipole.dat", dipole)
+
+	if (0):
+		a = MSet("furan_md")
+                a.ReadXYZ("furan_md")
+		manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+                net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
+		charge = charge[0]
+		fixed_charge_dipole = np.zeros((len(a.mols),3))
+		for i, mol in enumerate(a.mols):
+			center_ = np.average(mol.coords,axis=0)
+        		fixed_charge_dipole[i] = np.einsum("ax,a", mol.coords-center_ , charge)/AUPERDEBYE
+		np.savetxt("./results/furan_md_nn_fixed_charge_dipole.dat", fixed_charge_dipole)
+	if (0):
+		a = MSet("furan_md")
+                a.ReadXYZ("furan_md")
+		mul_charge = np.loadtxt("./datasets/mul_charge.dat")
+		hir_charge = np.loadtxt("./datasets/hir_charge.dat")
+		mul_dipole = np.zeros((len(a.mols),3))
+		hir_dipole = np.zeros((len(a.mols),3))
+		for i, mol in enumerate(a.mols):
+                        center_ = np.average(mol.coords,axis=0)
+                        mul_dipole[i] = np.einsum("ax,a", mol.coords-center_ , mul_charge[i])/AUPERDEBYE
+			hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge[i])/AUPERDEBYE			
+
+                np.savetxt("./results/furan_md_mul_dipole.dat", mul_dipole)
+		np.savetxt("./results/furan_md_hir_dipole.dat", hir_dipole)
+
+
+	if (1):
+		a = MSet("thf_dimer")
+                a.ReadXYZ("thf_dimer")
+		manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+                net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
+		print dipole
+		#f = open("thf_dimer.in","w+")
+		#for mol in a.mols:
+	#		f.write("$molecule\n0 1\n")
+	#		for i in range (0, mol.NAtoms()):
+#				atom_name =  atoi.keys()[atoi.values().index(mol.atoms[i])]
+#                		f.write(atom_name+"   "+str(mol.coords[i][0])+ "  "+str(mol.coords[i][1])+ "  "+str(mol.coords[i][2])+"\n")
+#			f.write("$end\n\n$rem\njobtype sp\nexchange b3lyp\nbasis 6-31g(d)\nHIRSHFELD True\n$end\n\n\n@@@\n\n")
+#		f.close()	
+
+		
+
 
 def TestGeneralMBEandMolGraph():
 	a=FragableMSet("NaClH2O")
@@ -501,7 +546,8 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-TestANI1()
+#TestANI1()
+TestDipole()
 #TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)

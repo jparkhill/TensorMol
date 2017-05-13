@@ -470,6 +470,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
+		#self.learning_rate = 0.0001
 		self.learning_rate = 0.00001
 		self.momentum = 0.
 		if (self.Trainable):

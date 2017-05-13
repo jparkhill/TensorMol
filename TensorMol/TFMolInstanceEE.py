@@ -410,8 +410,9 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			self.TData.LoadDataToScratch(self.tformer)
 			# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 			self.inshape = np.prod(self.TData.dig.eshape)
-		# HACK something was up with the shapes in kun's saved network.
-		self.inshape = self.inshape[0]
+		# HACK something was up with the shapes in kun's saved network... 
+		#I do not need that..
+		#self.inshape = self.inshape[0]
 		print("MolInstance_BP_Dipole.inshape: ",self.inshape)
 		self.eles = self.TData.eles
 		self.n_eles = len(self.eles)
