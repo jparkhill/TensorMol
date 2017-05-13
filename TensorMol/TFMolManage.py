@@ -259,12 +259,15 @@ class TFMolManage(TFManage):
 		else:
 			return  (-627.509*total_gradient.reshape((-1,3)))
 
-	def Test_RawNNOutput(self,mol):
+	def Eval_BPForceHalfNumerical(self, mol, total_energy = False):
 		"""
+		This version uses a half-numerical gradient.
 		Args:
 			mol: a Mol.
+			total_energy: whether to also return the energy as a first argument.
 		Returns:
-			Energy in Hartree
+			(if total_energy == True): Energy in Hartree
+			and Forces (kcal/mol)
 		"""
 		nmols = 1
 		natoms = mol.NAtoms()
@@ -274,8 +277,8 @@ class TFMolManage(TFManage):
 		casep = 0
 		mols_done = 0
 		t = time.time()
-		#
-		ins = self.TData.dig.EvalDigest(mol, False)
+		# Fictitious set loop.
+		ins = self.TData.dig.EvalDigest(mol,False)
 		nat = mol.NAtoms()
 		cases[casep:casep+nat] = ins
 		for i in range (casep, casep+nat):
@@ -285,7 +288,7 @@ class TFMolManage(TFManage):
 			meta[i, 3] = casep + nat
 		casep += nat
 		mols_done += 1
-		#
+		# End fictitious set loop.
 		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
 		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
 		inputs = []
@@ -295,8 +298,8 @@ class TFMolManage(TFManage):
 			sto[self.TData.eles.index(meta[i, 1])] += 1
 		currentmol = 0
 		for e in range (len(self.TData.eles)):
-				inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
-				matrices.append(np.zeros((sto[e], nmols)))
+			inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+			matrices.append(np.zeros((sto[e], nmols)))
 		for i in range (0, natoms):
 			if currentmol != meta[i, 0]:
 				outputpointer += 1
@@ -307,32 +310,171 @@ class TFMolManage(TFManage):
 			matrices[ei][offsets[ei], outputpointer] = 1.0
 			offsets[ei] += 1
 		t = time.time()
-		pointers = [0 for ele in self.TData.eles]
-		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=False)
+		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
+		total_gradient = np.zeros((natoms*3))
+		for i in range (0, len(nn_gradient)): # Loop over element types.
+			Eval_Input = lambda x_: self.Eval_Input(Mol(mol.atoms,x_.reshape((-1,3))))[i]
+			input_grad = np.transpose(FdiffGradient(Eval_Input, mol.coords.flatten(), 0.00001),(1,2,0))
+			total_gradient += np.einsum("ad,adx->x",nn_gradient[i],input_grad) # Chain rule.
+		if (total_energy):
+			total = mol_out[0][0]
+			for j in range (0, mol.NAtoms()):
+				total += ele_U[mol.atoms[j]]
+			return  total, (-627.509*total_gradient.reshape((-1,3)))
+		else:
+			return  (-627.509*total_gradient.reshape((-1,3)))
 
+	def Eval_Input(self, mol):
+		"""
+		Args:
+			mol: a Mol.
+			total_energy: whether to also return the energy as a first argument.
+		Returns:
+			(if total_energy == True): Energy in Hartree
+			and Forces (kcal/mol)
+		"""
+		nmols = 1
+		natoms = mol.NAtoms()
+		cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+		cases_grads = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)+list([3*natoms])))
+		dummy_outputs = np.zeros((nmols))
+		meta = np.zeros((natoms, 4), dtype = np.int)
+		casep = 0
+		mols_done = 0
+		t = time.time()
+		# Fictitious set loop.
+		ins, grads = self.TData.dig.EvalDigest(mol)
+		nat = mol.NAtoms()
+		cases[casep:casep+nat] = ins
+		cases_grads[casep:casep+nat] = grads
+		for i in range (casep, casep+nat):
+			meta[i, 0] = mols_done
+			meta[i, 1] = mol.atoms[i - casep]
+			meta[i, 2] = casep
+			meta[i, 3] = casep + nat
+		casep += nat
+		mols_done += 1
+		# End fictitious set loop.
+		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+		inputs = []
+		inputs_grads = []
+		outputpointer = 0
+		for i in range (0, natoms):
+			sto[self.TData.eles.index(meta[i, 1])] += 1
+		currentmol = 0
+		for e in range (len(self.TData.eles)):
+			inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+		for i in range (0, natoms):
+			if currentmol != meta[i, 0]:
+				outputpointer += 1
+				currentmol = meta[i, 0]
+			e = meta[i, 1]
+			ei = self.TData.eles.index(e)
+			inputs[ei][offsets[ei], :] = cases[i]
+			offsets[ei] += 1
+		return inputs
+
+	def Eval_InputGrad(self, mol):
+		"""
+		Args:
+			mol: a Mol.
+			total_energy: whether to also return the energy as a first argument.
+		Returns:
+			(if total_energy == True): Energy in Hartree
+			and Forces (kcal/mol)
+		"""
+		nmols = 1
+		natoms = mol.NAtoms()
+		cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+		cases_grads = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)+list([3*natoms])))
+		dummy_outputs = np.zeros((nmols))
+		meta = np.zeros((natoms, 4), dtype = np.int)
+		casep = 0
+		mols_done = 0
+		t = time.time()
+		# Fictitious set loop.
+		ins, grads = self.TData.dig.EvalDigest(mol)
+		nat = mol.NAtoms()
+		cases[casep:casep+nat] = ins
+		cases_grads[casep:casep+nat] = grads
+		for i in range (casep, casep+nat):
+			meta[i, 0] = mols_done
+			meta[i, 1] = mol.atoms[i - casep]
+			meta[i, 2] = casep
+			meta[i, 3] = casep + nat
+		casep += nat
+		mols_done += 1
+		# End fictitious set loop.
+		sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+		offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+		inputs = []
+		inputs_grads = []
+		matrices = []
+		outputpointer = 0
+		for i in range (0, natoms):
+			sto[self.TData.eles.index(meta[i, 1])] += 1
+		currentmol = 0
+		for e in range (len(self.TData.eles)):
+			inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+			inputs_grads.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape), 3*natoms)))
+			matrices.append(np.zeros((sto[e], nmols)))
+		for i in range (0, natoms):
+			if currentmol != meta[i, 0]:
+				outputpointer += 1
+				currentmol = meta[i, 0]
+			e = meta[i, 1]
+			ei = self.TData.eles.index(e)
+			inputs[ei][offsets[ei], :] = cases[i]
+			inputs_grads[ei][offsets[ei], :]  = cases_grads[i]
+			matrices[ei][offsets[ei], outputpointer] = 1.0
+			offsets[ei] += 1
+		return inputs_grads
 
 	def Test_BPGrad(self,mol):
 		"""
 		Computes the gradient a couple different ways. Compares them.
 		"""
 		EnergyFunction = lambda x_: 627.509*self.Eval_BPEnergySingle(Mol(mol.atoms,x_))
-		NumForce0 = FdiffGradient(EnergyFunction, mol.coords, 0.01)
-		NumForce1 = FdiffGradient(EnergyFunction, mol.coords, 0.001)
-		NumForce2 = FdiffGradient(EnergyFunction, mol.coords, 0.0001)
-		NumForce3 = FdiffGradient(EnergyFunction, mol.coords, 0.00001)
+		NumForce0 = FdiffGradient(EnergyFunction, mol.coords, 0.1)
+		NumForce1 = FdiffGradient(EnergyFunction, mol.coords, 0.01)
+		NumForce2 = FdiffGradient(EnergyFunction, mol.coords, 0.001)
+		NumForce3 = FdiffGradient(EnergyFunction, mol.coords, 0.0001)
 		print "Force Differences", RmsForce(NumForce1-NumForce0)
 		print "Force Differences", RmsForce(NumForce2-NumForce1)
 		print "Force Differences", RmsForce(NumForce3-NumForce2)
 		print "Force Differences", RmsForce(NumForce3-NumForce1)
 		AnalForce = self.Eval_BPForceSingle( mol, total_energy = False)
+		HalfAnalForce = self.Eval_BPForceHalfNumerical( mol, total_energy = False)
 		print "Force Differences2", RmsForce(NumForce0-AnalForce)
 		print "Force Differences2", RmsForce(NumForce1-AnalForce)
 		print "Force Differences2", RmsForce(NumForce2-AnalForce)
 		print "Force Differences2", RmsForce(NumForce3-AnalForce)
-		print NumForce0
-		print NumForce1
-		print AnalForce
-
+		print "Force Differences3", RmsForce(NumForce0-HalfAnalForce)
+		print "Force Differences3", RmsForce(NumForce1-HalfAnalForce)
+		print "Force Differences3", RmsForce(NumForce2-HalfAnalForce)
+		print "Force Differences3", RmsForce(NumForce3-HalfAnalForce)
+		print "Force Differences4", RmsForce(AnalForce-HalfAnalForce)
+		print "Numerical force 0 / Analytical force", NumForce0/AnalForce
+		print "Numerical force 1 / Analytical force", NumForce1/AnalForce
+		print "HalfAnalForce / Analytical force", HalfAnalForce/AnalForce
+		if (0):
+			print "Testing chain rule components... "
+			tmp = self.Eval_InputGrad(mol)
+			for ele in range(len(tmp)):
+				Eval_Input = lambda x_: self.Eval_Input(Mol(mol.atoms,x_.reshape((-1,3))))[ele]
+				Analyticaldgdr = self.Eval_InputGrad(mol)[ele]
+				Numericaldgdr0 = np.transpose(FdiffGradient(Eval_Input, mol.coords.flatten(), 0.01),(1,2,0))
+				Numericaldgdr1 = np.transpose(FdiffGradient(Eval_Input, mol.coords.flatten(), 0.001),(1,2,0))
+				Numericaldgdr2 = np.transpose(FdiffGradient(Eval_Input, mol.coords.flatten(), 0.0001),(1,2,0))
+				Numericaldgdr3 = np.transpose(FdiffGradient(Eval_Input, mol.coords.flatten(), 0.00001),(1,2,0))
+				print "Shapes", Analyticaldgdr.shape, Numericaldgdr1.shape
+				for i in range(Analyticaldgdr.shape[0]):
+					for j in range(Analyticaldgdr.shape[1]):
+						for k in range(Analyticaldgdr.shape[2]):
+							if (abs(Analyticaldgdr[i,j,k])>0.0000000001):
+								if (abs((Analyticaldgdr[i,j,k]/Numericaldgdr2[i,j,k])-1.)>0.05):
+									print ele,i,j,k," :: ",Analyticaldgdr[i,j,k]," ", Numericaldgdr0[i,j,k]," ", Numericaldgdr1[i,j,k]," ", Numericaldgdr2[i,j,k]
 
 	def Eval_BPDipole(self, mol_set,  ScaleCharge_ = False):
 		"""

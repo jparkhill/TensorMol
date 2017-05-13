@@ -255,7 +255,6 @@ class Optimizer:
 		Energy = lambda x_: self.tfm.Eval_BPEnergySingle(Mol(m.atoms, x_))
 		EnergyAndForce =  lambda x_: self.tfm.Eval_BPForceSingle(Mol(m.atoms, x_),total_energy=True)
 		Gradient =  lambda x_: (self.tfm.Eval_BPForceSingle(Mol(m.atoms, x_),total_energy=False)[0])
-		self.tfm.Test_BPGrad(m)
 		#EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
 		while( step < self.max_opt_step and rmsgrad > 0.5):
 			prev_m = Mol(m.atoms, m.coords)
