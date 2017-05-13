@@ -82,6 +82,7 @@ class TMParams(dict):
 		self["NebK"] = 0.01
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
+		self["RemoveInvariant"] = True
 		# MD Parameters
 		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.05 # In fs.
