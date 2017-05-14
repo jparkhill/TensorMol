@@ -85,12 +85,11 @@ class TMParams(dict):
 		self["RemoveInvariant"] = True
 		# MD Parameters
 		self["MDMaxStep"] = 20000
-		self["MDdt"] = 0.05 # In fs.
+		self["MDdt"] = 0.2 # In fs.
 		self["MDTemp"] = 300.0
 		self["MDV0"] = "Random"
 		self["MDThermostat"] = None # None, "Rescaling", "Nose", "NoseHooverChain"
 		self["MDLogTrajectory"] = True
-		self["MDLogVelocity"] = False
 		self["MDUpdateCharges"] = False
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])

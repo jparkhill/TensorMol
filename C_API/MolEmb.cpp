@@ -401,10 +401,12 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 				continue;
 				else {
 					for (int l = 0; l < ele_index[j].size(); l++) {
-						dist2 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[atom_num*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[atom_num*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[atom_num*3+2],2));
-						dist3 = sqrt(pow(xyz[ele_index[j][l]*3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ele_index[j][l]*3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ele_index[j][l]*3+2] - xyz[ele_index[i][k]*3+2],2));
+					int ejl = ele_index[j][l];
+					int ejl3 = ejl*3;
+						dist2 = sqrt(pow(xyz[ejl3+0] - xyz[atom_num*3+0],2)+pow(xyz[ejl3+1] - xyz[atom_num*3+1],2)+pow(xyz[ejl3+2] - xyz[atom_num*3+2],2));
+						dist3 = sqrt(pow(xyz[ejl3+0] - xyz[ele_index[i][k]*3+0],2)+pow(xyz[ejl3+1] - xyz[ele_index[i][k]*3+1],2)+pow(xyz[ejl3+2] - xyz[ele_index[i][k]*3+2],2));
 						if ((dist2 > angle_Rc) || (i == j && l <= k) || ele_index[j][l] == atom_num) // change to <= since when v1 and v2 are same kind of element, do not revisit. diff by a factor of two
-						continue;
+							continue;
 						else {
 							fc1 = fc(dist1, angle_Rc), fc2 = fc(dist2, angle_Rc), fc3 = fc(dist3, angle_Rc);
 							tmp_v = (dist1*dist1+dist2*dist2-dist3*dist3)/(2.0*dist1*dist2);
@@ -426,7 +428,6 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 					}
 				}
 			}
-			//bond_index = nele*i - i*(i-1)/2 + j - i;
 			bond_index = bond_index + 1;
 		}
 	}
@@ -515,7 +516,7 @@ static PyObject*  Make_RDF(PyObject *self, PyObject  *args) {
 	}
 
 	for  (int i= 0; i < num_RDF; i++) {
-		center[0] = grids_data[i*Ngrids[1]+0];
+		center[0] = grids_data[i*Ngrids[1]];
 		center[1] = grids_data[i*Ngrids[1]+1];
 		center[2] = grids_data[i*Ngrids[1]+2];
 		RDF = PyArray_SimpleNew(2, RDFdim, NPY_DOUBLE);  //2 is the number of dimensions
@@ -626,7 +627,7 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 	//         std::cout << i << "  "<< j <<  "  " <<  *k << std::endl;
 
 	for (int i = 0; i < num_CM;  i++) {  //loop over different atoms of the same type
-		center[0] = grids_data[i*Ngrids[1]+0];
+		center[0] = grids_data[i*Ngrids[1]];
 		center[1] = grids_data[i*Ngrids[1]+1];
 		center[2] = grids_data[i*Ngrids[1]+2];
 
@@ -649,7 +650,7 @@ static PyObject*  Make_CM (PyObject *self, PyObject  *args)
 
 		for (int m = 0; m < nele; m++) {
 			for (int k = 0; k < ele_index_mask[m].size(); k++) {
-				dist=sqrt(pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+0]-center[0], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+1]-center[1], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+2]-center[2], 2.0));
+				dist=sqrt(pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]]-center[0], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+1]-center[1], 2.0) + pow(xyz_data[ele_index_mask[m][k]*Nxyz[1]+2]-center[2], 2.0));
 				//           std::cout<<disp<<"  "<<dist<<std::endl;
 				//     std::cout<<" "<<m<<"  "<<k<<"  "<<1/dist*(1 - erf(4*(dist-dist_cut)))/2<<"  "<<1/dist<<std::endl;
 				//if (dist > 0.5)
@@ -723,12 +724,12 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 		#pragma omp parallel for
 		for (int i=0; i<natom; ++i)
 		{
-			double xc = xyz_data[i*3+0];
+			double xc = xyz_data[i*3];
 			double yc = xyz_data[i*3+1];
 			double zc = xyz_data[i*3+2];
 			for (int j = 0; j < natom; j++)
 			{
-				double x = xyz_data[j*3+0];
+				double x = xyz_data[j*3];
 				double y = xyz_data[j*3+1];
 				double z = xyz_data[j*3+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
@@ -741,13 +742,13 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 		int i = theatom;
 		int ai=0;
 
-		double xc = xyz_data[i*3+0];
+		double xc = xyz_data[i*3];
 		double yc = xyz_data[i*3+1];
 		double zc = xyz_data[i*3+2];
 
 		for (int j = 0; j < natom; j++)
 		{
-			double x = xyz_data[j*3+0];
+			double x = xyz_data[j*3];
 			double y = xyz_data[j*3+1];
 			double z = xyz_data[j*3+2];
 			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*SHdim, Prm->ANES[atoms[j]-1]);
@@ -797,13 +798,13 @@ static PyObject* Make_SH_Transf(PyObject *self, PyObject  *args)
 	{
 		// Center the atom and then perform the transformations.
 
-		double xc = xyz_data[theatom*3+0];
+		double xc = xyz_data[theatom*3];
 		double yc = xyz_data[theatom*3+1];
 		double zc = xyz_data[theatom*3+2];
 
 		for (int j = 0; j < natom; j++)
 		{
-			t_coords0[j][0] = xyz_data[j*3+0] - xc;
+			t_coords0[j][0] = xyz_data[j*3] - xc;
 			t_coords0[j][1] = xyz_data[j*3+1] - yc;
 			t_coords0[j][2] = xyz_data[j*3+2] - zc;
 		}
@@ -820,9 +821,9 @@ static PyObject* Make_SH_Transf(PyObject *self, PyObject  *args)
 			for (int j = 0; j < natom; j++)
 			{
 				// Perform the transformation, embed and out...
-				double x = (tr[0*3+0]*t_coords0[j][0]+tr[0*3+1]*t_coords0[j][1]+tr[0*3+2]*t_coords0[j][2]);
-				double y = (tr[1*3+0]*t_coords0[j][0]+tr[1*3+1]*t_coords0[j][1]+tr[1*3+2]*t_coords0[j][2]);
-				double z = (tr[2*3+0]*t_coords0[j][0]+tr[2*3+1]*t_coords0[j][1]+tr[2*3+2]*t_coords0[j][2]);
+				double x = (tr[0*3]*t_coords0[j][0]+tr[0*3+1]*t_coords0[j][1]+tr[0*3+2]*t_coords0[j][2]);
+				double y = (tr[1*3]*t_coords0[j][0]+tr[1*3+1]*t_coords0[j][1]+tr[1*3+2]*t_coords0[j][2]);
+				double z = (tr[2*3]*t_coords0[j][0]+tr[2*3+1]*t_coords0[j][1]+tr[2*3+2]*t_coords0[j][2]);
 				RadSHProjection(Prm, x, y, z, SH_data + i*SHdim, Prm->ANES[atoms[j]-1]);
 			}
 		}
@@ -865,12 +866,12 @@ static PyObject* Make_SH_EleUniq(PyObject *self, PyObject  *args)
 		#pragma omp parallel for
 		for (int i=0; i<natom; ++i)
 		{
-			double xc = xyz_data[i*Nxyz[1]+0];
+			double xc = xyz_data[i*Nxyz[1]];
 			double yc = xyz_data[i*Nxyz[1]+1];
 			double zc = xyz_data[i*Nxyz[1]+2];
 			for (int j = 0; j < natom; j++)
 			{
-				double x = xyz_data[j*Nxyz[1]+0];
+				double x = xyz_data[j*Nxyz[1]];
 				double y = xyz_data[j*Nxyz[1]+1];
 				double z = xyz_data[j*Nxyz[1]+2];
 				//RadSHProjection(x-xc,y-yc,z-zc,SH_data + i*SH_NRAD*(1+SH_LMAX)*(1+SH_LMAX), natom);
@@ -882,13 +883,13 @@ static PyObject* Make_SH_EleUniq(PyObject *self, PyObject  *args)
 		int i = theatom;
 		int ai=0;
 
-		double xc = xyz_data[i*Nxyz[1]+0];
+		double xc = xyz_data[i*Nxyz[1]];
 		double yc = xyz_data[i*Nxyz[1]+1];
 		double zc = xyz_data[i*Nxyz[1]+2];
 
 		for (int j = 0; j < natom; j++)
 		{
-			double x = xyz_data[j*Nxyz[1]+0];
+			double x = xyz_data[j*Nxyz[1]];
 			double y = xyz_data[j*Nxyz[1]+1];
 			double z = xyz_data[j*Nxyz[1]+2];
 			RadSHProjection(Prm,x-xc,y-yc,z-zc,SH_data + ai*SHdim, (double)atoms[j]);
