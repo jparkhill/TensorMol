@@ -34,7 +34,7 @@ def TestANI1():
 	"""
 	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
 	"""
-	if (0):
+	if (1):
 		#a = MSet("uneq_chemspider")
 		#a.ReadXYZ("uneq_chemspider")
 		#a.Save()
@@ -50,7 +50,7 @@ def TestANI1():
 		manager.Train(maxstep=2000)
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 #manager.Continue_Training(maxsteps=2)
-	if (1):
+	if (0):
 		a = MSet("CH3OH_dimer_noHbond")
 		a.ReadXYZ("CH3OH_dimer_noHbond")
 		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
@@ -572,8 +572,8 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-#TestANI1()
-TestDipole()
+TestANI1()
+#TestDipole()
 #TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
