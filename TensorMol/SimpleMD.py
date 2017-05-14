@@ -84,18 +84,21 @@ class NoseThermostat(Thermostat):
 		self.m = m_.copy()
 		self.N = len(m_)
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
-		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
-		self.tau = 30*PARAMS["MDdt"]
-		self.Q = self.kT*self.tau*self.tau
 		self.eta = 0.0
 		self.name = "Nose"
 		self.Rescale(v_)
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		return
+
 	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
+		# Recompute these stepwise in case of variable T.
+		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		self.tau = 80.0*PARAMS["MDdt"]
+		self.Q = self.kT*self.tau*self.tau
+
 		x = x_ + v_*dt_ + (1./2.)*(a_ - self.eta*v_)*dt_*dt_
 		vdto2 = v_ + (1./2.)*(a_ - self.eta*v_)*dt_
 		e, f_x_ = 0.0, None
@@ -120,7 +123,7 @@ class NosePerParticleThermostat(Thermostat):
 		self.N = len(m_)
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
 		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
-		self.tau = 25*PARAMS["MDdt"]
+		self.tau = 40.0*PARAMS["MDdt"]
 		self.Q = self.kT*self.tau*self.tau
 		self.eta = np.zeros(self.N)
 		self.name = "NosePerParticle"
@@ -176,7 +179,7 @@ class NoseChainThermostat(Thermostat):
 			self.wj[2] = 1.-4.*self.wj[0]
 			self.wj[3] = (1./(4. - np.power(4.,1./3.)))
 			self.wj[4] = (1./(4. - np.power(4.,1./3.)))
-		self.tau = 30*PARAMS["MDdt"]
+		self.tau = 80.0*PARAMS["MDdt"]
 		self.dt = PARAMS["MDdt"]
 		self.dt2 = self.dt/2.
 		self.dt22 = self.dt*self.dt/2.
@@ -381,6 +384,10 @@ class IRTrajectory(VelocityVerlet):
 		self.q0 = self.ChargeFunction(self.x)
 		self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
 		self.mu_his = None
+		# This can help in case you had a bad initial geometry
+		self.MinS = 0
+		self.MinE = 0.0
+		self.Minx = None
 
 	def Pulse(self,t_):
 		"""
@@ -440,6 +447,13 @@ class IRTrajectory(VelocityVerlet):
 			else:
 				self.x , self.v, self.a, self.EPot = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 
+			if (self.EPot < self.MinE):
+				self.MinE = self.EPot
+				self.Minx = self.x.copy()
+				self.MinS = step
+				LOGGER.info("WARNING -- You didn't start from the global minimum")
+				print self.x
+
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%100==0):
@@ -451,15 +465,18 @@ class IRTrajectory(VelocityVerlet):
 
 
 class Annealer(IRTrajectory):
-	def __init__(self,f_,q_,g0_,name_=str(0),v0_=None):
+	def __init__(self,f_,q_,g0_,name_="anneal"):
 		PARAMS["MDThermostat"] = None
 		PARAMS["MDV0"] = None
-		IRTrajectory.__init__(self, f_, q_, g0_, name_, v0_)
-		PARAMS["MDTemp"] = 0.002
-		self.dt = 0.5
+		IRTrajectory.__init__(self, f_, q_, g0_, name_)
+		self.dt = 0.2
 		self.v *= 0.0
-		self.AnnealSteps = 10000
-		self.Tstat = Thermostat(self.m,self.v)
+		self.AnnealT0 = 20.0
+		self.MinS = 0
+		self.MinE = 0.0
+		self.Minx = None
+		self.AnnealSteps = 1000
+		self.Tstat = NoseThermostat(self.m,self.v)
 		# The annealing program is 1K => 0K in 500 steps.
 		return
 
@@ -479,16 +496,20 @@ class Annealer(IRTrajectory):
 			else:
 				self.qs = self.q0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
-
-			self.Tstat.T = PARAMS["MDTemp"]*float(self.AnnealSteps - step)/self.AnnealSteps
+			# avoid the thermostat blowing up.
+			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10,0)
 			# First 50 steps without any thermostat.
-			if (step< self.AnnealSteps/2):
-				self.x , self.v, self.a, self.EPot = VelocityVerletstep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
-			else:
-				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+			self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+
+			if (self.EPot < self.MinE):
+				self.MinE = self.EPot
+				self.Minx = self.x.copy()
+				self.MinS = step
+
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
-		PARAMS["MDTemp"] = 0.0
+		self.x = self.Minx.copy()
+		print "Achieved Minimum energy ", self.MinE, " at step ", step
 		return

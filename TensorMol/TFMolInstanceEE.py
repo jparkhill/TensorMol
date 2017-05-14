@@ -707,6 +707,11 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		return netcharge, dipole/AUPERDEBYE, atom_outputs
 
 	def Eval_Prepare(self):
+		if (isinstance(self.inshape,tuple)):
+			if (len(self.inshape)>1):
+				raise Exception("My input should be flat")
+			else:
+				self.inshape = self.inshape[0]
 		#eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 			self.inp_pl=[]
