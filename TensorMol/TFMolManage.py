@@ -255,9 +255,9 @@ class TFMolManage(TFManage):
 			total = mol_out[0][0]
 			for j in range (0, mol.NAtoms()):
 				total += ele_U[mol.atoms[j]]
-			return  total, (-627.509*total_gradient.reshape((-1,3)))
+			return  total, (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
 		else:
-			return  (-627.509*total_gradient.reshape((-1,3)))
+			return  (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
 
 	def Eval_BPForceHalfNumerical(self, mol, total_energy = False):
 		"""
@@ -320,9 +320,9 @@ class TFMolManage(TFManage):
 			total = mol_out[0][0]
 			for j in range (0, mol.NAtoms()):
 				total += ele_U[mol.atoms[j]]
-			return  total, (-627.509*total_gradient.reshape((-1,3)))
+			return  total, (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
 		else:
-			return  (-627.509*total_gradient.reshape((-1,3)))
+			return  (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
 
 	def Eval_Input(self, mol):
 		"""
@@ -435,7 +435,7 @@ class TFMolManage(TFManage):
 		"""
 		Computes the gradient a couple different ways. Compares them.
 		"""
-		EnergyFunction = lambda x_: 627.509*self.Eval_BPEnergySingle(Mol(mol.atoms,x_))
+		EnergyFunction = lambda x_: JOULEPERHARTREE*self.Eval_BPEnergySingle(Mol(mol.atoms,x_))
 		NumForce0 = FdiffGradient(EnergyFunction, mol.coords, 0.1)
 		NumForce1 = FdiffGradient(EnergyFunction, mol.coords, 0.01)
 		NumForce2 = FdiffGradient(EnergyFunction, mol.coords, 0.001)

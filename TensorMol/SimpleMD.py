@@ -1,7 +1,6 @@
 """
 The Units chosen are Angstrom * Fs.
 I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
-kcal/angstrom. = 4.184e+13 joules/meter  = 4184 joules/angstrom
 Kb = 8.314 J/Mol K
 """
 
@@ -409,8 +408,9 @@ class IRTrajectory(VelocityVerlet):
 
 	def WriteTrajectory(self):
 		m=Mol(self.atoms,self.x)
-		m.properties["Time"]=self.t
-		m.properties["KineticEnergy"]=self.KE
+		#m.properties["Time"]=self.t
+		#m.properties["KineticEnergy"]=self.KE
+		m.properties["Energy"]=self.EPot
 		#m.properties["Charges"]=self.qs
 		m.WriteXYZfile("./results/", "MDTrajectory"+self.name)
 		return
@@ -456,6 +456,7 @@ class Annealer(IRTrajectory):
 		PARAMS["MDV0"] = None
 		IRTrajectory.__init__(self, f_, q_, g0_, name_, v0_)
 		PARAMS["MDTemp"] = 0.002
+		self.dt = 0.5
 		self.v *= 0.0
 		self.AnnealSteps = 10000
 		self.Tstat = Thermostat(self.m,self.v)
