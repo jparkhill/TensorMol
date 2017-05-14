@@ -1,13 +1,13 @@
 """
 The Units chosen are Angstrom * Fs.
 I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
-kcal/angstrom. = 4.184e+13 joules/meter  = 4184 joules/angstrom
 Kb = 8.314 J/Mol K
 """
 
 from Sets import *
 from TFManage import *
 from Electrostatics import *
+from QuasiNewtonTools import *
 
 def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	""" A Velocity Verlet Step
@@ -35,7 +35,7 @@ def KineticEnergy(v_, m_):
 		v_: Velocities (A/fs)
 		m_: the mass vector. (kg/mol)
 	Returns:
-		The kinetic energy per atom (J/mol)
+		The kinetic energy per atom (kJ/mol)
 	"""
 	return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_)*pow(10.0,10.0),m_)/len(m_)
 
@@ -46,7 +46,8 @@ class Thermostat:
 		"""
 		self.N = len(m_)
 		self.m = m_.copy()
-		self.T = PARAMS["MDTemp"]  # Length of NH chain.
+		self.T = PARAMS["MDTemp"]
+		self.Teff = 0.001
 		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
 		self.tau = 30*PARAMS["MDdt"]
 		self.name = "Rescaling"
@@ -63,15 +64,16 @@ class Thermostat:
 			e, f_x_ = fande_(x)
 		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
 		v = v_ + (1./2.)*(a_+a)*dt_
-		Teff = (2./3.)*KineticEnergy(v,self.m)/8.314
-		v *= np.sqrt(self.T/Teff)
+		self.Teff = (2./3.)*KineticEnergy(v,self.m)/8.314
+		v *= np.sqrt(self.T/self.Teff)
 		return x,v,a,e
 
 	def Rescale(self,v_):
 		# Do this elementwise otherwise H's blow off.
 		for i in range(self.N):
 			Teff = (2.0/(3.0*8.314))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
-			v_[i] *= np.sqrt(self.T/Teff)
+			if (Teff != 0.0):
+				v_[i] *= np.sqrt(self.T/(Teff))
 		return
 
 class NoseThermostat(Thermostat):
@@ -271,7 +273,6 @@ class VelocityVerlet:
 			PARAMS["MDTemp"]: Temperature to initialize or Thermostat to.
 			PARAMS["MDdt"]: Timestep.
 			PARAMS["MDV0"]: Sort of velocity initialization (None, or "Random")
-			PARAMS["MDLogVelocity"]: Write MD velocities.
 			PARAMS["MDLogTrajectory"]: Write MD Trajectory.
 		Returns:
 			A reaction path.
@@ -315,6 +316,7 @@ class VelocityVerlet:
 		m=Mol(self.atoms,self.x)
 		m.properties["Time"]=self.t
 		m.properties["KineticEnergy"]=self.KE
+		m.properties["PotEnergy"]=self.EPot
 		m.WriteXYZfile("./results/", "MDTrajectory"+self.name)
 		return
 
@@ -334,7 +336,7 @@ class VelocityVerlet:
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
-			LOGGER.info("Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f", step, self.t, self.KE,Teff)
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff)
 		if PARAMS["MDLogVelocity"] == True:
 			return velo_his
 		else:
@@ -360,7 +362,7 @@ class IRTrajectory(VelocityVerlet):
 			PARAMS["MDFieldTau"] = 1.2 #1.2 fs pulse.
 			PARAMS["MDFieldFreq"] = 1/1.2 # 700nm light is about 1/1.2 fs.
 		"""
-		VelocityVerlet.__init__(self,f_, g0_, name_)
+		VelocityVerlet.__init__(self, f_, g0_, name_, f_)
 		if (v0_!=None):
 			self.v = v0_.copy()
 		self.EField = np.zeros(3)
@@ -380,12 +382,6 @@ class IRTrajectory(VelocityVerlet):
 		self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
 		self.mu_his = None
 
-	def FieldFreeForce(self,x_):
-		self.EPot, f_ = self.EnergyAndForce(x_)
-		self.EPot -= self.EPot0
-		self.EPot *= 627.509*4183.9953
-		return f_*4183.9953
-
 	def Pulse(self,t_):
 		"""
 		\delta pulse of duration
@@ -399,21 +395,22 @@ class IRTrajectory(VelocityVerlet):
 			return np.zeros(3), False
 
 	def ForcesWithCharge(self,x_):
+		e, FFForce = self.EnergyAndForce(x_)
 		if (self.IsOn):
-			FFForce = self.FieldFreeForce(x_)
 			# ElectricFieldForce Is in units of Hartree/angstrom.
 			# and must be converted to kg*Angstrom/(Fs^2)
-			ElecForce = 4184.0*np.power(10.0,10.0)*ElectricFieldForce(self.qs, self.EField)
+			ElecForce = 4184.0*ElectricFieldForce(self.qs, self.EField)
 			print "Field Free Force", FFForce
 			print "ElecForce Force", ElecForce
-			return RemoveInvariantForce(x_, FFForce + ElecForce, self.m)
+			return e, RemoveInvariantForce(x_, FFForce + ElecForce, self.m)
 		else:
-			return RemoveInvariantForce(x_, self.FieldFreeForce(x_), self.m)
+			return e, RemoveInvariantForce(x_, FFForce, self.m)
 
 	def WriteTrajectory(self):
 		m=Mol(self.atoms,self.x)
-		m.properties["Time"]=self.t
-		m.properties["KineticEnergy"]=self.KE
+		#m.properties["Time"]=self.t
+		#m.properties["KineticEnergy"]=self.KE
+		m.properties["Energy"]=self.EPot
 		#m.properties["Charges"]=self.qs
 		m.WriteXYZfile("./results/", "MDTrajectory"+self.name)
 		return
@@ -433,17 +430,65 @@ class IRTrajectory(VelocityVerlet):
 				self.qs = self.q0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
 			self.mu_his[step,0] = self.t
-			self.mu_his[step,1:4] = self.Mu
+			self.mu_his[step,1:4] = self.Mu.copy()
 			self.mu_his[step,4] = self.KE
 			self.mu_his[step,5] = self.EPot
 			self.mu_his[step,6] = self.KE+self.EPot
 
-			self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForcesWithCharge, self.a, self.x, self.v, self.m, self.dt)
+			if (PARAMS["MDThermostat"]==None):
+				self.x , self.v, self.a, self.EPot = VelocityVerletstep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
+			else:
+				self.x , self.v, self.a, self.EPot = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
+
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%100==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(J): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+		return
+
+
+class Annealer(IRTrajectory):
+	def __init__(self,f_,q_,g0_,name_=str(0),v0_=None):
+		PARAMS["MDThermostat"] = None
+		PARAMS["MDV0"] = None
+		IRTrajectory.__init__(self, f_, q_, g0_, name_, v0_)
+		PARAMS["MDTemp"] = 0.002
+		self.dt = 0.5
+		self.v *= 0.0
+		self.AnnealSteps = 10000
+		self.Tstat = Thermostat(self.m,self.v)
+		# The annealing program is 1K => 0K in 500 steps.
+		return
+
+	def Prop(self):
+		"""
+		Propagate VelocityVerlet
+		"""
+		step = 0
+		while(step < self.AnnealSteps):
+			self.t = step*self.dt
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/8.314
+
+			self.EField, self.IsOn = self.Pulse(self.t)
+			if (self.UpdateCharges and not self.IsOn):
+				self.qs = self.ChargeFunction(self.x)
+			else:
+				self.qs = self.q0
+			self.Mu = Dipole(self.x, self.qs) - self.Mu0
+
+			self.Tstat.T = PARAMS["MDTemp"]*float(self.AnnealSteps - step)/self.AnnealSteps
+			# First 50 steps without any thermostat.
+			if (step< self.AnnealSteps/2):
+				self.x , self.v, self.a, self.EPot = VelocityVerletstep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
+			else:
+				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+				self.WriteTrajectory()
+			step+=1
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+		PARAMS["MDTemp"] = 0.0
 		return

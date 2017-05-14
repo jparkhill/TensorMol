@@ -125,23 +125,21 @@ def TestJohnson():
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),True)
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
 	PARAMS["MDdt"] = 0.2
-	PARAMS["MDTemp"] = 10.0
-	PARAMS["MDMaxStep"] = 1500
-	PARAMS["MDThermostat"] = "Nose"
-	md_warm = VelocityVerlet(ForceField, m,"0",ForceField)
-	md_warm.Prop()
-	PARAMS["MDMaxStep"] = 4000
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 40000
 	PARAMS["MDFieldAmp"] = 0.0#0.00000001
 	PARAMS["MDFieldTau"] = 0.4
 	PARAMS["MDFieldFreq"] = 1.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDTemp"]=0.0
 	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-	md0 = IRTrajectory(ForceField, ChargeField, m, "0", md_warm.v)
+	md0 = IRTrajectory(ForceField, ChargeField, m, "0")
 	md0.Prop()
 	PARAMS["MDFieldVec"] = np.array([0.0,1.0,0.0])
-	md1 = IRTrajectory(ForceField, ChargeField, m,"1", md_warm.v)
+	md1 = IRTrajectory(ForceField, ChargeField, m,"1")
 	md1.Prop()
 	PARAMS["MDFieldVec"] = np.array([0.0,0.0,1.0])
-	md2 = IRTrajectory(ForceField, ChargeField, m,"2", md_warm.v)
+	md2 = IRTrajectory(ForceField, ChargeField, m,"2")
 	md2.Prop()
 	WriteDipoleCorrelationFunction(md0.mu_his,md1.mu_his,md2.mu_his)
 	return
