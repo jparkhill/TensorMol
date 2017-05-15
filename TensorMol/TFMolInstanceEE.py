@@ -27,6 +27,7 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
 		self.learning_rate = 0.00001
+		#self.learning_rate = 0.00001
 		self.momentum = 0.95
 		self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
@@ -404,7 +405,8 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.00001
+		self.learning_rate = 0.0001
+		#self.learning_rate = 0.00001
 		self.momentum = 0.95
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
@@ -538,10 +540,10 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		hidden3_units=self.hidden3
 		netcharge_output = tf.zeros([self.batch_size_output, 1])
 		dipole_output = tf.zeros([self.batch_size_output, 3])
-		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
-		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
-		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
-		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
+		nrm1=10.0/(10+math.sqrt(float(self.inshape)))
+		nrm2=10.0/(10+math.sqrt(float(hidden1_units)))
+		nrm3=10.0/(10+math.sqrt(float(hidden2_units)))
+		nrm4=10.0/(10+math.sqrt(float(hidden3_units)))
 		LOGGER.info("Norms: %f,%f,%f", nrm1,nrm2,nrm3)
 		#print(inp_pl)
 		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
