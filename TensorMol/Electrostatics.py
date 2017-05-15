@@ -40,7 +40,7 @@ def ECoulECutoff(m_):
 	print ECoul, ECutoff
 	return
 
-def WriteDerDipoleCorrelationFunction(MuTraj):
+def WriteDerDipoleCorrelationFunction(MuTraj, name_="MutMu0.txt"):
 	"""
 	Args:
 		time, mux, muy, muz ...
@@ -59,7 +59,7 @@ def WriteDerDipoleCorrelationFunction(MuTraj):
 		for j in range(n-i):
 			tore[i,1] +=  np.dot(t0[i,1:4],t0[i+j,1:4])
 		tore[i,1] /= 3.*float(n-i)
-	np.savetxt("./results/"+"MutMu0.txt",tore)
+	np.savetxt("./results/"+name_,tore)
 	return tore
 
 def WriteDipoleCorrelationFunction(t0,t1,t2):

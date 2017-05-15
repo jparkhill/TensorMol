@@ -447,12 +447,15 @@ class IRTrajectory(VelocityVerlet):
 			else:
 				self.x , self.v, self.a, self.EPot = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 
-			if (self.EPot < self.MinE):
+			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>0.00005):
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
 				self.MinS = step
-				LOGGER.info("WARNING -- You didn't start from the global minimum")
+				LOGGER.info(" -- You didn't start from the global minimum -- ")
+				LOGGER.info("   -- I'mma set you back to the beginning -- ")
 				print self.x
+				self.Mu0 = Dipole(self.x, self.qs)
+				step=0
 
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
@@ -465,7 +468,7 @@ class IRTrajectory(VelocityVerlet):
 
 
 class Annealer(IRTrajectory):
-	def __init__(self,f_,q_,g0_,name_="anneal"):
+	def __init__(self,f_,q_,g0_,name_="anneal",AnnealThresh_ = 0.00004):
 		PARAMS["MDThermostat"] = None
 		PARAMS["MDV0"] = None
 		IRTrajectory.__init__(self, f_, q_, g0_, name_)
@@ -475,7 +478,8 @@ class Annealer(IRTrajectory):
 		self.MinS = 0
 		self.MinE = 0.0
 		self.Minx = None
-		self.AnnealSteps = 1000
+		self.AnnealSteps = 400
+		self.AnnealThresh = AnnealThresh_
 		self.Tstat = NoseThermostat(self.m,self.v)
 		# The annealing program is 1K => 0K in 500 steps.
 		return
@@ -497,14 +501,19 @@ class Annealer(IRTrajectory):
 				self.qs = self.q0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
 			# avoid the thermostat blowing up.
-			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10,0)
+			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
 			# First 50 steps without any thermostat.
 			self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 
-			if (self.EPot < self.MinE):
+			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh):
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
 				self.MinS = step
+				LOGGER.info("   -- cycling annealer -- ")
+				self.AnnealT0 = self.Tstat.T
+				print self.x
+				self.Mu0 = Dipole(self.x, self.qs)
+				step=0
 
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()

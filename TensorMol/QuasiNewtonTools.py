@@ -39,6 +39,41 @@ def FdiffGradient(f_, x_, eps_=0.0001):
 		it.iternext()
 	return tore
 
+def FdiffHessian(f_, x_, eps_=0.0001):
+	"""
+	Computes a finite difference hessian of a single or multi-valued function
+	at x_ for debugging purposes.
+	"""
+	x_t = x_.copy()
+	f_x_ = f_(x_)
+	outshape = x_.shape+x_.shape+f_x_.shape
+	tore=np.zeros(outshape)
+	iti = np.nditer(x_, flags=['multi_index'])
+	tmpshape = x_.shape+f_x_.shape
+	tmpfs = np.zeros(tmpshape)
+	while not iti.finished:
+		xi_t = x_.copy()
+		xi_t[iti.multi_index] += eps_
+		tmpfs[iti.multi_index]  = f_(xi_t)
+		iti.iternext()
+	iti = np.nditer(x_, flags=['multi_index'])
+	itj = np.nditer(x_, flags=['multi_index'])
+	while not iti.finished:
+		xi_t = x_.copy()
+		xi_t[iti.multi_index] += eps_
+		while not itj.finished:
+			xij_t = xi_t.copy()
+			xij_t[itj.multi_index] += eps_
+			tore[iti.multi_index][itj.multi_index] = ((f_(xij_t)-tmpfs[iti.multi_index]-tmpfs[itj.multi_index]+f_x_)/eps_/eps_)
+			itj.iternext()
+		iti.iternext()
+	return tore
+
+def FDiffNormalModes(f_, x_, m_):
+	"""
+	Perform a finite difference normal mode analysis. 
+	"""
+
 def LineSearch(f_, x0_, p_):
 	'''
 	golden section search to find the minimum of f on [a,b]
