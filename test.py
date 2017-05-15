@@ -116,8 +116,8 @@ def TestJohnson():
 	PARAMS["OptStepSize"] = 0.02
 	PARAMS["OptMaxCycles"]=500
 	m = a.mols[0]
-	optimizer = Optimizer(manager)
-	optimizer.OptANI1(m)
+	#optimizer = Optimizer(manager)
+	#optimizer.OptANI1(m)
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	net, dipole, charges = qmanager.Eval_BPDipole(m, False)
 	print "Net, Dipole, Charge", net, dipole, charges
@@ -126,22 +126,17 @@ def TestJohnson():
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
 	PARAMS["MDdt"] = 0.2
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 40000
-	PARAMS["MDFieldAmp"] = 0.0#0.00000001
-	PARAMS["MDFieldTau"] = 0.4
-	PARAMS["MDFieldFreq"] = 1.0
-	PARAMS["MDThermostat"] = None
-	PARAMS["MDTemp"]=0.0
+	PARAMS["MDMaxStep"] = 10000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDV0"] = None
+	PARAMS["MDTemp"]= 10.0
 	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	PARAMS["MDFieldAmp"] = 0.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
 	md0 = IRTrajectory(ForceField, ChargeField, m, "0")
 	md0.Prop()
-	PARAMS["MDFieldVec"] = np.array([0.0,1.0,0.0])
-	md1 = IRTrajectory(ForceField, ChargeField, m,"1")
-	md1.Prop()
-	PARAMS["MDFieldVec"] = np.array([0.0,0.0,1.0])
-	md2 = IRTrajectory(ForceField, ChargeField, m,"2")
-	md2.Prop()
-	WriteDipoleCorrelationFunction(md0.mu_his,md1.mu_his,md2.mu_his)
+	WriteDerDipoleCorrelationFunction(md0.mu_his)
 	return
 
 def TestDipole():
@@ -196,7 +191,7 @@ def TestDipole():
 		#b.ReadXYZ("CH3OH")
 		#manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
 		#net, dipole, charge = manager.Eval_BPDipole(b.mols[0], True)
-	
+
 		#nn_charge = np.tile(charge[0],2)
 		#mul_charge = np.tile(np.loadtxt("./results/CH3OH_mul.dat"), 2)
 		#hir_charge = np.tile(np.loadtxt("./results/CH3OH_hir.dat"), 2)
@@ -210,12 +205,12 @@ def TestDipole():
                         center_ = np.average(mol.coords,axis=0)
 			print mol.coords.shape
 			mul_dipole[i] = np.einsum("ax,a", mol.coords-center_ , mul_charge[i])/AUPERDEBYE
-			#hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge)/AUPERDEBYE 
+			#hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge)/AUPERDEBYE
 			#nn_dipole[i] = np.einsum("ax,a", mol.coords-center_ , nn_charge)/AUPERDEBYE
                         #mul_dipole[i] = np.einsum("ax,a", mol.coords-center_ , mul_charge[i])/AUPERDEBYE
-			#hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge[i])/AUPERDEBYE			
+			#hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge[i])/AUPERDEBYE
 			#nn_dipole[i] = np.einsum("ax,a", mol.coords-center_ , nn_charge[i])/AUPERDEBYE
-				
+
                 np.savetxt("./results/thf_dimer_flip_mul_dipole.dat", mul_dipole)
 		#np.savetxt("./results/CH3OH_dimer_flip_hir_dipole.dat", hir_dipole)
 		#np.savetxt("./results/CH3OH_dimer_flip_fixed_nn_dipole.dat", nn_dipole)
@@ -240,9 +235,9 @@ def TestDipole():
 				atom_name =  atoi.keys()[atoi.values().index(mol.atoms[i])]
                 		f.write(atom_name+"   "+str(mol.coords[i][0])+ "  "+str(mol.coords[i][1])+ "  "+str(mol.coords[i][2])+"\n")
 			f.write("$end\n\n$rem\njobtype sp\nexchange b3lyp\nbasis 6-31g(d)\nSYM_IGNORE True\n$end\n\n\n@@@\n\n")
-		f.close()	
+		f.close()
 
-		
+
 
 
 def TestGeneralMBEandMolGraph():
@@ -570,9 +565,9 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-TestANI1()
+#TestANI1()
 #TestDipole()
-#TestJohnson()
+TestJohnson()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
