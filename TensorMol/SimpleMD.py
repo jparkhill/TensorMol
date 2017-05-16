@@ -1,7 +1,6 @@
 """
 The Units chosen are Angstrom * Fs.
 I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
-Kb = 8.314 J/Mol K
 """
 
 from Sets import *
@@ -48,7 +47,7 @@ class Thermostat:
 		self.m = m_.copy()
 		self.T = PARAMS["MDTemp"]
 		self.Teff = 0.001
-		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
 		self.tau = 30*PARAMS["MDdt"]
 		self.name = "Rescaling"
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
@@ -64,14 +63,14 @@ class Thermostat:
 			e, f_x_ = fande_(x)
 		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
 		v = v_ + (1./2.)*(a_+a)*dt_
-		self.Teff = (2./3.)*KineticEnergy(v,self.m)/8.314
+		self.Teff = (2./3.)*KineticEnergy(v,self.m)/IDEALGASR
 		v *= np.sqrt(self.T/self.Teff)
 		return x,v,a,e
 
 	def Rescale(self,v_):
 		# Do this elementwise otherwise H's blow off.
 		for i in range(self.N):
-			Teff = (2.0/(3.0*8.314))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
+			Teff = (2.0/(3.0*IDEALGASR))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
 			if (Teff != 0.0):
 				v_[i] *= np.sqrt(self.T/(Teff))
 		return
@@ -95,8 +94,8 @@ class NoseThermostat(Thermostat):
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
 		# Recompute these stepwise in case of variable T.
-		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
-		self.tau = 80.0*PARAMS["MDdt"]
+		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		self.tau = 20.0*PARAMS["MDdt"]*self.N
 		self.Q = self.kT*self.tau*self.tau
 
 		x = x_ + v_*dt_ + (1./2.)*(a_ - self.eta*v_)*dt_*dt_
@@ -122,7 +121,7 @@ class NosePerParticleThermostat(Thermostat):
 		self.m = m_.copy()
 		self.N = len(m_)
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
-		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
 		self.tau = 40.0*PARAMS["MDdt"]
 		self.Q = self.kT*self.tau*self.tau
 		self.eta = np.zeros(self.N)
@@ -166,7 +165,7 @@ class NoseChainThermostat(Thermostat):
 		self.N = len(v_) # Number of particles.
 		self.Nf = len(v_)*3 # Number of Degrees of freedom.
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
-		self.kT = 8.314*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
 		self.GNKT = self.Nf*self.kT
 		self.nc = 2 # nc Number of Trotterizations To be increased if Q is large.
 		self.ny = 3# nys (eq. 29 of Martyna. number of quadrature points within step.)
@@ -203,7 +202,7 @@ class NoseChainThermostat(Thermostat):
 	def step(self,f_, a_, x_, v_, m_, dt_ ,fande_=None):
 		v = self.IntegrateChain(a_, x_, v_, m_, dt_) # half step the chain.
 		# Get KE of the chain.
-		print "Energies of the system... ", self.ke(v_,m_), " Teff ", (2./3.)*self.ke(v_,m_)*pow(10.0,10.0)/8.314/self.N
+		print "Energies of the system... ", self.ke(v_,m_), " Teff ", (2./3.)*self.ke(v_,m_)*pow(10.0,10.0)/IDEALGASR/self.N
 		print "Energies along the chain... Desired:", (3./2.)*self.kT
 		for i in range(self.M):
 			print self.Veta[i]*self.Veta[i]*self.Qs[i]/2.
@@ -293,7 +292,7 @@ class VelocityVerlet:
 		self.t = 0.0
 		self.KE = 0.0
 		self.atoms = g0_.atoms.copy()
-		self.m = np.array(map(lambda x: ATOMICMASSES[x],self.atoms))
+		self.m = np.array(map(lambda x: ATOMICMASSES[x-1],self.atoms))
 		self.natoms = len(self.atoms)
 		self.x = g0_.coords.copy()
 		self.v = np.zeros(self.x.shape)
@@ -331,7 +330,7 @@ class VelocityVerlet:
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
-			Teff = (2./3.)*self.KE/8.314
+			Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
@@ -428,7 +427,7 @@ class IRTrajectory(VelocityVerlet):
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
-			Teff = (2./3.)*self.KE/8.314
+			Teff = (2./3.)*self.KE/IDEALGASR
 
 			self.EField, self.IsOn = self.Pulse(self.t)
 			if (self.UpdateCharges and not self.IsOn):
@@ -456,19 +455,17 @@ class IRTrajectory(VelocityVerlet):
 				print self.x
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
-
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%7==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
-			if (step%100==0):
+			if (step%200==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
-
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
 		return
 
 
 class Annealer(IRTrajectory):
-	def __init__(self,f_,q_,g0_,name_="anneal",AnnealThresh_ = 0.00004):
+	def __init__(self,f_,q_,g0_,name_="anneal",AnnealThresh_ = 0.000009):
 		PARAMS["MDThermostat"] = None
 		PARAMS["MDV0"] = None
 		IRTrajectory.__init__(self, f_, q_, g0_, name_)
@@ -478,7 +475,7 @@ class Annealer(IRTrajectory):
 		self.MinS = 0
 		self.MinE = 0.0
 		self.Minx = None
-		self.AnnealSteps = 400
+		self.AnnealSteps = 500
 		self.AnnealThresh = AnnealThresh_
 		self.Tstat = NoseThermostat(self.m,self.v)
 		# The annealing program is 1K => 0K in 500 steps.
@@ -492,7 +489,7 @@ class Annealer(IRTrajectory):
 		while(step < self.AnnealSteps):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
-			Teff = (2./3.)*self.KE/8.314
+			Teff = (2./3.)*self.KE/IDEALGASR
 
 			self.EField, self.IsOn = self.Pulse(self.t)
 			if (self.UpdateCharges and not self.IsOn):
@@ -515,7 +512,7 @@ class Annealer(IRTrajectory):
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%7==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])

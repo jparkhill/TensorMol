@@ -53,7 +53,7 @@ def WriteDerDipoleCorrelationFunction(MuTraj, name_="MutMu0.txt"):
 		t0[i,1:4] = (MuTraj[i+1,1:4]- MuTraj[i,1:4])/dt
 	n = t0.shape[0]
 	tore = np.zeros((n,2))
-	for i in range(n):
+	for i in range(int(n/4)): # Can't use the whole data....
 		tore[i,0] = t0[i,0]
 		tore[i,1] = 0.0
 		for j in range(n-i):

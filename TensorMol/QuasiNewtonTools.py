@@ -5,6 +5,20 @@ from PhysicalData import *
 def RmsForce(f_):
 	return np.sum(np.linalg.norm(f_,axis=1))/f_.shape[0]
 
+def InertiaTensor(x_,m_):
+	I = np.zeros((3,3))
+	for i in range(len(m_)):
+		I[0,0] += m_[i]*(x_[i,1]*x_[i,1]+x_[i,2]*x_[i,2])
+		I[1,1] += m_[i]*(x_[i,0]*x_[i,0]+x_[i,2]*x_[i,2])
+		I[2,2] += m_[i]*(x_[i,1]*x_[i,1]+x_[i,0]*x_[i,0])
+		I[0,1] -= m_[i]*(x_[i,0]*x_[i,1])
+		I[0,2] -= m_[i]*(x_[i,0]*x_[i,2])
+		I[1,2] -= m_[i]*(x_[i,1]*x_[i,2])
+	I[1,0] = I[0,1]
+	I[2,0] = I[0,2]
+	I[2,1] = I[1,2]
+	return I
+
 def DiagHess(f_,x_,eps_=0.0005):
 	"""
 	Args:
@@ -69,10 +83,27 @@ def FdiffHessian(f_, x_, eps_=0.0001):
 		iti.iternext()
 	return tore
 
-def FDiffNormalModes(f_, x_, m_):
+def HarmonicSpectra(f_, x_, m_):
 	"""
-	Perform a finite difference normal mode analysis. 
+	Perform a finite difference normal mode analysis
+	of a molecule. basically implements http://gaussian.com/vib/
 	"""
+	Hess = FdiffHessian(f_,x_)
+	n = m_.shape[0]
+	n3 = 3*n
+	# Reshape it to flatten the cartesian parts.
+	Hess = Hess.reshape((n3,n3))
+	# Convert from A^-2 to bohr^-2
+	Hess /= (BOHRPERA*BOHRPERA)
+	# Mass weight.
+	for i,mi in enumerate(m_):
+		Hess[i*n3, i*n3] /= sqrt(mi*mi)
+		for j,mj in enumerate(m_):
+			if (i != j):
+				Hess[i*n3:(i+1)*n3, j*n3:(j+1)*n3] /= sqrt(mi*mj)
+	# Get the vibrational spectrum and normal modes.
+	# Construct internal coordinates.
+	D = np.zeros((n3,n3))
 
 def LineSearch(f_, x0_, p_):
 	'''
@@ -98,7 +129,7 @@ def LineSearch(f_, x0_, p_):
 			#print fa,fc,fd,fb
 			#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
 			print "Line Search: Overstep"
-			PARAMS["GSSearchAlpha"] /= 2.0
+			PARAMS["GSSearchAlpha"] /= 2.03
 			a = x0_
 			b = x0_ + PARAMS["GSSearchAlpha"]*p_
 			c = b - (b - a) / GOLDENRATIO
@@ -151,17 +182,7 @@ def RemoveInvariantForce(x_,f_,m_):
 	torque = np.sum(np.cross(x_,fnew_),axis=0)
 	#print torque
 	# Compute inertia tensor
-	I = np.zeros((3,3))
-	for i in range(len(m_)):
-		I[0,0] += m_[i]*(x_[i,1]*x_[i,1]+x_[i,2]*x_[i,2])
-		I[1,1] += m_[i]*(x_[i,0]*x_[i,0]+x_[i,2]*x_[i,2])
-		I[2,2] += m_[i]*(x_[i,1]*x_[i,1]+x_[i,0]*x_[i,0])
-		I[0,1] -= m_[i]*(x_[i,0]*x_[i,1])
-		I[0,2] -= m_[i]*(x_[i,0]*x_[i,2])
-		I[1,2] -= m_[i]*(x_[i,1]*x_[i,2])
-	I[1,0] = I[0,1]
-	I[2,0] = I[0,2]
-	I[2,1] = I[1,2]
+	I = InertiaTensor(x_,m_)
 	Iinv = PseudoInverse(I)
 	#print "Inertia tensor", I
 	#print "Inverse Inertia tensor", Iinv
