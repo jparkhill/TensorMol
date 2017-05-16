@@ -260,6 +260,7 @@ class Optimizer:
 			prev_m = Mol(m.atoms, m.coords)
 			energy, frc = EnergyAndForce(m.coords)
 			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
+			frc /= JOULEPERKCAL
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			m.coords = LineSearch(Energy, m.coords, frc)
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]

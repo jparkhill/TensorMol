@@ -199,7 +199,7 @@ class TFMolManage(TFManage):
 			total_energy: whether to also return the energy as a first argument.
 		Returns:
 			(if total_energy == True): Energy in Hartree
-			and Forces (kcal/mol)
+			and Forces (J/mol)
 		"""
 		nmols = 1
 		natoms = mol.NAtoms()
