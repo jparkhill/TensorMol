@@ -24,6 +24,11 @@ def UnPickleTM(file):
 	unpickler.dispatch[pickle.GLOBAL] = mapped_load_global
 	tmp = unpickler.load()
 	tmp.pop('evaluate',None)
+	tmp.pop('MolInstance_fc_sqdiff_BP',None)
+	tmp.pop('Eval_BPForceSingle',None)
+	tmp.pop('TFMolManage',None)
 	tmp.pop('Prepare',None)
+	tmp.pop('Trainable',None)
+	tmp.pop('TFMolManage.Trainable',None)
 	tmp.pop('__init__',None)
 	return tmp

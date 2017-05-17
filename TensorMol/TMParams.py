@@ -36,10 +36,10 @@ class TMParams(dict):
 		self["SH_NRAD"]=10
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
-		self["AN1_r_Rc"] = 6
-		self["AN1_a_Rc"] = 4
-		#self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
-		#self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
+		#self["AN1_r_Rc"] = 6
+		#self["AN1_a_Rc"] = 4
+		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
+		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
 		self["AN1_eta"] = 4.0
 		self["AN1_zeta"] = 8.0
 		self["AN1_num_r_Rs"] = 32
@@ -100,7 +100,7 @@ class TMParams(dict):
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
 		# Training Parameters
-		self["NeuronType"] = "relu"
+		self["NeuronType"] = "softplus" # "relu", softplus etc.
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 2000
@@ -117,6 +117,7 @@ class TMParams(dict):
 		#paths
 		self["results_dir"] = "./results/"
 		self["dens_dir"] = "./densities/"
+		self["log_dir"] = "./logs/"
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 

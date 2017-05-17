@@ -23,7 +23,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 # PARAMETERS
 #  TODO: Migrate these to PARAMS
 PARAMS = TMParams()
-LOGGER = TMLogger(PARAMS["results_dir"])
+LOGGER = TMLogger(PARAMS["log_dir"])
 MAX_ATOMIC_NUMBER = 10
 # Derived Quantities and useful things.
 N_CORES = 1

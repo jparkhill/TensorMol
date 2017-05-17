@@ -116,37 +116,53 @@ def TestJohnson():
 	PARAMS["OptMomentumDecay"] = 0.9
 	PARAMS["OptStepSize"] = 0.0002
 	PARAMS["OptMaxCycles"]=200
-	m = a.mols[1]
+	m = a.mols[0]
 	optimizer = Optimizer(manager)
 	optimizer.OptANI1(m)
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),True)
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
+
 	PARAMS["MDdt"] = 0.10
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 20000
+	PARAMS["MDMaxStep"] = 8000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
 	PARAMS["MDTemp"]= 1.0
 	anneal = Annealer(ForceField, ChargeField, m, "Anneal")
 	anneal.Prop()
 	m.coords = anneal.Minx.copy()
+
+	#CoordinateScan(EnergyField,m.coords)
+	masses = np.array(map(lambda x: ATOMICMASSES[x-1],m.atoms))
+	print "Masses:", masses
+
+	PYSCFFIELD = lambda x: PyscfDft(Mol(m.atoms,x))
+	QCHEMFIELD = lambda x: QchemDft(Mol(m.atoms,x))
+	HarmonicSpectra(PYSCFFIELD,m.coords,masses)
+
+	HartreeForce = lambda x: -1*manager.Eval_BPForceSingle(Mol(m.atoms,x),False)/JOULEPERHARTREE
+	HarmonicSpectra(EnergyField,m.coords,masses,HartreeForce)
+	return
+
 	PARAMS["MDThermostat"] = None
 	PARAMS["MDV0"] = None
 	PARAMS["MDTemp"]= 0.0
 	PARAMS["MDFieldAmp"] = 500.0 #0.00000001
 	PARAMS["MDFieldTau"] = 0.8
 	PARAMS["MDFieldFreq"] = 0.1
-	PARAMS["MDUpdateCharges"] = True
+	PARAMS["MDUpdateCharges"] = False
 	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
 	md0 = IRTrajectory(ForceField, ChargeField, m, "0")
 	md0.Prop()
-	PARAMS["MDFieldVec"] = np.array([0.0,1.0,0.0])
-	md1 = IRTrajectory(ForceField, ChargeField, m, "1")
-	md1.Prop()
-	PARAMS["MDFieldVec"] = np.array([0.0,0.0,1.0])
-	md2 = IRTrajectory(ForceField, ChargeField, m, "2")
-	md2.Prop()
+	if (0):
+		PARAMS["MDFieldVec"] = np.array([0.0,1.0,0.0])
+		md1 = IRTrajectory(ForceField, ChargeField, m, "1")
+		md1.Prop()
+		PARAMS["MDFieldVec"] = np.array([0.0,0.0,1.0])
+		md2 = IRTrajectory(ForceField, ChargeField, m, "2")
+		md2.Prop()
 	#WriteDerDipoleCorrelationFunction(md0.mu_his)
 	return
 

@@ -423,6 +423,8 @@ class IRTrajectory(VelocityVerlet):
 
 	def Prop(self):
 		self.mu_his = np.zeros((self.maxstep, 7)) # time Dipoles Energy
+#HACK
+		vhis = np.zeros((self.maxstep,)+self.v.shape) # time Dipoles Energy
 		step = 0
 		while(step < self.maxstep):
 			self.t = step*self.dt
@@ -440,6 +442,7 @@ class IRTrajectory(VelocityVerlet):
 			self.mu_his[step,4] = self.KE
 			self.mu_his[step,5] = self.EPot
 			self.mu_his[step,6] = self.KE+self.EPot
+			vhis[step] = self.v.copy()
 
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
@@ -461,6 +464,7 @@ class IRTrajectory(VelocityVerlet):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+		WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 
 

@@ -62,6 +62,27 @@ def WriteDerDipoleCorrelationFunction(MuTraj, name_="MutMu0.txt"):
 	np.savetxt("./results/"+name_,tore)
 	return tore
 
+def WriteVelocityAutocorrelations(muhis,vhis):
+	"""
+	Args:
+		Generate velocity autocorrelation functions.
+	"""
+	dt = muhis[0,0] - muhis[1,0]
+	n = muhis.shape[0]
+	natom = vhis.shape[1]
+	ncorr = int(n/4)
+	for atom in range(natom):
+		tore = np.zeros((ncorr,2))
+		for i in range(ncorr):
+			tore[i,0] = muhis[i,0]
+			tore[i,1] = 0.0
+			for j in range(n-i):
+				tore[i,1] +=  np.dot(vhis[i,atom],vhis[i+j,atom])
+			tore[i,1] /= 3.*float(n-i)
+		np.savetxt("./results/"+"VtV0_"+str(atom)+".txt",tore)
+	return
+
+
 def WriteDipoleCorrelationFunction(t0,t1,t2):
 	"""
 	Args:

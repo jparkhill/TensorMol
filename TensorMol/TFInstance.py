@@ -98,7 +98,8 @@ class Instance:
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
-		except:
+		except Exception as Ex:
+			print(Ex)
 			print ("activation function not assigned, set to relu")
 			self.activation_function = tf.nn.relu
 		return

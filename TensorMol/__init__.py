@@ -21,6 +21,7 @@ Violators are subject to having their code and reproductive fitness mocked publi
 """
 from TensorMol.PhysicalData import *
 from TensorMol.Util import *
+from TensorMol.AbInitio import *
 from TensorMol.MolFrag import *
 from TensorMol.Opt import *
 from TensorMol.Neb import *
