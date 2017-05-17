@@ -5,12 +5,15 @@ datasets
 *.tdt
 *.tfn
 *.tfm
+*.log
 *-chk-*
 *checkpoint*
 *.tfevents.*
 *events.out*
 datasets/*.pdb
 results/*.log 
+logs/*.log
+qchem/*
 results/*.xyz
 *.pdb
 *_NEQ.pdb* # don't save random distortions. 
