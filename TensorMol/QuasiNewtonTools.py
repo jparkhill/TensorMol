@@ -5,6 +5,9 @@ from PhysicalData import *
 def RmsForce(f_):
 	return np.sum(np.linalg.norm(f_,axis=1))/f_.shape[0]
 
+def CenterOfMass(x_,m_):
+	return (np.einsum("m,mx->x",m_,x_)/np.sum(m_))
+
 def InertiaTensor(x_,m_):
 	I = np.zeros((3,3))
 	for i in range(len(m_)):
@@ -53,7 +56,7 @@ def FdiffGradient(f_, x_, eps_=0.0001):
 		it.iternext()
 	return tore
 
-def CoordinateScan(f_, x_, eps_=0.06, num_=30):
+def CoordinateScan(f_, x_, name_="", eps_=0.03, num_=15):
 	# Writes a plaintext file containing scans of each coordinate.
 	samps = np.logspace(0.0,eps_,num_)-1.0
 	samps = np.concatenate((-1*samps[::-1][:-1],samps),axis=0)
@@ -66,7 +69,7 @@ def CoordinateScan(f_, x_, eps_=0.06, num_=30):
 			x_t[iti.multi_index] += d
 			tore[iti.multi_index][i,0]=d
 			tore[iti.multi_index][i,1]=f_(x_t)
-		np.savetxt("./results/CoordScan"+str(ci)+".txt",tore[iti.multi_index])
+		np.savetxt("./results/CoordScan"+name_+str(ci)+".txt",tore[iti.multi_index])
 		ci += 1
 		iti.iternext()
 
@@ -140,23 +143,104 @@ def FdiffHessian(f_, x_, eps_=0.0001, mode_ = "central", grad_ = None):
 			xmi_t[iti.multi_index] -= eps_
 			itj = np.nditer(x_, flags=['multi_index'])
 			while not itj.finished:
-
 				xpipj_t = xi_t.copy()
 				xpipj_t[itj.multi_index] += eps_
 				xpimj_t = xi_t.copy()
 				xpimj_t[itj.multi_index] -= eps_
-
 				xmipj_t = xmi_t.copy()
 				xmipj_t[itj.multi_index] += eps_
 				xmimj_t = xmi_t.copy()
 				xmimj_t[itj.multi_index] -= eps_
-
 				tore[iti.multi_index][itj.multi_index] = (f_(xpipj_t)-f_(xpimj_t)-f_(xmipj_t)+f_(xmimj_t))/(4.0*eps_*eps_)
 				itj.iternext()
 			iti.iternext()
 	return tore
 
-def HarmonicSpectra(f_, x_, m_, grad_=None):
+def FourPointHessQuad(f):
+	"""
+	f is a 4x4xOutshape
+	sampling eps*[-2, -1, 1, 2]
+	"""
+	term1 = -63.0*(f[2,0]+f[3,1]+f[0,2]+f[1,3])
+	term2 =  63.0*(f[1,0]+f[0,1]+f[2,3]+f[3,2])
+	term3 =  44.0*(f[3,0]+f[0,3]-f[0,0]-f[3,3])
+	term4 =  74.0*(f[1,1]+f[2,2]-f[2,1]-f[1,2])
+	return (term1+term2+term3+term4)/600.0
+
+def DirectedFdiffHessian(f_, x_, dirs_, eps_=0.01):
+	"""
+	Four-Point Hessian quadrature along dirs_ directions.
+	Args:
+		dirs_ : a set of directions having x_'s shape
+	Returns:
+		d^2 f/ (d dirs_i, d dirs_j)
+	"""
+	f_x_ = f_(x_)
+	N = dirs_.shape[0]
+	tore = np.zeros((N,N))
+	for i in range(N):
+		for j in range(i,N):
+			samps = np.zeros((4,4)+f_x_.shape)
+			for ic,di in enumerate([-2.,-1.,1.,2.]):
+				for jc,dj in enumerate([-2.,-1.,1.,2.]):
+					samps[ic,jc] = f_(x_+dirs_[i]*eps_*di+dirs_[j]*eps_*dj)
+			tore[i,j] = FourPointHessQuad(samps)/eps_/eps_
+			tore[j,i] = tore[i,j]
+	return tore
+
+def InternalCoordinates(x_,m):
+	"""
+	Generates a set of internal (ie: rot-trans free)
+	vectors spanning coordinates for asymmetric mols.
+	If you are doing a diatomic, use a quantum chemistry package
+	"""
+	if (len(m)<=2):
+		raise Exception("No Diatomics")
+	COM0 = CenterOfMass(x_,m)
+	xc_  = x_ - COM0
+	I = InertiaTensor(xc_,m)
+	Ip,X = np.linalg.eig(I)
+	Ip0 = Ip.copy()
+	n = len(m)
+	n3 = 3*n
+	# Generate the 6 rotations and translations.
+	D = np.zeros((6,n3))
+	MWC = np.zeros((n3,n3))
+	for i in range(n3):
+		if (i%3==0):
+			D[0,i] = np.sqrt(m[int(i/3)])
+		elif (i%3==1):
+			D[1,i] = np.sqrt(m[int(i/3)])
+		elif (i%3==2):
+			D[2,i] = np.sqrt(m[int(i/3)])
+	for i in range(n):
+		Px = np.dot(xc_[i],X[:,0])
+		Py = np.dot(xc_[i],X[:,1])
+		Pz = np.dot(xc_[i],X[:,2])
+		for j in range(3):
+			D[3,i*3+j] = (Py*X[2,j]-Pz*X[1,j])/np.sqrt(m[i])
+			D[4,i*3+j] = (Pz*X[0,j]-Px*X[2,j])/np.sqrt(m[i])
+			D[5,i*3+j] = (Px*X[1,j]-Py*X[0,j])/np.sqrt(m[i])
+			MWC[i*3+j,i*3+j] = np.sqrt(m[i])
+	S = PairOrthogonalize(D,MWC) # Returns normalized Coords.
+	nint = S.shape[0]
+	print "Number of Internal Coordinates: ", nint
+	if (0):
+		for i in range(nint):
+			print "Invariances before: "
+			for eps in np.linspace(-0.1,0.1,12):
+				xpdx = x_+eps*S[i].reshape((n,3))
+				COM2 = CenterOfMass(xpdx,m)
+				print "COM", COM2-COM0
+				I = InertiaTensor(xpdx-COM2,m)
+				Ip,X = np.linalg.eig(I)
+				print "InertiaAxes", Ip-Ip0
+				mo = Mol(np.array([1,6,1,8]),xpdx)
+				mo.WriteXYZfile("./results/","ModeScanBefore"+str(i)+".xyz")
+		print "Internal Coordinates: ", S
+	return S
+
+def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
 	"""
 	Perform a finite difference normal mode analysis
 	of a molecule. basically implements http://gaussian.com/vib/
@@ -167,92 +251,29 @@ def HarmonicSpectra(f_, x_, m_, grad_=None):
 	"""
 	n = m_.shape[0]
 	n3 = 3*n
-	cHess = FdiffHessian(f_, x_, 0.04)
-	cHess = cHess.reshape((n3,n3))
+	Crds = InternalCoordinates(x_,m_) #invbasis X cart
+	#Crds=np.eye(n3).reshape((n3,n,3))
+	Hess = DirectedFdiffHessian(f_, x_, Crds.reshape((len(Crds),n,3)), eps_)
 	# Reshape it to flatten the cartesian parts.
-	print "Hess (central):", cHess
-	fHess = FdiffHessian(f_,x_,0.04,"forward")
-	fHess = fHess.reshape((n3,n3))
-	print "Hess (forward):", fHess
-	if (grad_ != None):
-		gHess = FdiffHessian(f_,x_,0.04,"gradient",grad_)
-		gHess = gHess.reshape((n3,n3))
-		print "Hess (gradient):", gHess
-
-	Hess = (fHess).copy()
-	# Convert from A^-2 to bohr^-2 and
+	print "Hess (Internal):", Hess
 	Hess /= (BOHRPERA*BOHRPERA)
-	m = m_.copy()
-	m /= MASSOFELECTRON # convert to atomic units of mass.
-	# Mass weight.
-	for i,mi in enumerate(m):
-		Hess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
-		for j,mj in enumerate(m):
+	# Transform the invariant hessian into cartesian coordinates.
+	cHess = np.dot(Crds.T,np.dot(Hess,Crds))
+	print "Hess (Cart):", cHess
+	# Mass weight the invariant hessian in cartesian coordinates.
+	for i,mi in enumerate(m_):
+		cHess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
+		for j,mj in enumerate(m_):
 			if (i != j):
-				Hess[i*n3:(i+1)*n3, j*n3:(j+1)*n3] /= np.sqrt(mi*mj)
+				cHess[i*n3:(i+1)*n3, j*n3:(j+1)*n3] /= np.sqrt(mi*mj)
 	# Get the vibrational spectrum and normal modes.
-	w,v = np.linalg.eig(Hess)
-	for l in w:
-		print "Energy (cm**-1): ", l*WAVENUMBERPERHARTREE
-
+	u,s,v = np.linalg.svd(cHess)
+	for l in s:
+		print "Central Energy (cm**-1): ", np.sign(l)*np.sqrt(KCONVERT*abs(l))*CMCONVERT
 	print "--"
-
-	Hess = (cHess).copy()
-	# Convert from A^-2 to bohr^-2 and
-	Hess /= (BOHRPERA*BOHRPERA)
-	m = m_.copy()
-	m /= MASSOFELECTRON # convert to atomic units of mass.
-	# Mass weight.
-	for i,mi in enumerate(m):
-		Hess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
-		for j,mj in enumerate(m):
-			if (i != j):
-				Hess[i*n3:(i+1)*n3, j*n3:(j+1)*n3] /= np.sqrt(mi*mj)
-	# Get the vibrational spectrum and normal modes.
-	w,v = np.linalg.eig(Hess)
-	for l in w:
-		print "Energy (cm**-1): ", l*WAVENUMBERPERHARTREE
-
-	print "--"
-
-	Hess = (gHess).copy()
-	# Convert from A^-2 to bohr^-2 and
-	Hess /= (BOHRPERA*BOHRPERA)
-	m = m_.copy()
-	m /= MASSOFELECTRON # convert to atomic units of mass.
-	# Mass weight.
-	for i,mi in enumerate(m):
-		Hess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
-		for j,mj in enumerate(m):
-			if (i != j):
-				Hess[i*n3:(i+1)*n3, j*n3:(j+1)*n3] /= np.sqrt(mi*mj)
-	# Get the vibrational spectrum and normal modes.
-	w,v = np.linalg.eig(Hess)
-	for l in w:
-		print "Energy (cm**-1): ", l*WAVENUMBERPERHARTREE
-
-	print "--"
-
-	Hess = (fHess+cHess)/2.0
-	# Convert from A^-2 to bohr^-2 and
-	Hess /= (BOHRPERA*BOHRPERA)
-	m = m_.copy()
-	m /= MASSOFELECTRON # convert to atomic units of mass.
-	# Mass weight.
-	for i,mi in enumerate(m):
-		Hess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
-		for j,mj in enumerate(m):
-			if (i != j):
-				Hess[i*n3:(i+1)*n3, j*n3:(j+1)*n3] /= np.sqrt(mi*mj)
-	# Get the vibrational spectrum and normal modes.
-	w,v = np.linalg.eig(Hess)
-	for l in w:
-		print "Energy (cm**-1): ", l*WAVENUMBERPERHARTREE
-	# Construct internal coordinates.
-	D = np.zeros((n3,n3))
 	return
 
-def LineSearch(f_, x0_, p_):
+def LineSearch(f_, x0_, p_, thresh = 0.00001):
 	'''
 	golden section search to find the minimum of f on [a,b]
 	Args:
@@ -261,7 +282,6 @@ def LineSearch(f_, x0_, p_):
 	p_: search direction.
 	'''
 	k=0
-	thresh = 0.00001
 	rmsdist = 10.0
 	a = x0_
 	b = x0_ + PARAMS["GSSearchAlpha"]*p_
@@ -315,6 +335,19 @@ def LineSearch(f_, x0_, p_):
 		rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/a.shape[0]
 		k+=1
 	return (b + a) / 2
+
+def LineSearchCart(f_, x0_):
+	""" A line search in each cartesian direction. """
+	x_ = x0_.copy()
+	iti = np.nditer(x_, flags=['multi_index'])
+	while not iti.finished:
+		x_ = x0_.copy()
+		x_[iti.multi_index] -= 0.05
+		p=np.zeros(x0_.shape)
+		p[iti.multi_index] += 0.05
+		x_= LineSearch(f_,x_,p)
+		iti.iternext()
+	return x_
 
 def RemoveInvariantForce(x_,f_,m_):
 	"""
