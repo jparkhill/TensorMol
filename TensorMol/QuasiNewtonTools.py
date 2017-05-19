@@ -238,7 +238,7 @@ def InternalCoordinates(x_,m):
 				mo = Mol(np.array([1,6,1,8]),xpdx)
 				mo.WriteXYZfile("./results/","ModeScanBefore"+str(i)+".xyz")
 		print "Internal Coordinates: ", S
-	return S
+	return S[]
 
 def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
 	"""
