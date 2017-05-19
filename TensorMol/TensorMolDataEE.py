@@ -790,6 +790,9 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 		#print "matrices",matrices
 		#print "outputs",outputs
 		self.ScratchPointer += ncases
+		#for m in matrices:
+		#	print "the matrix:", np.sum(m, axis=0)
+		#print "natom:", natom_in_mol[0:2]
 		return [inputs, matrices, coords, 1.0/natom_in_mol, outputs]
 
 	def GetTestBatch(self,ncases,noutputs):
@@ -861,7 +864,7 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 			inputs[ei][offsets[ei],:] = self.scratch_test_inputs[i]
 			matrices[ei][offsets[ei],outputpointer] = 1.0
 			coords[ei][offsets[ei]] = self.scratch_test_xyzmeta[i]
-			natom_in_mol[outputpointer] = self.scratch_meta[i,3] - self.scratch_meta[i,2]
+			natom_in_mol[outputpointer] = self.scratch_test_meta[i,3] - self.scratch_test_meta[i,2]
 			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]]
 			offsets[ei] += 1
 #			if i < self.test_ScratchPointer+ignore_first_mol + 50:
@@ -870,7 +873,7 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 		#print "bounds",bounds
 		#print "matrices",matrices
 		#print "outputs",outputs
-		self.test_ScratchPointer += ncases
+#		self.test_ScratchPointer += ncases
 #		print "length of test_mols:", len(self.test_mols)
 #		print "outputpointer:", outputpointer
 		return [inputs, matrices, coords, 1.0/natom_in_mol, outputs]

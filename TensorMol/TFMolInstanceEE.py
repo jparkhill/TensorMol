@@ -84,19 +84,19 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken
-				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
-				if (len(metafiles)>0):
-					most_recent_meta_file=metafiles[0]
-					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
-					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
-					config = tf.ConfigProto(allow_soft_placement=True)
-					self.sess = tf.Session(config=config)
-					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
-					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
-			except Exception as Ex:
-				print("Restore Failed",Ex)
-				pass
+#			try: # I think this may be broken
+#				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+#				if (len(metafiles)>0):
+#					most_recent_meta_file=metafiles[0]
+#					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+#					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+#					config = tf.ConfigProto(allow_soft_placement=True)
+#					self.sess = tf.Session(config=config)
+#					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+#					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+#			except Exception as Ex:
+#				print("Restore Failed",Ex)
+#				pass
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
@@ -779,7 +779,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.001
+		self.learning_rate = 0.1
 		#self.learning_rate = 0.0001
 		#self.learning_rate = 0.00001
 		self.momentum = 0.95
@@ -845,7 +845,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				self.coords_pl.append(tf.placeholder(tf.float32, shape=tuple([None, 3])))
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
 			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
-			self.dipole_output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
+			self.dipole_output, self.atom_outputs, self.net_charge  = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
 			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -855,19 +855,19 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
-			try: # I think this may be broken
-				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
-				if (len(metafiles)>0):
-					most_recent_meta_file=metafiles[0]
-					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
-					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
-					config = tf.ConfigProto(allow_soft_placement=True)
-					self.sess = tf.Session(config=config)
-					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
-					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
-			except Exception as Ex:
-				print("Restore Failed",Ex)
-				pass
+#			try: # I think this may be broken
+#				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+#				if (len(metafiles)>0):
+#					most_recent_meta_file=metafiles[0]
+#					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+#					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+#					config = tf.ConfigProto(allow_soft_placement=True)
+#					self.sess = tf.Session(config=config)
+#					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+#					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+#			except Exception as Ex:
+#				print("Restore Failed",Ex)
+#				pass
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
@@ -910,6 +910,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
 		netcharge_output = tf.zeros([self.batch_size_output, 1])
+		scaled_netcharge_output = tf.zeros([1, self.batch_size_output])
 		dipole_output = tf.zeros([self.batch_size_output, 3])
 		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
 		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
@@ -965,8 +966,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				netcharge_output = tf.add(netcharge_output, netcharge)
 				#dipole_output = tf.add(dipole_output, dipole)
 		delta_charge = tf.multiply(netcharge_output, natom_pl)
-		delta_charge = tf.transpose(delta_charge) 
-		scaled_charge_list = []
+		delta_charge = tf.transpose(delta_charge)
+		scaled_charge_list = [] 
 		for e in range(len(self.eles)):
 			mats = mats_pl[e]
 			shp_out = tf.shape(atom_outputs[e])
@@ -975,6 +976,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			ele_delta_charge = tf.matmul(delta_charge, trans_mats)
 			scaled_charge = tf.subtract(atom_outputs[e], ele_delta_charge)
 			scaled_charge_list.append(scaled_charge)
+			scaled_netcharge = tf.matmul(scaled_charge,mats)
+			scaled_netcharge_output = tf.add(scaled_netcharge_output, scaled_netcharge)
 			coords_rshp = tf.transpose(coords)
 			dipole_tmp = tf.multiply(scaled_charge, coords_rshp)
 			dipole_tmp = tf.reshape(dipole_tmp, [3, shp_out[1]])
@@ -984,7 +987,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		tf.verify_tensor_all_finite(netcharge_output,"Nan in output!!!")
 		tf.verify_tensor_all_finite(dipole_output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
-		return  dipole_output, scaled_charge_list#atom_outputs
+		return  dipole_output, scaled_charge_list, scaled_netcharge_output#atom_outputs
 
 	def fill_feed_dict(self, batch_data):
 		"""
@@ -1034,10 +1037,14 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			#print (batch_data)
 			#print ("checking shape:", batch_data[2][0].shape, batch_data[2][1].shape, batch_data[2][2].shape, batch_data[2][3].shape)
 			#print ("checking shape, input:", batch_data[0][0].shape, batch_data[0][1].shape, batch_data[0][2].shape, batch_data[0][3].shape)
 			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
-			dump_2, total_loss_value, loss_value, dipole_output = self.sess.run([self.train_op, self.total_loss, self.loss,  self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
+			dump_2, total_loss_value, loss_value,  dipole_output, atom_outputs, net_charge = self.sess.run([self.train_op, self.total_loss, self.loss, self.dipole_output, self.atom_outputs, self.net_charge],  feed_dict=self.fill_feed_dict(batch_data))
+
+
+			#dump_2, total_loss_value, loss_value, dipole_output = self.sess.run([self.train_op, self.total_loss, self.loss,  self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
@@ -1065,12 +1072,12 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
 			feed_dict=self.fill_feed_dict(batch_data)
 			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
-			total_loss_value, loss_value,  dipole_output, atom_outputs = self.sess.run([self.total_loss, self.loss, self.dipole_output, self.atom_outputs],  feed_dict=feed_dict)
+			total_loss_value, loss_value,  dipole_output, atom_outputs, net_charge  = self.sess.run([self.total_loss, self.loss, self.dipole_output, self.atom_outputs, self.net_charge],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
-		print ("testing result:")
-		print ("predict charge:", atom_outputs)
-		print ("acurrate charge, dipole:", batch_data[4][:20])
+		print ("net charge:", net_charge)
+		print ("predict charge:", atom_outputs[0])
+		print ("acurrate charge, dipole:", batch_data[4][:20], " dipole shape:", batch_data[4].shape)
 		print ("predict dipole", dipole_output[:20])
 		#print ("charge sum:", netcharge_output)
 		#print ("charges: ",  atom_outputs)
@@ -1116,7 +1123,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				self.coords_pl.append(tf.placeholder(tf.float32, shape=tuple([None, 3])))
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
 			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
-			self.dipole_output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
+			self.dipole_output, self.atom_outputs, self.net_charge = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
 			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -1141,7 +1148,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				self.coords_pl.append(tf.placeholder(tf.float32, shape=tuple([None, 3])))
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
 			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
-			self.dipole_output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
+			self.dipole_output, self.atom_outputs, self.net_charge = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
 			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_out, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
