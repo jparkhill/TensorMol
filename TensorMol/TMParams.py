@@ -100,11 +100,12 @@ class TMParams(dict):
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
 		# Training Parameters
-		self["NeuronType"] = "softplus" # "relu", softplus etc.
+		self["NeuronType"] = "relu"
+		#self["NeuronType"] = "softplus" # "relu", softplus etc.
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 2000
-		self["test_freq"] = 10
+		self["test_freq"] = 2
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512

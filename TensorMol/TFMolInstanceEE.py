@@ -779,7 +779,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.0001
+		self.learning_rate = 0.001
+		#self.learning_rate = 0.0001
 		#self.learning_rate = 0.00001
 		self.momentum = 0.95
 		if (self.Trainable):
@@ -845,7 +846,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
 			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
 			self.dipole_output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
-			self.check = tf.add_check_numerics_ops()
+			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -910,10 +911,10 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		hidden3_units=self.hidden3
 		netcharge_output = tf.zeros([self.batch_size_output, 1])
 		dipole_output = tf.zeros([self.batch_size_output, 3])
-		nrm1=10.0/(10+math.sqrt(float(self.inshape)))
-		nrm2=10.0/(10+math.sqrt(float(hidden1_units)))
-		nrm3=10.0/(10+math.sqrt(float(hidden2_units)))
-		nrm4=10.0/(10+math.sqrt(float(hidden3_units)))
+		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
+		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
+		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
+		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
 		LOGGER.info("Norms: %f,%f,%f", nrm1,nrm2,nrm3)
 		#print(inp_pl)
 		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
@@ -963,19 +964,20 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				#dipole = tf.transpose(dipole)
 				netcharge_output = tf.add(netcharge_output, netcharge)
 				#dipole_output = tf.add(dipole_output, dipole)
-		delta_charge = tf.div(netcharge_output, natom_pl)
+		delta_charge = tf.multiply(netcharge_output, natom_pl)
 		delta_charge = tf.transpose(delta_charge) 
 		scaled_charge_list = []
 		for e in range(len(self.eles)):
 			mats = mats_pl[e]
+			shp_out = tf.shape(atom_outputs[e])
                         coords = coords_pl[e]
-			coords = tf.transpose(coords)
-			ele_delta_charge = tf.matmul(delta_charge, coords)
-			scaled_charge = tf.substract(atom_outputs[e], ele_delta_charge)
+			trans_mats = tf.transpose(mats)
+			ele_delta_charge = tf.matmul(delta_charge, trans_mats)
+			scaled_charge = tf.subtract(atom_outputs[e], ele_delta_charge)
 			scaled_charge_list.append(scaled_charge)
 			coords_rshp = tf.transpose(coords)
 			dipole_tmp = tf.multiply(scaled_charge, coords_rshp)
-			dipole_tmp = tf.transpose(dipole_tmp)
+			dipole_tmp = tf.reshape(dipole_tmp, [3, shp_out[1]])
 			dipole = tf.matmul(dipole_tmp, mats)
 			dipole = tf.transpose(dipole)
 			dipole_output = tf.add(dipole_output, dipole)
@@ -1006,11 +1008,15 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			if (not np.all(np.isfinite(batch_data[2][e]),axis=(0,1))):
 				print("I was fed shit3")
 				raise Exception("DontEatShit")
-		if (not np.all(np.isfinite(batch_data[3]),axis=(0,1))):
-			print("I was fed shit4")
-			raise Exception("DontEatShit")
+		#if (not np.all(np.isfinite(batch_data[3]),axis=(0,1))):
+		#	print("I was fed shit4")
+		#	raise Exception("DontEatShit")
+		if (not np.all(np.isfinite(batch_data[4]),axis=(0,1))):
+                        print("I was fed shit5")
+                        raise Exception("DontEatShit")
 		#feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl + self.coords_pl, batch_data[0]+batch_data[1] +  batch_data[2])}
 		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+self.coords_pl+[self.natom_pl]+[self.label_pl], batch_data[0]+batch_data[1]+ batch_data[2] + [batch_data[3]] + [batch_data[4]])}
+		#print ("batch_data", batch_data)
 		return feed_dict
 
 
@@ -1031,7 +1037,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			#print ("checking shape:", batch_data[2][0].shape, batch_data[2][1].shape, batch_data[2][2].shape, batch_data[2][3].shape)
 			#print ("checking shape, input:", batch_data[0][0].shape, batch_data[0][1].shape, batch_data[0][2].shape, batch_data[0][3].shape)
 			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
-			dump_, dump_2, total_loss_value, loss_value, dipole_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss,  self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
+			dump_2, total_loss_value, loss_value, dipole_output = self.sess.run([self.train_op, self.total_loss, self.loss,  self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
@@ -1063,7 +1069,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			test_loss += loss_value
 			num_of_mols += actual_mols
 		print ("testing result:")
-		print ("acurrate charge, dipole:", batch_data[3][:20])
+		print ("predict charge:", atom_outputs)
+		print ("acurrate charge, dipole:", batch_data[4][:20])
 		print ("predict dipole", dipole_output[:20])
 		#print ("charge sum:", netcharge_output)
 		#print ("charges: ",  atom_outputs)
@@ -1110,7 +1117,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
 			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
 			self.dipole_output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
-			self.check = tf.add_check_numerics_ops()
+			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -1135,7 +1142,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
 			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
 			self.dipole_output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
-			self.check = tf.add_check_numerics_ops()
+			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_out, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()

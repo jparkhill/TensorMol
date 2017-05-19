@@ -226,13 +226,13 @@ def TestDipole():
 		a = MSet("chemspider9")
 		a.Load()
 		TreatedAtoms = a.AtomTypes()
-		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole")
-		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
-		tset.BuildTrain("chemspider9_multipole")
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole2")
+		tset = TensorMolData_BP_Multipole_2(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain("chemspider9_multipole2")
 
-	if (0):
-		tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
-		manager=TFMolManage("",tset,False,"Dipole_BP")
+	if (1):
+		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole2_ANI1_Sym")
+		manager=TFMolManage("",tset,False,"Dipole_BP_2")
 		manager.Train()
 
 	if (0):
@@ -265,7 +265,7 @@ def TestDipole():
 			center_ = np.average(mol.coords,axis=0)
         		fixed_charge_dipole[i] = np.einsum("ax,a", mol.coords-center_ , charge)/AUPERDEBYE
 		np.savetxt("./results/furan_md_nn_fixed_charge_dipole.dat", fixed_charge_dipole)
-	if (1):
+	if (0):
 		a = MSet("thf_dimer_flip")
                 a.ReadXYZ("thf_dimer_flip")
 
@@ -648,8 +648,8 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-#TestDipole()
-TestJohnson()
+TestDipole()
+#TestJohnson()
 #TestMorphIR()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)

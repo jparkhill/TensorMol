@@ -764,6 +764,7 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 		currentmol=self.scratch_meta[self.ScratchPointer+ignore_first_mol,0]
 		outputs = np.zeros((noutputs, 3))
 		natom_in_mol  = np.zeros((noutputs, 1))
+		natom_in_mol.fill(float('inf'))
 		for e in range(len(self.eles)):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
 			matrices.append(np.zeros((sto[e],noutputs)))
@@ -789,7 +790,7 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 		#print "matrices",matrices
 		#print "outputs",outputs
 		self.ScratchPointer += ncases
-		return [inputs, matrices, coords, natom_in_mol, outputs]
+		return [inputs, matrices, coords, 1.0/natom_in_mol, outputs]
 
 	def GetTestBatch(self,ncases,noutputs):
 		"""
@@ -836,8 +837,9 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 			else:
 				sto[self.eles.index(self.scratch_test_meta[i,1])]+=1
 		currentmol=self.scratch_test_meta[self.test_ScratchPointer+ignore_first_mol,0]
-		outputs = np.zeros((noutputs, 4))
+		outputs = np.zeros((noutputs, 3))
 		natom_in_mol = np.zeros((noutputs, 1))
+		natom_in_mol.fill(float('inf'))
 		for e in range(len(self.eles)):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
 			matrices.append(np.zeros((sto[e],noutputs)))
@@ -871,4 +873,60 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 		self.test_ScratchPointer += ncases
 #		print "length of test_mols:", len(self.test_mols)
 #		print "outputpointer:", outputpointer
-		return [inputs, matrices, coords, natom_in_mol, outputs]
+		return [inputs, matrices, coords, 1.0/natom_in_mol, outputs]
+
+
+	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
+		self.CheckShapes()
+		self.name=name_
+		LOGGER.info("TensorMolData, self.type:"+self.type)
+		if self.type=="frag":
+			raise Exception("No BP frags now")
+		nmols  = len(self.set.mols)
+		natoms = self.set.NAtoms()
+		LOGGER.info( "self.dig.eshape"+str(self.dig.eshape)+" self.dig.lshape"+str(self.dig.lshape))
+		cases = np.zeros(tuple([natoms]+list(self.dig.eshape)))
+		LOGGER.info( "cases:"+str(cases.shape))
+		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
+		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
+		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
+		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_out.npy"
+		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
+		casep=0
+		# Generate the set in a random order.
+		ord=np.random.permutation(len(self.set.mols))
+		mols_done = 0
+		for mi in ord:
+			nat = self.set.mols[mi].NAtoms()
+			#print "casep:", casep
+			if (mols_done%1000==0):
+				LOGGER.info("Mol:"+str(mols_done))
+			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+			if not np.all(np.isfinite(ins)):
+				print "find a bad case, writting down xyz.."
+				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
+			#print mi, ins.shape, outs.shape
+			cases[casep:casep+nat] = ins
+			labels[mols_done] = outs
+			for j in range(casep,casep+nat):
+				self.CaseMetadata[j,0] = mols_done
+				self.CaseMetadata[j,1] = self.set.mols[mi].atoms[j-casep]
+				self.CaseMetadata[j,2] = casep
+				self.CaseMetadata[j,3] = casep+nat
+			casep += nat
+			mols_done = mols_done + 1
+			if (mols_done>=max_nmols_):
+				break
+		inf = open(insname,"wb")
+		ouf = open(outsname,"wb")
+		mef = open(metasname,"wb")
+		np.save(inf,cases[:casep,:])
+		np.save(ouf,labels[:mols_done,:])
+		np.save(mef,self.CaseMetadata[:casep,:])
+		inf.close()
+		ouf.close()
+		mef.close()
+		self.AvailableDataFiles.append([insname,outsname,metasname])
+		self.Save() #write a convenience pickle.
+		return
+
