@@ -1004,7 +1004,6 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
                         coords = coords_pl[e]
 			trans_mats = tf.transpose(mats)
 			ele_delta_charge = tf.matmul(delta_charge, trans_mats)
-			scaled_charge = atom_outputs[e]
 			scaled_charge = tf.subtract(atom_outputs[e], ele_delta_charge)
 			scaled_charge_list.append(scaled_charge)
 			scaled_netcharge = tf.matmul(scaled_charge,mats)
