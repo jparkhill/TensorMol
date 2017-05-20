@@ -644,6 +644,11 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			#new_coords = np.zeros((batch_data[4].shape[0], batch_data[4].shape[1]+1))
+			#new_coords[:,0] = 0
+			#new_coords[:,1:] = batch_data[4]
+			#batch_data[4] = new_coords
+			#batch_data = batch_data[:3] + [batch_data[4]]
 			#print ("checking shape:", batch_data[2][0].shape, batch_data[2][1].shape, batch_data[2][2].shape, batch_data[2][3].shape)
 			#print ("checking shape, input:", batch_data[0][0].shape, batch_data[0][1].shape, batch_data[0][2].shape, batch_data[0][3].shape)
 			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
@@ -954,20 +959,43 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
 				shp_out = tf.shape(branches[-1][-1])
 				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
+
+#				rshp = tf.reshape(cut,[1,shp_out[0]])
+#                                atom_outputs.append(rshp)
+#                                coords_rshp = tf.transpose(coords)
+#                                coords_rshp_shape = tf.shape(coords_rshp)
+#                                dipole_tmp = tf.multiply(rshp, coords_rshp)
+#                                dipole_tmp = tf.reshape(dipole_tmp,[3, shp_out[0]])
+#                                netcharge = tf.matmul(rshp,mats)
+#                                dipole = tf.matmul(dipole_tmp, mats)
+#                                netcharge = tf.transpose(netcharge)
+#                                dipole = tf.transpose(dipole)
+#                                netcharge_output = tf.add(netcharge_output, netcharge)
+#                                dipole_output = tf.add(dipole_output, dipole)
+#
+#		return  dipole_output, atom_outputs,  netcharge_output#atom_outputs
+
 				rshp = tf.reshape(cut,[1,shp_out[0]])
 				atom_outputs.append(rshp)
 
 				#dipole_tmp = tf.multiply(rshp, coords_rshp)
 				#dipole_tmp = tf.reshape(dipole_tmp,[3, shp_out[0]])
+
 				netcharge = tf.matmul(rshp,mats)
+
 				#dipole = tf.matmul(dipole_tmp, mats)
+
 				netcharge = tf.transpose(netcharge)
+
 				#dipole = tf.transpose(dipole)
+
 				netcharge_output = tf.add(netcharge_output, netcharge)
+
 				#dipole_output = tf.add(dipole_output, dipole)
-		#delta_charge = tf.multiply(netcharge_output, natom_pl)
-		case_out = tf.shape(mats_pl[0])[1]
-		delta_charge = tf.zeros((case_out, 1))
+
+		delta_charge = tf.multiply(netcharge_output, natom_pl)
+		#case_out = tf.shape(mats_pl[0])[1]
+		#delta_charge = tf.zeros((case_out, 1))
 		delta_charge = tf.transpose(delta_charge)
 		scaled_charge_list = [] 
 		for e in range(len(self.eles)):
@@ -976,6 +1004,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
                         coords = coords_pl[e]
 			trans_mats = tf.transpose(mats)
 			ele_delta_charge = tf.matmul(delta_charge, trans_mats)
+			scaled_charge = atom_outputs[e]
 			scaled_charge = tf.subtract(atom_outputs[e], ele_delta_charge)
 			scaled_charge_list.append(scaled_charge)
 			scaled_netcharge = tf.matmul(scaled_charge,mats)

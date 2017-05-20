@@ -250,13 +250,22 @@ def TestDipole():
 		tset.BuildTrain("chemspider9_multipole")
 
         if (0):
-                tset = TensorMolData_BP_Multipole(MSet(),MolDigester([]),"chemspider9_multipole_ANI1_Sym")
+                a = MSet("chemspider9")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole2")
+                tset = TensorMolData_BP_Multipole_2(a,d, order_=1, num_indis_=1, type_="mol")
+                tset.BuildTrain("chemspider9_multipole3")
+
+
+        if (0):
+                tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
                 manager=TFMolManage("",tset,False,"Dipole_BP")
                 manager.Train()
 
 
 	if (1):
-		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole2_ANI1_Sym")
+		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"Dipole_BP_2")
 		manager.Train()
 
