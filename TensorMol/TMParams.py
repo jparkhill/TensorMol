@@ -7,7 +7,7 @@ class TMParams(dict):
 		myparam = kwargs.pop('myparam', '')
 		dict.__init__(self, *args, **kwargs )
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
-		self["check_level"] = 3 # whether to test the consistency of several things...
+		self["check_level"] = 2 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
 		# self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2, 2.4],
@@ -105,7 +105,7 @@ class TMParams(dict):
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 2000
-		self["test_freq"] = 1
+		self["test_freq"] = 10
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
