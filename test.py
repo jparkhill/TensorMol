@@ -112,17 +112,36 @@ def TestJohnson():
 	a = MSet("johnsonmols")
 	a.ReadXYZ("johnsonmols")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	PARAMS["OptMomentum"] = 0.0
-	PARAMS["OptMomentumDecay"] = 0.9
-	PARAMS["OptStepSize"] = 0.0002
-	PARAMS["OptMaxCycles"]=200
-	m = a.mols[0]
-	optimizer = Optimizer(manager)
-	optimizer.OptANI1(m)
+
+	PARAMS["NeuronType"]="softplus"
+	m = a.mols[1]
+
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),True)
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	print "Masses:", masses
+
+	if (0):
+		test_mat = np.zeros((6,6))
+		test_mat[:3,:3] = np.array([[1.0,0.1,0.001],[0.1,1.2,0.1],[0.001,0.1,1.5]])
+		test_mat[3:,3:] = np.array([[1.0,0.1,0.001],[0.1,1.2,0.1],[0.001,0.1,1.5]])
+		test_mat[3:,:3] = np.array([[0.3,0.3,0.3],[0.3,0.3,0.3],[0.3,0.3,0.3]])
+		test_mat[:3,3:] = np.array([[0.3,0.3,0.3],[0.3,0.3,0.3],[0.3,0.3,0.3]])
+		print test_mat
+		x0 = np.array([[0.0,0.0,0.0],[1.0,0.0,0.0]])
+		TESTEN = lambda x_: 0.5*np.dot(np.dot(x_.reshape(6),test_mat),x_.reshape(6))
+		masses = np.array([0.001,0.002])
+		HarmonicSpectra(TESTEN,x0,masses,None,0.01)
+		return
+
+	if (0):
+		PYSCFFIELD = lambda x: PyscfDft(Mol(m.atoms,x))
+		QCHEMFIELD = lambda x: QchemDft(Mol(m.atoms,x))
+		#CoordinateScan(PYSCFFIELD,m.coords,"Pyscf")
+		#print "scan complete..."
+		HarmonicSpectra(PYSCFFIELD,m.coords,masses,None,0.005)
 
 	PARAMS["MDdt"] = 0.10
 	PARAMS["RemoveInvariant"]=True
@@ -130,20 +149,20 @@ def TestJohnson():
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
 	PARAMS["MDTemp"]= 1.0
+
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 0.9
+	PARAMS["OptStepSize"] = 0.0002
+	PARAMS["OptMaxCycles"]=200
+	optimizer = Optimizer(manager)
+	optimizer.OptANI1(m)
 	anneal = Annealer(ForceField, ChargeField, m, "Anneal")
 	anneal.Prop()
 	m.coords = anneal.Minx.copy()
 
-	#CoordinateScan(EnergyField,m.coords)
-	masses = np.array(map(lambda x: ATOMICMASSES[x-1],m.atoms))
-	print "Masses:", masses
-
-	PYSCFFIELD = lambda x: PyscfDft(Mol(m.atoms,x))
-	QCHEMFIELD = lambda x: QchemDft(Mol(m.atoms,x))
-	HarmonicSpectra(PYSCFFIELD,m.coords,masses)
-
+	CoordinateScan(EnergyField,m.coords)
 	HartreeForce = lambda x: -1*manager.Eval_BPForceSingle(Mol(m.atoms,x),False)/JOULEPERHARTREE
-	HarmonicSpectra(EnergyField,m.coords,masses,HartreeForce)
+	HarmonicSpectra(EnergyField, m.coords, masses, HartreeForce)
 	return
 
 	PARAMS["MDThermostat"] = None

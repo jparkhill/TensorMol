@@ -34,6 +34,51 @@ def CartToSphere(arg_):
 	phi = np.arctan2(y,x)
 	return np.array([r,theta,phi])
 
+def SchmidtStep(xs,y_):
+	"""
+	return y - projection of y onto all xs normalized.
+	Args:
+		xs: orthonormal row vectors
+		y: another row vector.
+	"""
+	y = y_.copy()
+	for i in range(xs.shape[0]):
+		y -= np.dot(xs[i],y)*xs[i]/np.dot(xs[i],xs[i])
+	ntmp = np.dot(y,y)
+	return ntmp, y
+
+def Normalize(x_):
+	return x_/np.sqrt(np.dot(x_,x_))
+
+def PairOrthogonalize(x,y):
+	"""
+	Does a Graham-Schmidt
+	The assumption here is that y is square and full-rank
+	and x has smaller and full rank. Returns rank(y)-rank(x) row vectors
+	which are all normalized and orthogonal to x.
+	"""
+	ny = y.shape[0]
+	nx = x.shape[0]
+	dim = y.shape[1]
+	if (x.shape[1] != y.shape[1]):
+		raise Exception("Dim mismatch")
+	# Orthogonalize
+	Ox = np.zeros((nx+ny,dim))
+	Ox[0] = Normalize(x[0])
+	Orank = 1
+	for i in range(1,nx):
+		ntmp, tmp = SchmidtStep(Ox[:Orank],x[i])
+		if (ntmp > pow(10.0,-12.0)):
+			Ox[Orank] = tmp/np.sqrt(ntmp)
+			Orank += 1
+	LastXVec = Orank
+	for i in range(ny):
+		ntmp, tmp = SchmidtStep(Ox[:Orank],y[i])
+		if (ntmp > pow(10.0,-12.0)):
+			Ox[Orank] = tmp/np.sqrt(ntmp)
+			Orank += 1
+	return Ox[LastXVec:Orank]#Ox[:Orank]#
+
 def SphereToCartV(arg_):
 	return np.array(map(SphereToCart,arg_))
 

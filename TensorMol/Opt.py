@@ -268,6 +268,9 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
+		# Checks stability in each cartesian direction.
+		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
+		print "Final Energy:", Energy(prev_m.coords)
 		return prev_m
 
 	def OptTFRealForceLBFGS(self,m, filename="OptLog",Debug=False):
