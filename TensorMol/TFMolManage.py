@@ -559,6 +559,82 @@ class TFMolManage(TFManage):
 			return  np.zeros(nmols), sdipole, smolatomcharge
 		return netcharge, dipole, molatomcharge
 
+
+	def Eval_BPDipole_2(self, mol_set,  ScaleCharge_ = False):
+		"""
+		can take either a single mol or mol set
+		return dipole, atomcharge
+		Dipole has unit in debye
+		"""
+		eles = self.Instances.eles
+		if isinstance(mol_set, Mol):
+			tmp = MSet()
+			tmp.mols = [mol_set]
+			mol_set = tmp
+			nmols = len(mol_set.mols)
+			natoms = mol_set.NAtoms()
+			cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+			dummy_outputs = np.zeros((nmols, 3))
+                	natom_in_mol = np.zeros((nmols, 1))
+                	natom_in_mol.fill(float('inf'))
+			meta = np.zeros((natoms, 4), dtype = np.int)
+			xyzmeta = np.zeros((natoms, 3))
+			casep = 0
+			mols_done = 0
+			t = time.time()
+			for mol in mol_set.mols:
+				ins, grads = self.TData.dig.EvalDigest(mol)
+				nat = mol.NAtoms()
+				xyz_centered = mol.coords - np.average(mol.coords, axis=0)
+				cases[casep:casep+nat] = ins
+				for i in range (casep, casep+nat):
+					meta[i, 0] = mols_done
+					meta[i, 1] = mol.atoms[i - casep]
+					meta[i, 2] = casep
+					meta[i, 3] = casep + nat
+					xyzmeta[i] = xyz_centered[i - casep]
+				casep += nat
+				mols_done += 1
+				sto = np.zeros(len(eles),dtype = np.int32)
+				offsets = np.zeros(len(eles),dtype = np.int32)
+				inputs = []
+				matrices = []
+				xyz = []
+				natom = []
+				outputpointer = 0
+				for i in range (0, natoms):
+					sto[self.TData.eles.index(meta[i, 1])] += 1
+				currentmol = 0
+				for e in range (len(eles)):
+					inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+					matrices.append(np.zeros((sto[e], nmols)))
+					xyz.append(np.zeros((sto[e], 3)))
+				for i in range (0, natoms):
+					if currentmol != meta[i, 0]:
+						outputpointer += 1
+						currentmol = meta[i, 0]
+					e = meta[i, 1]
+					ei = eles.index(e)
+					inputs[ei][offsets[ei], :] = cases[i]
+					matrices[ei][offsets[ei], outputpointer] = 1.0
+					xyz[ei][offsets[ei]] = xyzmeta[i]
+					natom_in_mol[outputpointer] = meta[i,3] - meta[i,2]
+					offsets[ei] += 1
+				t = time.time()
+				dipole, atomcharge = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs])
+		molatomcharge = []
+		pointers = [0 for ele in eles]
+		for i, mol in enumerate(mol_set.mols):
+			tmp_atomcharge = np.zeros(mol.NAtoms())
+			for j in range (0, mol.NAtoms()):
+				atom_type = mol.atoms[j]
+				atom_index = eles.index(atom_type)
+				tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]
+				pointers[atom_index] +=1
+			molatomcharge.append(tmp_atomcharge)
+		return dipole, molatomcharge
+
+
 	def Eval_Bond_BP(self, mol_set, total_energy = False):
 		nmols = len(mol_set.mols)
 		nbonds = mol_set.NBonds()
