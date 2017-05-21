@@ -57,6 +57,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff(self.TData, None)
 		elif (self.NetType == "fc_sqdiff_BP"):
 			self.Instances = MolInstance_fc_sqdiff_BP(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_WithGrad"):
+			self.Instances = MolInstance_fc_sqdiff_BP_WithGrad(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):

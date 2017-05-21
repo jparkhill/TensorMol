@@ -1,3 +1,7 @@
+"""
+Routines which help do differential analysis
+"""
+
 from Sets import *
 from TFManage import *
 from PhysicalData import *
@@ -225,19 +229,6 @@ def InternalCoordinates(x_,m):
 	S = PairOrthogonalize(D,MWC) # Returns normalized Coords.
 	nint = S.shape[0]
 	print "Number of Internal Coordinates: ", nint
-	if (0):
-		for i in range(nint):
-			print "Invariances before: "
-			for eps in np.linspace(-0.1,0.1,12):
-				xpdx = x_+eps*S[i].reshape((n,3))
-				COM2 = CenterOfMass(xpdx,m)
-				print "COM", COM2-COM0
-				I = InertiaTensor(xpdx-COM2,m)
-				Ip,X = np.linalg.eig(I)
-				print "InertiaAxes", Ip-Ip0
-				mo = Mol(np.array([1,6,1,8]),xpdx)
-				mo.WriteXYZfile("./results/","ModeScanBefore"+str(i)+".xyz")
-		print "Internal Coordinates: ", S
 	return S
 
 def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
@@ -254,7 +245,6 @@ def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
 	Crds = InternalCoordinates(x_,m_) #invbasis X cart
 	#Crds=np.eye(n3).reshape((n3,n,3))
 	Hess = DirectedFdiffHessian(f_, x_, Crds.reshape((len(Crds),n,3)), eps_)
-	# Reshape it to flatten the cartesian parts.
 	print "Hess (Internal):", Hess
 	Hess /= (BOHRPERA*BOHRPERA)
 	# Transform the invariant hessian into cartesian coordinates.
