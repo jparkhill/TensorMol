@@ -831,6 +831,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 
 	def Prepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
+		print("I am pretty sure this is depreciated and should be removed. ")
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
@@ -890,20 +891,33 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		self.NetType = "fc_sqdiff_BP_WithGrad"
 		MolInstance_fc_sqdiff_BP.__init__(self, TData_,  Name_, Trainable_)
 		self.inpg_pl = None
-		self.MaxN3 = # This is only a barrier for training.
+		self.MaxN3 = None # This is only a barrier for training.
 		self.GradWeight = 1.0/self.MaxN3 # relative weight of the nuclear gradient loss.
-		print "MolInstance_fc_sqdiff_BP_WithGrad", self.GradWeight
+		self.grads = None # placeholder for the grads tensor
+		print( "MolInstance_fc_sqdiff_BP_WithGrad", self.GradWeight)
 
 	def Clean(self):
 		MolInstance_fc_sqdiff_BP.Clean(self)
 		self.inpg_pl=None
 		return
 
-	def Prepare(self):
-		#eval_labels = np.zeros(Ncase)  # dummy labels
+	def train_prepare(self,  continue_training =False):
+		"""
+		Get placeholders, graph and losses in order to begin training.
+		Also assigns the desired padding.
+
+		Args:
+			continue_training: should read the graph variables from a saved checkpoint.
+		"""
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
+		self.MaxN3 = self.TData.MaxN3
+		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
+		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
+		print("Assigned batch input size: ",self.batch_size)
+		print("Assigned batch output size: ",self.batch_size_output)
+		with tf.Graph().as_default():
 			self.inp_pl=[]
 			self.inpg_pl=[]
 			self.mats_pl=[]
@@ -912,15 +926,31 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 				self.inpg_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape,self.MaxN3])))
 				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
-			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
+			self.output, self.atom_outputs, self.grads = self.inference(self.inp_pl, self.mats_pl)
 			self.check = tf.add_check_numerics_ops()
-			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+			self.total_loss, self.loss = self.loss_op(self.output, self.grads, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
+			#self.summary_op = tf.summary.merge_all()
+			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver.restore(self.sess, self.chk_file)
+			self.saver = tf.train.Saver()
+			try: # I think this may be broken
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+			except Exception as Ex:
+				print("Restore Failed",Ex)
+				pass
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
 		return
 
 	def inference(self, inp_pl, grad_pl, mats_pl):
@@ -1017,6 +1047,27 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+[self.label_pl], batch_data[0]+batch_data[1]+batch_data[2]+[batch_data[3]])}
 		return feed_dict
 
+	def loss_op(self, output, grads, labels):
+		"""
+		Args:
+			output: energies of molecules.
+			grads: gradients of molecules (MaxN3)
+			labels: energy, gradients.
+		Returns:
+			l2 loss on the energies + self.GradWeight*l2 loss on gradients.
+		"""
+		Enlabels = tf.slice(labels,[0,0],[0,-1])
+		Gradlabels = tf.slice(labels,[0,1],[0,-1])
+		Ediff  = tf.subtract(output, Enlabels)
+		Gdiff  = tf.subtract(grads, Gradlabels)
+		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)
+		#tf.Print(labels, [labels], message="This is labels: ",first_n=10000000,summarize=100000000)
+		Eloss = tf.nn.l2_loss(Ediff)
+		Gloss = tf.mul(tf.nn.l2_loss(Gdiff),self.GradWeight)
+		loss = tf.add(Eloss,Gloss)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
+
 	def train_step(self, step):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
@@ -1049,7 +1100,6 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		start_time = time.time()
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
-
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			#print ("ministep:", ministep)
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
@@ -1058,7 +1108,6 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
-
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
 		duration = time.time() - start_time
 		#print ("preds:", preds, " label:", batch_data[2])

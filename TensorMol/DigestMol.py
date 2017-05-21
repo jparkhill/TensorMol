@@ -416,7 +416,7 @@ class MolDigester:
 		"""
 		if (self.OType == "EnergyAndForce"):
 			return self.Emb(mol_,True,True)
-		else;
+		else:
 			return self.Emb(mol_,True,False)
 
 	def Print(self):

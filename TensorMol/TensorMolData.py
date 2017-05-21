@@ -283,7 +283,7 @@ class TensorMolData_BP(TensorMolData):
 		return
 
 	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000, WithGrad_=False):
-		if (WithGrad_ and self.dig.OType != "EnergyAndForce")
+		if (WithGrad_ and self.dig.OType != "EnergyAndForce"):
 			raise Exception("Use to find forces.... ")
 		self.CheckShapes()
 		self.name=name_
