@@ -540,10 +540,10 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		hidden3_units=self.hidden3
 		netcharge_output = tf.zeros([self.batch_size_output, 1])
 		dipole_output = tf.zeros([self.batch_size_output, 3])
-		nrm1=10.0/(10+math.sqrt(float(self.inshape)))
-		nrm2=10.0/(10+math.sqrt(float(hidden1_units)))
-		nrm3=10.0/(10+math.sqrt(float(hidden2_units)))
-		nrm4=10.0/(10+math.sqrt(float(hidden3_units)))
+		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
+		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
+		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
+		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
 		LOGGER.info("Norms: %f,%f,%f", nrm1,nrm2,nrm3)
 		#print(inp_pl)
 		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
@@ -644,6 +644,11 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			#new_coords = np.zeros((batch_data[4].shape[0], batch_data[4].shape[1]+1))
+			#new_coords[:,0] = 0
+			#new_coords[:,1:] = batch_data[4]
+			#batch_data[4] = new_coords
+			#batch_data = batch_data[:3] + [batch_data[4]]
 			#print ("checking shape:", batch_data[2][0].shape, batch_data[2][1].shape, batch_data[2][2].shape, batch_data[2][3].shape)
 			#print ("checking shape, input:", batch_data[0][0].shape, batch_data[0][1].shape, batch_data[0][2].shape, batch_data[0][3].shape)
 			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
@@ -779,8 +784,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.1
-		#self.learning_rate = 0.0001
+		#self.learning_rate = 0.1
+		self.learning_rate = 0.0001
 		#self.learning_rate = 0.00001
 		self.momentum = 0.95
 		if (self.Trainable):
@@ -808,16 +813,17 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		# self.batch_size is still the number of inputs in a batch.
 		self.batch_size = 10000
 		self.batch_size_output = 0
-		self.hidden1 = 100
-		self.hidden2 = 100
-		self.hidden3 = 100
+		self.hidden1 = 200
+		self.hidden2 = 200
+		self.hidden3 = 200
 		self.summary_op =None
 		self.summary_writer=None
 
+
 	def Clean(self):
-		MolInstance_fc_sqdiff_BP.Clean(self)
-		self.coords_pl = None
-		self.dipole_output = None
+		MolInstance_BP_Dipole.Clean(self)
+		self.natom_pl = None
+		self.net_charge = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -846,7 +852,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
 			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
 			self.dipole_output, self.atom_outputs, self.net_charge  = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
-			#self.check = tf.add_check_numerics_ops()
+			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -936,15 +942,15 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			if (PARAMS["check_level"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
@@ -954,18 +960,43 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
 				shp_out = tf.shape(branches[-1][-1])
 				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
+
+#				rshp = tf.reshape(cut,[1,shp_out[0]])
+#                                atom_outputs.append(rshp)
+#                                coords_rshp = tf.transpose(coords)
+#                                coords_rshp_shape = tf.shape(coords_rshp)
+#                                dipole_tmp = tf.multiply(rshp, coords_rshp)
+#                                dipole_tmp = tf.reshape(dipole_tmp,[3, shp_out[0]])
+#                                netcharge = tf.matmul(rshp,mats)
+#                                dipole = tf.matmul(dipole_tmp, mats)
+#                                netcharge = tf.transpose(netcharge)
+#                                dipole = tf.transpose(dipole)
+#                                netcharge_output = tf.add(netcharge_output, netcharge)
+#                                dipole_output = tf.add(dipole_output, dipole)
+#
+#		return  dipole_output, atom_outputs,  netcharge_output#atom_outputs
+
 				rshp = tf.reshape(cut,[1,shp_out[0]])
 				atom_outputs.append(rshp)
 
 				#dipole_tmp = tf.multiply(rshp, coords_rshp)
 				#dipole_tmp = tf.reshape(dipole_tmp,[3, shp_out[0]])
+
 				netcharge = tf.matmul(rshp,mats)
+
 				#dipole = tf.matmul(dipole_tmp, mats)
+
 				netcharge = tf.transpose(netcharge)
+
 				#dipole = tf.transpose(dipole)
+
 				netcharge_output = tf.add(netcharge_output, netcharge)
+
 				#dipole_output = tf.add(dipole_output, dipole)
+
 		delta_charge = tf.multiply(netcharge_output, natom_pl)
+		#case_out = tf.shape(mats_pl[0])[1]
+		#delta_charge = tf.zeros((case_out, 1))
 		delta_charge = tf.transpose(delta_charge)
 		scaled_charge_list = [] 
 		for e in range(len(self.eles)):
@@ -1041,7 +1072,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			#print ("checking shape:", batch_data[2][0].shape, batch_data[2][1].shape, batch_data[2][2].shape, batch_data[2][3].shape)
 			#print ("checking shape, input:", batch_data[0][0].shape, batch_data[0][1].shape, batch_data[0][2].shape, batch_data[0][3].shape)
 			actual_mols  = np.count_nonzero(np.any(batch_data[3][1:], axis=1))
-			dump_2, total_loss_value, loss_value,  dipole_output, atom_outputs, net_charge = self.sess.run([self.train_op, self.total_loss, self.loss, self.dipole_output, self.atom_outputs, self.net_charge],  feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value,  dipole_output, atom_outputs, net_charge = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.dipole_output, self.atom_outputs, self.net_charge],  feed_dict=self.fill_feed_dict(batch_data))
 
 
 			#dump_2, total_loss_value, loss_value, dipole_output = self.sess.run([self.train_op, self.total_loss, self.loss,  self.dipole_output], feed_dict=self.fill_feed_dict(batch_data))
@@ -1096,15 +1127,15 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 
 	def evaluate(self, batch_data):   #this need to be modified
 		# Check sanity of input
-		nmol = batch_data[3].shape[0]
-		LOGGER.debug("nmol: %i", batch_data[3].shape[0])
+		nmol = batch_data[4].shape[0]
+		LOGGER.debug("nmol: %i", batch_data[4].shape[0])
 		self.batch_size_output = nmol
 		if not self.sess:
 			LOGGER.info("loading the session..")
 			self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		dipole, total_loss_value, loss_value,  atom_outputs = self.sess.run([ self.dipole_output, self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
-		return  dipole/AUPERDEBYE, atom_outputs
+		return   dipole/AUPERDEBYE, atom_outputs
 
 	def Eval_Prepare(self):
 		if (isinstance(self.inshape,tuple)):
@@ -1114,19 +1145,19 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				self.inshape = self.inshape[0]
 		#eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			self.inp_pl=[]
-			self.mats_pl=[]
-			self.coords_pl=[]
-			for e in range(len(self.eles)):
-				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None, self.batch_size_output])))
-				self.coords_pl.append(tf.placeholder(tf.float32, shape=tuple([None, 3])))
-			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
-			self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
-			self.dipole_output, self.atom_outputs, self.net_charge = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
-			#self.check = tf.add_check_numerics_ops()
-			self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+                        self.inp_pl=[]
+                        self.mats_pl=[]
+                        self.coords_pl=[]
+                        for e in range(len(self.eles)):
+                                self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
+                                self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
+                                self.coords_pl.append(tf.placeholder(tf.float32, shape=tuple([None, 3])))
+                        self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
+                        self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
+                        self.dipole_output, self.atom_outputs, self.net_charge  = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
+                        self.check = tf.add_check_numerics_ops()
+                        self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
+                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver()
