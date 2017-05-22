@@ -676,6 +676,31 @@ class Mol:
 		except Exception as Ex:
 			print "Read Failed.", Ex
 
+	def MMFF94_Force_from_xyz(self, path):
+		"""
+		Reads the forces from the comment line in the md_dataset,
+		and if no forces exist sets them to zero. Switched on by
+		has_force=True in the ReadGDB9Unpacked routine
+		"""
+		try:
+			f = open(path, 'r')
+			lines = f.readlines()
+			natoms = int(lines[0])
+			forces=np.zeros((natoms,3))
+			try:
+				read_forces = ((lines[1].strip().split(';'))[3]).replace("],[", ",").replace("[","").replace("]","").split(",")
+			except:
+				self.properties['mmff94forces'] = forces
+				pass
+				return
+			if read_forces:
+				for j in range(natoms):
+					for k in range(3):
+						forces[j,k] = float(read_forces[j*3+k])
+			self.properties['mmff94forces'] = forces
+		except Exception as Ex:
+			print "Read Failed.", Ex
+
 	def Energy_from_xyz(self, path):
 		"""
 		Reads the energy from the comment line in the md_dataset.

@@ -134,7 +134,7 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
-	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False):
+	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, has_mmff94=False):
 		"""
 		Reads XYZs in distinct files in one directory as a molset
 		Args:
@@ -156,6 +156,8 @@ class MSet:
 				self.mols[-1].Force_from_xyz(path+file)
 			if has_energy:
 				self.mols[-1].Energy_from_xyz(path+file)
+			if has_mmff94:
+				self.mols[-1].MMFF94_Force_from_xyz(path+file)
 		if (self.center):
 			self.CenterSet()
 		return
