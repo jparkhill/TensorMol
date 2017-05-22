@@ -248,14 +248,16 @@ class TensorMolData(TensorData):
 class TensorMolData_BP(TensorMolData):
 	"""
 			A tensordata for molecules and Behler-Parinello.
+			a Case is an input to the NN.
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
-		# a Case is an input to the NN.
 		self.CaseMetadata=None # case X molecule index X element type (Strictly ascending)
 		self.LastTrainMol=0
 		self.NTestMols=0
 		self.scratch_meta = None
 		self.scratch_test_meta = None
+		self.scratch_grads = None
+		self.scratch_test_grads = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
 		self.eles = []
 		if (MSet_ != None):
@@ -265,8 +267,12 @@ class TensorMolData_BP(TensorMolData):
 		self.MeanNAtoms=None
 		self.test_mols_done = False
 		self.test_begin_mol  = None
-                self.test_mols = []
+		self.test_mols = []
+		self.HasGrad = False # whether to pass around the gradient.
+		self.MaxN3 = None # The most coordinates in the set.
 		print "TensorMolData_BP.eles", self.eles
+		if (self.HasGrad):
+			print "TensorMolData_BP.Maxn3", self.MaxN3
 		return
 
 	def CleanScratch(self):
@@ -276,7 +282,9 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_test_meta = None
 		return
 
-	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
+	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000, WithGrad_=False):
+		if (WithGrad_ and self.dig.OType != "EnergyAndForce"):
+			raise Exception("Use to find forces.... ")
 		self.CheckShapes()
 		self.name=name_
 		LOGGER.info("TensorMolData, self.type:"+self.type)
@@ -286,10 +294,19 @@ class TensorMolData_BP(TensorMolData):
 		natoms = self.set.NAtoms()
 		LOGGER.info( "self.dig.eshape"+str(self.dig.eshape)+" self.dig.lshape"+str(self.dig.lshape))
 		cases = np.zeros(tuple([natoms]+list(self.dig.eshape)))
+		casesg = None
+		if (WithGrad_):
+			# The gradient has shape [Descriptor Dim][Coordinate]
+			# A maximum number of coordinates are enforced here.
+			# And it is checked that the gradient output is divisible by 3*eshape
+			self.MaxN3=3*np.max([X.NAtoms() for X in self.set.mols])
+			casesg = np.zeros(tuple([natoms]+list(self.dig.eshape)+[self.MaxN3]))
+			self.HasGrad = True
 		LOGGER.info( "cases:"+str(cases.shape))
 		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
 		self.CaseMetadata = np.zeros((natoms, 4), dtype = np.int)
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
+		ingname = self.path+"Mol_"+name_+"_"+self.dig.name+"_ing.npy"
 		outsname = self.path+"Mol_"+name_+"_"+self.dig.name+"_out.npy"
 		metasname = self.path+"Mol_"+name_+"_"+self.dig.name+"_meta.npy" # Used aggregate and properly sum network inputs and outputs.
 		casep=0
@@ -302,11 +319,19 @@ class TensorMolData_BP(TensorMolData):
 			if (mols_done%1000==0):
 				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
+			if (WithGrad_):
+				ins,outs,grads = self.dig.TrainDigest(self.set.mols[mi])
+			else:
+				ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			if not np.all(np.isfinite(ins)):
 				print "find a bad case, writting down xyz.."
 				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
+			if (WithGrad_):
+				if (grads.shape[2]%3 != 0):
+					raise Exception("Bad Deriv.")
+				casesg[casep:casep+nat,:,:grads.shape[2]] = grads # grads are atomXdesc dimX R
 			labels[mols_done] = outs
 			for j in range(casep,casep+nat):
 				self.CaseMetadata[j,0] = mols_done
@@ -320,6 +345,11 @@ class TensorMolData_BP(TensorMolData):
 		inf = open(insname,"wb")
 		ouf = open(outsname,"wb")
 		mef = open(metasname,"wb")
+		if (WithGrad_):
+			ingf = open(insname,"wb")
+			np.save(infg,casesg[:casep,:])
+			ingf.close()
+			self.AvailableDataFiles.append([ingname])
 		np.save(inf,cases[:casep,:])
 		np.save(ouf,labels[:mols_done,:])
 		np.save(mef,self.CaseMetadata[:casep,:])
@@ -332,6 +362,7 @@ class TensorMolData_BP(TensorMolData):
 
 	def LoadData(self):
 		insname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_in.npy"
+		ingname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_ing.npy"
 		outsname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_out.npy"
 		metasname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_meta.npy" # Used aggregate
 		inf = open(insname,"rb")
@@ -344,6 +375,12 @@ class TensorMolData_BP(TensorMolData):
 		ouf.close()
 		mef.close()
 		to = to.reshape((to.shape[0],-1))  # flat labels to [mol, 1]
+		if (os.path.isfile(ingname)):
+			ing = open(ingname,"rb")
+			tig = np.load(ing)
+			ing.close()
+			self.HasGrad = True
+			return ti, tig, to, tm
 		return ti, to, tm
 
 	def LoadDataToScratch(self, tformer):
@@ -362,7 +399,10 @@ class TensorMolData_BP(TensorMolData):
 		"""
 		if (self.ScratchState == 1):
 			return
-		ti, to, tm = self.LoadData()
+		if (self.HasGrad):
+			ti, tig, to, tm = self.LoadData()
+		else:
+			ti, to, tm = self.LoadData()
 		if (tformer.innorm != None):
 			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):
@@ -373,8 +413,6 @@ class TensorMolData_BP(TensorMolData):
 		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
 		LOGGER.debug("Number of molecules in meta:: %i", tm[-1,0]+1)
 		LastTrainCase=0
-		#print tm
-		# Figure out the number of atoms in training and test.
 		for i in range(len(tm)):
 			if (tm[i,0] == self.LastTrainMol):
 				LastTrainCase = tm[i,2] # exclusive
@@ -389,11 +427,14 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_meta = tm[:LastTrainCase]
 		self.scratch_test_inputs = ti[LastTrainCase:]
 		self.scratch_test_outputs = to[self.LastTrainMol:]
+		if (self.HasGrad):
+			self.scratch_grads = ti[:LastTrainCase]
+			self.scratch_test_grads = ti[LastTrainCase:]
 		# metadata contains: molecule index, atom type, mol start, mol stop
 		# these columns need to be shifted.
 		self.scratch_test_meta = tm[LastTrainCase:]
 		self.test_begin_mol = self.scratch_test_meta[0,0]
-#		print "before shift case  ", tm[LastTrainCase:LastTrainCase+30], "real", self.set.mols[tm[LastTrainCase, 0]].bonds, self.set.mols[self.test_begin_mol].bonds
+		#		print "before shift case  ", tm[LastTrainCase:LastTrainCase+30], "real", self.set.mols[tm[LastTrainCase, 0]].bonds, self.set.mols[self.test_begin_mol].bonds
 		self.scratch_test_meta[:,0] -= self.scratch_test_meta[0,0]
 		self.scratch_test_meta[:,3] -= self.scratch_test_meta[0,2]
 		self.scratch_test_meta[:,2] -= self.scratch_test_meta[0,2]
@@ -429,6 +470,7 @@ class TensorMolData_BP(TensorMolData):
 				a list of (num_of atom type X flattened input shape) matrix of input cases.
 				a list of (num_of atom type X batchsize) matrices which linearly combines the elements
 				a list of outputs.
+
 		"""
 		start_time = time.time()
 		if (self.ScratchState == 0):
@@ -438,8 +480,8 @@ class TensorMolData_BP(TensorMolData):
 			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
 		if (self.ScratchPointer+ncases >= self.NTrain):
 			self.ScratchPointer = 0
-		inputs = []#np.zeros((ncases, np.prod(self.dig.eshape)))
-		matrices = []#np.zeros((len(self.eles), ncases, noutputs))
+		inputs = []#np.zeros((eles,ncases, np.prod(self.dig.eshape)))
+		inputgs = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
 		offsets=[]
 		# Get the number of molecules which would be contained in the desired batch size
 		# and the number of element cases.
@@ -466,6 +508,8 @@ class TensorMolData_BP(TensorMolData):
 		outputs = np.zeros((noutputs))
 		for e in range(len(self.eles)):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
+			if (self.HasGrad):
+				inputgs.append(np.zeros((sto[e],np.prod(self.dig.egshape))))
 			matrices.append(np.zeros((sto[e],noutputs)))
 		for i in range(self.ScratchPointer+ignore_first_mol, self.ScratchPointer+ncases):
 			if (self.scratch_meta[i,0] == bmols[-1]):
@@ -478,6 +522,8 @@ class TensorMolData_BP(TensorMolData):
 			ei = self.eles.index(e)
 			# The offset for this element should be within the bounds or something is wrong...
 			inputs[ei][offsets[ei],:] = self.scratch_inputs[i]
+			if (self.HasGrad):
+				inputgs[ei][offsets[ei],:] = self.scratch_grads[i]
 			matrices[ei][offsets[ei],outputpointer] = 1.0
 			outputs[outputpointer] = self.scratch_outputs[self.scratch_meta[i,0]]
 			offsets[ei] += 1
@@ -486,7 +532,10 @@ class TensorMolData_BP(TensorMolData):
 		#print "matrices",matrices
 		#print "outputs",outputs
 		self.ScratchPointer += ncases
-		return [inputs, matrices, outputs]
+		if (self.HasGrad):
+			return [inputs, inputgs, matrices, outputs]
+		else:
+			return [inputs, matrices, outputs]
 
 	def GetTestBatch(self,ncases,noutputs):
 		"""
@@ -544,8 +593,8 @@ class TensorMolData_BP(TensorMolData):
 				currentmol = self.scratch_test_meta[i,0]
 			if not self.test_mols_done and self.test_begin_mol+currentmol not in self.test_mols:
 					self.test_mols.append(self.test_begin_mol+currentmol)
-#					if i < self.test_ScratchPointer+ignore_first_mol + 50:
-#						print "i ",i, self.set.mols[self.test_mols[-1]].bonds
+					#if i < self.test_ScratchPointer+ignore_first_mol + 50:
+					#print "i ",i, self.set.mols[self.test_mols[-1]].bonds
 			# metadata contains: molecule index, atom type, mol start, mol stop
 			e = (self.scratch_test_meta[i,1])
 			ei = self.eles.index(e)
@@ -554,17 +603,16 @@ class TensorMolData_BP(TensorMolData):
 			matrices[ei][offsets[ei],outputpointer] = 1.0
 			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]]
 			offsets[ei] += 1
-#			if i < self.test_ScratchPointer+ignore_first_mol + 50:
-#				print "first 50 meta data :", i, self.test_ScratchPointer+ignore_first_mol, self.scratch_test_meta[i]
+			#if i < self.test_ScratchPointer+ignore_first_mol + 50:
+				#print "first 50 meta data :", i, self.test_ScratchPointer+ignore_first_mol, self.scratch_test_meta[i]
 		#print "inputs",inputs
 		#print "bounds",bounds
 		#print "matrices",matrices
 		#print "outputs",outputs
 		self.test_ScratchPointer += ncases
-#		print "length of test_mols:", len(self.test_mols)
-#		print "outputpointer:", outputpointer
+		#print "length of test_mols:", len(self.test_mols)
+		#print "outputpointer:", outputpointer
 		return [inputs, matrices, outputs]
-
 
 	def PrintStatus(self):
 		print "self.ScratchState",self.ScratchState

@@ -831,6 +831,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 
 	def Prepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
+		print("I am pretty sure this is depreciated and should be removed. ")
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
@@ -849,4 +850,291 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.saver = tf.train.Saver()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
+		return
+
+class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
+	"""
+		An instance of A fully connected Behler-Parinello network.
+		Which requires a TensorMolData to train/execute.
+		This simultaneously constrains the gradient
+
+		Energy Inputs have dimension
+		[eles][atom case][Descriptor Dimension]
+		The inference is done elementwise.
+
+		Gradient inputs have dimension:
+		[eles][atom case][Descriptor Dimension][Max(n3)]
+
+		The desired outputs have dimension:
+		max(3n)+1 (energy and all derivatives, where max n3 is determined by trainind data.)
+
+		the molecular gradient is constructed by breaking up dE/dRx
+		 dE/dRx  = \sum_atoms dE_atom/dRx = \sum_atoms dE_atom/dRx
+		the sum over atoms is done with the index matrices
+		after dE_atom/dRx is made elementwise in this way:
+		  dE_atom/dRy = dE_atom/dD_i * dD_i/dRy
+
+		So dE_atom/dRy has dimension MaxN3
+
+		The gradient is produced by making an output which is
+		[eles][atom][descriptor dimension][Max(n3)] which contains each contribution to the gradient.
+		This is contracted
+	"""
+	def __init__(self, TData_, Name_=None, Trainable_=True):
+		"""
+		Raise a Behler-Parinello TensorFlow instance.
+
+		Args:
+			TData_: A TensorMolData instance.
+			Name_: A name for this instance.
+		"""
+		self.NetType = "fc_sqdiff_BP_WithGrad"
+		MolInstance_fc_sqdiff_BP.__init__(self, TData_,  Name_, Trainable_)
+		self.inpg_pl = None
+		self.MaxN3 = None # This is only a barrier for training.
+		self.GradWeight = 1.0/self.MaxN3 # relative weight of the nuclear gradient loss.
+		self.grads = None # placeholder for the grads tensor
+		print( "MolInstance_fc_sqdiff_BP_WithGrad", self.GradWeight)
+
+	def Clean(self):
+		MolInstance_fc_sqdiff_BP.Clean(self)
+		self.inpg_pl=None
+		return
+
+	def train_prepare(self,  continue_training =False):
+		"""
+		Get placeholders, graph and losses in order to begin training.
+		Also assigns the desired padding.
+
+		Args:
+			continue_training: should read the graph variables from a saved checkpoint.
+		"""
+		self.MeanNumAtoms = self.TData.MeanNumAtoms
+		self.MaxN3 = self.TData.MaxN3
+		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
+		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
+		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
+		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
+		print("Assigned batch input size: ",self.batch_size)
+		print("Assigned batch output size: ",self.batch_size_output)
+		with tf.Graph().as_default():
+			self.inp_pl=[]
+			self.inpg_pl=[]
+			self.mats_pl=[]
+			for e in range(len(self.eles)):
+				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
+				self.inpg_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape,self.MaxN3])))
+				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
+			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+			self.output, self.atom_outputs, self.grads = self.inference(self.inp_pl, self.mats_pl)
+			self.check = tf.add_check_numerics_ops()
+			self.total_loss, self.loss = self.loss_op(self.output, self.grads, self.label_pl)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			#self.summary_op = tf.summary.merge_all()
+			#init = tf.global_variables_initializer()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver = tf.train.Saver()
+			try: # I think this may be broken
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+			except Exception as Ex:
+				print("Restore Failed",Ex)
+				pass
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
+		return
+
+	def inference(self, inp_pl, grad_pl, mats_pl):
+		"""
+		A separate inference routine should be made for
+		evaluation purposes because of MaxN3. This one is for training, specifically.
+		"""
+		branches=[]
+		atom_outputs = []
+		atom_d_outputs = []
+		hidden1_units=self.hidden1
+		hidden2_units=self.hidden2
+		hidden3_units=self.hidden3
+		output = tf.zeros([self.batch_size_output])
+		nrm1=5.0/(10+math.sqrt(float(self.inshape)))
+		nrm2=5.0/(10+math.sqrt(float(hidden1_units)))
+		nrm3=5.0/(10+math.sqrt(float(hidden2_units)))
+		nrm4=5.0/(10+math.sqrt(float(hidden3_units)))
+		print("Norms:", nrm1,nrm2,nrm3)
+		#print(inp_pl)
+		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
+		#tf.Print(bnds_pl, [bnds_pl], message="bnds_pl: ",first_n=10000000,summarize=100000000)
+		#tf.Print(mats_pl, [mats_pl], message="mats_pl: ",first_n=10000000,summarize=100000000)
+		for e in range(len(self.eles)):
+			branches.append([])
+			inputs = inp_pl[e]
+			mats = mats_pl[e]
+			shp_in = tf.shape(inputs)
+			if (PARAMS["check_level"]>2):
+				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
+				mats_shape = tf.shape(mats)
+				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
+			if (PARAMS["check_level"]>3):
+				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
+			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
+				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
+				branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
+				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
+				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
+				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
+				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
+			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
+				shp = tf.shape(inputs)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units, 1], var_stddev=nrm4, var_wd=None)
+				biases = tf.Variable(tf.zeros([1]), name='biases')
+				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
+				shp_out = tf.shape(branches[-1][-1])
+				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
+				#tf.Print(tf.to_float(shp_out), [tf.to_float(shp_out)], message="This is outshape: ",first_n=10000000,summarize=100000000)
+				rshp = tf.reshape(cut,[1,shp_out[0]])
+				drshp = tf.gradients(rshp,inputs)
+				atom_outputs.append(rshp)
+				atom_d_outputs.append(drshp)
+				tmp = tf.matmul(rshp,mats)
+				output = tf.add(output,tmp)
+		# This loop calculates the force on each atom.
+		#  dE_atom/dRy = dE_atom/dD_i * dD_i/dRy, as a  padded with zeros up to MaxN3
+		#  dE_atom/dD_i is in atom_d_outputs
+		grads = tf.zeros([self.batch_size_output, self.MaxN3+1])
+		for e in range(len(self.eles)):
+			mats = mats_pl[e]
+			dAtomdRy = tf.matmul(atom_d_outputs[e],grad_pl[e])
+			dAtomdRys = tf.shape(dAtomdRy)
+			tf.Print(tf.to_float(dAtomdRys), [tf.to_float(dAtomdRys)], message="Element "+str(e)+"dAtomdRy shape ",first_n=10000000,summarize=100000000)
+			# Now scatter these with the index matrices.
+			tmp = tf.matmul(dAtomdRys,mats)
+			grads = tf.add(grads,tmp)
+		tf.verify_tensor_all_finite(output,"Nan in output!!!")
+		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
+		return output, atom_outputs, grads
+
+	def fill_feed_dict(self, batch_data):
+		"""
+		Args:
+			batch_data is: inputs, input grads, matrices, outputs (energy, forces in a self.MaxN3+1 vector.)
+		"""
+		# Don't eat shit.
+		for e in range(len(self.eles)):
+			if (not np.all(np.isfinite(batch_data[0][e]),axis=(0,1))):
+				print("I was fed shit1")
+				raise Exception("DontEatShit")
+			if (not np.all(np.isfinite(batch_data[2][e]),axis=(0,1))):
+				print("I was fed shit3")
+				raise Exception("DontEatShit")
+		if (not np.all(np.isfinite(batch_data[3]),axis=(0))):
+			print("I was fed shit4")
+			raise Exception("DontEatShit")
+		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+[self.label_pl], batch_data[0]+batch_data[1]+batch_data[2]+[batch_data[3]])}
+		return feed_dict
+
+	def loss_op(self, output, grads, labels):
+		"""
+		Args:
+			output: energies of molecules.
+			grads: gradients of molecules (MaxN3)
+			labels: energy, gradients.
+		Returns:
+			l2 loss on the energies + self.GradWeight*l2 loss on gradients.
+		"""
+		Enlabels = tf.slice(labels,[0,0],[0,-1])
+		Gradlabels = tf.slice(labels,[0,1],[0,-1])
+		Ediff  = tf.subtract(output, Enlabels)
+		Gdiff  = tf.subtract(grads, Gradlabels)
+		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)
+		#tf.Print(labels, [labels], message="This is labels: ",first_n=10000000,summarize=100000000)
+		Eloss = tf.nn.l2_loss(Ediff)
+		Gloss = tf.mul(tf.nn.l2_loss(Gdiff),self.GradWeight)
+		loss = tf.add(Eloss,Gloss)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
+
+	def train_step(self, step):
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		num_of_mols = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
+			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			actual_mols  = np.count_nonzero(batch_data[2])
+			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
+			train_loss = train_loss + loss_value
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			#print ("atom_outputs:", atom_outputs, " mol outputs:", mol_output)
+			#print ("atom_outputs shape:", atom_outputs[0].shape, " mol outputs", mol_output.shape)
+		#print("train diff:", (mol_output[0]-batch_data[2])[:actual_mols], np.sum(np.square((mol_output[0]-batch_data[2])[:actual_mols])))
+		#print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
+		#print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
+		self.print_training(step, train_loss, num_of_mols, duration)
+		return
+
+	def test(self, step):
+		"""
+		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		test_loss =  0.0
+		start_time = time.time()
+		Ncase_test = self.TData.NTest
+		num_of_mols = 0
+		for ministep in range (0, int(Ncase_test/self.batch_size)):
+			#print ("ministep:", ministep)
+			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
+			feed_dict=self.fill_feed_dict(batch_data)
+			actual_mols  = np.count_nonzero(batch_data[2])
+			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+			test_loss += loss_value
+			num_of_mols += actual_mols
+		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
+		duration = time.time() - start_time
+		#print ("preds:", preds, " label:", batch_data[2])
+		#print ("diff:", preds - batch_data[2])
+		print( "testing...")
+		self.print_training(step, test_loss, num_of_mols, duration)
+		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
+		return test_loss, feed_dict
+
+	def print_training(self, step, loss, Ncase, duration, Train=True):
+		if Train:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))
+		else:
+			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(NCase)))
+		return
+
+	def continue_training(self, mxsteps):
+		self.Eval_Prepare()
+		test_loss , feed_dict = self.test(-1)
+		test_freq = 1
+		mini_test_loss = test_loss
+		for step in  range (0, mxsteps+1):
+			self.train_step(step)
+			if step%test_freq==0 and step!=0 :
+				test_loss, feed_dict = self.test(step)
+				if test_loss < mini_test_loss:
+					mini_test_loss = test_loss
+					self.save_chk(step, feed_dict)
+		self.SaveAndClose()
 		return

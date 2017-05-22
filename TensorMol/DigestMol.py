@@ -12,6 +12,7 @@ class MolDigester:
 		self.OType = OType_
 		self.lshape = None  # output is just the energy
 		self.eshape = None
+		self.egshape = None # this is PER ATOM
 		self.SensRadius = SensRadius_
 		self.eles = eles_
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
@@ -335,6 +336,7 @@ class MolDigester:
 			Ins, Grads = self.make_connectedbond_angle_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym"):
 			Ins, Grads = self.make_ANI1_sym(mol_, MakeGradients_ = MakeGradients)
+			print "Ins shape and Grads.shape", Ins.shape, Grads.shape
 		elif(self.name == "ANI1_Sym_Bond_BP"):
 			Ins, Grads = self.make_ANI1_sym_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym_Center_Bond_BP"):
@@ -343,9 +345,17 @@ class MolDigester:
 			raise Exception("Unknown MolDigester Type.", self.name)
 		if (self.eshape == None):
 			self.eshape=Ins.shape[1:] # The first dimension is atoms. eshape is per-atom.
+			if (MakeGradients_ and self.egshape == None):
+				self.egshape=Grads.shape[1:]
 		if (MakeOutputs):
 			if (self.OType == "Energy"):
 				Outs = np.array([mol_.properties["energy"]])
+			elif (self.OType == "EnergyAndForce"):
+				en = mol_.properties["energy"]
+				frce = mol_.properties["force"]
+				Outs = np.zeros(3*mol_.NAtoms()+1,dtype = np.float32)
+				Outs[0] = en
+				Outs[1:] = frce.flatten()
 			elif (self.OType == "AtomizationEnergy"):
 			    Outs = np.array([mol_.properties["atomization"]])
 			elif (self.OType == "EleEmbAtEn"):
@@ -370,11 +380,11 @@ class MolDigester:
 				else:
 					raise Exception("Code higher orders... ")
 			elif (self.OType == "Multipole2"):
-                                if (PARAMS["EEOrder"]==2):
-                                        Outs = np.zeros(3) # monopole, 3-dipole.
-                                        Outs = mol_.properties["dipole"]*AUPERDEBYE
-                                else:
-                                        raise Exception("Code higher orders... ")
+				if (PARAMS["EEOrder"]==2):
+					Outs = np.zeros(3) # monopole, 3-dipole.
+					Outs = mol_.properties["dipole"]*AUPERDEBYE
+				else:
+					raise Exception("Code higher orders... ")
 			elif (self.OType == "Atomization_novdw"):
 			    Outs = np.array([mol_.properties["atomization"] - mol_.properties["vdw"]])
 			elif (self.OType == "FragEnergy"):
@@ -386,13 +396,14 @@ class MolDigester:
 
 			if (self.lshape == None):
 				self.lshape=Outs.shape
+
 			if (MakeGradients):
 				return Ins, Grads, Outs
 			else:
 				return Ins, Outs
 		else:
 			if (MakeGradients):
-                                return Ins, Grads
+				return Ins, Grads
 			else:
 				return Ins
 
@@ -403,7 +414,10 @@ class MolDigester:
 		Args:
 			mol_: a molecule to be digested
 		"""
-		return self.Emb(mol_,True,False)
+		if (self.OType == "EnergyAndForce"):
+			return self.Emb(mol_,True,True)
+		else:
+			return self.Emb(mol_,True,False)
 
 	def Print(self):
 		print "Digest name: ", self.name
