@@ -103,7 +103,7 @@ class TMParams(dict):
 		self["NeuronType"] = "relu"
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-		self["max_steps"] = 2000
+		self["max_steps"] = 1500
 		self["test_freq"] = 10
 		self["hidden1"] = 512
 		self["hidden2"] = 512

@@ -813,9 +813,9 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		# self.batch_size is still the number of inputs in a batch.
 		self.batch_size = 10000
 		self.batch_size_output = 0
-		self.hidden1 = 100
-		self.hidden2 = 100
-		self.hidden3 = 100
+		self.hidden1 = 200
+		self.hidden2 = 200
+		self.hidden3 = 200
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -941,15 +941,15 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			if (PARAMS["check_level"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.01)
 				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
@@ -1105,8 +1105,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			total_loss_value, loss_value,  dipole_output, atom_outputs, net_charge  = self.sess.run([self.total_loss, self.loss, self.dipole_output, self.atom_outputs, self.net_charge],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
-		print ("net charge:", net_charge)
-		print ("predict charge:", atom_outputs[0])
+		#print ("net charge:", net_charge)
+		#print ("predict charge:", atom_outputs[0])
 		print ("acurrate charge, dipole:", batch_data[4][:20], " dipole shape:", batch_data[4].shape)
 		print ("predict dipole", dipole_output[:20])
 		#print ("charge sum:", netcharge_output)
