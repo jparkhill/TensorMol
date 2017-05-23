@@ -125,7 +125,7 @@ def TestBP_WithGrad():
 	PARAMS["hidden2"] = 128
 	PARAMS["hidden3"] = 64
 	PARAMS["max_steps"] = 1001
-	PARAMS["GradWeight"] = 0.5
+	PARAMS["GradWeight"] = 1.0
 	PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
 	PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
 	PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])

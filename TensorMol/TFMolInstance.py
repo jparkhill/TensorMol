@@ -34,11 +34,6 @@ class MolInstance(Instance):
 		self.outshape = self.TData.dig.lshape    # use the flatted version
 		LOGGER.info("MolInstance.inshape %s MolInstance.outshape %s", str(self.inshape) , str(self.outshape))
 		self.batch_size = PARAMS["batch_size"]
-		self.hidden1 = PARAMS["hidden1"]
-		self.hidden2 = PARAMS["hidden2"]
-		self.hidden3 = PARAMS["hidden3"]
-		self.learning_rate = PARAMS["learning_rate"]
-		self.momentum = PARAMS["momentum"]
 		self.summary_op =None
 		self.summary_writer=None
 		return
@@ -492,14 +487,10 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 
 	def Clean(self):
 		Instance.Clean(self)
-		self.summary_op =None
-		self.summary_writer=None
 		self.inp_pl=None
 		self.check = None
 		self.mats_pl=None
 		self.label_pl=None
-		self.summary_op =None
-		self.summary_writer=None
 		self.atom_outputs = None
 		return
 
@@ -512,12 +503,12 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		self.MeanNumAtoms = self.TData.MeanNumAtoms
-		print("self.MeanNumAtoms: ",self.MeanNumAtoms)
+		LOGGER.info("self.MeanNumAtoms: %i",self.MeanNumAtoms)
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
-		print("Assigned batch input size: ",self.batch_size)
-		print("Assigned batch output size: ",self.batch_size_output) #Number of molecules.
+		LOGGER.info("Assigned batch input size: %i",self.batch_size)
+		LOGGER.info("Assigned batch output size: %i",self.batch_size_output) #Number of molecules.
 		with tf.Graph().as_default():
 			self.inp_pl=[]
 			self.mats_pl=[]
@@ -531,8 +522,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			#self.summary_op = tf.summary.merge_all()
-			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			try: # I think this may be broken
@@ -581,7 +570,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		nrm2=5.0/(10+math.sqrt(float(hidden1_units)))
 		nrm3=5.0/(10+math.sqrt(float(hidden2_units)))
 		nrm4=5.0/(10+math.sqrt(float(hidden3_units)))
-		print("Norms:", nrm1,nrm2,nrm3)
+		LOGGER.info("Layer initial Norms: %f %f %f", nrm1,nrm2,nrm3)
 		#print(inp_pl)
 		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
 		#tf.Print(bnds_pl, [bnds_pl], message="bnds_pl: ",first_n=10000000,summarize=100000000)
@@ -845,7 +834,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 	"""
 		An instance of A fully connected Behler-Parinello network.
-		Which requires a TensorMolData to train/execute.
+		Which requires a TensorMolData_BP to train/execute.
 		This simultaneously constrains the gradient
 
 		Energy Inputs have dimension
@@ -865,10 +854,6 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		  dE_atom/dRy = dE_atom/dD_i * dD_i/dRy
 
 		So dE_atom/dRy has dimension MaxN3
-
-		The gradient is produced by making an output which is
-		[eles][atom][descriptor dimension][Max(n3)] which contains each contribution to the gradient.
-		This is contracted
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True):
 		"""
@@ -1000,13 +985,13 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 				# This loop calculates the force on each atom and sums it to the force on the molecule.
 				#  dE_atom/dRy = dE_atom/dD_i * dD_i/dRy, as a  padded with zeros up to MaxN3
 				#  dE_atom/dD_i
-				drshp = tf.Print(drshp, [tf.to_float(tf.shape(drshp))], message="Element "+str(e)+"dE_atom/dD_i shape ",first_n=10000000,summarize=100000000)
+				#drshp = tf.Print(drshp, [tf.to_float(tf.shape(drshp))], message="Element "+str(e)+"dE_atom/dD_i shape ",first_n=10000000,summarize=100000000)
 				dAtomdRy = tf.tensordot(drshp, self.grad_pl[e],axes=[[1],[1]]) # => Atoms X Grad
-				dAtomdRy = tf.Print(dAtomdRy, [tf.to_float(tf.shape(dAtomdRy))], message="Element "+str(e)+"dAtomdRy shape ",first_n=10000000,summarize=100000000)
+				#dAtomdRy = tf.Print(dAtomdRy, [tf.to_float(tf.shape(dAtomdRy))], message="Element "+str(e)+"dAtomdRy shape ",first_n=10000000,summarize=100000000)
 				dMoldRy = tf.tensordot(dAtomdRy,mats,axes=[[0],[0]]) #  => Grad X Mols
-				dMoldRy = tf.Print(dMoldRy, [tf.to_float(tf.shape(tmp))], message="Element "+str(e)+"dE_atom/dRy ",first_n=10000000,summarize=100000000)
+				#dMoldRy = tf.Print(dMoldRy, [tf.to_float(tf.shape(tmp))], message="Element "+str(e)+"dE_atom/dRy ",first_n=10000000,summarize=100000000)
 				tmp = tf.transpose(tmp) # we want to sum over atoms and end up with (mol X cart)
-				grads = tf.add(grads,tmp)
+				grads = tf.add(grads,tmp) # Sum over element types.
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return output, atom_outputs, grads
@@ -1075,29 +1060,7 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
-		return test_loss, feed_dict
-
-	def print_training(self, step, loss, Ncase, duration, Train=True):
-		if Train:
-			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))
-		else:
-			print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  test loss: ", "%.10f"%(float(loss)/(NCase)))
-		return
-
-	def continue_training(self, mxsteps):
-		self.Eval_Prepare()
-		test_loss , feed_dict = self.test(-1)
-		test_freq = 1
-		mini_test_loss = test_loss
-		for step in  range (0, mxsteps+1):
-			self.train_step(step)
-			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
-				if test_loss < mini_test_loss:
-					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
-		self.SaveAndClose()
-		return
+		return test_loss, feeddict
 
 	def Eval_Prepare(self):
 		raise Exception("NYI")

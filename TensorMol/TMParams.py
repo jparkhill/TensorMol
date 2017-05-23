@@ -10,12 +10,9 @@ class TMParams(dict):
 		self["check_level"] = 2 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
-		# self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2, 2.4],
-		# 				[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		# self["ANES"] = np.array([1., 1., 1., 1., 1., 1., 1., 1.])
-		# self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
-		# 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		# self["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
+		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
+		 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+		self["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=4
 		self["SH_NRAD"]=7
@@ -80,6 +77,8 @@ class TMParams(dict):
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
+		# Periodic Parameters, only cubic supported.
+		self["CellWidth"] = 15.0 # Angstrom.
 		# MD Parameters
 		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.2 # In fs.
@@ -105,6 +104,7 @@ class TMParams(dict):
 		self["hidden3"] = 512
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
+		self["EESwitchFunc"] = "Cos" # options are Cosine, and Tanh. 
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r

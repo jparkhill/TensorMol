@@ -266,6 +266,7 @@ class TFMolManage(TFManage):
 	def Eval_BPForceHalfNumerical(self, mol, total_energy = False):
 		"""
 		This version uses a half-numerical gradient.
+		It was written for debugging purposes. 
 		Args:
 			mol: a Mol.
 			total_energy: whether to also return the energy as a first argument.

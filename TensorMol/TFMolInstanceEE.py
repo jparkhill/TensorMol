@@ -11,7 +11,11 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		calculates E_electrostatic with a cutoff coulomb interaction.
 		E_\text{electrostatic} The electrostatic energy is attenuated to only exist
 		outside PARAMS["EECutoff"]
-		1/r => 0.5*(Tanh[(x - EECutoff)/EEdr] + 1)/r
+		# A couple cutoff schemes are available
+		PARAMS["EESwitchFunc"]=='Cos':
+			1/r -> (0.5*(cos(PI*r/EECutoff)+1))/r (if r<Cutoff else 0)
+		PARAMS["EESwitchFunc"]=='Tanh'
+			1/r => 0.5*(Tanh[(x - EECutoff)/EEdr] + 1)/r
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True):
 		"""
@@ -22,35 +26,13 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 			Name_: A name for this instance.
 		"""
 		self.NetType = "fc_sqdiff_BPEE"
-		MolInstance.__init__(self, TData_,  Name_, Trainable_)
+		MolInstance_fc_sqdiff_BP.__init__(self, TData_,  Name_, Trainable_)
+		self.NetType = "fc_sqdiff_BPEE"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.00001
-		#self.learning_rate = 0.00001
-		self.momentum = 0.95
 		self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
-		self.inshape = np.prod(self.TData.dig.eshape)
-		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
-		self.eles = self.TData.eles
-		self.n_eles = len(self.eles)
-		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
-		self.MeanNumAtoms = np.sum(self.MeanStoich)
-		self.AtomBranchNames=[] # a list of the layers named in each atom branch
-
-		self.inp_pl=None
-		self.mats_pl=None
-		self.label_pl=None
-
-		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 10000
-		self.batch_size_output = 0
-		self.hidden1 = 200
-		self.hidden2 = 200
-		self.hidden3 = 200
-		self.summary_op =None
-		self.summary_writer=None
 
 	def train_prepare(self,  continue_training =False):
 		"""
@@ -998,7 +980,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		#case_out = tf.shape(mats_pl[0])[1]
 		#delta_charge = tf.zeros((case_out, 1))
 		delta_charge = tf.transpose(delta_charge)
-		scaled_charge_list = [] 
+		scaled_charge_list = []
 		for e in range(len(self.eles)):
 			mats = mats_pl[e]
 			shp_out = tf.shape(atom_outputs[e])
@@ -1189,5 +1171,3 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
-
-
