@@ -286,7 +286,7 @@ class Instance:
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
 
-	def inference(self, images):
+	def inference(self, images, bleep, bloop, blop):
 		"""Build the MNIST model up to where it may be used for inference.
 		Args:
 		images: Images placeholder, from inputs().

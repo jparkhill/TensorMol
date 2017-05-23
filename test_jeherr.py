@@ -164,15 +164,15 @@ if(0):
 # h_inst = Instance_KRR(tset, 1, None)
 # mae_h = h_inst.basis_opt_run()
 
-#import glob
-#a=MSet("SmallMols")
-#for dir in glob.iglob("/media/sdb1/jeherr/TensorMol/datasets/small_mol_dataset/*/*/"):
-#	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True)
-#for dir in glob.iglob("/media/sdb1/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/"):
-#	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True)
-#print len(a.mols)
-#a.Save()
-#a.WriteXYZ()
+# import glob
+# a=MSet("SmallMols")
+# for dir in glob.iglob("/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_del/*/*/"):
+# 	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True, has_mmff94=True)
+# for dir in glob.iglob("/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt_del/*/*/"):
+# 	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True, has_mmff94=True)
+# print len(a.mols)
+# a.Save()
+# a.WriteXYZ()
 
 # a=MSet("SmallMols_rand")
 # a.Load()
@@ -303,14 +303,14 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=1)
 		#a.WriteXYZ(a.name+"_"+str(numrot_)+"rot")
 		TreatedAtoms = a.AtomTypes()
 		print "Number of Mols: ", len(a.mols)
-		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
+		d = Digester(TreatedAtoms, name_=dig_, OType_="Del_Force")
 		tset = TensorData(a,d)
 		tset.BuildTrainMolwise(set_,TreatedAtoms)
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
 	manager=TFManage("",tset,True,"fc_sqdiff")
 
-#TrainForces(set_ = "SmallMols_20rot", BuildTrain_=True, numrot_=20)
+TrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=20)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -321,7 +321,7 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	opt=Optimizer(manager)
 	opt.OptTFRealForce(tmol)
 
-TestForces(set_ = "OptMols", mol=12)
+# TestForces(set_ = "OptMols", mol=12)
 
 # a=MSet("toluene")
 # a.Load()
@@ -490,3 +490,13 @@ TestForces(set_ = "OptMols", mol=12)
 #tset=TensorData(a,d)
 #tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
 #manager.TrainElement(8)
+
+# b=MSet("SmallMols")
+# b.Load()
+# for i,mol in enumerate(b.mols):
+# 		if np.any(np.abs(mol.properties["forces"]) > 300.0):
+# 			print i
+# 			del b.mols[i]
+# 			break
+# b.Save()
+# b.WriteXYZ()

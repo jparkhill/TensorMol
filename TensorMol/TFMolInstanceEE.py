@@ -1106,8 +1106,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			total_loss_value, loss_value,  dipole_output, atom_outputs, net_charge  = self.sess.run([self.total_loss, self.loss, self.dipole_output, self.atom_outputs, self.net_charge],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
-		print ("net charge:", net_charge)
-		print ("predict charge:", atom_outputs[0])
+		#print ("net charge:", net_charge)
+		#print ("predict charge:", atom_outputs[0])
 		print ("acurrate charge, dipole:", batch_data[4][:20], " dipole shape:", batch_data[4].shape)
 		print ("predict dipole", dipole_output[:20])
 		#print ("charge sum:", netcharge_output)
