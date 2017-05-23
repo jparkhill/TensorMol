@@ -85,7 +85,7 @@ class Instance:
 		self.Clean()
 
 	def AssignActivation(self):
-		LOGGER.info("Assigning Activation... %s", PARAMS["NeuronType"])
+		LOGGER.debug("Assigning Activation... %s", PARAMS["NeuronType"])
 		try:
 			if self.activation_function_type == "relu":
 				self.activation_function = tf.nn.relu

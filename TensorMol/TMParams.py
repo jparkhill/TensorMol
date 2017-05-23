@@ -60,11 +60,21 @@ class TMParams(dict):
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# MBE PARAMS
 		self["MBE_ORDER"] = 4
+		# Training Parameters
+		self["NeuronType"] = "relu"
+		self["learning_rate"] = 0.001
+		self["momentum"] = 0.9
+		self["max_steps"] = 1001
+		self["batch_size"] = 8000
+		self["test_freq"] = 5
+		self["hidden1"] = 512
+		self["hidden2"] = 512
+		self["hidden3"] = 512
+		self["GradWeight"] = 0.01
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
 		self["RandomizeData"] = False
-		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
@@ -99,15 +109,6 @@ class TMParams(dict):
 		self["MDFieldFreq"] = 1.0/1.2
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
-		# Training Parameters
-		self["NeuronType"] = "relu"
-		self["learning_rate"] = 0.001
-		self["momentum"] = 0.9
-		self["max_steps"] = 1001
-		self["test_freq"] = 5
-		self["hidden1"] = 512
-		self["hidden2"] = 512
-		self["hidden3"] = 512
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r

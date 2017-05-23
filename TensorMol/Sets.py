@@ -223,16 +223,6 @@ class MSet:
 		self.mols=mols
 		return
 
-	def CutSet(self, allowed_eles):
-		mols=[]
-		for mol in self.mols:
-			if set(list(mol.atoms)).issubset(allowed_eles):
-				mols.append(mol)
-		for i in allowed_eles:
-			self.name += "_"+str(i)
-		self.mols=mols
-		return
-
 	def AppendSet(self, b):
 		if (self.name == None):
 			self.name = self.name + b.name

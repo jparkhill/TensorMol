@@ -41,19 +41,21 @@ class Mol:
 	def NumOfAtomsE(self, e):
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
-	def Calculate_Atomization(self):
+	def CalculateAtomization(self):
 		if ("roomT_H" in self.properties):
 			AE = self.properties["roomT_H"]
 			for i in range (0, self.atoms.shape[0]):
 				if (self.atoms[i] in ELEHEATFORM):
 					AE = AE - ELEHEATFORM[self.atoms[i]]
 			self.properties["atomization"] = AE
-		else:
+		elif ("energy" in self.properties):
 			AE = self.properties["energy"]
 			for i in range (0, self.atoms.shape[0]):
 				if (self.atoms[i] in ele_U):
 					AE = AE - ele_U[self.atoms[i]]
 			self.properties["atomization"] = AE
+		else:
+			raise Exception("Missing data... ")
 		return
 
 	def Calculate_vdw(self):
@@ -212,7 +214,7 @@ class Mol:
 			except:
 				self.coords[i,2]=scitodeci(line[3])
 		if ("energy" in self.properties):
-			self.Calculate_Atomization()
+			self.CalculateAtomization()
 		return
 
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):

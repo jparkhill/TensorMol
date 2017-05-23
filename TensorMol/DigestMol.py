@@ -336,7 +336,6 @@ class MolDigester:
 			Ins, Grads = self.make_connectedbond_angle_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym"):
 			Ins, Grads = self.make_ANI1_sym(mol_, MakeGradients_ = MakeGradients)
-			print "Ins shape and Grads.shape", Ins.shape, Grads.shape
 		elif(self.name == "ANI1_Sym_Bond_BP"):
 			Ins, Grads = self.make_ANI1_sym_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym_Center_Bond_BP"):
@@ -345,15 +344,16 @@ class MolDigester:
 			raise Exception("Unknown MolDigester Type.", self.name)
 		if (self.eshape == None):
 			self.eshape=Ins.shape[1:] # The first dimension is atoms. eshape is per-atom.
-			if (MakeGradients_ and self.egshape == None):
+			if (MakeGradients and self.egshape == None):
 				self.egshape=Grads.shape[1:]
+				print "Grads Shape: ", Grads.shape
 		if (MakeOutputs):
 			if (self.OType == "Energy"):
 				Outs = np.array([mol_.properties["energy"]])
-			elif (self.OType == "EnergyAndForce"):
-				en = mol_.properties["energy"]
+			elif (self.OType == "AEAndForce"):
+				en = mol_.properties["atomization"]
 				frce = mol_.properties["force"]
-				Outs = np.zeros(3*mol_.NAtoms()+1,dtype = np.float32)
+				Outs = np.zeros(3*mol_.NAtoms()+1, dtype = np.float32)
 				Outs[0] = en
 				Outs[1:] = frce.flatten()
 			elif (self.OType == "AtomizationEnergy"):
@@ -414,7 +414,7 @@ class MolDigester:
 		Args:
 			mol_: a molecule to be digested
 		"""
-		if (self.OType == "EnergyAndForce"):
+		if (self.OType == "AEAndForce"):
 			return self.Emb(mol_,True,True)
 		else:
 			return self.Emb(mol_,True,False)

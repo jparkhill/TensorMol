@@ -32,7 +32,15 @@ class MolInstance(Instance):
 		self.TData.PrintStatus()
 		self.inshape =  self.TData.dig.eshape  # use the flatted version
 		self.outshape = self.TData.dig.lshape    # use the flatted version
-		print ("inshape", self.inshape, "outshape", self.outshape)
+		LOGGER.info("MolInstance.inshape %s MolInstance.outshape %s", str(self.inshape) , str(self.outshape))
+		self.batch_size = PARAMS["batch_size"]
+		self.hidden1 = PARAMS["hidden1"]
+		self.hidden2 = PARAMS["hidden2"]
+		self.hidden3 = PARAMS["hidden3"]
+		self.learning_rate = PARAMS["learning_rate"]
+		self.momentum = PARAMS["momentum"]
+		self.summary_op =None
+		self.summary_writer=None
 		return
 
 	def inference(self, images, hidden1_units, hidden2_units, hidden3_units):
@@ -137,15 +145,10 @@ class MolInstance_fc_classify(MolInstance):
 		self.NetType = "fc_classify"
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
-		LOGGER.debug("Raised Instance: "+self.name)
+		LOGGER.debug("Instance.__init__: "+self.name)
 		self.train_dir = './networks/'+self.name
-		self.hidden1 = PARAMS["hidden1"]
-		self.hidden2 = PARAMS["hidden2"]
-		self.hidden3 = PARAMS["hidden3"]
 		self.prob = None
 		self.correct = None
-		self.summary_op =None
-		self.summary_writer=None
 
 	def n_correct(self, output, labels):
 		"""
@@ -471,31 +474,21 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		self.learning_rate = 0.001
-		#self.learning_rate = 0.00001
-		self.momentum = 0.
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 		self.inshape = np.prod(self.TData.dig.eshape)
-		print("MolInstance_fc_sqdiff_BP.inshape: ",self.inshape)
+		LOGGER.info("MolInstance_fc_sqdiff_BP.inshape: %s",str(self.inshape))
 		self.eles = self.TData.eles
 		self.n_eles = len(self.eles)
+		LOGGER.info("MolInstance_fc_sqdiff_BP.eles: %s",str(self.eles))
+		LOGGER.info("MolInstance_fc_sqdiff_BP.inshape.n_eles: %i",self.n_eles)
 		self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
 		self.MeanNumAtoms = np.sum(self.MeanStoich)
-		self.AtomBranchNames=[] # a list of the layers named in each atom branch
 		self.inp_pl=None
 		self.mats_pl=None
 		self.label_pl=None
-
-		# self.batch_size is still the number of inputs in a batch.
-		self.batch_size = 10000
 		self.batch_size_output = 0
-		self.hidden1 = 200
-		self.hidden2 = 200
-		self.hidden3 = 200
-		self.summary_op =None
-		self.summary_writer=None
 
 	def Clean(self):
 		Instance.Clean(self)
@@ -524,7 +517,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
 		print("Assigned batch input size: ",self.batch_size)
-		print("Assigned batch output size: ",self.batch_size_output)
+		print("Assigned batch output size: ",self.batch_size_output) #Number of molecules.
 		with tf.Graph().as_default():
 			self.inp_pl=[]
 			self.mats_pl=[]
@@ -727,7 +720,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		start_time = time.time()
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
-
 		all_atoms = []
 		bond_length = []
 		for i in range (0, len(self.eles)):
@@ -735,7 +727,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			bond_length.append([])
 		all_mols_nn = []
 		all_mols_acc = []
-
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
 			feed_dict=self.fill_feed_dict(batch_data)
@@ -760,7 +751,6 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		#f = open("test_result_energy_cleaned_connectedbond_angle_for_test_writting_all_mol.dat","wb")
 		#pickle.dump(test_result, f)
 		#f.close()
-
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
 		duration = time.time() - start_time
 		#print ("preds:", preds, " label:", batch_data[2])
@@ -866,7 +856,7 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		[eles][atom case][Descriptor Dimension][Max(n3)]
 
 		The desired outputs have dimension:
-		max(3n)+1 (energy and all derivatives, where max n3 is determined by trainind data.)
+		max(3n)+1 (energy and all derivatives, where max n3 is determined by training data.)
 
 		the molecular gradient is constructed by breaking up dE/dRx
 		 dE/dRx  = \sum_atoms dE_atom/dRx = \sum_atoms dE_atom/dRx
@@ -888,17 +878,22 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
 		"""
-		self.NetType = "fc_sqdiff_BP_WithGrad"
 		MolInstance_fc_sqdiff_BP.__init__(self, TData_,  Name_, Trainable_)
-		self.inpg_pl = None
-		self.MaxN3 = None # This is only a barrier for training.
-		self.GradWeight = 1.0/self.MaxN3 # relative weight of the nuclear gradient loss.
-		self.grads = None # placeholder for the grads tensor
-		print( "MolInstance_fc_sqdiff_BP_WithGrad", self.GradWeight)
+		self.NetType = "fc_sqdiff_BP_WithGrad"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
+		self.grad_pl = None
+		self.MaxN3 = None
+		self.GradWeight = PARAMS["GradWeight"]
+		if (TData_ != None):
+			self.MaxN3 = TData_.MaxN3 # This is only a barrier for training.
+			self.GradWeight *= 1.0/self.MaxN3 # relative weight of the nuclear gradient loss.
+			LOGGER.info("MolInstance_fc_sqdiff_BP_WithGrad.MaxN3: %i", self.MaxN3)
+		LOGGER.info("MolInstance_fc_sqdiff_BP_WithGrad.GradWeight: %f", self.GradWeight)
 
 	def Clean(self):
 		MolInstance_fc_sqdiff_BP.Clean(self)
-		self.inpg_pl=None
+		self.grad_pl=None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -915,19 +910,21 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
-		print("Assigned batch input size: ",self.batch_size)
-		print("Assigned batch output size: ",self.batch_size_output)
+		LOGGER.debug("Assigned batch input size: %i",self.batch_size)
+		LOGGER.debug("Assigned batch output size: %i",self.batch_size_output)
+		LOGGER.debug("Inshape: %i",self.inshape)
+		LOGGER.debug("Gradshape: %i %i",self.inshape,self.MaxN3)
 		with tf.Graph().as_default():
 			self.inp_pl=[]
-			self.inpg_pl=[]
+			self.grad_pl=[]
 			self.mats_pl=[]
-			for e in range(len(self.eles)):
+			for e in range(self.n_eles):
 				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-				self.inpg_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape,self.MaxN3])))
+				self.grad_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape,self.MaxN3])))
 				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
-			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
-			self.output, self.atom_outputs, self.grads = self.inference(self.inp_pl, self.mats_pl)
-			self.check = tf.add_check_numerics_ops()
+			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output,self.MaxN3+1]))
+			self.output, self.atom_outputs, self.grads = self.inference()
+			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.grads, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -953,14 +950,13 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 			self.sess.run(init)
 		return
 
-	def inference(self, inp_pl, grad_pl, mats_pl):
+	def inference(self):
 		"""
 		A separate inference routine should be made for
 		evaluation purposes because of MaxN3. This one is for training, specifically.
 		"""
 		branches=[]
 		atom_outputs = []
-		atom_d_outputs = []
 		hidden1_units=self.hidden1
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
@@ -969,22 +965,12 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		nrm2=5.0/(10+math.sqrt(float(hidden1_units)))
 		nrm3=5.0/(10+math.sqrt(float(hidden2_units)))
 		nrm4=5.0/(10+math.sqrt(float(hidden3_units)))
-		print("Norms:", nrm1,nrm2,nrm3)
-		#print(inp_pl)
-		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
-		#tf.Print(bnds_pl, [bnds_pl], message="bnds_pl: ",first_n=10000000,summarize=100000000)
-		#tf.Print(mats_pl, [mats_pl], message="mats_pl: ",first_n=10000000,summarize=100000000)
+		grads = tf.zeros([self.batch_size_output, self.MaxN3])
 		for e in range(len(self.eles)):
 			branches.append([])
-			inputs = inp_pl[e]
-			mats = mats_pl[e]
+			inputs = self.inp_pl[e]
+			mats = self.mats_pl[e]
 			shp_in = tf.shape(inputs)
-			if (PARAMS["check_level"]>2):
-				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
-				mats_shape = tf.shape(mats)
-				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
-				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
@@ -1009,43 +995,21 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 				rshp = tf.reshape(cut,[1,shp_out[0]])
 				drshp = tf.gradients(rshp,inputs)
 				atom_outputs.append(rshp)
-				atom_d_outputs.append(drshp)
 				tmp = tf.matmul(rshp,mats)
 				output = tf.add(output,tmp)
-		# This loop calculates the force on each atom.
-		#  dE_atom/dRy = dE_atom/dD_i * dD_i/dRy, as a  padded with zeros up to MaxN3
-		#  dE_atom/dD_i is in atom_d_outputs
-		grads = tf.zeros([self.batch_size_output, self.MaxN3+1])
-		for e in range(len(self.eles)):
-			mats = mats_pl[e]
-			dAtomdRy = tf.matmul(atom_d_outputs[e],grad_pl[e])
-			dAtomdRys = tf.shape(dAtomdRy)
-			tf.Print(tf.to_float(dAtomdRys), [tf.to_float(dAtomdRys)], message="Element "+str(e)+"dAtomdRy shape ",first_n=10000000,summarize=100000000)
-			# Now scatter these with the index matrices.
-			tmp = tf.matmul(dAtomdRys,mats)
-			grads = tf.add(grads,tmp)
+				# This loop calculates the force on each atom and sums it to the force on the molecule.
+				#  dE_atom/dRy = dE_atom/dD_i * dD_i/dRy, as a  padded with zeros up to MaxN3
+				#  dE_atom/dD_i
+				drshp = tf.Print(drshp, [tf.to_float(tf.shape(drshp))], message="Element "+str(e)+"dE_atom/dD_i shape ",first_n=10000000,summarize=100000000)
+				dAtomdRy = tf.tensordot(drshp, self.grad_pl[e],axes=[[1],[1]]) # => Atoms X Grad
+				dAtomdRy = tf.Print(dAtomdRy, [tf.to_float(tf.shape(dAtomdRy))], message="Element "+str(e)+"dAtomdRy shape ",first_n=10000000,summarize=100000000)
+				dMoldRy = tf.tensordot(dAtomdRy,mats,axes=[[0],[0]]) #  => Grad X Mols
+				dMoldRy = tf.Print(dMoldRy, [tf.to_float(tf.shape(tmp))], message="Element "+str(e)+"dE_atom/dRy ",first_n=10000000,summarize=100000000)
+				tmp = tf.transpose(tmp) # we want to sum over atoms and end up with (mol X cart)
+				grads = tf.add(grads,tmp)
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return output, atom_outputs, grads
-
-	def fill_feed_dict(self, batch_data):
-		"""
-		Args:
-			batch_data is: inputs, input grads, matrices, outputs (energy, forces in a self.MaxN3+1 vector.)
-		"""
-		# Don't eat shit.
-		for e in range(len(self.eles)):
-			if (not np.all(np.isfinite(batch_data[0][e]),axis=(0,1))):
-				print("I was fed shit1")
-				raise Exception("DontEatShit")
-			if (not np.all(np.isfinite(batch_data[2][e]),axis=(0,1))):
-				print("I was fed shit3")
-				raise Exception("DontEatShit")
-		if (not np.all(np.isfinite(batch_data[3]),axis=(0))):
-			print("I was fed shit4")
-			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+[self.label_pl], batch_data[0]+batch_data[1]+batch_data[2]+[batch_data[3]])}
-		return feed_dict
 
 	def loss_op(self, output, grads, labels):
 		"""
@@ -1056,14 +1020,14 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		Returns:
 			l2 loss on the energies + self.GradWeight*l2 loss on gradients.
 		"""
-		Enlabels = tf.slice(labels,[0,0],[0,-1])
-		Gradlabels = tf.slice(labels,[0,1],[0,-1])
+		Enlabels = tf.slice(labels,[0,0],[-1,1])
+		Gradlabels = tf.slice(labels,[0,1],[-1,-1])
 		Ediff  = tf.subtract(output, Enlabels)
 		Gdiff  = tf.subtract(grads, Gradlabels)
 		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)
 		#tf.Print(labels, [labels], message="This is labels: ",first_n=10000000,summarize=100000000)
 		Eloss = tf.nn.l2_loss(Ediff)
-		Gloss = tf.mul(tf.nn.l2_loss(Gdiff),self.GradWeight)
+		Gloss = tf.scalar_mul(self.GradWeight,tf.nn.l2_loss(Gdiff))
 		loss = tf.add(Eloss,Gloss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
@@ -1076,16 +1040,12 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
-			actual_mols  = np.count_nonzero(batch_data[2])
-			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
+			actual_mols  = np.count_nonzero(batch_data[3])
+			feeddict={i:d for i,d in zip(self.inp_pl+self.grad_pl+self.mats_pl+[self.label_pl],batch_data[0]+batch_data[1]+batch_data[2]+[batch_data[3]])}
+			dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.train_op, self.total_loss, self.loss, self.output], feed_dict=feeddict)
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
-			#print ("atom_outputs:", atom_outputs, " mol outputs:", mol_output)
-			#print ("atom_outputs shape:", atom_outputs[0].shape, " mol outputs", mol_output.shape)
-		#print("train diff:", (mol_output[0]-batch_data[2])[:actual_mols], np.sum(np.square((mol_output[0]-batch_data[2])[:actual_mols])))
-		#print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
-		#print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
 		self.print_training(step, train_loss, num_of_mols, duration)
 		return
 
@@ -1103,9 +1063,9 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			#print ("ministep:", ministep)
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
-			feed_dict=self.fill_feed_dict(batch_data)
-			actual_mols  = np.count_nonzero(batch_data[2])
-			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+			feeddict={i:d for i,d in zip(self.inp_pl+self.grad_pl+self.mats_pl+[self.label_pl],batch_data[0]+batch_data[1]+batch_data[2]+[batch_data[3]])}
+			actual_mols  = np.count_nonzero(batch_data[3])
+			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feeddict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
 		#print("preds:", preds[0][:actual_mols], " accurate:", batch_data[2][:actual_mols])
@@ -1138,3 +1098,6 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 					self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
+
+	def Eval_Prepare(self):
+		raise Exception("NYI")
