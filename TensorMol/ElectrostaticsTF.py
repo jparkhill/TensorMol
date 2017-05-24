@@ -50,7 +50,57 @@ def TFDistances(r_):
 	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 0.000000000000000000000000001
 	return tf.sqrt(D)
 
-# For some reason the sqrt here is causing Nan's in the gradient.
+def MorseKernel(D,Z,Ae,De,Re):
+	"""
+	Args:
+		D: A square distance matrix (bohr)
+		Z: Atomic Numbers.
+		Ae: a matrix of force constants.
+		De: a matrix of Morse De parameters. (MaxAtomicNumber X MaxAtomicNumber)
+		Re: a matrix of
+	"""
+	# Extract De_ij and Re_ij
+	Zshp = tf.shape(Z)
+	Zr = tf.reshape(Z,[Zshp[0],1])-1 # Indices start at 0 AN's start at 1.
+	Zij1 = tf.tile(Zr,[1,Zshp[0]])
+	Zij2 = tf.transpose(Zij1)
+	Zij = tf.stack([Zij1,Zij2],axis=2) # atomXatomX2
+	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[0],2])
+	Aeij = tf.reshape(tf.gather_nd(Ae,Zij),tf.shape(D))
+	Deij = tf.reshape(tf.gather_nd(De,Zij),tf.shape(D))
+	Reij = tf.reshape(tf.gather_nd(Re,Zij),tf.shape(D))
+	Dt = D + tf.eye(Zshp[0])
+	# actually compute the kernel.
+	K = Deij*tf.pow(1.0 - tf.exp(-Aeij*(Dt-Reij)),2.0)
+	K = tf.subtract(K,tf.diag(tf.diag_part(K)))
+	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle
+	#K = tf.Print(K,[K],"K Kernel",-1,1000000)
+	return K
+
+def LJKernel(D,Z,Ee,Re):
+	"""
+	A Lennard-Jones Kernel
+	Args:
+		D: A square distance matrix (bohr)
+		Z: Atomic Numbers.
+		Ee: a matrix of LJ well depths.
+		Re: a matrix of Bond minima.
+	"""
+	# Extract De_ij and Re_ij
+	Zshp = tf.shape(Z)
+	Zr = tf.reshape(Z,[Zshp[0],1])-1 # Indices start at 0 AN's start at 1.
+	Zij1 = tf.tile(Zr,[1,Zshp[0]])
+	Zij2 = tf.transpose(Zij1)
+	Zij = tf.stack([Zij1,Zij2],axis=2) # atomXatomX2
+	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[0],2])
+	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),tf.shape(D))
+	Reij = tf.reshape(tf.gather_nd(Re,Zij),tf.shape(D))
+	Reij = tf.Print(Reij,[Reij],"Reij",10000,1000)
+	Dt = D + tf.eye(Zshp[0])
+	K = Eeij*(tf.pow(Reij/Dt,12.0)-2.0*tf.pow(Reij/Dt,6.0))
+	K = tf.subtract(K,tf.diag(tf.diag_part(K)))
+	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle
+	return K
 
 def CoulombKernel(D):
 	"""
@@ -189,4 +239,20 @@ def TestCoulomb():
 		print session.run(XyzsToCoulomb(xyzs,charges))
 		PARAMS["EESwitchFunc"] = "TanhLR" # options are Cosine, and Tanh.
 		print session.run(XyzsToCoulomb(xyzs,charges))
+	return
+
+def TestLJ():
+	xyz_ = tf.Variable([[0.,0.,0.],[10.0,0.,0.],[0.,0.,5.],[0.,0.,2.],[0.,1.,9.],[0.,1.,20.]])
+	Z_ = tf.Variable([1,2,3,4,5,6])
+	Re_ = tf.ones([6,6])
+	Ee_ = tf.ones([6,6])
+	Ds = TFDistance(xyz_)
+
+	init = tf.global_variables_initializer()
+	import sys
+	sys.stderr = sys.stdout
+	with tf.Session() as session:
+		session.run(init)
+		print session.run(Ds)
+		print "LJ Kernel: ", session.run(LJKernel(Ds,Z_,Ee_,Re_))
 	return

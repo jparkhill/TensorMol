@@ -1,5 +1,5 @@
 """
-Routines which help do differential analysis
+Routines which help do differential analysis and Newtonian Mechanics
 """
 
 from Sets import *
