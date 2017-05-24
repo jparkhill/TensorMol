@@ -10,30 +10,12 @@ class TMParams(dict):
 		self["check_level"] = 2 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
-		# self["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2, 2.4],
-		# 				[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		# self["ANES"] = np.array([1., 1., 1., 1., 1., 1., 1., 1.])
-		#self["RBFS"] = np.array([[0.33177521, 0.50949676], [0.74890231, 0.99964731], [0.52021807, 0.42015268], #Older SmallMols w/ AtomNum KRR opt
-		#				[0.6151809, 0.39502989], [1.26607895, 1.24048779], [2.19569368, 2.39738431], [4.4, 2.4],
-		#				[6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		# self["ANES"] = np.array([0.50068655, 1., 1., 1., 1., 1.12237954, 0.90361766, 1.06592739])
-		# self["RBFS"] = np.array([[0.60981141, 0.46814339], [0.29229111, 0.248745], [0.35765515, 0.39926525], #SmallMols w/ valence KRR opt 0.1 steps
-  		# 				[0.68543918, 0.52220581], [1.28203264, 1.27957196], [2.18846999, 2.3846383], [4.4, 2.4],
-		# 				[6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		# self["ANES"] = np.array([1.21741076, 1., 1., 1., 1., 3.93481203, 2.99227513, 2.06551069]])
-		self["RBFS"] = np.array([[0.26649229, 0.86693935], [0.48411375, 0.72556564], [0.72194098, 0.09265219],
-								[0.95801627, 0.10751769], [0.99667822, 1.20433031], [2.15205854, 2.34423998],
-								[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		self["ANES"] = np.array([0.52392538, 1., 1., 1., 1., 2.50880292, 2.76668503, 1.95700163])
-		# self["RBFS"] = np.array([[0.55694817, 0.3010655], [0.55604546, 0.49710365], [0.69599847, 0.69540274],[0.96794021, 0.2979874],
-		# 			[1.29344529, 1.29333793], [2.2,2.4],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		#self["ANES"] = np.array([0.6294076, 1., 1., 1., 1., 1.48203572, 0.94379584, 1.00354132])
-		# self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
-		# 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		# self["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
+		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
+		 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+		self["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=4
-		self["SH_NRAD"]=10
+		self["SH_NRAD"]=7
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		#self["AN1_r_Rc"] = 6
@@ -60,11 +42,21 @@ class TMParams(dict):
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# MBE PARAMS
 		self["MBE_ORDER"] = 4
+		# Training Parameters
+		self["NeuronType"] = "relu"
+		self["learning_rate"] = 0.001
+		self["momentum"] = 0.9
+		self["max_steps"] = 1001
+		self["batch_size"] = 8000
+		self["test_freq"] = 5
+		self["hidden1"] = 512
+		self["hidden2"] = 512
+		self["hidden3"] = 512
+		self["GradWeight"] = 0.01
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
 		self["RandomizeData"] = False
-		self["batch_size"] = 8000
 		self["MxTimePerElement"] = 36000
 		self["MxMemPerElement"]=16000 # Max Array for an element in MB
 		self["ChopTo"] = None
@@ -85,6 +77,8 @@ class TMParams(dict):
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
+		# Periodic Parameters, only cubic supported.
+		self["CellWidth"] = 15.0 # Angstrom.
 		# MD Parameters
 		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.2 # In fs.
@@ -103,13 +97,14 @@ class TMParams(dict):
 		self["NeuronType"] = "relu"
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
-		self["max_steps"] = 1001
+		self["max_steps"] = 1000
 		self["test_freq"] = 5
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
+		self["EESwitchFunc"] = "Cos" # options are Cosine, and Tanh. 
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r

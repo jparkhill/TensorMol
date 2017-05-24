@@ -41,19 +41,21 @@ class Mol:
 	def NumOfAtomsE(self, e):
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
 
-	def Calculate_Atomization(self):
+	def CalculateAtomization(self):
 		if ("roomT_H" in self.properties):
 			AE = self.properties["roomT_H"]
 			for i in range (0, self.atoms.shape[0]):
 				if (self.atoms[i] in ELEHEATFORM):
 					AE = AE - ELEHEATFORM[self.atoms[i]]
 			self.properties["atomization"] = AE
-		else:
+		elif ("energy" in self.properties):
 			AE = self.properties["energy"]
 			for i in range (0, self.atoms.shape[0]):
 				if (self.atoms[i] in ele_U):
 					AE = AE - ele_U[self.atoms[i]]
 			self.properties["atomization"] = AE
+		else:
+			raise Exception("Missing data... ")
 		return
 
 	def Calculate_vdw(self):
@@ -212,7 +214,7 @@ class Mol:
 			except:
 				self.coords[i,2]=scitodeci(line[3])
 		if ("energy" in self.properties):
-			self.Calculate_Atomization()
+			self.CalculateAtomization()
 		return
 
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):
@@ -673,6 +675,31 @@ class Mol:
 					for k in range(3):
 						forces[j,k] = float(read_forces[j*3+k])
 			self.properties['forces'] = forces
+		except Exception as Ex:
+			print "Read Failed.", Ex
+
+	def MMFF94_Force_from_xyz(self, path):
+		"""
+		Reads the forces from the comment line in the md_dataset,
+		and if no forces exist sets them to zero. Switched on by
+		has_force=True in the ReadGDB9Unpacked routine
+		"""
+		try:
+			f = open(path, 'r')
+			lines = f.readlines()
+			natoms = int(lines[0])
+			forces=np.zeros((natoms,3))
+			try:
+				read_forces = ((lines[1].strip().split(';'))[3]).replace("],[", ",").replace("[","").replace("]","").split(",")
+			except:
+				self.properties['mmff94forces'] = forces
+				pass
+				return
+			if read_forces:
+				for j in range(natoms):
+					for k in range(3):
+						forces[j,k] = float(read_forces[j*3+k])
+			self.properties['mmff94forces'] = forces
 		except Exception as Ex:
 			print "Read Failed.", Ex
 

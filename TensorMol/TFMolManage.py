@@ -57,6 +57,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff(self.TData, None)
 		elif (self.NetType == "fc_sqdiff_BP"):
 			self.Instances = MolInstance_fc_sqdiff_BP(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_WithGrad"):
+			self.Instances = MolInstance_fc_sqdiff_BP_WithGrad(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -264,6 +266,7 @@ class TFMolManage(TFManage):
 	def Eval_BPForceHalfNumerical(self, mol, total_energy = False):
 		"""
 		This version uses a half-numerical gradient.
+		It was written for debugging purposes. 
 		Args:
 			mol: a Mol.
 			total_energy: whether to also return the energy as a first argument.

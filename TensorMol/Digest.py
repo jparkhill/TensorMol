@@ -145,6 +145,18 @@ class Digester:
 						Outs = mol_.properties['forces'][at_].reshape((1,3))
 				else:
 					raise Exception("Mol Is missing force. ")
+			elif (self.OType=="Del_Force"):
+				if ( "forces" in mol_.properties):
+					if ( "mmff94forces" in mol_.properties):
+						if (at_<0):
+							Outs = mol_.properties['forces']-mol_.properties['mmff94forces']
+							#print "Outs", Outs
+						else:
+							Outs = mol_.properties['forces'][at_].reshape((1,3))-mol_.properties['mmff94forces'][at_].reshape((1,3))
+					else:
+						raise Exception("Mol Is missing MMFF94 force. ")
+				else:
+					raise Exception("Mol Is missing force. ")
 			elif (self.OType=="ForceSphere"):
 				if ( "sphere_forces" in mol_.properties):
 					if (at_<0):
@@ -212,7 +224,7 @@ class Digester:
 		Returns:
 			Two lists: containing inputs and outputs in order of eles_
 		"""
-		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" and self.OType !="ForceSphere" )):
+		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" and self.OType!="Del_Force" and self.OType !="ForceSphere" )):
 			raise Exception("Molwise Embedding not supported")
 		if (self.eshape==None or self.lshape==None):
 			if (mol_.DistMatrix == None):

@@ -1601,8 +1601,8 @@ static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
 	return  nlist;
 }
 
-static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args) {
-
+static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args)
+{
 	PyArrayObject   *xyz, *atoms_, *elements;
 	PyObject    *radius_Rs_py, *angle_Rs_py, *angle_As_py, *Prm_;
 	double   radius_Rc, angle_Rc, eta, zeta;
@@ -1634,7 +1634,7 @@ static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args) {
 	int SYMdim = nele*dim_radius_Rs + nele*(nele+1)/2*dim_angle_Rs*dim_angle_As;
 	npy_intp outdim[3] = {1, SYMdim, 3*natom};
 	if (theatom<0)
-	outdim[0] = natom;
+		outdim[0] = natom;
 	PyObject* ANI1_Sym_deri = PyArray_ZEROS(3, outdim, NPY_DOUBLE, 0);
 	ANI1_Sym_deri_data = (double*) ((PyArrayObject*)ANI1_Sym_deri)->data;
 

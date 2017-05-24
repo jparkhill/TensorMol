@@ -38,10 +38,21 @@ class Instance:
 		self.labels_placeholder = None
 		self.saver = None
 		self.gradient =None
-		self.summary_writer = None
+		self.summary_op =None
+		self.summary_writer=None
 		# The parameters below belong to tensorflow and its graph
 		# all tensorflow variables cannot be pickled they are populated by Prepare
 		self.PreparedFor=0
+		self.hidden1 = PARAMS["hidden1"]
+		self.hidden2 = PARAMS["hidden2"]
+		self.hidden3 = PARAMS["hidden3"]
+		self.learning_rate = PARAMS["learning_rate"]
+		self.momentum = PARAMS["momentum"]
+		self.max_steps = PARAMS["max_steps"]
+		self.batch_size = PARAMS["batch_size"]
+		self.activation_function_type = PARAMS["NeuronType"]
+		self.activation_function = None
+		self.AssignActivation()
 
 		self.path='./networks/'
 		if (Name_ !=  None):
@@ -58,13 +69,6 @@ class Instance:
 			os.mkdir(self.path)
 		self.chk_file = ''
 
-		self.learning_rate = PARAMS["learning_rate"]
-		self.momentum = PARAMS["momentum"]
-		self.max_steps = PARAMS["max_steps"]
-		self.batch_size = PARAMS["batch_size"]
-		self.activation_function_type = PARAMS["NeuronType"]
-		self.activation_function = None
-		self.AssignActivation()
 		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
 		LOGGER.info("self.batch_size: "+str(self.batch_size))
 
@@ -85,7 +89,7 @@ class Instance:
 		self.Clean()
 
 	def AssignActivation(self):
-		LOGGER.info("Assigning Activation... %s", PARAMS["NeuronType"])
+		LOGGER.debug("Assigning Activation... %s", PARAMS["NeuronType"])
 		try:
 			if self.activation_function_type == "relu":
 				self.activation_function = tf.nn.relu
@@ -179,6 +183,7 @@ class Instance:
 		self.summary_writer = None
 		self.PreparedFor = 0
 		self.summary_op = None
+		self.activation_function = None
 		return
 
 	def SaveAndClose(self):
@@ -286,7 +291,7 @@ class Instance:
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
 
-	def inference(self, images):
+	def inference(self, images, bleep, bloop, blop):
 		"""Build the MNIST model up to where it may be used for inference.
 		Args:
 		images: Images placeholder, from inputs().
@@ -420,9 +425,6 @@ class Instance:
 class Instance_fc_classify(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		self.hidden1 = PARAMS["hidden1"]
-		self.hidden2 = PARAMS["hidden2"]
-		self.hidden3 = PARAMS["hidden3"]
 		self.NetType = "fc_classify"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
@@ -578,14 +580,9 @@ class Instance_fc_classify(Instance):
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		self.hidden1 = PARAMS["hidden1"]
-		self.hidden2 = PARAMS["hidden2"]
-		self.hidden3 = PARAMS["hidden3"]
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.summary_op =None
-		self.summary_writer=None
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
@@ -688,8 +685,6 @@ class Instance_conv2d_sqdiff(Instance):
 		self.NetType = "conv2d_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.summary_op =None
-		self.summary_writer=None
 
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
@@ -865,8 +860,6 @@ class Instance_3dconv_sqdiff(Instance):
 		self.NetType = "3conv_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.summary_op =None
-		self.summary_writer=None
 
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
@@ -1036,8 +1029,6 @@ class Instance_KRR(Instance):
 		self.NetType = "KRR"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.summary_op =None
-		self.summary_writer=None
 		self.krr = None
 		return
 

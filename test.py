@@ -103,6 +103,48 @@ def TestANI1():
 		np.savetxt("./results/AutoCorr.dat", autocorr)
 	return
 
+def TestBP_WithGrad():
+	"""
+	copy glymd.pdb from the google drive...
+	"""
+	a = MSet("glymd")
+	a.Load()
+	a.pop(45000) # help out my puny laptop
+	for mol in a.mols:
+		mol.properties['force'] /= (BOHRPERA*BOHRPERA)
+		mol.CalculateAtomization()
+	PARAMS["AN1_r_Rc"] = 6.
+	PARAMS["AN1_a_Rc"] = 4.
+	PARAMS["AN1_eta"] = 4.0
+	PARAMS["AN1_zeta"] = 8.0
+	PARAMS["AN1_num_r_Rs"] = 8
+	PARAMS["AN1_num_a_Rs"] = 4
+	PARAMS["AN1_num_a_As"] = 4
+	PARAMS["batch_size"] = 1500
+	PARAMS["hidden1"] = 64
+	PARAMS["hidden2"] = 128
+	PARAMS["hidden3"] = 64
+	PARAMS["max_steps"] = 1001
+	PARAMS["GradWeight"] = 1.0
+	PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
+	PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
+	PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
+	TreatedAtoms = a.AtomTypes()
+	if (0):
+		# Train the atomization energy in a normal BP network to test.
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+		print "Set elements: ", a.AtomTypes()
+		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain("glymd", append=False, max_nmols_=1000000)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
+		manager.Train(maxstep=200)
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AEAndForce")  # Initialize a digester that apply descriptor for the fragme
+	print "Set elements: ", a.AtomTypes()
+	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol", WithGrad_=True)
+	tset.BuildTrain("glymd", append=False, max_nmols_=1000000, WithGrad_=True)
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP_WithGrad")
+	manager.Train(maxstep=2000)
+	return
 
 def TestJohnson():
 	"""
@@ -249,20 +291,18 @@ def TestDipole():
 		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
 		tset.BuildTrain("chemspider9_multipole")
 
-        if (0):
-                a = MSet("chemspider9")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole2")
-                tset = TensorMolData_BP_Multipole_2(a,d, order_=1, num_indis_=1, type_="mol")
-                tset.BuildTrain("chemspider9_multipole3")
+	if (0):
+		a = MSet("chemspider9")
+		a.Load()
+		TreatedAtoms = a.AtomTypes()
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole2")
+		tset = TensorMolData_BP_Multipole_2(a,d, order_=1, num_indis_=1, type_="mol")
+		tset.BuildTrain("chemspider9_multipole3")
 
-
-        if (0):
-                tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
-                manager=TFMolManage("",tset,False,"Dipole_BP")
-                manager.Train()
-
+	if (0):
+		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
+		manager=TFMolManage("",tset,False,"Dipole_BP")
+		manager.Train()
 
 	if (1):
 		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
@@ -282,17 +322,17 @@ def TestDipole():
 	if (0):
 		a = MSet("furan_md")
 		a.ReadXYZ("furan_md")
-                manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
-                net, dipole, charge = manager.Eval_BPDipole(a.mols[0], True)
+		manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+		net, dipole, charge = manager.Eval_BPDipole(a.mols[0], True)
 		#net, dipole, charge = manager.Eval_BPDipole(a.mols, True)
 		print net, dipole, charge
 		#np.savetxt("./results/furan_md_nn_dipole.dat", dipole)
 
 	if (0):
 		a = MSet("furan_md")
-                a.ReadXYZ("furan_md")
+		a.ReadXYZ("furan_md")
 		manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
-                net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
+		net, dipole, charge = manager.EvalBPDipole(a.mols[0], True)
 		charge = charge[0]
 		fixed_charge_dipole = np.zeros((len(a.mols),3))
 		for i, mol in enumerate(a.mols):
@@ -301,13 +341,11 @@ def TestDipole():
 		np.savetxt("./results/furan_md_nn_fixed_charge_dipole.dat", fixed_charge_dipole)
 	if (0):
 		a = MSet("thf_dimer_flip")
-                a.ReadXYZ("thf_dimer_flip")
-
+		a.ReadXYZ("thf_dimer_flip")
 		#b = MSet("CH3OH")
 		#b.ReadXYZ("CH3OH")
 		#manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
 		#net, dipole, charge = manager.Eval_BPDipole(b.mols[0], True)
-
 		#nn_charge = np.tile(charge[0],2)
 		#mul_charge = np.tile(np.loadtxt("./results/CH3OH_mul.dat"), 2)
 		#hir_charge = np.tile(np.loadtxt("./results/CH3OH_hir.dat"), 2)
@@ -318,32 +356,31 @@ def TestDipole():
 		#hir_dipole = np.zeros((len(a.mols),3))
 		#nn_dipole = np.zeros((len(a.mols),3))
 		for i, mol in enumerate(a.mols):
-                        center_ = np.average(mol.coords,axis=0)
+			center_ = np.average(mol.coords,axis=0)
 			print mol.coords.shape
 			mul_dipole[i] = np.einsum("ax,a", mol.coords-center_ , mul_charge[i])/AUPERDEBYE
 			#hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge)/AUPERDEBYE
 			#nn_dipole[i] = np.einsum("ax,a", mol.coords-center_ , nn_charge)/AUPERDEBYE
-                        #mul_dipole[i] = np.einsum("ax,a", mol.coords-center_ , mul_charge[i])/AUPERDEBYE
+			#mul_dipole[i] = np.einsum("ax,a", mol.coords-center_ , mul_charge[i])/AUPERDEBYE
 			#hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge[i])/AUPERDEBYE
 			#nn_dipole[i] = np.einsum("ax,a", mol.coords-center_ , nn_charge[i])/AUPERDEBYE
-
-                np.savetxt("./results/thf_dimer_flip_mul_dipole.dat", mul_dipole)
-		#np.savetxt("./results/CH3OH_dimer_flip_hir_dipole.dat", hir_dipole)
-		#np.savetxt("./results/CH3OH_dimer_flip_fixed_nn_dipole.dat", nn_dipole)
+			np.savetxt("./results/thf_dimer_flip_mul_dipole.dat", mul_dipole)
+			#np.savetxt("./results/CH3OH_dimer_flip_hir_dipole.dat", hir_dipole)
+			#np.savetxt("./results/CH3OH_dimer_flip_fixed_nn_dipole.dat", nn_dipole)
 
 
 	if (0):
 		a = MSet("CH3OH_dimer_flip")
-                a.ReadXYZ("CH3OH_dimer_flip")
-	#	manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
-	#	nn_dip = np.zeros((len(a.mols),3))
-	#	nn_charge = np.zeros((len(a.mols),a.mols[0].NAtoms()))
-	#	for i, mol in enumerate(a.mols):
-        #        	net, dipole, charge = manager.Eval_BPDipole(mol, True)
-	#		nn_dip[i] = dipole
-	#		nn_charge[i] = charge[0]
-	#	np.savetxt("./results/thf_dimer_flip_nn_dip.dat", nn_dip)
-	#	np.savetxt("./results/thf_dimer_flip_nn_charge.dat", nn_charge)
+		a.ReadXYZ("CH3OH_dimer_flip")
+		#	manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
+		#	nn_dip = np.zeros((len(a.mols),3))
+		#	nn_charge = np.zeros((len(a.mols),a.mols[0].NAtoms()))
+		#	for i, mol in enumerate(a.mols):
+		#        	net, dipole, charge = manager.Eval_BPDipole(mol, True)
+		#		nn_dip[i] = dipole
+		#		nn_charge[i] = charge[0]
+		#	np.savetxt("./results/thf_dimer_flip_nn_dip.dat", nn_dip)
+		#	np.savetxt("./results/thf_dimer_flip_nn_charge.dat", nn_charge)
 		f = open("CH3OH_dimer_flip.in","w+")
 		for mol in a.mols:
 			f.write("$molecule\n0 1\n")
@@ -352,9 +389,6 @@ def TestDipole():
                 		f.write(atom_name+"   "+str(mol.coords[i][0])+ "  "+str(mol.coords[i][1])+ "  "+str(mol.coords[i][2])+"\n")
 			f.write("$end\n\n$rem\njobtype sp\nexchange b3lyp\nbasis 6-31g(d)\nSYM_IGNORE True\n$end\n\n\n@@@\n\n")
 		f.close()
-
-
-
 
 def TestGeneralMBEandMolGraph():
 	a=FragableMSet("NaClH2O")
@@ -682,7 +716,8 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-TestDipole()
+TestBP_WithGrad()
+#TestDipole()
 #TestJohnson()
 #TestMorphIR()
 #TestGeneralMBEandMolGraph()

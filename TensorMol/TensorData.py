@@ -98,7 +98,9 @@ class TensorData():
 	def CheckShapes(self):
 		# Establish case and label shapes.
 		test_mol = Mol(np.array([1,1],dtype=np.uint8),np.array([[0.0,0.0,0.0],[0.7,0.0,0.0]]))
-		tins,touts = self.dig.TrainDigest(test_mol)
+		test_mol.properties["forces"] = np.zeros((2,3))
+		test_mol.properties["mmff94forces"] = np.zeros((2,3))
+		tins,touts = self.dig.TrainDigest(test_mol, 1)
 		print "self.dig input shape: ", self.dig.eshape
 		print "self.dig output shape: ", self.dig.lshape
 		print "TrainDigest input shape: ", tins.shape
@@ -390,7 +392,7 @@ class TensorData():
 				predicted = tformer.UnNormalizeOuts(predicted)
 			print "Evaluating, ", len(desired), " predictions... "
 			print desired.shape, predicted.shape
-			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce"):
+			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
 				ders=np.zeros(len(desired))
 				#comp=np.zeros(len(desired))
 				for i in range(len(desired)):
@@ -443,6 +445,7 @@ class TensorData():
 				raise Exception("Unknown Digester Output Type.")
 		except Exception as Ex:
 			print "Something went wrong"
+			print Ex
 			pass
 		if (Opt):
 			return np.mean(np.absolute(predicted[:,-3:]-desired[:,-3:]))
