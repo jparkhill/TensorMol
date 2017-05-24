@@ -566,10 +566,11 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
 		output = tf.zeros([self.batch_size_output])
-		nrm1=5.0/(10+math.sqrt(float(self.inshape)))
-		nrm2=5.0/(10+math.sqrt(float(hidden1_units)))
-		nrm3=5.0/(10+math.sqrt(float(hidden2_units)))
-		nrm4=5.0/(10+math.sqrt(float(hidden3_units)))
+		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
+		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
+		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
+		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
+		print("Norms:", nrm1,nrm2,nrm3)
 		LOGGER.info("Layer initial Norms: %f %f %f", nrm1,nrm2,nrm3)
 		#print(inp_pl)
 		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
