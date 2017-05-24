@@ -11,7 +11,7 @@ from __future__ import print_function
 from TensorMol.TensorData import *
 import numpy as np
 import cPickle as pickle
-import math time, os, sys, os.path
+import math, time, os, sys, os.path
 if (HAS_TF):
 	import tensorflow as tf
 
@@ -176,17 +176,17 @@ def TestCoulomb():
 	sys.stderr = sys.stdout
 	with tf.Session() as session:
 		session.run(init)
-		print session.run(Ds)
-		print session.run(dDs)
-		print session.run(charges)
+		print (session.run(Ds))
+		print (session.run(dDs))
+		print (session.run(charges))
 		PARAMS["EESwitchFunc"] = None # options are Cosine, and Tanh.
-		print session.run(XyzsToCoulomb(xyzs,charges))
+		print (session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "CosSR" # options are Cosine, and Tanh.
-		print session.run(XyzsToCoulomb(xyzs,charges))
+		print (session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
-		print session.run(XyzsToCoulomb(xyzs,charges))
+		print (session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "TanhSR" # options are Cosine, and Tanh.
-		print session.run(XyzsToCoulomb(xyzs,charges))
+		print (session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "TanhLR" # options are Cosine, and Tanh.
-		print session.run(XyzsToCoulomb(xyzs,charges))
+		print (session.run(XyzsToCoulomb(xyzs,charges)))
 	return
