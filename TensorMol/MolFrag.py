@@ -6,6 +6,7 @@ import numpy as np
 import random, math
 from Mol import *
 
+
 class FragableCluster(Mol):
 	""" Provides a cluster which can be fragmented into molecules"""
 	def __init__(self, atoms_ =  None, coords_ = None):
@@ -238,18 +239,18 @@ class FragableCluster(Mol):
 				tmp_time  = time.time()
 				sub_combinations = list(itertools.product(*sample_index))
 				print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
-				shuffle_time = time.time()
-				new_begin = random.randint(1,len(sub_combinations)-2)
-				sub_combinations = sub_combinations[new_begin:]+sub_combinations[:new_begin] # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
+				#shuffle_time = time.time()
+				#new_begin = random.randint(1,len(sub_combinations)-2)
+				#sub_combinations = sub_combinations[new_begin:]+sub_combinations[:new_begin] # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
 				#random.shuffle(sub_combinations)  # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
-				print  "time to shuffle it", time.time()-shuffle_time
+				#print  "time to shuffle it", time.time()-shuffle_time
 				for i in range (0, len(sub_combinations)):
 					term = list(sub_combinations[i])
 					if len(list(set(term))) < len(term):
 						continue
 					pairs=list(itertools.combinations(term, 2))
 					saveindex=[]
-					dist = [10000000]*len(pairs)
+					dist = [float('inf')]*len(pairs)
 					flag=1
 					npairs=len(pairs)
 					for j in range (0, npairs):
@@ -684,3 +685,151 @@ class Frag(Mol):
 				frag_deri[i][1] += nn_dcm * cm_dy
 				frag_deri[i][2] += nn_dcm * cm_dz
 		return frag_deri
+
+
+
+
+class FragableClusterBF(Mol):
+	""" All the monomers can pair with each other, no cutoff"""
+	def __init__(self, atoms_ =  None, coords_ = None):
+		Mol.__init__(self,atoms_,coords_)
+		self.mbe_order = PARAMS["MBE_ORDER"]
+		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
+		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
+                self.type_of_frags_dict = {}
+		self.atoms_of_frags = [] # store the index of atoms of each frag
+		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
+		self.mbe_frags_deri=dict()
+		self.type_of_frags_dict = {}
+		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
+		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
+		self.frag_energy_sum = dict() # sum of the energis of all the frags in certain oder
+		self.mbe_deri =None
+		self.frag_dipole_sum = dict() 
+		self.mbe_dipole=dict()
+		self.nn_dipole = 0
+		return
+
+	def Reset_Frags(self):
+		self.mbe_frags_deri=dict()
+		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
+		self.energy=None
+		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
+		self.frag_energy_sum = dict() 
+		self.mbe_deri =None
+		self.nn_energy=None
+		return
+
+
+	def Generate_All_MBE_term_General(self, frag_list=[]):
+		self.frag_list = frag_list
+		for i in range (1, self.mbe_order+1):
+			print "Generating order", i
+			self.Generate_MBE_term_General(i)
+		return
+
+	def Generate_MBE_term_General(self, order):
+		if order in self.mbe_frags.keys():
+			print ("MBE order", order, "already generated..skipping..")
+			return
+		if order==1:
+			self.mbe_frags[order] = []
+			masked=[]
+			frag_index = 0
+                        for i, dic in enumerate(self.frag_list):
+                                self.type_of_frags_dict[i] = []
+                                frag_atoms = String_To_Atoms(dic["atom"])
+                                frag_atoms = [atoi[atom] for atom in frag_atoms]
+                                num_frag_atoms = len(frag_atoms)
+                                j = 0
+                                while (j < self.NAtoms()):
+                                        if j in masked:
+                                                j += 1
+                                        else:
+                                                tmp_list = list(self.atoms[j:j+num_frag_atoms])
+                                                if tmp_list == frag_atoms:
+                                                        self.atoms_of_frags.append([])
+                                                        masked += range (j, j+num_frag_atoms)
+                                                        self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
+                                                        self.type_of_frags.append(i)
+                                                        self.type_of_frags_dict[i].append(frag_index)
+                                                        tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
+                                                        tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
+                                                        mbe_terms = [frag_index]
+                                                        tmp_mol = Mol(tmp_atom, tmp_coord)
+							print tmp_atom
+                                                        self.mbe_frags[order].append(tmp_mol)
+                                                        j += num_frag_atoms
+                                                        frag_index += 1
+                                                        #print self.atoms_of_frags, tmp_list, self.type_of_frags
+                                                        #print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
+						else:
+							j += 1
+		else:
+			self.mbe_frags[order] = []
+			mbe_terms=[]
+			time_log = time.time()
+			print ("generating the combinations for order: ", order)
+			time_now=time.time()
+			frag_case = 0
+			sample_index = range(len(self.mbe_frags[1]))
+			print("begin the most time consuming step: ")
+			tmp_time  = time.time()
+			sub_combinations = list(itertools.combinations(sample_index, order))
+			print "sub_combinations", sub_combinations
+			print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
+			for i in range (0, len(sub_combinations)):
+				term = list(sub_combinations[i])
+				if len(list(set(term))) < len(term):
+					continue
+				if frag_case%100==0:
+					print "working on frag:", frag_case
+				mbe_terms.append(term)
+				frag_case  += 1
+			print ("finished..takes", time_log-time.time(),"second")
+			for i in range (0, len(mbe_terms)):
+				atom_group = []
+				for index in mbe_terms[i]:
+					atom_group.append(self.mbe_frags[1][index].atoms.shape[0])
+				tmp_coord = np.zeros((sum(atom_group), 3))
+				tmp_atom = np.zeros(sum(atom_group), dtype=np.uint8)
+				pointer = 0
+				for j, index in enumerate(mbe_terms[i]):
+					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
+					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
+					pointer += atom_group[j]
+				tmp_mol = Mol(tmp_atom, tmp_coord)
+				self.mbe_frags[order].append(tmp_mol)
+			del sub_combinations
+		return
+
+
+	def MBE_Energy(self):
+		mono_num = len(self.mbe_frags[1])
+		self.nn_energy = 0.0
+		for order in range (1, self.mbe_order+1):
+			self.mbe_energy[order] = self.frag_energy_sum[order]
+			if order == 1:
+				self.nn_energy += self.mbe_energy[order]
+				continue 
+			for sub_order in range (1, order):
+				self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
+			self.nn_energy += self.mbe_energy[order]	
+		print self.mbe_energy, self.nn_energy
+		return 
+					
+
+        def MBE_Dipole(self):
+                mono_num = len(self.mbe_frags[1])
+                self.nn_dipole = 0.0
+                for order in range (1, self.mbe_order+1):
+                        self.mbe_dipole[order] = self.frag_dipole_sum[order]
+                        if order == 1:
+                                self.nn_dipole += self.mbe_dipole[order]
+                                continue
+                        for sub_order in range (1, order):
+                                self.mbe_dipole[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_dipole[sub_order]
+                        self.nn_dipole += self.mbe_dipole[order]
+                print self.mbe_dipole, self.nn_dipole
+                return
+

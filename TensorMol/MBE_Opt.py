@@ -49,9 +49,9 @@ class MBE_Optimizer:
     		if (step%10 == 0):
     			m.WriteXYZfile("./datasets/", "OptLog")
     	np.savetxt("gd_opt_no_momentum.dat", np.asarray(energy_his))
-                return
+	return
 
-	def MBE_LBFGS_Opt(self, m):
+def MBE_LBFGS_Opt(self, m):
         step = 0
         energy_err = 100
         force_err = 100
@@ -71,8 +71,8 @@ class MBE_Optimizer:
             	force_his.append(force.reshape(force.shape[0]*force.shape[1]))
             	coord_his.pop(0)
             	coord_his.append(coords.reshape(coords.shape[0]*coords.shape[1]))
-			print "force:", force
-			q = (force.reshape(force.shape[0]*force.shape[1])).copy()
+		print "force:", force
+		q = (force.reshape(force.shape[0]*force.shape[1])).copy()
             for i in range (len(force_his)-1, 0, -1):
                 s=coord_his[i] - coord_his[i-1]
                 y=force_his[i] - force_his[i-1]
@@ -83,16 +83,16 @@ class MBE_Optimizer:
             	H=1.0
             else:
             	H = ((coord_his[-1] - coord_his[-2]).dot(force_his[-1] - force_his[-2]))/((force_his[-1] - force_his[-2]).dot(force_his[-1] - force_his[-2]))
-			z = H*q
-			for i in range (1, len(force_his)):
-                s=coord_his[i] - coord_his[i-1]
-                y=force_his[i] - force_his[i-1]
-                rho = 1/y.dot(s)
-                a=rho*s.dot(q)
-                beta = rho*(force_his[i] - force_his[i-1]).dot(z)
-                z = z + s*(a -beta)
-    			z = z.reshape((m.NAtoms(), -1))
-    			print "z: ",z
+		z = H*q
+		for i in range (1, len(force_his)):
+                	s=coord_his[i] - coord_his[i-1]
+                	y=force_his[i] - force_his[i-1]
+                	rho = 1/y.dot(s)
+                	a=rho*s.dot(q)
+                	beta = rho*(force_his[i] - force_his[i-1]).dot(z)
+               		z = z + s*(a -beta)
+    		z = z.reshape((m.NAtoms(), -1))
+    		print "z: ",z
             energy = m.nn_energy
             energy_his.append(energy)
             m.coords = m.coords - self.step_size*z
@@ -107,4 +107,4 @@ class MBE_Optimizer:
             if (step%10 == 0):
                 m.WriteXYZfile("./datasets/", "OptLog")
 		np.savetxt("lbfgs_opt.dat", np.asarray(energy_his))
-		return
+	return
