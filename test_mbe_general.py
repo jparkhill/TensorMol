@@ -1,10 +1,24 @@
 from TensorMol import *
 from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
+from TensorMol import *
 
+# step to test a BruteForce MBE model
+if (1):
+	if (1):
+		a=FragableMSetBF("H2O_cluster")
+		a.ReadXYZ("H2O_cluster")
+		a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
+		
+		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
+		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+		mbe = NN_MBE_BF(manager, dipole_manager)
+		for mol in a.mols:
+			mbe.NN_Energy(mol)
+			mbe.NN_Dipole(mol)
 
 # steps to train a NN-MBE model
-if (1):
+if (0):
 	#Load .xyz files.
 
 	if (1):
