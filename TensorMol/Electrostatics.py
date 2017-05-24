@@ -1,5 +1,6 @@
 """
-Routines for calculating dipoles quadropoles, etc, and cutoff electrostatic energies.
+Routines for calculating dipoles quadropoles, etc, and cutoff electrostatic energies in python
+See also: ElectrostaticsTF for tensorflow implementations of electrostatics.
 """
 
 from Util import *

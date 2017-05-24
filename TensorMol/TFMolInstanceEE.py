@@ -5,10 +5,22 @@ from __future__ import print_function
 from TensorMol.TFInstance import *
 from TensorMol.TensorMolData import *
 from TensorMol.TFMolInstance import *
+from TensorMol.ElectrostaticsTF import *
 
 class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 	"""
-		calculates E_electrostatic with a cutoff coulomb interaction.
+		An electrostatically-embedded Behler Parinello
+		--------------------
+		A network with both energy and charge branches.
+		Loss is : l2(Energies)+l2(Dipole)
+		Network Yields: E_T,E_BP,E_electrostatic,Charges
+		Only neutral systems supported as of now.
+
+		This also uses TF's new scatter/gathers/einsum
+		and Einsum to reduce the overhead of the BP scheme.
+
+		The whole energy is differentiable and can yield forces.
+
 		E_\text{electrostatic} The electrostatic energy is attenuated to only exist
 		outside PARAMS["EECutoff"]
 		# A couple cutoff schemes are available
@@ -47,8 +59,8 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
-		print("Assigned batch input size: ",self.batch_size)
-		print("Assigned batch output size: ",self.batch_size_output)
+		LOGGER.info("Assigned batch input size: ",self.batch_size)
+		LOGGER.info("Assigned batch output size: ",self.batch_size_output)
 		with tf.Graph().as_default():
 			self.inp_pl=[]
 			self.mats_pl=[]
@@ -839,8 +851,6 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			#self.summary_op = tf.summary.merge_all()
-			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 #			try: # I think this may be broken
@@ -984,7 +994,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		for e in range(len(self.eles)):
 			mats = mats_pl[e]
 			shp_out = tf.shape(atom_outputs[e])
-                        coords = coords_pl[e]
+			coords = coords_pl[e]
 			trans_mats = tf.transpose(mats)
 			ele_delta_charge = tf.matmul(delta_charge, trans_mats)
 			scaled_charge = tf.subtract(atom_outputs[e], ele_delta_charge)
