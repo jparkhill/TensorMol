@@ -38,7 +38,7 @@ class TensorData():
 		self.AvailableElements = []
 		self.AvailableDataFiles = []
 		self.NTest = 0  # assgin this value when the data is loaded
-		self.TestRatio = 0.2 # number of cases withheld for testing.
+		self.TestRatio = PARAMS["TestRatio"] # number of cases withheld for testing.
 		self.Random = PARAMS["RandomizeData"] # Whether to scramble training data (can be disabled for debugging purposes)
 		self.ScratchNCase = 0
 		self.ScratchState=None
@@ -142,6 +142,8 @@ class TensorData():
 			for mi in range(ord):
 				m = self.set.mols[mi]
 				ins,outs = self.dig.TrainDigestMolwise(m)
+				# if np.any(np.abs(outs) > 100.0) or np.any(np.isinf(outs)) or np.any(np.isnan(outs)):
+				# 	continue
 				for i in range(m.NAtoms()):
 					# Route all the inputs and outputs to the appropriate place...
 					ai = atypes.tolist().index(m.atoms[i])

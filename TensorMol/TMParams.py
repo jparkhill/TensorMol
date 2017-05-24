@@ -53,6 +53,7 @@ class TMParams(dict):
 		self["hidden2"] = 512
 		self["hidden3"] = 512
 		self["GradWeight"] = 0.01
+		self["TestRatio"] = 0.2
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
@@ -104,7 +105,7 @@ class TMParams(dict):
 		self["hidden3"] = 512
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
-		self["EESwitchFunc"] = "Cos" # options are Cosine, and Tanh. 
+		self["EESwitchFunc"] = "Cos" # options are Cosine, and Tanh.
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
