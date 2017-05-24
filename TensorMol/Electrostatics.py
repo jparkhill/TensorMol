@@ -1,5 +1,6 @@
 """
-Routines for calculating dipoles quadropoles, etc, and cutoff electrostatic energies.
+Routines for calculating dipoles quadropoles, etc, and cutoff electrostatic energies in python
+See also: ElectrostaticsTF for tensorflow implementations of electrostatics.
 """
 
 from Util import *
@@ -20,6 +21,17 @@ def DipoleDebug(m_):
 def Dipole(x_, q_):
 	""" Arguments are in A, and elementary charges.  """
  	return WeightedCoordAverage(x_*BOHRPERA, q_)
+
+
+def ChargeCharge(m1_, m2_):
+	"""calcuate  the charge-charge interaction energy between two molecules"""
+	cc_energy = 0.0
+	for i in range (0, m1_.NAtoms()):
+		for j in range (0, m2_.NAtoms()):
+			dist = (np.sum(np.square(m1_.coords[i] - m2_.coords[j])))**0.5 * BOHRPERA
+			cc_energy += m1_.properties['atom_charges'][i]*m2_.properties['atom_charges'][j]/dist
+	return cc_energy
+
 
 def ElectricFieldForce(q_,E_):
 	"""

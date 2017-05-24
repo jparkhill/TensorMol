@@ -290,6 +290,8 @@ class MSet:
 		return
 
 
+
+
 class FragableMSet(MSet):
 	def __init__(self, name_ ="NaClH2O", path_="./datasets/"):
 		MSet.__init__(self, name_, path_)
@@ -387,6 +389,39 @@ class FragableMSet(MSet):
 		for mol in self.mols:
 			mol.Set_Qchem_Data_Path()
 		return
+
+
+
+class FragableMSetBF(FragableMSet):
+        def __init__(self, name_ ="NaClH2O", path_="./datasets/"):
+                MSet.__init__(self, name_, path_)
+                return
+
+        def ReadXYZ(self,filename, xyz_type = 'mol'):
+                """ Reads XYZs concatenated into a single separated by \n\n file as a molset """
+                f = open(self.path+filename+".xyz","r")
+                txts = f.readlines()
+                for line in range(len(txts)):
+                        if (txts[line].count('Comment:')>0):
+                                line0=line-1
+                                nlines=int(txts[line0])
+                                if xyz_type == 'mol':
+                                        self.mols.append(FragableClusterBF())
+                                elif xyz_type == 'frag_of_mol':
+                                        self.mols.append(Frag_of_Mol())
+                                else:
+                                        raise Exception("Unknown Type!")
+                                self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+                                self.mols[-1].name = str(line)
+                                self.mols[-1].properties["set_name"] = self.name
+                return
+
+        def Generate_All_MBE_term_General(self, frag_list=[]):
+                for mol in self.mols:
+                        mol.Generate_All_MBE_term_General(frag_list)
+                return
+
+
 
 
 class GraphSet:

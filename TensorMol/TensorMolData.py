@@ -400,6 +400,9 @@ class TensorMolData_BP(TensorMolData):
 		Note:
 			Also determines mean stoichiometry
 		"""
+                if 'self.HasGrad' not in locals():
+			print "do not find self.HasGrad, set to False"
+                        self.HasGrad = False
 		if (self.ScratchState == 1):
 			return
 		if (self.HasGrad):

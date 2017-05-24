@@ -5,10 +5,22 @@ from __future__ import print_function
 from TensorMol.TFInstance import *
 from TensorMol.TensorMolData import *
 from TensorMol.TFMolInstance import *
+from TensorMol.ElectrostaticsTF import *
 
 class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 	"""
-		calculates E_electrostatic with a cutoff coulomb interaction.
+		An electrostatically-embedded Behler Parinello
+		--------------------
+		A network with both energy and charge branches.
+		Loss is : l2(Energies)+l2(Dipole)
+		Network Yields: E_T,E_BP,E_electrostatic,Charges
+		Only neutral systems supported as of now.
+
+		This also uses TF's new scatter/gathers/einsum
+		and Einsum to reduce the overhead of the BP scheme.
+
+		The whole energy is differentiable and can yield forces.
+
 		E_\text{electrostatic} The electrostatic energy is attenuated to only exist
 		outside PARAMS["EECutoff"]
 		# A couple cutoff schemes are available
@@ -47,8 +59,8 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		# allow for 120% of required output space, since it's cheaper than input space to be padded by zeros.
 		self.batch_size_output = int(1.5*self.batch_size/self.MeanNumAtoms)
 		#self.TData.CheckBPBatchsizes(self.batch_size, self.batch_size_output)
-		print("Assigned batch input size: ",self.batch_size)
-		print("Assigned batch output size: ",self.batch_size_output)
+		LOGGER.info("Assigned batch input size: ",self.batch_size)
+		LOGGER.info("Assigned batch output size: ",self.batch_size_output)
 		with tf.Graph().as_default():
 			self.inp_pl=[]
 			self.mats_pl=[]
@@ -795,9 +807,9 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		# self.batch_size is still the number of inputs in a batch.
 		self.batch_size = 10000
 		self.batch_size_output = 0
-		self.hidden1 = 200
-		self.hidden2 = 200
-		self.hidden3 = 200
+		self.hidden1 = 500
+		self.hidden2 = 500
+		self.hidden3 = 500
 		self.summary_op =None
 		self.summary_writer=None
 
@@ -839,8 +851,6 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			#self.summary_op = tf.summary.merge_all()
-			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 #			try: # I think this may be broken
@@ -924,15 +934,15 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			if (PARAMS["check_level"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.01)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.01)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.01)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
 				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
 				branches[-1].append(tf.nn.relu(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
@@ -984,7 +994,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		for e in range(len(self.eles)):
 			mats = mats_pl[e]
 			shp_out = tf.shape(atom_outputs[e])
-                        coords = coords_pl[e]
+			coords = coords_pl[e]
 			trans_mats = tf.transpose(mats)
 			ele_delta_charge = tf.matmul(delta_charge, trans_mats)
 			scaled_charge = tf.subtract(atom_outputs[e], ele_delta_charge)
