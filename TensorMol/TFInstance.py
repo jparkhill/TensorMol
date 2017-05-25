@@ -726,8 +726,8 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 			delta = tf.matmul(hidden3, weights) + biases
 		# Linear
 		with tf.name_scope('regression_linear'):
-			delta_out = tf.multiply(tf.nn.relu(delta[-self.outshape:]),LJGradFunc())
-			output = tf.add(delta[:self.outshape],delta_out)
+			delta_out = tf.multiply(tf.nn.relu(tf.slice(delta,[self.outshape],[self.outshape])),LJGradFunc())
+			output = tf.add(tf.slice(delta,[0],[self.outshape]),delta_out)
 		return output
 
 	def loss_op(self, output, labels):
