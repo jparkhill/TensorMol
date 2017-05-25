@@ -174,21 +174,21 @@ if(0):
 # a.Save()
 # a.WriteXYZ()
 
-# a=MSet("SmallMols_rand")
-# a.Load()
-# TreatedAtoms = a.AtomTypes()
-# d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-# tset = TensorData(a,d)
-# tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
-# manager=TFManage("",tset,True,"KRR_sqdiff")
-##h_inst = Instance_KRR(tset, 1, None)
-##print h_inst.basis_opt_run()
+def TrainKRR(set_ = "SmallMols", dig_ = "GauSH"):
+	PARAMS["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2, 2.4],
+					[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+	PARAMS["ANES"] = np.array([2.20, 1., 1., 1., 1., 2.55, 3.04, 3.98])
+	PARAMS["OutNormRoutine"] = "MeanStd"
+	a=MSet("SmallMols_rand")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Del_Force")
+	tset = TensorData(a,d)
+	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
+	manager=TFManage("",tset,True,"KRR_sqdiff")
+	return
 
-# a=MSet("opt")
-# a.ReadXYZ()
-# b=MSet("OptMols")
-# b.ReadXYZ()
-# print b.mols[12].rms_inv(a.mols[0])
+# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH")
 
 def RandomSmallSet(set_, size_):
 	""" Returns an MSet of random molecules chosen from a larger set """
@@ -206,6 +206,10 @@ def RandomSmallSet(set_, size_):
 
 def BasisOpt_KRR(method_, set_, dig_, OType = None, Elements_ = []):
 	""" Optimizes a basis based on Kernel Ridge Regression """
+	PARAMS["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2, 2.4],
+					[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+	PARAMS["ANES"] = np.array([2.20, 1., 1., 1., 1., 2.55, 3.04, 3.98])
+	PARAMS["OutNormRoutine"] = "MeanStd"
 	a=MSet(set_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -214,7 +218,7 @@ def BasisOpt_KRR(method_, set_, dig_, OType = None, Elements_ = []):
 	eopt.PerformOptimization()
 	return
 
-# BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [8])
+BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Del_Force", Elements_ = [1,6,7,8])
 #BasisOpt_KRR("KRR", "uracil_rand_20k", "GauSH", OType = "Force", Elements_ = [7])
 #H: R 5 L 2		C: R 5 L 3		N: R 6 L 4		O: R 5 L 3
 
@@ -310,7 +314,7 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=1)
 		tset = TensorData(None,None,set_+"_"+dig_)
 	manager=TFManage("",tset,True,"fc_sqdiff")
 
-TrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=20)
+# TrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=20)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -490,13 +494,3 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 #tset=TensorData(a,d)
 #tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
 #manager.TrainElement(8)
-
-# b=MSet("SmallMols")
-# b.Load()
-# for i,mol in enumerate(b.mols):
-# 		if np.any(np.abs(mol.properties["forces"]) > 300.0):
-# 			print i
-# 			del b.mols[i]
-# 			break
-# b.Save()
-# b.WriteXYZ()
