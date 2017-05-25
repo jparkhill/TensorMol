@@ -25,8 +25,6 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 			Name_: A name for this instance.
 		"""
 		self.NetType = "LJForce"
-		MolInstance_fc_sqdiff_BP.__init__(self, TData_,  Name_, Trainable_)
-		self.NetType = "LJForce"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name

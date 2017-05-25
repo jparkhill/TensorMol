@@ -352,13 +352,10 @@ class VelocityVerlet:
 
 class IRTrajectory(VelocityVerlet):
 	def __init__(self,f_,q_,g0_,name_=str(0),v0_=None):
-		"""
-		A specialized sort of dynamics which is appropriate for obtaining IR spectra at
-		Zero temperature.
-
-		Absorption cross section is given by:
-		\alpha (\omega) = \frac{4\pi^2}{\hbar c} \omega (1 - Exp[-\beta \hbar \omega]) \sigma(\omega))
-		\sigma(\omega)  = \frac{1}{6 \pi} \mathcal{F} \{\mu(t)\mu(0)\}
+		"""A specialized sort of dynamics which is appropriate for obtaining IR spectra at
+		Zero temperature. Absorption cross section is given by:
+		alpha = frac{4pi^2}{hbar c} omega (1 - Exp[-beta hbar omega]) sigma(omega))
+		sigma  = frac{1}{6 pi} mathcal{F} {mu(t)mu(0)}
 
 		Args:
 			f_: a function which yields the force
@@ -396,7 +393,7 @@ class IRTrajectory(VelocityVerlet):
 
 	def Pulse(self,t_):
 		"""
-		\delta pulse of duration
+		delta pulse of duration
 		"""
 		sin_part = (np.sin(2.0*3.1415*self.FieldFreq*t_))
 		exp_part = (1.0/np.sqrt(2.0*3.1415*self.Tau*self.Tau))*(np.exp(-1.0*np.power(t_-self.TOn,2.0)/(2.0*self.Tau*self.Tau)))
