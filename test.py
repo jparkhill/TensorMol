@@ -514,7 +514,6 @@ def TestIpecac(dig_ = "GauSH"):
 	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
 	eopt = EmbeddingOptimizer(a,dig)
 	eopt.PerformOptimization()
-
 	if (0):
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
@@ -531,6 +530,20 @@ def TestIpecac(dig_ = "GauSH"):
 		m.WriteXYZfile("./results/", "Distorted")
 		bestfit = ReverseAtomwiseEmbedding(m.atoms, dig, emb, guess_=m.coords,GdDistMatrix=gooddmat)
 		bestfit.WriteXYZfile("./results/", "BestFit")
+	return
+
+def Test_ULJ():
+	"""
+	Create a Universal Lennard-Jones model.
+	"""
+	# This Tests the optimizer.
+	print "Learning Best-Fit element specific LJ parameters."
+	a=MSet("SmallMols")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	dig = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
+	tset = TensorMolData(a,d)
+	manager=TFMolManage("",tset,True,"LJForce") # True indicates train all atoms
 	return
 
 def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
@@ -716,7 +729,8 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-TestBP_WithGrad()
+#TestBP_WithGrad()
+Test_ULJ()
 #TestDipole()
 #TestJohnson()
 #TestMorphIR()

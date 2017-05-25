@@ -102,6 +102,50 @@ def LJKernel(D,Z,Ee,Re):
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle
 	return K
 
+def LJKernels(Ds,Zs,Ee,Re):
+	"""
+	Batched over molecules.
+	Args:
+		Ds: A batch of square distance matrix (bohr)
+		Zs: A batch of Atomic Numbers.
+		Ee: a matrix of LJ well depths.
+		Re: a matrix of Bond minima.
+	Returns
+		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
+	"""
+	# Extract De_ij and Re_ij
+	Zshp = tf.shape(Zs)
+	Zr = tf.reshape(Zs,[Zshp[0],Zshp[1],1])-1 # Indices start at 0 AN's start at 1.
+	Zij1 = tf.tile(Zr,[1,1,Zshp[1]]) # molXatomXatom
+	Zij2 = tf.transpose(Zij1,perm=[0,2,1])
+	Zij = tf.stack([Zij1,Zij2],axis=3) # molXatomXatomX2
+	#Zij = tf.Print(Zij,[Zij],"Zij",1000,1000)
+	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[1]*Zshp[1],2])
+	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[Zshp[0],Zshp[1],Zshp[1]])
+	Reij = tf.reshape(tf.gather_nd(Re,Zij),[Zshp[0],Zshp[1],Zshp[1]])
+	#Reij = tf.Print(Reij,[Reij],"Reij",10000,1000)
+	Dt = Ds + tf.eye(Zshp[1],batch_shape=[Zshp[0]])
+	K = Eeij*(tf.pow(Reij/Dt,12.0)-2.0*tf.pow(Reij/Dt,6.0))
+	# Construct a mask tensor to zero the diagonal.
+	msk_tensor = 1.0-tf.eye(Zshp[1],batch_shape=[Zshp[0]])
+	K = K*msk_tensor
+	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
+	return K
+
+def LJEnergies(XYZs_,Zs_,Ee_, Re_):
+	"""
+	Returns LJ Energies batched over molecules.
+	Args:
+		XYZs_: nmols X maxatom X 3 coordinate tensor.
+		Zs_: nmols X maxatom X 1 atomic number tensor.
+		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Epsilon parameter matrix.
+		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
+	"""
+	Ds = TFDistances(XYZs_)
+	Ks = LJKernels(Ds,Zs_,Ee_,Re_)
+	Ens = tf.reduce_sum(Ks,[1,2])
+	return Ens
+
 def CoulombKernel(D):
 	"""
 	Args:
@@ -226,19 +270,19 @@ def TestCoulomb():
 	sys.stderr = sys.stdout
 	with tf.Session() as session:
 		session.run(init)
-		print (session.run(Ds))
-		print (session.run(dDs))
-		print (session.run(charges))
+		print(session.run(Ds))
+		print(session.run(dDs))
+		print(session.run(charges))
 		PARAMS["EESwitchFunc"] = None # options are Cosine, and Tanh.
-		print (session.run(XyzsToCoulomb(xyzs,charges)))
+		print(session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "CosSR" # options are Cosine, and Tanh.
-		print (session.run(XyzsToCoulomb(xyzs,charges)))
+		print(session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
-		print (session.run(XyzsToCoulomb(xyzs,charges)))
+		print(session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "TanhSR" # options are Cosine, and Tanh.
-		print (session.run(XyzsToCoulomb(xyzs,charges)))
+		print(session.run(XyzsToCoulomb(xyzs,charges)))
 		PARAMS["EESwitchFunc"] = "TanhLR" # options are Cosine, and Tanh.
-		print (session.run(XyzsToCoulomb(xyzs,charges)))
+		print(session.run(XyzsToCoulomb(xyzs,charges)))
 	return
 
 def TestLJ():
@@ -253,6 +297,37 @@ def TestLJ():
 	sys.stderr = sys.stdout
 	with tf.Session() as session:
 		session.run(init)
-		print session.run(Ds)
-		print "LJ Kernel: ", session.run(LJKernel(Ds,Z_,Ee_,Re_))
+		print(session.run(Ds))
+		print("LJ Kernel: ", session.run(LJKernel(Ds,Z_,Ee_,Re_)))
+	return
+
+def LJForce(xyz_,Z_,inds_,Ee_, Re_):
+	XYZs = tf.gather(xyz_,inds_)
+	Zs = tf.gather(Z_,inds_)
+	Ens = LJEnergies(XYZs, Zs, Ee_, Re_)
+	output = tf.gradients(Ens, XYZs)
+	return output
+
+def LearnLJ():
+	xyz_ = tf.Variable([[0.,0.,0.],[10.0,0.,0.],[0.,0.,5.],[0.,0.,2.],[0.,1.,9.],[0.,1.,20.]],trainable=False)
+	Z_ = tf.Variable([1,2,3,4,5,6],dtype = tf.int32,trainable=False)
+	Re_ = tf.Variable(tf.ones([6,6]),trainable=True)
+	Ee_ = tf.Variable(tf.ones([6,6]),trainable=True)
+	inds_ = tf.Variable([[0,1,2],[3,4,5]],trainable=False)
+	frcs = tf.Variable([[1.0,0.0,0.0],[-1.0,0.0,0.0],[0.,0.,1.],[0.,0.,1.],[0.,0.2,1.],[0.,0.,1.]],trainable=False)
+
+	des_frces = tf.gather(frcs, inds_)
+	loss = tf.nn.l2_loss(LJForce(xyz_, Z_, inds_, Ee_, Re_) - des_frces)
+	optimizer = tf.train.GradientDescentOptimizer(0.5)
+	train = optimizer.minimize(loss)
+
+	init = tf.global_variables_initializer()
+	import sys
+	sys.stderr = sys.stdout
+	with tf.Session() as session:
+		session.run(init)
+		print()
+		for step in range(1000):
+			session.run(train)
+			print("step", step, "Energies:", session.run(LJEnergies(tf.gather(xyz_,inds_), tf.gather(Z_,inds_), Ee_, Re_)), " Forces ", session.run(LJForce(xyz_, Z_, inds_, Ee_, Re_)), " loss ", session.run(loss))
 	return

@@ -91,13 +91,8 @@ class TFManage:
 			self.Instances[ele] = Instance_KRR(self.TData, ele, None)
 		else:
 			raise Exception("Unknown Network Type!")
-		#self.Instances[ele].train_prepare()
-		#for step in range (0, 10):
-			#self.Instances[ele].train_step(step)
-		#tself.Instances[ele].test(step)
 		self.Instances[ele].train(self.n_train) # Just for the sake of debugging.
 		nm = self.Instances[ele].name
-		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:
 			self.TrainedNetworks.append(nm)
 		if self.TrainedAtoms.count(ele)==0:
