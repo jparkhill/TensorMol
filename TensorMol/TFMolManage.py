@@ -115,7 +115,7 @@ class TFMolManage(TFManage):
 			mol = mol_set.mols[i]
 			print "for mol :", mol.name," energy:", mol.energy 
 			print "total atomization energy:", mol_out[0][i]
-			diff += abs(mol.energy - mol_out[0][i])
+			#diff += abs(mol.energy - mol_out[0][i])
 			if total_energy:
 				total = mol_out[0][i]
 				for j in range (0, mol.NAtoms()):
@@ -127,7 +127,8 @@ class TFMolManage(TFManage):
 				print "bond: ", mol.bonds[j], " energy:", atom_out[bond_index][0][pointers[bond_index]] 
 				pointers[bond_index] += 1		
 		#print "mol out:", mol_out, " atom_out", atom_out
-		return	diff / nmols
+		return
+		#return	diff / nmols
 
 	def Eval_Mol(self, mol):
 		total_case = len(mol.mbe_frags[self.TData.order])
