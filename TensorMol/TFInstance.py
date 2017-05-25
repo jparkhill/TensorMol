@@ -719,12 +719,22 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
 			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
+		#Delta Layer
+		with tf.name_scope('delta_layer'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(2*self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
+			delta = tf.matmul(hidden3, weights) + biases
 		# Linear
 		with tf.name_scope('regression_linear'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
-			output = tf.matmul(hidden3, weights) + biases
+			delta_out = tf.multiply(tf.nn.relu(delta[-self.outshape:]),LJGradFunc())
+			output = tf.add(delta[:self.outshape],delta_out)
 		return output
+
+	def loss_op(self, output, labels):
+		diff  = tf.subtract(output, labels)
+		loss = tf.nn.l2_loss(diff)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
 class Instance_conv2d_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
