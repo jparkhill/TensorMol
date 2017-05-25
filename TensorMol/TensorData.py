@@ -110,10 +110,10 @@ class TensorData():
 
 	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
-			Generates probability inputs for all training data using the chosen digester.
+			Generates inputs for all training data using the chosen digester.
 			This version builds all the elements at the same time.
 			The other version builds each element separately
-			If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+			If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
 		if (self.set == None):
 			try:
@@ -148,8 +148,6 @@ class TensorData():
 					cases_list[ai][casep_list[ai]] = ins[i]
 					labels_list[ai][casep_list[ai]] = outs[i]
 					casep_list[ai] = casep_list[ai]+1
-				# if (mols_done%10000==0 and mols_done>0):
-				# 	gc.collect()
 				if (mols_done%10000==0 and mols_done>0):
 					print mols_done
 				if (mols_done==400):

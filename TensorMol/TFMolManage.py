@@ -6,6 +6,7 @@ from TFManage import *
 from TensorMolData import *
 from TFMolInstance import *
 from TFMolInstanceEE import *
+from TFMolInstanceDirect import *
 from QuasiNewtonTools import *
 
 import numpy as np
@@ -62,7 +63,9 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
-                        self.Instances = MolInstance_BP_Dipole_2(self.TData)
+			self.Instances = MolInstance_BP_Dipole_2(self.TData)
+		elif (self.NetType == "LJForce"):
+			self.Instances = MolInstance_LJForce(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
 		self.Instances.train(self.n_train) # Just for the sake of debugging.
@@ -268,7 +271,7 @@ class TFMolManage(TFManage):
 	def Eval_BPForceHalfNumerical(self, mol, total_energy = False):
 		"""
 		This version uses a half-numerical gradient.
-		It was written for debugging purposes. 
+		It was written for debugging purposes.
 		Args:
 			mol: a Mol.
 			total_energy: whether to also return the energy as a first argument.

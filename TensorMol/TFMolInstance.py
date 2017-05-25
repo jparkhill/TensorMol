@@ -85,8 +85,7 @@ class MolInstance(Instance):
 		return
 
 	def train_step(self,step):
-		""" I don't think the base class should be
-			train-able. Remove? JAP """
+		""" I don't think the base class should be train-able. Remove? JAP """
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
 		train_loss =  0.0

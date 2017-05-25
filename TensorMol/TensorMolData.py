@@ -24,6 +24,7 @@ class TensorMolData(TensorData):
 				MSet_: A molecule set from which to cull data.
 				Dig_: A MolDigester object to create embeddings, and evaluate outputs.
 				Name_: A name for this TensorMolData
+				# These parameters should be removed ------------
 				order_ : Order of many-body expansion to perform.
 				num_indis_: Number of Indistinguishable Fragments.
 				type_: Whether this TensorMolData is for "frag", "atom", or "mol"
@@ -31,6 +32,7 @@ class TensorMolData(TensorData):
 		self.order = order_
 		self.num_indis = num_indis_
 		self.NTrain = 0
+		self.MaxNAtoms = MSet_.MaxNAtoms()
 		TensorData.__init__(self, MSet_,Dig_,Name_, type_=type_)
 		print "TensorMolData.type:", self.type
 		return
@@ -118,6 +120,36 @@ class TensorMolData(TensorData):
 			#self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
 		self.Save() #write a convenience pickle.
 		return
+
+	def RawBatch(self,nmol = 4096):
+		"""
+			This type of batch is not built beforehand
+			because there's no real digestion involved.
+			Args:
+				nmol: number of molecules to put in the output.
+			Returns:
+				Ins: a #atomsX4 tensor (AtNum,x,y,z)
+				Outs: output of the digester
+				Keys: (nmol)X(MaxNAtoms) tensor listing each molecule's place in the input.
+		"""
+		ndone = 0
+		natdone = 0
+		Ins = np.zeros(tuple([nmol*self.MaxNAtoms]+list(self.dig.eshape)))
+		Outs = np.zeros(tuple([nmol*self.MaxNAtoms]+list(self.dig.lshape)))
+		Keys = np.zeros((nmol,self.MaxNAtoms),dtype = np.int32)
+		it = iter(self.set.mols)
+		while (ndone<nmol):
+			try:
+				Ins, Outs = self.dig.Emb(it.next(),True, False)
+				n=Ins.shape[0]
+				Ins[natdone:n+natdone] = Ins.copy()
+				Outs[natdone:n+natdone] = Outs.copy()
+				Keys[ndone,:n] = np.array(range(natdone,n+natdone))
+				ndone += 1
+				natdone += n
+			except:
+				it = iter(self.set.mols)
+		return Ins[:natdone], Outs[:natdone], Keys
 
 	def GetTrainBatch(self,ncases=1280,random=False):
 		if (self.ScratchState != self.order):
@@ -400,9 +432,6 @@ class TensorMolData_BP(TensorMolData):
 		Note:
 			Also determines mean stoichiometry
 		"""
-                if 'self.HasGrad' not in locals():
-			print "do not find self.HasGrad, set to False"
-                        self.HasGrad = False
 		if (self.ScratchState == 1):
 			return
 		if (self.HasGrad):

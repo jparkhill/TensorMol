@@ -128,6 +128,9 @@ class MSet:
 			nat += m.NAtoms()
 		return nat
 
+	def MaxNAtoms(self):
+		return np.max([m.NAtoms() for m in self.mols])
+
 	def AtomTypes(self):
 		types = np.array([],dtype=np.uint8)
 		for m in self.mols:

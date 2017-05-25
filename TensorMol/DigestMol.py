@@ -311,7 +311,11 @@ class MolDigester:
 		Ins=None
 		Grads=None
 		Outs=None
-		if (self.name == "Coulomb"):
+		if (self.name=="CZ"):
+			Ins = np.zeros((mol_.NAtoms,4))
+			Ins[:,0] = mol_.atoms
+			Ins[:,1:] = mol_.coords
+		elif (self.name == "Coulomb"):
 			CM, deri_CM = self.make_cm(mol_)
 			Ins = self.GetUpTri(CM)
 		elif(self.name == "Coulomb_BP"):

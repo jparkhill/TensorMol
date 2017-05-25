@@ -103,7 +103,13 @@ class Digester:
 			if at_ < 0 the first dimension loops over atoms in mol_
 		"""
 		#start = time.time()
-		if (self.name=="Coulomb"):
+		if (self.name=="CZ"):
+			if (at_ > 0):
+				raise Exception("CoordZ embedding is done moleculewise always")
+			Ins = np.zeros((mol_.NAtoms,4))
+			Ins[:,0] = mol_.atoms
+			Ins[:,1:] = mol_.coords
+		elif (self.name=="Coulomb"):
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):
 			if (Transforms == None):
