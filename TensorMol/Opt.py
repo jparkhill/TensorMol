@@ -11,6 +11,7 @@ class Optimizer:
 	def __init__(self,tfm_):
 		"""
 		Geometry optimizations based on NN-PES's etc.
+
 		Args:
 			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
 		"""
@@ -73,6 +74,7 @@ class Optimizer:
 	def OptGoForce(self,m):
 		"""
 		Simple test of the Go-Force
+
 		Args:
 			m: A distorted molecule to optimize
 		"""
@@ -236,6 +238,7 @@ class Optimizer:
 		"""
 		Optimize using force output of an atomwise network.
 		now also averages over rotations...
+		
 		Args:
 		        m: A distorted molecule to optimize
 		"""

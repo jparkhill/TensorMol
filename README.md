@@ -2,16 +2,16 @@
 A Statistical Model of Molecular Structure
 
 ### Authors:
- Kun Yao (kyao@nd.edu), John Herr
+ Kun Yao (kyao@nd.edu), John Herr (John.E.Herr.16@nd.edu),
  John Parkhill (john.parkhill@gmail.com)
 
 ### Model Chemistries:
  - Behler-Parrinello
  - Many Body Expansion
- - Diatomics in Molecules NN
+ - Bonds in Molecules NN
  - Atomwise Forces
 
-### Simulation Types
+### Simulation Types:
  - Optimizations
  - Nudged Elastic Band
  - Molecular Dynamics (NVE,NVT Nose-Hoover)
@@ -21,21 +21,21 @@ A Statistical Model of Molecular Structure
 By using this software you agree to the terms in COPYING
 
 ### Acknowledgements:
- - Google Inc. (for TensorFlow),
+ - Google Inc. (for TensorFlow)
+ - NVidia Corp. (hardware)
  - Vol Lillenfeld Group (for GBD9)
  - Chan Group (for PySCF)
 
-### INSTALLATION:
-
+### Installation:
 ```
 cd C_API/
 sudo python setup.py install
 ```
 
-### USAGE:
+### Usage:
  - Refer to commented examples in test.py
 
-### REQUIREMENTS:
+### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
 - Useful Pre-Requisites: CUDA7.5, PySCF
 - To Train Minimally: ~100GB Disk 20GB memory
@@ -45,7 +45,7 @@ sudo python setup.py install
 - ` cd volumeRender; make `
 - Or open `/densities/PlotDens.nb`
 
-### COMMON ISSUES
+### Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)
 - Also crashes when reviving networks from disk.
 - if you have these issues try:

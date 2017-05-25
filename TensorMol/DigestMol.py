@@ -1,6 +1,6 @@
 """
  Calculate an embeeding for a molecule, such as coulomb matrix
- Todo: Should inherit from Digest.py (which needs cleanup)
+ TODO: Should inherit from Digest.py (which needs cleanup)
 """
 
 from Mol import *
@@ -18,6 +18,8 @@ class MolDigester:
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
 		self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
+		if (name_ == "CZ"):
+			self.eshape = 1 # HACK
 
 	def make_sym_update(self, mol, Rc = 4.0, g1_para_mat = None, g2_para_mat = None): # para_mat should contains the parameters of Sym_Func, on the order of: G1:Rs, eta1 ; G2: zeta, eta2
 		if g1_para_mat == None or g2_para_mat == None: # use the default setting
@@ -299,13 +301,16 @@ class MolDigester:
 		"""
 		Generates various molecular embeddings.
 		If the embedding has BP on the end it comes out atomwise and includes all atoms in the molecule.
+
 		Args:
 			mol_: a Molecule to be digested
 			MakeOutputs: generates outputs according to self.OType.
 			MakeGradients: generates outputs according to self.OType.
+
 		Returns:
 			Output embeddings, and possibly labels and gradients.
-		Todo:
+
+		TODO:
 			Hook up the gradients.
 		"""
 		Ins=None
@@ -415,6 +420,7 @@ class MolDigester:
 		"""
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+
 		Args:
 			mol_: a molecule to be digested
 		"""

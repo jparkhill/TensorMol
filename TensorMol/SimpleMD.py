@@ -9,13 +9,15 @@ from Electrostatics import *
 from QuasiNewtonTools import *
 
 def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
-	""" A Velocity Verlet Step
+	"""
+	A Velocity Verlet Step
+
 	Args:
-	f_: The force function (returns Joules/Angstrom)
-	a_: The acceleration at current step. (A^2/fs^2)
-	x_: Current coordinates (A)
-	v_: Velocities (A/fs)
-	m_: the mass vector. (kg)
+		f_: The force function (returns Joules/Angstrom)
+		a_: The acceleration at current step. (A^2/fs^2)
+		x_: Current coordinates (A)
+		v_: Velocities (A/fs)
+		m_: the mass vector. (kg)
 	"""
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 	e, f_x_ = 0.0, None
@@ -28,7 +30,9 @@ def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	return x,v,a,e
 
 def KineticEnergy(v_, m_):
-	""" The KineticEnergy
+	"""
+	The KineticEnergy
+
 	Args:
 		The masses are in kg.
 		v_: Velocities (A/fs)
@@ -154,6 +158,7 @@ class NoseChainThermostat(Thermostat):
 		Velocity Verlet step with a Nose-Hoover Chain Thermostat.
 		Based on Appendix A of martyna 1996
 		http://dx.doi.org/10.1080/00268979600100761
+
 		Args:
 			x_: an example of system positions.
 			m_: system masses.
@@ -267,6 +272,7 @@ class VelocityVerlet:
 	def __init__(self, f_, g0_, name_ ="", EandF_=None):
 		"""
 		Molecular dynamics
+
 		Args:
 			f_: a force routine
 			g0_: initial molecule.

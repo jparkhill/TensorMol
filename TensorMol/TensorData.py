@@ -18,6 +18,7 @@ class TensorData():
 		"""
 		make a tensordata object
 		Several arguments of PARAMS affect this classes behavior
+
 		Args:
 			MSet_: A MoleculeSet
 			Dig_: A Digester
@@ -47,7 +48,7 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.Classify=PARAMS["Classify"]
+		self.Classify=PARAMS["Classify"] # should be moved to transformer. 
 		self.MxTimePerElement=PARAMS["MxTimePerElement"]
 		self.MxMemPerElement=PARAMS["MxMemPerElement"]
 		self.ChopTo = PARAMS["ChopTo"]
@@ -110,10 +111,10 @@ class TensorData():
 
 	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
-			Generates inputs for all training data using the chosen digester.
-			This version builds all the elements at the same time.
-			The other version builds each element separately
-			If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		Generates inputs for all training data using the chosen digester.
+		This version builds all the elements at the same time.
+		The other version builds each element separately
+		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
 		if (self.set == None):
 			try:
@@ -201,11 +202,11 @@ class TensorData():
 
 	def BuildTrain(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
-			Generates probability inputs for all training data using the chosen digester.
-			All the inputs for a given atom are built separately.
-			Now requires some sort of PES information.
-				If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
-				The code that uses ab-initio samples isn't written yet, but should be.
+		Generates probability inputs for all training data using the chosen digester.
+		All the inputs for a given atom are built separately.
+		Now requires some sort of PES information.
+		If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		The code that uses ab-initio samples isn't written yet, but should be.
 		"""
 		if (self.set == None):
 			try:
@@ -312,9 +313,9 @@ class TensorData():
 
 	def BuildSamples(self,name_="gdb9", atypes=[],uniform=False):
 		"""
-			Generates sampled data set without preparing the probabilities or embedding
-			if uniform is true, it generate a grid of uniform samples up to 4 angstrom away from
-			the central atom to generate known-good validation data.
+		Generates sampled data set without preparing the probabilities or embedding
+		if uniform is true, it generate a grid of uniform samples up to 4 angstrom away from
+		the central atom to generate known-good validation data.
 		"""
 		self.name=name_
 		print "Sampling set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
@@ -452,7 +453,9 @@ class TensorData():
 		return
 
 	def MergeWith(self,ASet_):
-		''' Augments my training data with another set, which for example may have been generated on another computer.'''
+		'''
+		Augments my training data with another set, which for example may have been generated on another computer.
+		'''
 		self.QueryAvailable()
 		ASet_.QueryAvailable()
 		print "Merging", self.name, " with ", ASet_.name
@@ -507,7 +510,9 @@ class TensorData():
 		return
 
 	def QueryAvailable(self):
-		""" If Tensordata has already been made, this looks for it under a passed name."""
+		"""
+		If Tensordata has already been made, this looks for it under a passed name.
+		"""
 		self.AvailableElements=[]
 		self.SamplesPerElement=[]
 		for i in range(MAX_ATOMIC_NUMBER):
@@ -577,7 +582,7 @@ class TensorData():
 		Reads built training data off disk into scratch space.
 		Divides training and test data.
 		Normalizes inputs and outputs.
-			note that modifies my MolDigester to incorporate the normalization
+		note that modifies my MolDigester to incorporate the normalization
 		Initializes pointers used to provide training batches.
 
 		Args:

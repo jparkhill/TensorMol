@@ -540,8 +540,9 @@ def Test_ULJ():
 	print "Learning Best-Fit element specific LJ parameters."
 	a=MSet("SmallMols")
 	a.Load()
+	print "Loaded data..."
 	TreatedAtoms = a.AtomTypes()
-	dig = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
 	tset = TensorMolData(a,d)
 	manager=TFMolManage("",tset,True,"LJForce") # True indicates train all atoms
 	return
