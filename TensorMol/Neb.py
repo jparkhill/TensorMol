@@ -12,10 +12,12 @@ class NudgedElasticBand:
 	def __init__(self,tfm_,g0_,g1_):
 		"""
 		Nudged Elastic band. JCP 113 9978
+
 		Args:
 			tfm_: a TFManager.
 			g0_: initial molecule.
 			g1_: final molecule.
+
 		Returns:
 			A reaction path.
 		"""

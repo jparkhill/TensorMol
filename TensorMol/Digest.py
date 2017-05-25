@@ -17,6 +17,7 @@ class Digester:
 	"""
 	def __init__(self, eles_, name_="GauSH", OType_="Disp"):
 		"""
+
 		Args:
 			eles_ : a list of elements in the Tensordata that I'll digest
 			name_: type of digester to reduce molecules to NN inputs.
@@ -91,6 +92,7 @@ class Digester:
 	def Emb(self, mol_, at_, xyz_, MakeOutputs=True, MakeGradients=False, Transforms=None):
 		"""
 		Generates various molecular embeddings.
+
 		Args:
 			mol_: a Molecule to be digested
 			at_: an atom to be digested or moved. if at_ < 0 it usually returns arrays for each atom in the molecule
@@ -98,6 +100,7 @@ class Digester:
 			MakeOutputs: generates outputs according to self.OType.
 			MakeGradients: Generate nuclear derivatives of inputs.
 			Transforms: Generate inputs for all the linear transformations appended.
+
 		Returns:
 			Output embeddings, and possibly labels and gradients.
 			if at_ < 0 the first dimension loops over atoms in mol_
@@ -224,9 +227,11 @@ class Digester:
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
 		This version works mol-wise to try to speed up and avoid calling C++ so much...
+
 		Args:
 			mol_: a molecule to be digested
 			eles_: A list of elements coming from Tensordata to order the output.
+
 		Returns:
 			Two lists: containing inputs and outputs in order of eles_
 		"""
@@ -245,6 +250,7 @@ class Digester:
 		"""
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+
 		Args:
 			mol_: a molecule to be digested
 			ele_: an element for which training data will be made.

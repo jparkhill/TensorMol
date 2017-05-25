@@ -9,13 +9,15 @@ from Electrostatics import *
 from QuasiNewtonTools import *
 
 def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
-	""" A Velocity Verlet Step
+	"""
+	A Velocity Verlet Step
+
 	Args:
-	f_: The force function (returns Joules/Angstrom)
-	a_: The acceleration at current step. (A^2/fs^2)
-	x_: Current coordinates (A)
-	v_: Velocities (A/fs)
-	m_: the mass vector. (kg)
+		f_: The force function (returns Joules/Angstrom)
+		a_: The acceleration at current step. (A^2/fs^2)
+		x_: Current coordinates (A)
+		v_: Velocities (A/fs)
+		m_: the mass vector. (kg)
 	"""
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 	e, f_x_ = 0.0, None
@@ -28,7 +30,9 @@ def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	return x,v,a,e
 
 def KineticEnergy(v_, m_):
-	""" The KineticEnergy
+	"""
+	The KineticEnergy
+
 	Args:
 		The masses are in kg.
 		v_: Velocities (A/fs)
@@ -154,6 +158,7 @@ class NoseChainThermostat(Thermostat):
 		Velocity Verlet step with a Nose-Hoover Chain Thermostat.
 		Based on Appendix A of martyna 1996
 		http://dx.doi.org/10.1080/00268979600100761
+
 		Args:
 			x_: an example of system positions.
 			m_: system masses.
@@ -267,6 +272,7 @@ class VelocityVerlet:
 	def __init__(self, f_, g0_, name_ ="", EandF_=None):
 		"""
 		Molecular dynamics
+
 		Args:
 			f_: a force routine
 			g0_: initial molecule.
@@ -346,13 +352,10 @@ class VelocityVerlet:
 
 class IRTrajectory(VelocityVerlet):
 	def __init__(self,f_,q_,g0_,name_=str(0),v0_=None):
-		"""
-		A specialized sort of dynamics which is appropriate for obtaining IR spectra at
-		Zero temperature.
-
-		Absorption cross section is given by:
-		\alpha (\omega) = \frac{4\pi^2}{\hbar c} \omega (1 - Exp[-\beta \hbar \omega]) \sigma(\omega))
-		\sigma(\omega)  = \frac{1}{6 \pi} \mathcal{F} \{\mu(t)\mu(0)\}
+		"""A specialized sort of dynamics which is appropriate for obtaining IR spectra at
+		Zero temperature. Absorption cross section is given by:
+		alpha = frac{4pi^2}{hbar c} omega (1 - Exp[-beta hbar omega]) sigma(omega))
+		sigma  = frac{1}{6 pi} mathcal{F} {mu(t)mu(0)}
 
 		Args:
 			f_: a function which yields the force
@@ -390,7 +393,7 @@ class IRTrajectory(VelocityVerlet):
 
 	def Pulse(self,t_):
 		"""
-		\delta pulse of duration
+		delta pulse of duration
 		"""
 		sin_part = (np.sin(2.0*3.1415*self.FieldFreq*t_))
 		exp_part = (1.0/np.sqrt(2.0*3.1415*self.Tau*self.Tau))*(np.exp(-1.0*np.power(t_-self.TOn,2.0)/(2.0*self.Tau*self.Tau)))
