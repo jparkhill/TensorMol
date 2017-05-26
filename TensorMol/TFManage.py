@@ -38,7 +38,7 @@ class TFManage:
 		print self.TData.AvailableDataFiles
 		print self.TData.SamplesPerElement
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		print "--- TF will be fed by ---",self.TData.name
+		print "--- TF will be fed by ---", self.TData.name
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData

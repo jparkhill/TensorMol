@@ -317,7 +317,7 @@ class MolDigester:
 		Grads=None
 		Outs=None
 		if (self.name=="CZ"):
-			Ins = np.zeros((mol_.NAtoms,4))
+			Ins = np.zeros((mol_.NAtoms(),4))
 			Ins[:,0] = mol_.atoms
 			Ins[:,1:] = mol_.coords
 		elif (self.name == "Coulomb"):
@@ -365,6 +365,9 @@ class MolDigester:
 				Outs = np.zeros(3*mol_.NAtoms()+1, dtype = np.float32)
 				Outs[0] = en
 				Outs[1:] = frce.flatten()
+			elif (self.OType == "Force"):
+				# Internally Angstroms are the position unit.
+				Outs = mol_.properties["forces"]*BOHRPERA
 			elif (self.OType == "AtomizationEnergy"):
 			    Outs = np.array([mol_.properties["atomization"]])
 			elif (self.OType == "EleEmbAtEn"):

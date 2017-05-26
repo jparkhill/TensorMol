@@ -34,11 +34,13 @@ class TensorMolData(TensorData):
 		self.NTrain = 0
 		self.MaxNAtoms = MSet_.MaxNAtoms()
 		TensorData.__init__(self, MSet_,Dig_,Name_, type_=type_)
-		print "TensorMolData.type:", self.type
+		LOGGER.info("TensorMolData.type: %s",self.type)
+		LOGGER.info("TensorMolData.dig.name: %s",self.dig.name)
+		LOGGER.info("NMols in TensorMolData.set: %i", len(self.set.mols))
 		self.raw_it = iter(self.set.mols)
 		self.MaxNAtoms = None
 		if (MSet_ != None):
-			self.MaxNAtoms = MSet_.MaxNAtoms() 
+			self.MaxNAtoms = MSet_.MaxNAtoms()
 		return
 
 	def QueryAvailable(self):
@@ -141,21 +143,23 @@ class TensorMolData(TensorData):
 		"""
 		ndone = 0
 		natdone = 0
-		Ins = np.zeros(tuple([nmol*self.MaxNAtoms]+list(self.dig.eshape)))
-		Outs = np.zeros(tuple([nmol*self.MaxNAtoms]+list(self.dig.lshape)))
-		Keys = np.zeros((nmol,self.MaxNAtoms),dtype = np.int32)
+		self.MaxNAtoms = self.set.MaxNAtoms()
+		Ins = np.zeros(tuple([nmol,self.MaxNAtoms,4]))
+		Outs = np.zeros(tuple([nmol,self.MaxNAtoms,3]))
 		while (ndone<nmol):
 			try:
-				Ins, Outs = self.dig.Emb(self.raw_it.next(),True, False)
-				n=Ins.shape[0]
-				Ins[natdone:n+natdone] = Ins.copy()
-				Outs[natdone:n+natdone] = Outs.copy()
-				Keys[ndone,:n] = np.array(range(natdone,n+natdone))
+				m = self.raw_it.next()
+#				print "m props", m.properties.keys()
+#				print "m coords", m.coords
+				ti, to = self.dig.Emb(m, True, False)
+				n=ti.shape[0]
+				Ins[ndone,:n,:] = ti.copy()
+				Outs[ndone,:n,:] = to.copy()
 				ndone += 1
 				natdone += n
-			except:
+			except StopIteration:
 				self.raw_it = iter(self.set.mols)
-		return Ins[:natdone], Outs[:natdone], Keys
+		return Ins,Outs
 
 	def GetTrainBatch(self,ncases=1280,random=False):
 		if (self.ScratchState != self.order):

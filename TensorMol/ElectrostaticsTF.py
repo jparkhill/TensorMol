@@ -113,33 +113,46 @@ def LJKernels(Ds,Zs,Ee,Re):
 	Returns
 		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
 	"""
+	# Zero distances will be set to 100.0 then masked to zero energy contributions.
+	ones = tf.ones(tf.shape(Ds))
+	zeros = tf.zeros(tf.shape(Ds))
+	ZeroTensor = tf.where(tf.less_equal(Ds,0.00001),ones,zeros)
+	Ds += ZeroTensor
+	# Zero atomic numbers will be set to 1
+	Zones = tf.ones(tf.shape(Zs),dtype=tf.int32)
+	ZZeroTensor = tf.cast(tf.where(tf.equal(Zs,0),Zones,0*Zs),tf.float32)
+	Zs = tf.where(tf.equal(Zs,0),Zones,Zs)
 	# Extract De_ij and Re_ij
 	Zshp = tf.shape(Zs)
 	Zr = tf.reshape(Zs,[Zshp[0],Zshp[1],1])-1 # Indices start at 0 AN's start at 1.
 	Zij1 = tf.tile(Zr,[1,1,Zshp[1]]) # molXatomXatom
 	Zij2 = tf.transpose(Zij1,perm=[0,2,1])
 	Zij = tf.stack([Zij1,Zij2],axis=3) # molXatomXatomX2
-	#Zij = tf.Print(Zij,[Zij],"Zij",1000,1000)
+	# Construct a atomic number masks.
+	Zzij1 = tf.tile(ZZeroTensor,[1,1,Zshp[1]]) # mol X atom X atom.
+	Zzij2 = tf.transpose(Zzij1,perm=[0,2,1]) # mol X atom X atom.
+	# Gather desired LJ parameters.
 	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[1]*Zshp[1],2])
 	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[Zshp[0],Zshp[1],Zshp[1]])
 	Reij = tf.reshape(tf.gather_nd(Re,Zij),[Zshp[0],Zshp[1],Zshp[1]])
-	#Reij = tf.Print(Reij,[Reij],"Reij",10000,1000)
-	Dt = Ds + tf.eye(Zshp[1],batch_shape=[Zshp[0]])
-	K = Eeij*(tf.pow(Reij/Dt,12.0)-2.0*tf.pow(Reij/Dt,6.0))
-	# Construct a mask tensor to zero the diagonal.
-	msk_tensor = 1.0-tf.eye(Zshp[1],batch_shape=[Zshp[0]])
-	K = K*msk_tensor
+	K = Eeij*(tf.pow(Reij/Ds,12.0)-2.0*tf.pow(Reij/Ds,6.0))
+	# Use the ZeroTensors to mask the output for zero dist or AN.
+	K = K*(1.0-ZeroTensor)*(1.0-Zzij1)*(1.0-Zzij2)
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
+	#K = tf.Print(K,[K],"Kern",1000 ,1000)
 	return K
 
 def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""
 	Returns LJ Energies batched over molecules.
+	Input can be padded with zeros. That will be
+	removed by LJKernels.
+
 	Args:
 		XYZs_: nmols X maxatom X 3 coordinate tensor.
 		Zs_: nmols X maxatom X 1 atomic number tensor.
 		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Epsilon parameter matrix.
-		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
+		Re_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
 	"""
 	Ds = TFDistances(XYZs_)
 	Ks = LJKernels(Ds,Zs_,Ee_,Re_)
@@ -172,7 +185,7 @@ def CosKernelLR(D):
 	ones = tf.ones(tf.shape(D))
 	CosScreen = tf.where(tf.greater(D, PARAMS["EECutoff"]),ones,0.0*D)
 	Cut = (1.0-0.5*(tf.cos(D*Pi/PARAMS["EECutoff"])+1))*CosScreen
-	Cut = tf.Print(Cut,[Cut],"CosCut", 10000, 1000 )
+	#Cut = tf.Print(Cut,[Cut],"CosCut", 10000, 1000 )
 	return CoulombKernel(D)*Cut
 
 def CosKernelSR(D):
@@ -186,7 +199,7 @@ def CosKernelSR(D):
 	ones = tf.ones(tf.shape(D))
 	CosScreen = tf.where(tf.greater(D, PARAMS["EECutoff"]),ones,0.0*D)
 	Cut = 1.0-(1.0-0.5*(tf.cos(D*Pi/PARAMS["EECutoff"])+1))*CosScreen
-	Cut = tf.Print(Cut,[Cut],"CosCut", 10000, 1000 )
+	#Cut = tf.Print(Cut,[Cut],"CosCut", 10000, 1000 )
 	return CoulombKernel(D)*Cut
 
 def TanhKernelLR(D):
@@ -200,7 +213,7 @@ def TanhKernelLR(D):
 	TanhOut = 0.5*(tf.tanh((D - PARAMS["EECutoff"])/PARAMS["EEdr"]) + 1)
 	Cut = TanhOut*Screen
 	K = CoulombKernel(D)
-	Cut = tf.Print(Cut,[Cut],"Cut", 10000, 1000 )
+	#Cut = tf.Print(Cut,[Cut],"Cut", 10000, 1000 )
 	return K*Cut
 
 def TanhKernelSR(D):
@@ -215,7 +228,7 @@ def TanhKernelSR(D):
 	Cut = TanhOut*Screen
 	K = CoulombKernel(D)
 	Cut = 1.0-Cut
-	Cut = tf.Print(Cut,[Cut],"Cut", 10000, 1000 )
+	#Cut = tf.Print(Cut,[Cut],"Cut", 10000, 1000 )
 	return K*Cut
 
 def XyzsToCoulomb(xyz_pl, q_pl, Long = True):
