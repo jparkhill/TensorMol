@@ -367,7 +367,8 @@ class MolDigester:
 				Outs[1:] = frce.flatten()
 			elif (self.OType == "Force"):
 				# Internally Angstroms are the position unit.
-				Outs = mol_.properties["forces"]*BOHRPERA
+				# I'm debugging with kcal/angstrom forces.
+				Outs = mol_.properties["forces"]/KCALPERHARTREE
 			elif (self.OType == "AtomizationEnergy"):
 			    Outs = np.array([mol_.properties["atomization"]])
 			elif (self.OType == "EleEmbAtEn"):

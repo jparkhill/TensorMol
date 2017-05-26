@@ -663,7 +663,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		num_of_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
-			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)			
 			actual_mols  = np.count_nonzero(batch_data[2])
 			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value

@@ -544,8 +544,35 @@ def Test_ULJ():
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
 	tset = TensorMolData(a,d)
+	PARAMS["learning_rate"]=0.0001
+	PARAMS["momentum"]=0.85
 	manager=TFMolManage("",tset,True,"LJForce") # True indicates train all atoms
 	return
+
+def Test_LJMD():
+	"""
+	Test TensorFlow LJ fluid.
+	"""
+	a=MSet("Test")
+	MakeUniform([0.0,0.0,0.0],1.0,4)
+	a.mols=[Mol.Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
+	m = a.mols[0]
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
+	tset = TensorMolData(a,d)
+	ins = MolInstance_LJForce(tset)
+	ins.train_prepare()
+	# Convert from hartree/ang to joules/mol ang.
+	ForceField = lambda x: ins.EvalForce(Mol.Mol(m.atoms,x))[1]
+	EnergyForceField = lambda x: ins.EvalForce(Mol.Mol(m.atoms,x))
+	PARAMS["MDTemp"] = 300.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDV0"] = None
+	print EnergyForceField(m.coords)
+	md = VelocityVerlet(ForceField,m,"LJ test",EnergyForceField)
+	md.Prop()
+	return
+
 
 def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
@@ -731,7 +758,8 @@ def TestEE():
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
 #TestBP_WithGrad()
-Test_ULJ()
+#Test_ULJ()
+Test_LJMD()
 #TestDipole()
 #TestJohnson()
 #TestMorphIR()
