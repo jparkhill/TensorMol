@@ -202,7 +202,7 @@ def RandomSmallSet(set_, size_):
 	b.Save()
 	return b
 
-# RandomSmallSet("SmallMols", 30000)
+# RandomSmallSet("SmallMols", 20000)
 
 def BasisOpt_KRR(method_, set_, dig_, OType = None, Elements_ = []):
 	""" Optimizes a basis based on Kernel Ridge Regression """
@@ -218,7 +218,7 @@ def BasisOpt_KRR(method_, set_, dig_, OType = None, Elements_ = []):
 	eopt.PerformOptimization()
 	return
 
-BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Del_Force", Elements_ = [1,6,7,8])
+# BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Del_Force", Elements_ = [1,6,7,8])
 #BasisOpt_KRR("KRR", "uracil_rand_20k", "GauSH", OType = "Force", Elements_ = [7])
 #H: R 5 L 2		C: R 5 L 3		N: R 6 L 4		O: R 5 L 3
 
@@ -312,9 +312,9 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=1)
 		tset.BuildTrainMolwise(set_,TreatedAtoms)
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,True,"fc_sqdiff")
+	# manager=TFManage("",tset,True,"fc_sqdiff")
 
-# TrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=20)
+TrainForces(set_ = "SmallMols_rand", BuildTrain_=True, numrot_=20)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
