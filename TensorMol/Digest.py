@@ -159,9 +159,11 @@ class Digester:
 					if ( "mmff94forces" in mol_.properties):
 						if (at_<0):
 							Outs = mol_.properties['forces']-mol_.properties['mmff94forces']
+							Ins = np.append(Ins, np.zeros((Ins.shape[0],1)),axis=1)
 							#print "Outs", Outs
 						else:
 							Outs = mol_.properties['forces'][at_].reshape((1,3))-mol_.properties['mmff94forces'][at_].reshape((1,3))
+							Ins = np.append(Ins, np.zeros((1,1)), axis=1)
 					else:
 						raise Exception("Mol Is missing MMFF94 force. ")
 				else:

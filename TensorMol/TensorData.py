@@ -48,7 +48,7 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.Classify=PARAMS["Classify"] # should be moved to transformer. 
+		self.Classify=PARAMS["Classify"] # should be moved to transformer.
 		self.MxTimePerElement=PARAMS["MxTimePerElement"]
 		self.MxMemPerElement=PARAMS["MxMemPerElement"]
 		self.ChopTo = PARAMS["ChopTo"]
@@ -139,12 +139,16 @@ class TensorData():
 		t0 = time.time()
 		ord = len(self.set.mols)
 		mols_done = 0
+		if self.dig.OType == "Del_Force":
+			self.coord_dict = {}
 		try:
 			for mi in range(ord):
 				m = self.set.mols[mi]
 				ins,outs = self.dig.TrainDigestMolwise(m)
 				# if np.any(np.abs(outs) > 100.0) or np.any(np.isinf(outs)) or np.any(np.isnan(outs)):
 				# 	continue
+				self.coord_dict[mi] = np.concatenate([m.atoms[:,None], m.coords], axis=1)
+				ins[:,-1] = mi
 				for i in range(m.NAtoms()):
 					# Route all the inputs and outputs to the appropriate place...
 					ai = atypes.tolist().index(m.atoms[i])
