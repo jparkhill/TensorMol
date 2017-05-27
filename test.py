@@ -551,11 +551,13 @@ def Test_ULJ():
 
 def Test_LJMD():
 	"""
-	Test TensorFlow LJ fluid.
+	Test TensorFlow LJ fluid Molecular dynamics
 	"""
 	a=MSet("Test")
 	MakeUniform([0.0,0.0,0.0],1.0,4)
-	a.mols=[Mol.Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
+	ParticlesPerEdge=3
+	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],2.0,ParticlesPerEdge))]
+	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
@@ -563,13 +565,33 @@ def Test_LJMD():
 	ins = MolInstance_LJForce(tset)
 	ins.train_prepare()
 	# Convert from hartree/ang to joules/mol ang.
-	ForceField = lambda x: ins.EvalForce(Mol.Mol(m.atoms,x))[1]
-	EnergyForceField = lambda x: ins.EvalForce(Mol.Mol(m.atoms,x))
+	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[0][0]
+	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
+
+	PARAMS["OptThresh"] = 0.01
+	m = GeomOptimizer(EnergyForceField).Opt(m)
+
+	anneal = Annealer(EnergyForceField, None, m, "Anneal")
+	anneal.Prop()
+	m.coords = anneal.Minx.copy()
+
+	m = GeomOptimizer(EnergyForceField).Opt(m)
+
+
 	PARAMS["MDTemp"] = 300.0
 	PARAMS["MDThermostat"] = None
 	PARAMS["MDV0"] = None
-	print EnergyForceField(m.coords)
-	md = VelocityVerlet(ForceField,m,"LJ test",EnergyForceField)
+	PARAMS["MDdt"] = 0.2
+	#print "TF grad:",EnergyForceField(m.coords)
+	#print "Fdiff Grad: "
+	#print JOULEPERHARTREE*FdiffGradient(ForceField,m.coords)
+	Ee = 0.01*np.ones((8,8))
+	Re = 1.*np.ones((8,8))
+	#EnergyField = lambda x: ins.EvalForce(Mol(m.atoms,x))[0][0]
+	#EnergyField = lambda x: LJEnergy_Numpy(x, m.atoms, Ee, Re)
+	#ForceField = lambda x: -1.0*JOULEPERHARTREE*FdiffGradient(EnergyField,x)
+	#EnergyForceField = lambda x: (EnergyField(x), ForceField(x))
+	md = VelocityVerlet(ForceField,m,"LJ test", EnergyForceField)
 	md.Prop()
 	return
 

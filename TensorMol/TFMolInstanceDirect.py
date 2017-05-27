@@ -103,8 +103,8 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 		maxnatom = inp_shp[1]
 		XYZs = tf.slice(inp_pl,[0,0,1],[-1,-1,-1])
 		Zs = tf.cast(tf.reshape(tf.slice(inp_pl,[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
-		self.LJe = tf.Print(self.LJe,[self.LJe],"LJe",1000,1000)
-		self.LJr = tf.Print(self.LJr,[self.LJr],"LJr",1000,1000)
+		#self.LJe = tf.Print(self.LJe,[self.LJe],"LJe",1000,1000)
+		#self.LJr = tf.Print(self.LJr,[self.LJr],"LJr",1000,1000)
 		LJe2 = self.LJe*self.LJe
 		LJr2 = self.LJr*self.LJr
 		#LJe2 = tf.Print(LJe2,[LJe2],"LJe2",1000,1000)
@@ -119,7 +119,7 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 		Ins = Ins.reshape(tuple([1]+list(Ins.shape)))
 		feeddict = {self.inp_pl:Ins}
 		En,Frc = self.sess.run([self.energies, self.forces],feed_dict=feeddict)
-		return En,JOULEPERHARTREE*Frc[0] # Returns energies and forces.
+		return En, JOULEPERHARTREE*Frc[0] # Returns energies and forces.
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))

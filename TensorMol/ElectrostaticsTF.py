@@ -116,11 +116,11 @@ def LJKernels(Ds,Zs,Ee,Re):
 	# Zero distances will be set to 100.0 then masked to zero energy contributions.
 	ones = tf.ones(tf.shape(Ds))
 	zeros = tf.zeros(tf.shape(Ds))
-	ZeroTensor = tf.where(tf.less_equal(Ds,0.00001),ones,zeros)
+	ZeroTensor = tf.where(tf.less_equal(Ds,0.000000001),ones,zeros)
 	Ds += ZeroTensor
 	# Zero atomic numbers will be set to 1
 	Zones = tf.ones(tf.shape(Zs),dtype=tf.int32)
-	ZZeroTensor = tf.cast(tf.where(tf.equal(Zs,0),Zones,0*Zs),tf.float32)
+	ZZeroTensor = tf.cast(tf.where(tf.equal(Zs,0),tf.ones_like(Zs),tf.zeros_like(Zs)),tf.float32)
 	Zs = tf.where(tf.equal(Zs,0),Zones,Zs)
 	# Extract De_ij and Re_ij
 	Zshp = tf.shape(Zs)
@@ -145,6 +145,28 @@ def LJKernels(Ds,Zs,Ee,Re):
 	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
 	return K
+
+def LJEnergy_Numpy(XYZ,Z,Ee,Re):
+	"""
+	The same as the routine below, but
+	in numpy just to test.
+	"""
+	n = XYZ.shape[0]
+	D = np.zeros((n,n))
+	for i in range(n):
+		D[i,i] = 1.0
+		for j in range(n):
+			D[i,j] = np.linalg.norm(XYZ[i]-XYZ[j])
+	R = 1.0/D
+	K = 0.01*(np.power(R,12.0)-2.0*np.power(R,6.0))
+	En = 0.0
+	for i in range(n):
+		for j in range(n):
+			if j<=i:
+				K[i,j] = 0.
+			else:
+				En += K[i,j]
+	return En
 
 def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""

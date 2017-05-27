@@ -1,5 +1,5 @@
 """
-The Units chosen are Angstrom * Fs.
+The Units chosen are Angstrom, Fs.
 I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
 """
 
@@ -298,7 +298,7 @@ class VelocityVerlet:
 		self.t = 0.0
 		self.KE = 0.0
 		self.atoms = g0_.atoms.copy()
-		self.m = np.array(map(lambda x: ATOMICMASSES[x-1],self.atoms))
+		self.m = np.array(map(lambda x: ATOMICMASSES[x-1], self.atoms))
 		self.natoms = len(self.atoms)
 		self.x = g0_.coords.copy()
 		self.v = np.zeros(self.x.shape)
@@ -344,7 +344,7 @@ class VelocityVerlet:
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
-			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff)
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff)
 		if PARAMS["MDLogVelocity"] == True:
 			return velo_his
 		else:
@@ -372,7 +372,6 @@ class IRTrajectory(VelocityVerlet):
 			self.v = v0_.copy()
 		self.EField = np.zeros(3)
 		self.IsOn = False
-		self.qs = None
 		self.FieldVec = PARAMS["MDFieldVec"]
 		self.FieldAmp = PARAMS["MDFieldAmp"]
 		self.FieldFreq = PARAMS["MDFieldFreq"]
@@ -380,12 +379,20 @@ class IRTrajectory(VelocityVerlet):
 		self.TOn = PARAMS["MDFieldT0"]
 		self.UpdateCharges = PARAMS["MDUpdateCharges"]
 		self.EnergyAndForce = f_
-		self.ChargeFunction = q_
 		self.EPot0 , self.f0 = self.EnergyAndForce(g0_.coords)
 		self.EPot = self.EPot0
-		self.q0 = self.ChargeFunction(self.x)
-		self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
+		self.ChargeFunction = None
+		self.q0 = 0*self.m
+		self.qs = np.ones(self.m.shape)
+		self.Mu0 = np.zeros(3)
 		self.mu_his = None
+		if (q_ != None):
+			self.ChargeFunction = q_
+			self.q0 = self.ChargeFunction(self.x)
+			self.qs = self.q0.copy()
+			self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
+		else:
+			self.UpdateCharges = False
 		# This can help in case you had a bad initial geometry
 		self.MinS = 0
 		self.MinE = 0.0
@@ -466,7 +473,7 @@ class IRTrajectory(VelocityVerlet):
 			if (step%200==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
 		WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 
