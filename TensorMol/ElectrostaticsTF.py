@@ -135,11 +135,15 @@ def LJKernels(Ds,Zs,Ee,Re):
 	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[1]*Zshp[1],2])
 	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[Zshp[0],Zshp[1],Zshp[1]])
 	Reij = tf.reshape(tf.gather_nd(Re,Zij),[Zshp[0],Zshp[1],Zshp[1]])
-	K = Eeij*(tf.pow(Reij/Ds,12.0)-2.0*tf.pow(Reij/Ds,6.0))
+	R = Reij/Ds
+	tf.assert_less(R,100000000.0)
+	K = Eeij*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
 	# Use the ZeroTensors to mask the output for zero dist or AN.
-	K = K*(1.0-ZeroTensor)*(1.0-Zzij1)*(1.0-Zzij2)
+	K = tf.where(tf.equal(ZeroTensor,1.0),tf.zeros_like(K),K)
+	K = tf.where(tf.equal(Zzij1,1.0),tf.zeros_like(K),K)
+	K = tf.where(tf.equal(Zzij2,1.0),tf.zeros_like(K),K)
+	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
-	#K = tf.Print(K,[K],"Kern",1000 ,1000)
 	return K
 
 def LJEnergies(XYZs_,Zs_,Ee_, Re_):
@@ -155,6 +159,7 @@ def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 		Re_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
 	"""
 	Ds = TFDistances(XYZs_)
+	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
 	Ks = LJKernels(Ds,Zs_,Ee_,Re_)
 	Ens = tf.reduce_sum(Ks,[1,2])
 	return Ens

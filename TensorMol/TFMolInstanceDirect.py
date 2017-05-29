@@ -32,7 +32,6 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 		self.MaxNAtoms = TData_.MaxNAtoms
 		self.batch_size_output = 4096
 		self.inp_pl=None
-		self.mats_pl=None
 		self.frce_pl=None
 		self.LJe = None
 		self.LJr = None
@@ -60,10 +59,10 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 		with tf.Graph().as_default():
 			self.inp_pl=tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,4]))
 			self.frce_pl = tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,3])) # Forces.
-			self.LJe = self._variable_with_weight_decay(var_name='LJe', var_shape=[MAX_ATOMIC_NUMBER,MAX_ATOMIC_NUMBER], var_stddev=0.5, var_wd=0.000)+1.0
-			self.LJr = self._variable_with_weight_decay(var_name='LJr', var_shape=[MAX_ATOMIC_NUMBER,MAX_ATOMIC_NUMBER], var_stddev=0.5, var_wd=0.000)+1.0
+			self.LJe = tf.Variable(0.1*tf.ones([8,8]),trainable=True)
+			self.LJr = tf.Variable(tf.ones([8,8]),trainable=True)
 			# These are squared later to keep them positive.
-			self.energies, self.forces = self.LJFrc(self.inp_pl, self.mats_pl)
+			self.energies, self.forces = self.LJFrc(self.inp_pl)
 			self.total_loss, self.loss = self.loss_op(self.forces, self.frce_pl)
 			self.train_op = self.training(self.total_loss, PARAMS["learning_rate"], PARAMS["momentum"])
 			self.summary_op = tf.summary.merge_all()
@@ -82,22 +81,21 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 
 		Emats and Qmats are constructed to accerate this process...
 		"""
-		output = tf.Print(output,[output],"Comp'd",100,100)
-		labels = tf.Print(labels,[labels],"Desired",100,100)
+		output = tf.Print(output,[output],"Comp'd",1000,1000)
+		labels = tf.Print(labels,[labels],"Desired",1000,1000)
 		diff  = tf.subtract(output, labels)
 		#tf.Print(diff, [diff], message="This is diff: ",first_n=10000000,summarize=100000000)
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
-	def LJFrc(self, inp_pl, keys_pl):
+	def LJFrc(self, inp_pl):
 		"""
 		Compute forces for a batch of molecules
 		with the current LJe, and LJr.
 
 		Args:
 			inp_pl: placeholder for the NMol X MaxNatom X 4 tensor of Z,x,y,z
-			keys_pl: placeholder for the NMol X MaxNatom molecule keys.
 		"""
 		# separate out the Z from the XYZ.
 		inp_shp = tf.shape(inp_pl)
@@ -105,6 +103,8 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 		maxnatom = inp_shp[1]
 		XYZs = tf.slice(inp_pl,[0,0,1],[-1,-1,-1])
 		Zs = tf.cast(tf.reshape(tf.slice(inp_pl,[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
+		self.LJe = tf.Print(self.LJe,[self.LJe],"LJe",1000,1000)
+		self.LJr = tf.Print(self.LJr,[self.LJr],"LJr",1000,1000)
 		LJe2 = self.LJe*self.LJe
 		LJr2 = self.LJr*self.LJr
 		#LJe2 = tf.Print(LJe2,[LJe2],"LJe2",1000,1000)
@@ -113,6 +113,13 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 		#Ens = tf.Print(Ens,[Ens],"Energies",5000,5000)
 		frcs = -1.0*(tf.gradients(Ens, XYZs)[0])
 		return Ens, frcs
+
+	def EvalForce(self,m):
+		Ins = self.TData.dig.Emb(m,False,False)
+		Ins = Ins.reshape(tuple([1]+list(Ins.shape)))
+		feeddict = {self.inp_pl:Ins}
+		En,Frc = self.sess.run([self.energies, self.forces],feed_dict=feeddict)
+		return En,JOULEPERHARTREE*Frc[0] # Returns energies and forces.
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))
@@ -136,6 +143,10 @@ class MolInstance_LJForce(MolInstance_fc_sqdiff_BP):
 		for ministep in range (0, int(Ncase_train/self.batch_size_output)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
 			batch_data = self.TData.RawBatch()
+			if (not np.all(np.isfinite(batch_data[0]))):
+				print("Bad Batch...0 ")
+			if (not np.all(np.isfinite(batch_data[1]))):
+				print("Bad Batch...1 ")
 			feeddict={i:d for i,d in zip([self.inp_pl,self.frce_pl],[batch_data[0],batch_data[1]])}
 			dump_2, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feeddict)
 			train_loss = train_loss + loss_value

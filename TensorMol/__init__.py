@@ -20,6 +20,7 @@ Violators are subject to having their code and reproductive fitness mocked publi
 """
 from TensorMol.PhysicalData import *
 from TensorMol.Util import *
+from TensorMol.Mol import *
 from TensorMol.Sets import *
 from TensorMol.MolFrag import *
 from TensorMol.Opt import *
@@ -43,4 +44,5 @@ from TensorMol.Neb import *
 from TensorMol.SimpleMD import *
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.Electrostatics import *
+from TensorMol.LinearOperations import *
 from TensorMol.AbInitio import *
