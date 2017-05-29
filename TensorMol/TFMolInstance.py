@@ -772,7 +772,11 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		nmol = batch_data[2].shape[0]
 		print ("nmol:", batch_data[2].shape[0])
 		self.batch_size_output = nmol
-		self.Eval_Prepare()
+                if not self.sess:
+			t = time.time()
+                        print ("loading the session..")
+                        self.Eval_Prepare()
+			print ("loading time cost: ", time.time() -t, " second")
 		feed_dict=self.fill_feed_dict(batch_data)
 		preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
                 return mol_output, atom_outputs

@@ -68,6 +68,7 @@ class TFMolManage(TFManage):
 
 
 	def Eval_Bond_BP(self, mol_set, total_energy = False):
+		t = time.time()
 		nmols = len(mol_set.mols)
 		nbonds = mol_set.NBonds()
 		cases = np.zeros(tuple([nbonds]+list(self.TData.dig.eshape)))
@@ -107,8 +108,10 @@ class TFMolManage(TFManage):
 			matrices[ei][offsets[ei], outputpointer] = 1.0
 			offsets[ei] += 1
 		#print "[inputs, matrices, dummy_outputs]", [inputs, matrices, dummy_outputs]
+		print "time to generate inputs:", time.time() - t
+		t = time.time()
 		mol_out, atom_out = self.Instances.evaluate([inputs, matrices, dummy_outputs])
-
+		print "time for the neural network evaluation:", time.time() - t
 		pointers = [0 for ele in self.TData.eles]
 		diff = 0
 		for i in range (0, nmols):
@@ -120,7 +123,9 @@ class TFMolManage(TFManage):
 				total = mol_out[0][i]
 				for j in range (0, mol.NAtoms()):
 					total += ele_U[mol.atoms[j]]
-				print "total electronic energy:", total
+				print "total electronic energy:", total,"\n"
+			print 'Bond_Type: "HH": 1, "HC": 2, "HN": 3, "HO": 4, "CC": 5, "CN": 6, "CO": 7, "NN": 8, "NO": 9, "OO": 10}\n'
+			print "         Bond_Type     Bond_Length     Atom1_Index      Atom2_Index     Bond_Energy"
 			for j in range (0, mol.bonds.shape[0]):
 				bond_type = mol.bonds[j, 0]
 				bond_index = self.TData.eles.index(bond_type)
