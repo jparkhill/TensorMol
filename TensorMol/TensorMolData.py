@@ -262,8 +262,8 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_meta = None
 		self.scratch_test_meta = None
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
-		self.eles = list(self.set.AtomTypes())
-		self.eles.sort()
+		#self.eles = list(self.set.AtomTypes())   # Uncomment this for training 
+		#self.eles.sort()  #                      # a model
 		self.MeanStoich=None
 		self.MeanNAtoms=None
 		self.NormalizeInputs = True
@@ -644,11 +644,8 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
         """
         def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
                 TensorMolData_BP.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
-                self.eles = list(self.set.BondTypes())
-                self.eles.sort()
-		#self. = self.set.
-		#self.bonds = list(self.set.BondTypes())
-		#self.bonds.sort()
+                #self.eles = list(self.set.BondTypes())  ## Uncomment this for training 
+                #self.eles.sort()                       # a model
                 return
 
         def CleanScratch(self):

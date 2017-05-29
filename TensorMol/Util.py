@@ -12,7 +12,6 @@ from math import pi as Pi
 import scipy.special
 import itertools
 import warnings
-from scipy.weave import inline
 from collections import defaultdict
 from collections import Counter
 warnings.simplefilter(action = "ignore", category = FutureWarning)

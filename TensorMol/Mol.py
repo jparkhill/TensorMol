@@ -90,10 +90,10 @@ class Mol:
 					self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
 					#print np.array([bond_type, dist, pair_index[0], pair_index[1]]), " atom type:", self.atoms[pair_index[0]], self.atoms[pair_index[1]]
 		self.bonds = np.asarray(self.bonds)
-		self.Calculate_Bond_Type()
+		#self.Calculate_Bond_Type()
 		self.Find_Bond_Index()
-		self.Define_Conjugation()
-		self.Make_Nx_Graph()
+		#self.Define_Conjugation()
+		#self.Make_Nx_Graph()
 		return
 
 	def Make_Nx_Graph(self):
