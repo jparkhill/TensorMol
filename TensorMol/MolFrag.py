@@ -704,10 +704,13 @@ class FragableClusterBF(Mol):
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
 		self.frag_energy_sum = dict() # sum of the energis of all the frags in certain oder
-		self.mbe_deri =None
+		self.mbe_force =dict()
+		self.nn_force = None
+		self.frag_force_sum = dict()
 		self.frag_dipole_sum = dict() 
 		self.mbe_dipole=dict()
 		self.nn_dipole = 0
+		self.nn_energy = 0.0
 		return
 
 	def Reset_Frags(self):
@@ -832,4 +835,6 @@ class FragableClusterBF(Mol):
                         self.nn_dipole += self.mbe_dipole[order]
                 print self.mbe_dipole, self.nn_dipole
                 return
+
+
 
