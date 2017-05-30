@@ -3,6 +3,13 @@ import time
 
 #jeherr tests
 
+PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
+ 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
+S_Rad = MolEmb.Overlap_RBF(PARAMS)
+S_RadOrth = MatrixPower(S_Rad,-1./2)
+PARAMS["SRBF"] = S_RadOrth
+
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
@@ -145,34 +152,28 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	# We should try to get optimizations working too...
 	return
 
-# PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
-#  						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-# PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
-# S_Rad = MolEmb.Overlap_RBF(PARAMS)
-# S_RadOrth = MatrixPower(S_Rad,-1./2)
-# PARAMS["SRBF"] = S_RadOrth
 # TestBP()
 
 def TestANI1():
 	"""
 	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
 	"""
-	if (1):
-		a = MSet("uneq_chemspider")
-		a.ReadXYZ("uneq_chemspider")
-		a.Save()
-		# a = MSet("uneq_chemspider")
-		# a.Load()
-		print "Set elements: ", a.AtomTypes()
-		TreatedAtoms = a.AtomTypes()
-		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
-		tset.BuildTrain("uneq_chemspider")
-		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
-		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-		manager.Train(maxstep=2000)
-		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
-                #manager.Continue_Training(maxsteps=2)
+	# a = MSet("uneq_chemspider")
+	# a.ReadXYZ("uneq_chemspider")
+	# a.Save()
+	a = MSet("uneq_chemspider")
+	a.Load()
+	a=a.RotatedClone(1)
+	print "Set elements: ", a.AtomTypes()
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="GauSH", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+	tset.BuildTrain("uneq_chemspider")
+	# tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+	manager.Train(maxstep=2000)
+	#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+            #manager.Continue_Training(maxsteps=2)
 	return
 
 # TestANI1()
@@ -214,12 +215,6 @@ def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	- Optimize OCSDB_Dist02
 	- Evaluate the relative RMS's of these two.
 	"""
-	PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
-	 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-	PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
-	S_Rad = MolEmb.Overlap_RBF(PARAMS)
-	S_RadOrth = MatrixPower(S_Rad,-1./2)
-	PARAMS["SRBF"] = S_RadOrth
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
 	a=MSet("OCSDB_test")
 	a.ReadXYZ("OCSDB_test")
@@ -239,7 +234,7 @@ def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	print "A,B (optd) RMS (Angstrom): ",a.rms(b)
 	return
 
-TestOCSDB()
+# TestOCSDB()
 
 def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
@@ -264,7 +259,7 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	neb.OptNeb()
 	return
 
-#TestNeb()
+# TestNeb()
 
 def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
@@ -303,15 +298,73 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	a.ReadXYZ("OCSDB_test")
 	m = a.mols[1]
 	# Convert the forces from kcal/mol ang to joules/mol ang.
-	ForceField = lambda x: 4183.9953*tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
+	ForceField = lambda x: 4183.9953*tfm.EvalRotAvForce(Mol.Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
 	PARAMS["MNHChain"] = 10
-	PARAMS["MDTemp"] = 150.0
+	PARAMS["MDTemp"] = 300.0
 	PARAMS["MDThermostat"] = "NosePerParticle"
+	PARAMS["MDdt"] = 0.1 # In fs.
 	md = VelocityVerlet(ForceField,m)
 	md.Prop()
 	return
 
-#TestMD()
+# TestMD()
+
+def TestMorphIR():
+	"""
+	Try to model the IR spectra of Johnson's peptides...
+	Optimize, then get charges, then do an isotropic IR spectrum.
+	"""
+	a = MSet("johnsonmols")
+	a.ReadXYZ("johnsonmols")
+	manager= TFManage("SmallMols_20rot_GauSH_fc_sqdiff", None, False, RandomTData_=False, Trainable_=False)
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 0.9
+	PARAMS["OptStepSize"] = 0.02
+	PARAMS["OptMaxCycles"]=200
+	morphine = a.mols[1]
+	heroin = a.mols[2]
+	optimizer = Optimizer(manager)
+	optimizer.OptTFRealForce(morphine)
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	ForceField = lambda x: manager.EvalRotAvForce(Mol.Mol(morphine.atoms,x))
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol.Mol(morphine.atoms,x),False)[2][0]
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 10000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDV0"] = None
+	PARAMS["MDTemp"]= 1.0
+	annealMorph = Annealer(ForceField, ChargeField, morphine, "Anneal")
+	annealMorph.Prop()
+	morphine.coords = annealMorph.Minx.copy()
+	PARAMS["MDTemp"]= 0.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDFieldAmp"] = 20.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	md0 = IRTrajectory(ForceField, ChargeField, morphine, "MorphineIR")
+	md0.Prop()
+	WriteDerDipoleCorrelationFunction(md0.mu_his,"MorphineMutM0.txt")
+	return
+	optimizer.OptANI1(heroin)
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(heroin.atoms,x),True)
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(heroin.atoms,x),False)[2][0]
+	annealHeroin = Annealer(ForceField, ChargeField, heroin, "Anneal")
+	annealHeroin.Prop()
+	heroin.coords = annealHeroin.Minx.copy()
+	PARAMS["MDTemp"]= 0.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDFieldAmp"] = 3.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	md1 = IRTrajectory(ForceField, ChargeField, heroin, "HeroinIR")
+	md1.Prop()
+	WriteDerDipoleCorrelationFunction(md1.mu_his,"HeroinMutM0.txt")
+	return
+
+TestMorphIR()
 
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()

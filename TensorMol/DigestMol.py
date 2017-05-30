@@ -349,6 +349,8 @@ class MolDigester:
 			Ins, Grads = self.make_ANI1_sym_bond_bp(mol_)
 		elif(self.name == "ANI1_Sym_Center_Bond_BP"):
 			Ins, Grads = self.make_ANI1_sym_center_bond_bp(mol_)
+		elif (self.name=="GauSH"):
+			Ins =  MolEmb.Make_SH(PARAMS, mol_.coords, mol_.atoms, -1)
 		else:
 			raise Exception("Unknown MolDigester Type.", self.name)
 		if (self.eshape == None):
