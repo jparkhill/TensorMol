@@ -139,6 +139,95 @@ class TensorData():
 		t0 = time.time()
 		ord = len(self.set.mols)
 		mols_done = 0
+		try:
+			for mi in range(ord):
+				m = self.set.mols[mi]
+				ins,outs = self.dig.TrainDigestMolwise(m)
+				for i in range(m.NAtoms()):
+					# Route all the inputs and outputs to the appropriate place...
+					ai = atypes.tolist().index(m.atoms[i])
+					cases_list[ai][casep_list[ai]] = ins[i]
+					labels_list[ai][casep_list[ai]] = outs[i]
+					casep_list[ai] = casep_list[ai]+1
+				if (mols_done%10000==0 and mols_done>0):
+					print mols_done
+				if (mols_done==400):
+					print "Seconds to process 400 molecules: ", time.time()-t0
+				mols_done = mols_done + 1
+		except Exception as Ex:
+				print "Likely you need to re-install MolEmb.", Ex
+		for element in atypes:
+			# Write the numpy arrays for this element.
+			ai = atypes.tolist().index(element)
+			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
+			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
+			alreadyexists = (os.path.isfile(insname) and os.path.isfile(outsname))
+			if (append and alreadyexists):
+				ti=None
+				to=None
+				inf = open(insname,"rb")
+				ouf = open(outsname,"rb")
+				ti = np.load(inf)
+				to = np.load(ouf)
+				inf.close()
+				ouf.close()
+				try:
+					cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
+					labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
+				except Exception as Ex:
+					print "Size mismatch with old training data, clear out trainsets"
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases)
+				np.save(ouf,labels)
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
+			else:
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases_list[ai][:casep_list[ai]])
+				np.save(ouf,labels_list[ai][:casep_list[ai]])
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
+		self.Save() #write a convenience pickle.
+		return
+
+	def BuildTrainMolwise_tmp(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
+		"""
+		Generates inputs for all training data using the chosen digester.
+		This version builds all the elements at the same time.
+		The other version builds each element separately
+		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		"""
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
+		self.CheckShapes()
+		self.name=name_
+		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
+		if (len(atypes)==0):
+			atypes = self.set.AtomTypes()
+		LOGGER.debug("Will train atoms: "+str(atypes))
+		# Determine the size of the training set that will be made.
+		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
+		for element in atypes:
+			for m in self.set.mols:
+				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
+		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
+		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		casep_list = [0 for element in atypes]
+		t0 = time.time()
+		ord = len(self.set.mols)
+		mols_done = 0
 		if self.dig.OType == "Del_Force":
 			self.coord_dict = {}
 		try:
