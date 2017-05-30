@@ -303,6 +303,7 @@ class VelocityVerlet:
 		self.x = g0_.coords.copy()
 		self.v = np.zeros(self.x.shape)
 		self.a = np.zeros(self.x.shape)
+		self.md_log = None
 
 		if (PARAMS["MDV0"]=="Random"):
 			self.v = np.random.randn(*self.x.shape)
@@ -333,6 +334,7 @@ class VelocityVerlet:
 		Propagate VelocityVerlet
 		"""
 		step = 0
+		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
@@ -341,14 +343,20 @@ class VelocityVerlet:
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
 				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+
+			self.md_log[step,0] = self.t
+			self.md_log[step,4] = self.KE
+			self.md_log[step,5] = self.EPot
+			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
+
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
+			if (step%500==0):
+				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
+
 			step+=1
-			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff)
-		if PARAMS["MDLogVelocity"] == True:
-			return velo_his
-		else:
-			return
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+		return
 
 class IRTrajectory(VelocityVerlet):
 	def __init__(self,f_,q_,g0_,name_=str(0),v0_=None):
