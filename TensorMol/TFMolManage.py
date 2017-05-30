@@ -198,6 +198,144 @@ class TFMolManage(TFManage):
 			total += ele_U[mol.atoms[j]]
 		return total
 
+
+        def Eval_BPForceSet(self, mol_set, total_energy = False):
+                """
+                Args:
+                        mol_set: a MSet
+                        total_energy: whether to also return the energy as a first argument.
+                Returns:
+                        (if total_energy == True): Energy in Hartree
+                        and Forces (J/mol)
+                """
+                nmols = len(mol_set.mols)
+                natoms = mol_set.NAtoms()
+                cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+		cases_grads = []
+                dummy_outputs = np.zeros((nmols))
+                meta = np.zeros((natoms, 4), dtype = np.int)
+                casep = 0
+                mols_done = 0
+                t = time.time()
+                for mol in mol_set.mols:
+                        ins, grads = self.TData.dig.EvalDigest(mol,True)
+                        nat = mol.NAtoms()
+                        cases[casep:casep+nat] = ins
+			cases_grads.append(grads)
+                        for i in range (casep, casep+nat):
+                                meta[i, 0] = mols_done
+                                meta[i, 1] = mol.atoms[i - casep]
+                                meta[i, 2] = casep
+                                meta[i, 3] = casep + nat
+                        casep += nat
+                        mols_done += 1
+                sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+                offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+                inputs = []
+                matrices = []
+		inputs_grads = [[] for i in range (len(self.TData.eles))]
+                outputpointer = 0
+                for i in range (0, natoms):
+                        sto[self.TData.eles.index(meta[i, 1])] += 1
+                currentmol = 0
+                for e in range (len(self.TData.eles)):
+                        inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+                        matrices.append(np.zeros((sto[e], nmols)))
+                for i in range (0, natoms):
+                        if currentmol != meta[i, 0]:
+                                outputpointer += 1
+                                currentmol = meta[i, 0]
+                        e = meta[i, 1]
+                        ei = self.TData.eles.index(e)
+			current_ele_index[ei] += 1
+                        inputs[ei][offsets[ei], :] = cases[i]
+			inputs_grads[ei].append(cases_grads[i])
+			#inputs_grads[ei][offsets[ei], :]  = cases_grads[i]
+                        matrices[ei][offsets[ei], outputpointer] = 1.0
+                        offsets[ei] += 1
+                t = time.time()
+                pointers = [0 for ele in self.TData.eles]
+                mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
+
+		total_gradient_list = []
+
+
+
+	 	#total_gradient = np.zeros((natoms*3))
+                #for i in range (0, len(nn_gradient)): # Loop over element types.
+                #        total_gradient += np.einsum("ad,adx->x",nn_gradient[i],inputs_grads[i]) # Chain rule.
+                total_list = []
+                for i in range (0, nmols):
+                        total = mol_out[0][i]
+                        mol = mol_set.mols[i]
+                        if total_energy:
+                                for j in range (0, mol.NAtoms()):
+                                        total += ele_U[mol.atoms[j]]
+                        total_list.append(total)
+	
+                return total_list
+
+
+                nmols = len(mol_set.mols)
+                natoms = mol_set.NAtoms()
+                cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
+                cases_grads = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)+list([3*natoms])))
+                dummy_outputs = np.zeros((nmols))
+                meta = np.zeros((natoms, 4), dtype = np.int)
+                casep = 0
+                mols_done = 0
+                t = time.time()
+                # Fictitious set loop.
+                ins, grads = self.TData.dig.EvalDigest(mol)
+                nat = mol.NAtoms()
+                cases[casep:casep+nat] = ins
+                cases_grads[casep:casep+nat] = grads
+                for i in range (casep, casep+nat):
+                        meta[i, 0] = mols_done
+                        meta[i, 1] = mol.atoms[i - casep]
+                        meta[i, 2] = casep
+                        meta[i, 3] = casep + nat
+                casep += nat
+                mols_done += 1
+                # End fictitious set loop.
+                sto = np.zeros(len(self.TData.eles),dtype = np.int32)
+                offsets = np.zeros(len(self.TData.eles),dtype = np.int32)
+                inputs = []
+                inputs_grads = []
+                matrices = []
+                outputpointer = 0
+                for i in range (0, natoms):
+                        sto[self.TData.eles.index(meta[i, 1])] += 1
+                currentmol = 0
+                for e in range (len(self.TData.eles)):
+                        inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+                        inputs_grads.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape), 3*natoms)))
+                        matrices.append(np.zeros((sto[e], nmols)))
+                for i in range (0, natoms):
+                        if currentmol != meta[i, 0]:
+                                outputpointer += 1
+                                currentmol = meta[i, 0]
+                        e = meta[i, 1]
+                        ei = self.TData.eles.index(e)
+                        inputs[ei][offsets[ei], :] = cases[i]
+                        inputs_grads[ei][offsets[ei], :]  = cases_grads[i]
+                        matrices[ei][offsets[ei], outputpointer] = 1.0
+                        offsets[ei] += 1
+                t = time.time()
+                mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
+                total_gradient = np.zeros((natoms*3))
+                for i in range (0, len(nn_gradient)): # Loop over element types.
+                        total_gradient += np.einsum("ad,adx->x",nn_gradient[i],inputs_grads[i]) # Chain rule.
+                if (total_energy):
+                        total = mol_out[0][0]
+                        for j in range (0, mol.NAtoms()):
+                                total += ele_U[mol.atoms[j]]
+                        return  total, (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
+                else:
+                        return  (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
+
+
+
 	def Eval_BPForceSingle(self, mol, total_energy = False):
 		"""
 		Args:
