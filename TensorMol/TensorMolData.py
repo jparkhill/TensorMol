@@ -14,25 +14,33 @@ from TensorData import *
 
 class TensorMolData(TensorData):
 	"""
-		A Training Set is a Molecule set, with a sampler and an embedding
-		The sampler chooses points in the molecular volume.
-		The embedding turns that into inputs and labels for a network to regress.
+	A Training Set is a Molecule set, with a sampler and an embedding
+	The sampler chooses points in the molecular volume.
+	The embedding turns that into inputs and labels for a network to regress.
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol"):
 		"""
-			Args:
-				MSet_: A molecule set from which to cull data.
-				Dig_: A MolDigester object to create embeddings, and evaluate outputs.
-				Name_: A name for this TensorMolData
-				order_ : Order of many-body expansion to perform.
-				num_indis_: Number of Indistinguishable Fragments.
-				type_: Whether this TensorMolData is for "frag", "atom", or "mol"
+		Args:
+			MSet_: A molecule set from which to cull data.
+			Dig_: A MolDigester object to create embeddings, and evaluate outputs.
+			Name_: A name for this TensorMolData
+			# These parameters should be removed ------------
+			order_ : Order of many-body expansion to perform.
+			num_indis_: Number of Indistinguishable Fragments.
+			type_: Whether this TensorMolData is for "frag", "atom", or "mol"
 		"""
 		self.order = order_
 		self.num_indis = num_indis_
 		self.NTrain = 0
+		self.MaxNAtoms = MSet_.MaxNAtoms()
 		TensorData.__init__(self, MSet_,Dig_,Name_, type_=type_)
-		print "TensorMolData.type:", self.type
+		LOGGER.info("TensorMolData.type: %s",self.type)
+		LOGGER.info("TensorMolData.dig.name: %s",self.dig.name)
+		LOGGER.info("NMols in TensorMolData.set: %i", len(self.set.mols))
+		self.raw_it = iter(self.set.mols)
+		self.MaxNAtoms = None
+		if (MSet_ != None):
+			self.MaxNAtoms = MSet_.MaxNAtoms()
 		return
 
 	def QueryAvailable(self):
@@ -118,6 +126,40 @@ class TensorMolData(TensorData):
 			#self.SamplesPerElement.append(casep*self.dig.NTrainSamples)
 		self.Save() #write a convenience pickle.
 		return
+
+	def RawBatch(self,nmol = 4096):
+		"""
+			Shimmy Shimmy Ya Shimmy Ya Shimmy Yay.
+			This type of batch is not built beforehand
+			because there's no real digestion involved.
+
+			Args:
+				nmol: number of molecules to put in the output.
+
+			Returns:
+				Ins: a #atomsX4 tensor (AtNum,x,y,z)
+				Outs: output of the digester
+				Keys: (nmol)X(MaxNAtoms) tensor listing each molecule's place in the input.
+		"""
+		ndone = 0
+		natdone = 0
+		self.MaxNAtoms = self.set.MaxNAtoms()
+		Ins = np.zeros(tuple([nmol,self.MaxNAtoms,4]))
+		Outs = np.zeros(tuple([nmol,self.MaxNAtoms,3]))
+		while (ndone<nmol):
+			try:
+				m = self.raw_it.next()
+#				print "m props", m.properties.keys()
+#				print "m coords", m.coords
+				ti, to = self.dig.Emb(m, True, False)
+				n=ti.shape[0]
+				Ins[ndone,:n,:] = ti.copy()
+				Outs[ndone,:n,:] = to.copy()
+				ndone += 1
+				natdone += n
+			except StopIteration:
+				self.raw_it = iter(self.set.mols)
+		return Ins,Outs
 
 	def GetTrainBatch(self,ncases=1280,random=False):
 		if (self.ScratchState != self.order):
@@ -391,7 +433,7 @@ class TensorMolData_BP(TensorMolData):
 		Reads built training data off disk into scratch space.
 		Divides training and test data.
 		Normalizes inputs and outputs.
-			note that modifies my MolDigester to incorporate the normalization
+		note that modifies my MolDigester to incorporate the normalization
 		Initializes pointers used to provide training batches.
 
 		Args:
@@ -400,9 +442,6 @@ class TensorMolData_BP(TensorMolData):
 		Note:
 			Also determines mean stoichiometry
 		"""
-                if 'self.HasGrad' not in locals():
-			print "do not find self.HasGrad, set to False"
-                        self.HasGrad = False
 		if (self.ScratchState == 1):
 			return
 		if (self.HasGrad):
@@ -464,19 +503,18 @@ class TensorMolData_BP(TensorMolData):
 		Construct the data required for a training batch Returns inputs (sorted by element), and indexing matrices and outputs.
 		Behler parinello batches need to have a typical overall stoichiometry.
 		and a constant number of atoms, and must contain an integer number of molecules.
-
 		Besides making sure all of that takes place this routine makes the summation matrices
 		which map the cases => molecular energies in the Neural Network output.
 
 		Args:
 			ncases: the size of a training cases.
 			noutputs: the maximum number of molecule energies which can be produced.
+
 		Returns:
 			A an **ordered** list of length self.eles containing
 				a list of (num_of atom type X flattened input shape) matrix of input cases.
 				a list of (num_of atom type X batchsize) matrices which linearly combines the elements
 				a list of outputs.
-
 		"""
 		start_time = time.time()
 		if (self.ScratchState == 0):
@@ -550,12 +588,12 @@ class TensorMolData_BP(TensorMolData):
 
 	def GetTestBatch(self,ncases,noutputs):
 		"""
-			Returns:
-			A an **ordered** list of length self.eles containing
-				a list of (num_of atom type X flattened input shape) matrix of input cases.
-				a list of (num_of atom type X batchsize) matrices which linearly combines the elements
-				a list of outputs.
-				the number of output molecules.
+		Returns:
+		A an **ordered** list of length self.eles containing
+			a list of (num_of atom type X flattened input shape) matrix of input cases.
+			a list of (num_of atom type X batchsize) matrices which linearly combines the elements
+			a list of outputs.
+			the number of output molecules.
 		"""
 		start_time = time.time()
 		if (self.ScratchState == 0):

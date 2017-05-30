@@ -224,7 +224,8 @@ class Instance:
 	def Load(self):
 		LOGGER.info("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")
-		tmp = UnPickleTM(f)
+		import TensorMol.PickleTM
+		tmp = TensorMol.PickleTM.UnPickleTM(f)
 		self.Clean()
 		# All this shit should be deleteable after re-training.
 		self.__dict__.update(tmp)
@@ -291,7 +292,7 @@ class Instance:
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
 
-	def inference(self, images, bleep, bloop, blop):
+	def inference(self, images):
 		"""Build the MNIST model up to where it may be used for inference.
 		Args:
 		images: Images placeholder, from inputs().
@@ -678,6 +679,63 @@ class Instance_fc_sqdiff(Instance):
 			tmp_output.resize((self.batch_size,  batch_data[1].shape[1]))
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
+
+class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
+	def __init__(self, TData_, ele_=1, Name_=None):
+		Instance.__init__(self, TData_, ele_, Name_)
+		self.NetType = "del_fc_sqdiff"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
+
+	def inference(self, inputs, bleep, bloop, blop):
+		"""Build the MNIST model up to where it may be used for inference.
+		Args:
+		images: Images placeholder, from inputs().
+		hidden1_units: Size of the first hidden layer.
+		hidden2_units: Size of the second hidden layer.
+		Returns:
+		softmax_linear: Output tensor with the computed logits.
+		"""
+		hidden1_units = PARAMS["hidden1"]
+		hidden2_units = PARAMS["hidden2"]
+		hidden3_units = PARAMS["hidden3"]
+		LOGGER.debug("hidden1_units: "+str(hidden1_units))
+		LOGGER.debug("hidden2_units: "+str(hidden2_units))
+		LOGGER.debug("hidden3_units: "+str(hidden3_units))
+		# Hidden 1
+		with tf.name_scope('hidden1'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape-1)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
+			hidden1 = tf.nn.relu(tf.matmul(inputs, weights) + biases)
+			#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
+			#tf.summary.histogram(weights.name, weights)
+		# Hidden 2
+		with tf.name_scope('hidden2'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden2_units]),name='biases')
+			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
+
+		# Hidden 3
+		with tf.name_scope('hidden3'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
+			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
+		#Delta Layer
+		with tf.name_scope('delta_layer'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(2*self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
+			delta = tf.matmul(hidden3, weights) + biases
+		# Linear
+		with tf.name_scope('regression_linear'):
+			delta_out = tf.multiply(tf.nn.relu(tf.slice(delta,[self.outshape],[self.outshape])),LJGradFunc(inputs[-1]))
+			output = tf.add(tf.slice(delta,[0],[self.outshape]),delta_out)
+		return output
+
+	def loss_op(self, output, labels):
+		diff  = tf.subtract(output, labels)
+		loss = tf.nn.l2_loss(diff)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
 class Instance_conv2d_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):

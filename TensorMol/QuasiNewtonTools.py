@@ -1,5 +1,5 @@
 """
-Routines which help do differential analysis
+Routines which help do differential analysis and Newtonian Mechanics
 """
 
 from Sets import *
@@ -82,6 +82,7 @@ def FdiffHessian(f_, x_, eps_=0.0001, mode_ = "central", grad_ = None):
 	"""
 	Computes a finite difference hessian of a single or multi-valued function
 	at x_ for debugging purposes.
+
 	Args:
 		f_ : objective function of x_
 		x_: point at which derivative is taken.
@@ -174,6 +175,7 @@ def FourPointHessQuad(f):
 def DirectedFdiffHessian(f_, x_, dirs_, eps_=0.01):
 	"""
 	Four-Point Hessian quadrature along dirs_ directions.
+
 	Args:
 		dirs_ : a set of directions having x_'s shape
 	Returns:
@@ -266,10 +268,11 @@ def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
 def LineSearch(f_, x0_, p_, thresh = 0.00001):
 	'''
 	golden section search to find the minimum of f on [a,b]
+
 	Args:
-	f_: a function which returns energy.
-	x0_: Origin of the search.
-	p_: search direction.
+		f_: a function which returns energy.
+		x0_: Origin of the search.
+		p_: search direction.
 	'''
 	k=0
 	rmsdist = 10.0

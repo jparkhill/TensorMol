@@ -1,6 +1,6 @@
 """
  Calculate an embeeding for a molecule, such as coulomb matrix
- Todo: Should inherit from Digest.py (which needs cleanup)
+ TODO: Should inherit from Digest.py (which needs cleanup)
 """
 
 from Mol import *
@@ -18,6 +18,8 @@ class MolDigester:
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
 		self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
+		if (name_ == "CZ"):
+			self.eshape = 1 # HACK
 
 	def make_sym_update(self, mol, Rc = 4.0, g1_para_mat = None, g2_para_mat = None): # para_mat should contains the parameters of Sym_Func, on the order of: G1:Rs, eta1 ; G2: zeta, eta2
 		if g1_para_mat == None or g2_para_mat == None: # use the default setting
@@ -299,19 +301,26 @@ class MolDigester:
 		"""
 		Generates various molecular embeddings.
 		If the embedding has BP on the end it comes out atomwise and includes all atoms in the molecule.
+
 		Args:
 			mol_: a Molecule to be digested
 			MakeOutputs: generates outputs according to self.OType.
 			MakeGradients: generates outputs according to self.OType.
+
 		Returns:
 			Output embeddings, and possibly labels and gradients.
-		Todo:
+
+		TODO:
 			Hook up the gradients.
 		"""
 		Ins=None
 		Grads=None
 		Outs=None
-		if (self.name == "Coulomb"):
+		if (self.name=="CZ"):
+			Ins = np.zeros((mol_.NAtoms(),4))
+			Ins[:,0] = mol_.atoms
+			Ins[:,1:] = mol_.coords
+		elif (self.name == "Coulomb"):
 			CM, deri_CM = self.make_cm(mol_)
 			Ins = self.GetUpTri(CM)
 		elif(self.name == "Coulomb_BP"):
@@ -356,6 +365,10 @@ class MolDigester:
 				Outs = np.zeros(3*mol_.NAtoms()+1, dtype = np.float32)
 				Outs[0] = en
 				Outs[1:] = frce.flatten()
+			elif (self.OType == "Force"):
+				# Internally Angstroms are the position unit.
+				# I'm debugging with kcal/angstrom forces.
+				Outs = mol_.properties["forces"]/KCALPERHARTREE
 			elif (self.OType == "AtomizationEnergy"):
 			    Outs = np.array([mol_.properties["atomization"]])
 			elif (self.OType == "EleEmbAtEn"):
@@ -411,6 +424,7 @@ class MolDigester:
 		"""
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+
 		Args:
 			mol_: a molecule to be digested
 		"""

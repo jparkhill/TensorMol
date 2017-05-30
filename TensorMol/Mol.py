@@ -7,6 +7,11 @@ from LinearOperations import *
 class Mol:
 	""" Provides a general purpose molecule"""
 	def __init__(self, atoms_ =  None, coords_ = None):
+		"""
+		Args:
+			atoms_: np.array(dtype=uint8) of atomic numbers.
+			coords_: np.array(dtype=uint8) of coordinates.
+		"""
 		if (atoms_!=None):
 			self.atoms = atoms_.copy().astype(np.uint8)
 		else:
@@ -72,6 +77,7 @@ class Mol:
 	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
 		"""
 		Rotate atomic coordinates and forces if present.
+
 		Args:
 			axis: vector for rotation axis
 			ang: radians of rotation
@@ -95,6 +101,7 @@ class Mol:
 	def RotateRandomUniform(self, randnums=None, origin=np.array([0.0, 0.0, 0.0])):
 		"""
 		Rotate atomic coordinates and forces if present.
+
 		Args:
 			randnums: theta, phi, and z for rotation, if None then rotation is random
 			origin: origin of rotation axis.
@@ -112,6 +119,14 @@ class Mol:
 				new_endpoint = np.dot(rm,old_endpoints[i])
 				new_forces[i] = new_endpoint - self.coords[i]
 			self.properties["forces"] = new_forces
+		if ("mmff94forces" in self.properties.keys()):
+			# Must also rotate the force vectors
+			old_endpoints = crds+self.properties["mmff94forces"]
+			new_forces = np.zeros(crds.shape)
+			for i in range(len(self.coords)):
+				new_endpoint = np.dot(rm,old_endpoints[i])
+				new_forces[i] = new_endpoint - self.coords[i]
+			self.properties["mmff94forces"] = new_forces
 		self.coords += origin
 
 	def Transform(self,ltransf,center=np.array([0.0,0.0,0.0])):
@@ -357,12 +372,9 @@ class Mol:
 			m.WriteXYZfile(PARAMS["results_dir"], "Interp"+str(n))
 
 	def AlignAtoms(self, m):
-		""" So looking at some interpolations I figured out why this wasn't working The problem was the outside can get permuted and then it can't be fixed by pairwise permutations because it takes all-atom moves to drag the system through itself Ie: local minima
-
-			The solution is to force the crystal to have roughly the right orientation by minimizing position differences in a greedy way, then fixing the local structure once they are all roughly in the right place.
-
-			This now MOVES BOTH THE MOLECULES assignments, but works.
-			"""
+		"""
+		Align the geometries and atom order of myself and another molecule.
+		"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
 		if (self.Center()-m.Center()).all() != 0:
 			m.coords += self.Center() - m.Center()
@@ -608,9 +620,9 @@ class Mol:
 
 	def FitGoProb(self,ii,Print=False):
 		'''
-			Generates a Go-potential for atom i on a uniform grid of 4A with 50 pts/direction
-			And fits that go potential with the H@0 basis centered at the same point
-			In practice 9 (1A) gaussians separated on a 1A grid around the sensory point appears to work for moderate distortions.
+		Generates a Go-potential for atom i on a uniform grid of 4A with 50 pts/direction
+		And fits that go potential with the H@0 basis centered at the same point
+		In practice 9 (1A) gaussians separated on a 1A grid around the sensory point appears to work for moderate distortions.
 		'''
 		Ps = self.POfAtomMoves(GRIDS.MyGrid(),ii)
 		Pc = np.dot(GRIDS.MyGrid().T,Ps)
@@ -624,7 +636,7 @@ class Mol:
 
 	def UseGoProb(self,ii,inputs):
 		'''
-			The opposite of the routine above. It takes the digested probability vectors and uses it to calculate desired new positions.
+		The opposite of the routine above. It takes the digested probability vectors and uses it to calculate desired new positions.
 		'''
 		pdisp=inputs[-3:]
 		return pdisp
@@ -683,6 +695,7 @@ class Mol:
 		Reads the forces from the comment line in the md_dataset,
 		and if no forces exist sets them to zero. Switched on by
 		has_force=True in the ReadGDB9Unpacked routine
+		TODO: Move this out of Mol please to AbInitio (JAP)
 		"""
 		try:
 			f = open(path, 'r')
@@ -771,6 +784,7 @@ class Mol:
 			which you multiply the atomic charges by (and sum)
 			in order to calculate the multipoles of a molecule
 			up to PARAMS["EEOrder"]
+
 			Returns:
 				(NAtoms X (monopole, dipole x, ... quad x... etc. ))
 		"""

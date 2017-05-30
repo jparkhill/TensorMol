@@ -17,6 +17,7 @@ class Digester:
 	"""
 	def __init__(self, eles_, name_="GauSH", OType_="Disp"):
 		"""
+
 		Args:
 			eles_ : a list of elements in the Tensordata that I'll digest
 			name_: type of digester to reduce molecules to NN inputs.
@@ -91,6 +92,7 @@ class Digester:
 	def Emb(self, mol_, at_, xyz_, MakeOutputs=True, MakeGradients=False, Transforms=None):
 		"""
 		Generates various molecular embeddings.
+
 		Args:
 			mol_: a Molecule to be digested
 			at_: an atom to be digested or moved. if at_ < 0 it usually returns arrays for each atom in the molecule
@@ -98,12 +100,19 @@ class Digester:
 			MakeOutputs: generates outputs according to self.OType.
 			MakeGradients: Generate nuclear derivatives of inputs.
 			Transforms: Generate inputs for all the linear transformations appended.
+
 		Returns:
 			Output embeddings, and possibly labels and gradients.
 			if at_ < 0 the first dimension loops over atoms in mol_
 		"""
 		#start = time.time()
-		if (self.name=="Coulomb"):
+		if (self.name=="CZ"):
+			if (at_ > 0):
+				raise Exception("CoordZ embedding is done moleculewise always")
+			Ins = np.zeros((mol_.NAtoms,4))
+			Ins[:,0] = mol_.atoms
+			Ins[:,1:] = mol_.coords
+		elif (self.name=="Coulomb"):
 			Ins= MolEmb.Make_CM(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="GauSH"):
 			if (Transforms == None):
@@ -150,9 +159,11 @@ class Digester:
 					if ( "mmff94forces" in mol_.properties):
 						if (at_<0):
 							Outs = mol_.properties['forces']-mol_.properties['mmff94forces']
+							Ins = np.append(Ins, np.zeros((Ins.shape[0],1)),axis=1)
 							#print "Outs", Outs
 						else:
 							Outs = mol_.properties['forces'][at_].reshape((1,3))-mol_.properties['mmff94forces'][at_].reshape((1,3))
+							Ins = np.append(Ins, np.zeros((1,1)), axis=1)
 					else:
 						raise Exception("Mol Is missing MMFF94 force. ")
 				else:
@@ -218,9 +229,11 @@ class Digester:
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
 		This version works mol-wise to try to speed up and avoid calling C++ so much...
+
 		Args:
 			mol_: a molecule to be digested
 			eles_: A list of elements coming from Tensordata to order the output.
+
 		Returns:
 			Two lists: containing inputs and outputs in order of eles_
 		"""
@@ -239,6 +252,7 @@ class Digester:
 		"""
 		Returns list of inputs and outputs for a molecule.
 		Uses self.Emb() uses Mol to get the Desired output type (Energy,Force,Probability etc.)
+
 		Args:
 			mol_: a molecule to be digested
 			ele_: an element for which training data will be made.

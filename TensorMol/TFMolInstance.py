@@ -39,13 +39,15 @@ class MolInstance(Instance):
 		return
 
 	def inference(self, images, hidden1_units, hidden2_units, hidden3_units):
-		"""Build the MNIST model up to where it may be used for inference.
+		"""
+		A generic inference routine.
+
 		Args:
-		images: Images placeholder, from inputs().
-		hidden1_units: Size of the first hidden layer.
-		hidden2_units: Size of the second hidden layer.
+			images: inputs placeholder.
+			hidden1_units: Size of the first hidden layer.
+			hidden2_units: Size of the second hidden layer.
 		Returns:
-		softmax_linear: Output tensor with the computed logits.
+			softmax_linear: Output tensor.
 		"""
 		# Hidden 1
 		with tf.name_scope('hidden1'):
@@ -70,7 +72,7 @@ class MolInstance(Instance):
 		return output
 
 	def train(self, mxsteps, continue_training= False):
-		print ("running the TFMolInstance train_step")
+		LOGGER.info("running the TFMolInstance.train()")
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = float('inf') # some big numbers
@@ -85,8 +87,7 @@ class MolInstance(Instance):
 		return
 
 	def train_step(self,step):
-		""" I don't think the base class should be
-			train-able. Remove? JAP """
+		""" I don't think the base class should be train-able. Remove? JAP """
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
 		train_loss =  0.0
@@ -205,14 +206,16 @@ class MolInstance_fc_classify(MolInstance):
 		return
 
 	def placeholder_inputs(self, batch_size):
-		"""Generate placeholder variables to represent the input tensors.
+		"""
+		Generate placeholder variables to represent the input tensors.
 		These placeholders are used as inputs by the rest of the model building
-		code and will be fed from the downloaded data in the .run() loop, below.
+		code and will be fed from the downloaded data in the .run() loop.
+
 		Args:
-		batch_size: The batch size will be baked into both placeholders.
+			batch_size: The batch size will be baked into both placeholders.
 		Returns:
-		images_placeholder: Images placeholder.
-		labels_placeholder: Labels placeholder.
+			images_placeholder: Images placeholder.
+			labels_placeholder: Labels placeholder.
 		"""
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
@@ -222,23 +225,29 @@ class MolInstance_fc_classify(MolInstance):
 		return inputs_pl, outputs_pl
 
 	def justpreds(self, output):
-		"""Calculates the loss from the logits and the labels.
+		"""
+		Calculates the loss from the logits and the labels.
+
 		Args:
-		logits: Logits tensor, float - [batch_size, NUM_CLASSES].
-		labels: Labels tensor, int32 - [batch_size].
+			logits: Logits tensor, float - [batch_size, NUM_CLASSES].
+			labels: Labels tensor, int32 - [batch_size].
+
 		Returns:
-		loss: Loss tensor of type float.
+			loss: Loss tensor of type float.
 		"""
 		prob = tf.nn.softmax(output)
 		return prob
 
 	def loss_op(self, output, labels):
-		"""Calculates the loss from the logits and the labels.
+		"""
+		Calculates the loss from the logits and the labels.
+
 		Args:
-		logits: Logits tensor, float - [batch_size, NUM_CLASSES].
-		labels: Labels tensor, int32 - [batch_size].
+			logits: Logits tensor, float - [batch_size, NUM_CLASSES].
+			labels: Labels tensor, int32 - [batch_size].
+
 		Returns:
-		loss: Loss tensor of type float.
+			loss: Loss tensor of type float.
 		"""
 		prob = tf.nn.softmax(output)
 		labels = tf.to_int64(labels)
@@ -359,14 +368,14 @@ class MolInstance_fc_sqdiff(MolInstance):
 		return
 
 	def placeholder_inputs(self, batch_size):
-		"""Generate placeholder variables to represent the input tensors.
-		These placeholders are used as inputs by the rest of the model building
-		code and will be fed from the downloaded data in the .run() loop, below.
+		"""
+		Generate placeholder variables to represent the input tensors.
+
 		Args:
-		batch_size: The batch size will be baked into both placeholders.
+			batch_size: The batch size will be baked into both placeholders.
 		Returns:
-		images_placeholder: Images placeholder.
-		labels_placeholder: Labels placeholder.
+			inputs_pl: Input placeholder.
+			outputs_pl: Outputs placeholder.
 		"""
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
@@ -554,8 +563,8 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		Builds a Behler-Parinello graph
 
 		Args:
-				inp_pl: a list of (num_of atom type X flattened input shape) matrix of input cases.
-				mats_pl: a list of (num_of atom type X batchsize) matrices which linearly combines the elements
+			inp_pl: a list of (num_of atom type X flattened input shape) matrix of input cases.
+			mats_pl: a list of (num_of atom type X batchsize) matrices which linearly combines the elements
 		Returns:
 			The BP graph output
 		"""
@@ -654,7 +663,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		num_of_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
-			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
+			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)			
 			actual_mols  = np.count_nonzero(batch_data[2])
 			dump_, dump_2, total_loss_value, loss_value, mol_output = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
@@ -834,27 +843,27 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 
 class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 	"""
-		An instance of A fully connected Behler-Parinello network.
-		Which requires a TensorMolData_BP to train/execute.
-		This simultaneously constrains the gradient
+	An instance of A fully connected Behler-Parinello network.
+	Which requires a TensorMolData_BP to train/execute.
+	This simultaneously constrains the gradient
 
-		Energy Inputs have dimension
-		[eles][atom case][Descriptor Dimension]
-		The inference is done elementwise.
+	Energy Inputs have dimension
+	[eles][atom case][Descriptor Dimension]
+	The inference is done elementwise.
 
-		Gradient inputs have dimension:
-		[eles][atom case][Descriptor Dimension][Max(n3)]
+	Gradient inputs have dimension:
+	[eles][atom case][Descriptor Dimension][Max(n3)]
 
-		The desired outputs have dimension:
-		max(3n)+1 (energy and all derivatives, where max n3 is determined by training data.)
+	The desired outputs have dimension:
+	max(3n)+1 (energy and all derivatives, where max n3 is determined by training data.)
 
-		the molecular gradient is constructed by breaking up dE/dRx
-		 dE/dRx  = \sum_atoms dE_atom/dRx = \sum_atoms dE_atom/dRx
-		the sum over atoms is done with the index matrices
-		after dE_atom/dRx is made elementwise in this way:
-		  dE_atom/dRy = dE_atom/dD_i * dD_i/dRy
+	the molecular gradient is constructed by breaking up dE/dRx
+	dE/dRx  = \sum_atoms dE_atom/dRx = \sum_atoms dE_atom/dRx
+	the sum over atoms is done with the index matrices
+	after dE_atom/dRx is made elementwise in this way:
+	dE_atom/dRy = dE_atom/dD_i * dD_i/dRy
 
-		So dE_atom/dRy has dimension MaxN3
+	So dE_atom/dRy has dimension MaxN3
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True):
 		"""

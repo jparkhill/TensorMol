@@ -1,5 +1,5 @@
 """
-The Units chosen are Angstrom * Fs.
+The Units chosen are Angstrom, Fs.
 I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
 """
 
@@ -9,13 +9,15 @@ from Electrostatics import *
 from QuasiNewtonTools import *
 
 def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
-	""" A Velocity Verlet Step
+	"""
+	A Velocity Verlet Step
+
 	Args:
-	f_: The force function (returns Joules/Angstrom)
-	a_: The acceleration at current step. (A^2/fs^2)
-	x_: Current coordinates (A)
-	v_: Velocities (A/fs)
-	m_: the mass vector. (kg)
+		f_: The force function (returns Joules/Angstrom)
+		a_: The acceleration at current step. (A^2/fs^2)
+		x_: Current coordinates (A)
+		v_: Velocities (A/fs)
+		m_: the mass vector. (kg)
 	"""
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 	e, f_x_ = 0.0, None
@@ -28,7 +30,9 @@ def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	return x,v,a,e
 
 def KineticEnergy(v_, m_):
-	""" The KineticEnergy
+	"""
+	The KineticEnergy
+
 	Args:
 		The masses are in kg.
 		v_: Velocities (A/fs)
@@ -154,6 +158,7 @@ class NoseChainThermostat(Thermostat):
 		Velocity Verlet step with a Nose-Hoover Chain Thermostat.
 		Based on Appendix A of martyna 1996
 		http://dx.doi.org/10.1080/00268979600100761
+
 		Args:
 			x_: an example of system positions.
 			m_: system masses.
@@ -267,6 +272,7 @@ class VelocityVerlet:
 	def __init__(self, f_, g0_, name_ ="", EandF_=None):
 		"""
 		Molecular dynamics
+
 		Args:
 			f_: a force routine
 			g0_: initial molecule.
@@ -292,11 +298,12 @@ class VelocityVerlet:
 		self.t = 0.0
 		self.KE = 0.0
 		self.atoms = g0_.atoms.copy()
-		self.m = np.array(map(lambda x: ATOMICMASSES[x-1],self.atoms))
+		self.m = np.array(map(lambda x: ATOMICMASSES[x-1], self.atoms))
 		self.natoms = len(self.atoms)
 		self.x = g0_.coords.copy()
 		self.v = np.zeros(self.x.shape)
 		self.a = np.zeros(self.x.shape)
+		self.md_log = None
 
 		if (PARAMS["MDV0"]=="Random"):
 			self.v = np.random.randn(*self.x.shape)
@@ -327,6 +334,7 @@ class VelocityVerlet:
 		Propagate VelocityVerlet
 		"""
 		step = 0
+		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
 		while(step < self.maxstep):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
@@ -335,24 +343,27 @@ class VelocityVerlet:
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
 				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+
+			self.md_log[step,0] = self.t
+			self.md_log[step,4] = self.KE
+			self.md_log[step,5] = self.EPot
+			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
+
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
+			if (step%500==0):
+				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
+
 			step+=1
-			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff)
-		if PARAMS["MDLogVelocity"] == True:
-			return velo_his
-		else:
-			return
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+		return
 
 class IRTrajectory(VelocityVerlet):
 	def __init__(self,f_,q_,g0_,name_=str(0),v0_=None):
-		"""
-		A specialized sort of dynamics which is appropriate for obtaining IR spectra at
-		Zero temperature.
-
-		Absorption cross section is given by:
-		\alpha (\omega) = \frac{4\pi^2}{\hbar c} \omega (1 - Exp[-\beta \hbar \omega]) \sigma(\omega))
-		\sigma(\omega)  = \frac{1}{6 \pi} \mathcal{F} \{\mu(t)\mu(0)\}
+		"""A specialized sort of dynamics which is appropriate for obtaining IR spectra at
+		Zero temperature. Absorption cross section is given by:
+		alpha = frac{4pi^2}{hbar c} omega (1 - Exp[-beta hbar omega]) sigma(omega))
+		sigma  = frac{1}{6 pi} mathcal{F} {mu(t)mu(0)}
 
 		Args:
 			f_: a function which yields the force
@@ -369,7 +380,6 @@ class IRTrajectory(VelocityVerlet):
 			self.v = v0_.copy()
 		self.EField = np.zeros(3)
 		self.IsOn = False
-		self.qs = None
 		self.FieldVec = PARAMS["MDFieldVec"]
 		self.FieldAmp = PARAMS["MDFieldAmp"]
 		self.FieldFreq = PARAMS["MDFieldFreq"]
@@ -377,12 +387,20 @@ class IRTrajectory(VelocityVerlet):
 		self.TOn = PARAMS["MDFieldT0"]
 		self.UpdateCharges = PARAMS["MDUpdateCharges"]
 		self.EnergyAndForce = f_
-		self.ChargeFunction = q_
 		self.EPot0 , self.f0 = self.EnergyAndForce(g0_.coords)
 		self.EPot = self.EPot0
-		self.q0 = self.ChargeFunction(self.x)
-		self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
+		self.ChargeFunction = None
+		self.q0 = 0*self.m
+		self.qs = np.ones(self.m.shape)
+		self.Mu0 = np.zeros(3)
 		self.mu_his = None
+		if (q_ != None):
+			self.ChargeFunction = q_
+			self.q0 = self.ChargeFunction(self.x)
+			self.qs = self.q0.copy()
+			self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
+		else:
+			self.UpdateCharges = False
 		# This can help in case you had a bad initial geometry
 		self.MinS = 0
 		self.MinE = 0.0
@@ -390,7 +408,7 @@ class IRTrajectory(VelocityVerlet):
 
 	def Pulse(self,t_):
 		"""
-		\delta pulse of duration
+		delta pulse of duration
 		"""
 		sin_part = (np.sin(2.0*3.1415*self.FieldFreq*t_))
 		exp_part = (1.0/np.sqrt(2.0*3.1415*self.Tau*self.Tau))*(np.exp(-1.0*np.power(t_-self.TOn,2.0)/(2.0*self.Tau*self.Tau)))
@@ -463,7 +481,7 @@ class IRTrajectory(VelocityVerlet):
 			if (step%200==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
 		WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 

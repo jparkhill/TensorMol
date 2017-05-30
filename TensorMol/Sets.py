@@ -42,10 +42,12 @@ class MSet:
 	def DistortAlongNormals(self, npts=8, random=True, disp=.2):
 		'''
 		Create a distorted copy of a set
+
 		Args:
 			npts: the number of points to sample along the normal mode coordinate.
 			random: whether to randomize the order of the new set.
 			disp: the maximum displacement of atoms along the mode
+
 		Returns:
 			A set containing distorted versions of the original set.
 		'''
@@ -127,6 +129,9 @@ class MSet:
 		for m in self.mols:
 			nat += m.NAtoms()
 		return nat
+
+	def MaxNAtoms(self):
+		return np.max([m.NAtoms() for m in self.mols])
 
 	def AtomTypes(self):
 		types = np.array([],dtype=np.uint8)

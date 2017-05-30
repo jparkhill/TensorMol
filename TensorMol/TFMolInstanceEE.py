@@ -20,6 +20,7 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		and Einsum to reduce the overhead of the BP scheme.
 
 		The whole energy is differentiable and can yield forces.
+		Requires TensorMolData_EE
 
 		E_\text{electrostatic} The electrostatic energy is attenuated to only exist
 		outside PARAMS["EECutoff"]

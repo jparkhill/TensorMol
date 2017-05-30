@@ -18,6 +18,7 @@ class TensorData():
 		"""
 		make a tensordata object
 		Several arguments of PARAMS affect this classes behavior
+
 		Args:
 			MSet_: A MoleculeSet
 			Dig_: A Digester
@@ -38,7 +39,7 @@ class TensorData():
 		self.AvailableElements = []
 		self.AvailableDataFiles = []
 		self.NTest = 0  # assgin this value when the data is loaded
-		self.TestRatio = 0.2 # number of cases withheld for testing.
+		self.TestRatio = PARAMS["TestRatio"] # number of cases withheld for testing.
 		self.Random = PARAMS["RandomizeData"] # Whether to scramble training data (can be disabled for debugging purposes)
 		self.ScratchNCase = 0
 		self.ScratchState=None
@@ -47,7 +48,7 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.Classify=PARAMS["Classify"]
+		self.Classify=PARAMS["Classify"] # should be moved to transformer.
 		self.MxTimePerElement=PARAMS["MxTimePerElement"]
 		self.MxMemPerElement=PARAMS["MxMemPerElement"]
 		self.ChopTo = PARAMS["ChopTo"]
@@ -110,10 +111,10 @@ class TensorData():
 
 	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
-			Generates probability inputs for all training data using the chosen digester.
-			This version builds all the elements at the same time.
-			The other version builds each element separately
-			If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		Generates inputs for all training data using the chosen digester.
+		This version builds all the elements at the same time.
+		The other version builds each element separately
+		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
 		if (self.set == None):
 			try:
@@ -148,8 +149,101 @@ class TensorData():
 					cases_list[ai][casep_list[ai]] = ins[i]
 					labels_list[ai][casep_list[ai]] = outs[i]
 					casep_list[ai] = casep_list[ai]+1
-				# if (mols_done%10000==0 and mols_done>0):
-				# 	gc.collect()
+				if (mols_done%10000==0 and mols_done>0):
+					print mols_done
+				if (mols_done==400):
+					print "Seconds to process 400 molecules: ", time.time()-t0
+				mols_done = mols_done + 1
+		except Exception as Ex:
+				print "Likely you need to re-install MolEmb.", Ex
+		for element in atypes:
+			# Write the numpy arrays for this element.
+			ai = atypes.tolist().index(element)
+			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
+			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
+			alreadyexists = (os.path.isfile(insname) and os.path.isfile(outsname))
+			if (append and alreadyexists):
+				ti=None
+				to=None
+				inf = open(insname,"rb")
+				ouf = open(outsname,"rb")
+				ti = np.load(inf)
+				to = np.load(ouf)
+				inf.close()
+				ouf.close()
+				try:
+					cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
+					labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
+				except Exception as Ex:
+					print "Size mismatch with old training data, clear out trainsets"
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases)
+				np.save(ouf,labels)
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
+			else:
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases_list[ai][:casep_list[ai]])
+				np.save(ouf,labels_list[ai][:casep_list[ai]])
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
+		self.Save() #write a convenience pickle.
+		return
+
+	def BuildTrainMolwise_tmp(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
+		"""
+		Generates inputs for all training data using the chosen digester.
+		This version builds all the elements at the same time.
+		The other version builds each element separately
+		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		"""
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
+		self.CheckShapes()
+		self.name=name_
+		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
+		if (len(atypes)==0):
+			atypes = self.set.AtomTypes()
+		LOGGER.debug("Will train atoms: "+str(atypes))
+		# Determine the size of the training set that will be made.
+		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
+		for element in atypes:
+			for m in self.set.mols:
+				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
+		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
+		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		casep_list = [0 for element in atypes]
+		t0 = time.time()
+		ord = len(self.set.mols)
+		mols_done = 0
+		if self.dig.OType == "Del_Force":
+			self.coord_dict = {}
+		try:
+			for mi in range(ord):
+				m = self.set.mols[mi]
+				ins,outs = self.dig.TrainDigestMolwise(m)
+				# if np.any(np.abs(outs) > 100.0) or np.any(np.isinf(outs)) or np.any(np.isnan(outs)):
+				# 	continue
+				self.coord_dict[mi] = np.concatenate([m.atoms[:,None], m.coords], axis=1)
+				ins[:,-1] = mi
+				for i in range(m.NAtoms()):
+					# Route all the inputs and outputs to the appropriate place...
+					ai = atypes.tolist().index(m.atoms[i])
+					cases_list[ai][casep_list[ai]] = ins[i]
+					labels_list[ai][casep_list[ai]] = outs[i]
+					casep_list[ai] = casep_list[ai]+1
 				if (mols_done%10000==0 and mols_done>0):
 					print mols_done
 				if (mols_done==400):
@@ -201,11 +295,11 @@ class TensorData():
 
 	def BuildTrain(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
-			Generates probability inputs for all training data using the chosen digester.
-			All the inputs for a given atom are built separately.
-			Now requires some sort of PES information.
-				If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
-				The code that uses ab-initio samples isn't written yet, but should be.
+		Generates probability inputs for all training data using the chosen digester.
+		All the inputs for a given atom are built separately.
+		Now requires some sort of PES information.
+		If PESSamples = [] it will use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		The code that uses ab-initio samples isn't written yet, but should be.
 		"""
 		if (self.set == None):
 			try:
@@ -312,9 +406,9 @@ class TensorData():
 
 	def BuildSamples(self,name_="gdb9", atypes=[],uniform=False):
 		"""
-			Generates sampled data set without preparing the probabilities or embedding
-			if uniform is true, it generate a grid of uniform samples up to 4 angstrom away from
-			the central atom to generate known-good validation data.
+		Generates sampled data set without preparing the probabilities or embedding
+		if uniform is true, it generate a grid of uniform samples up to 4 angstrom away from
+		the central atom to generate known-good validation data.
 		"""
 		self.name=name_
 		print "Sampling set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
@@ -452,7 +546,9 @@ class TensorData():
 		return
 
 	def MergeWith(self,ASet_):
-		''' Augments my training data with another set, which for example may have been generated on another computer.'''
+		'''
+		Augments my training data with another set, which for example may have been generated on another computer.
+		'''
 		self.QueryAvailable()
 		ASet_.QueryAvailable()
 		print "Merging", self.name, " with ", ASet_.name
@@ -507,7 +603,9 @@ class TensorData():
 		return
 
 	def QueryAvailable(self):
-		""" If Tensordata has already been made, this looks for it under a passed name."""
+		"""
+		If Tensordata has already been made, this looks for it under a passed name.
+		"""
 		self.AvailableElements=[]
 		self.SamplesPerElement=[]
 		for i in range(MAX_ATOMIC_NUMBER):
@@ -577,7 +675,7 @@ class TensorData():
 		Reads built training data off disk into scratch space.
 		Divides training and test data.
 		Normalizes inputs and outputs.
-			note that modifies my MolDigester to incorporate the normalization
+		note that modifies my MolDigester to incorporate the normalization
 		Initializes pointers used to provide training batches.
 
 		Args:
