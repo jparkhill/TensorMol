@@ -63,3 +63,16 @@ class NN_MBE_BF:
 		mol.MBE_Dipole()
                 return
 
+	def NN_Energy_Force(self, mol):
+                s = MSet()
+                for order in range (1, self.mbe_order+1):
+                        s.mols += mol.mbe_frags[order]
+                energies, forces =  np.asarray(self.nn_mbe.Eval_BPForceSet(s))
+		energies = np.asarray(energies)
+                pointer = 0
+                for order in range (1, self.mbe_order+1):
+                        mol.frag_energy_sum[order] = np.sum(energies[pointer:pointer+len(mol.mbe_frags[order])])
+                        pointer += len(mol.mbe_frags[order])
+                mol.MBE_Energy()
+                return
+

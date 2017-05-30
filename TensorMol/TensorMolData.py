@@ -443,6 +443,10 @@ class TensorMolData_BP(TensorMolData):
 		Note:
 			Also determines mean stoichiometry
 		"""
+		try:
+			self.HasGrad 
+		except:
+			self.HasGrad = False
 		if (self.ScratchState == 1):
 			return
 		if (self.HasGrad):

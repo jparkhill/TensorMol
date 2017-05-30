@@ -1,5 +1,5 @@
 # The spatial unit of TensorMol is Angstrom.
-# Tne energy unit of Tensormol is Hartree except in MD. 
+# Tne energy unit of Tensormol is Hartree except in MD.
 #
 # These should be all Caps. etc...
 #
@@ -28,7 +28,8 @@ BOHRPERA = 1.889725989
 ANGSTROMPERMETER = pow(10.0,10.0)
 BOHRPERM = BOHRPERA*ANGSTROMPERMETER
 BOHRINM = 0.52917720859*pow(10.0,-10.0)
-JOULEPERHARTREE = 2625.499638*1000.0
+KJPERHARTREE = 2625.499638
+JOULEPERHARTREE = KJPERHARTREE*1000.0
 JOULEPERKCAL = 4183.9953
 KCALPERHARTREE = 627.509474
 WAVENUMBERPERHARTREE = 219474.63
