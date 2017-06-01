@@ -69,7 +69,7 @@ def WriteDerDipoleCorrelationFunction(MuTraj, name_="MutMu0.txt"):
 		tore[i,0] = t0[i,0]
 		tore[i,1] = 0.0
 		for j in range(n-i):
-			tore[i,1] +=  np.dot(t0[i,1:4],t0[i+j,1:4])
+			tore[i,1] +=  np.dot(t0[j,1:4],t0[i+j,1:4])
 		tore[i,1] /= 3.*float(n-i)
 	np.savetxt("./results/"+name_,tore)
 	return tore
@@ -89,7 +89,7 @@ def WriteVelocityAutocorrelations(muhis,vhis):
 			tore[i,0] = muhis[i,0]
 			tore[i,1] = 0.0
 			for j in range(n-i):
-				tore[i,1] +=  np.dot(vhis[i,atom],vhis[i+j,atom])
+				tore[i,1] +=  np.dot(vhis[j,atom],vhis[i+j,atom])
 			tore[i,1] /= 3.*float(n-i)
 		np.savetxt("./results/"+"VtV0_"+str(atom)+".txt",tore)
 	return
