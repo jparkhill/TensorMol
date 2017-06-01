@@ -467,7 +467,7 @@ class IRTrajectory(VelocityVerlet):
 			else:
 				self.x , self.v, self.a, self.EPot = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 
-			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>0.00005):
+			if (PARAMS["MDIrForceMin"] and self.EPot < self.MinE and abs(self.EPot - self.MinE)>0.00005):
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
 				self.MinS = step
