@@ -41,7 +41,7 @@ class TMParams(dict):
 		self["BlurRadius"] = 0.05
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# MBE PARAMS
-		self["MBE_ORDER"] = 3
+		self["MBE_ORDER"] = 1
 		# Training Parameters
 		self["NeuronType"] = "relu"
 		self["learning_rate"] = 0.001
