@@ -14,7 +14,7 @@ class MBE_Optimizer:
     	self.step_size = 0.1
     	self.momentum = 0.0
     	self.momentum_decay = 0.7
-    	self.max_opt_step = 500
+    	self.max_opt_step = 5000
     	self.nn_mbe = nn_mbe_
     	self.m_max = 7
     	return
@@ -25,7 +25,8 @@ class MBE_Optimizer:
     	energy_err = 100
     	force_err = 100
     	energy_his = []
-    	self.nn_mbe.NN_Energy(m)
+	self.nn_mbe.NN_Energy_Force(m)
+    	#self.nn_mbe.NN_Energy(m)
     	force = np.array(m.properties["mbe_deri"],copy=True)
     	while( ( force_err >self.force_thresh or energy_err > self.energy_thresh) and  step < self.max_opt_step ):
     		coords = np.array(m.coords,copy=True)
@@ -40,7 +41,9 @@ class MBE_Optimizer:
     		step += 1
     		m.coords = m.coords - self.step_size*force
     		m.Reset_Frags()
-    		self.nn_mbe.NN_Energy(m)
+		m.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
+		self.nn_mbe.NN_Energy_Force(m)
+    		#self.nn_mbe.NN_Energy(m)
     		energy_err = abs(m.nn_energy - energy)
     		force_err = (np.absolute(force)).max()
     		print "\n\n"
@@ -101,10 +104,10 @@ def MBE_LBFGS_Opt(self, m):
             energy_err = abs(m.nn_energy - energy)
             force_err = (np.absolute(force)).max()
             step += 1
-            print "\n\n"
+            print "\n"
             print "step:", step
             print "old_energy:", energy, "new_energy:", m.nn_energy, "energy_err:", energy_err
-            if (step%10 == 0):
+            if (step%50 == 0):
                 m.WriteXYZfile("./datasets/", "OptLog")
 		np.savetxt("lbfgs_opt.dat", np.asarray(energy_his))
 	return

@@ -3,8 +3,18 @@ import time
 
 #jeherr tests
 
+PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
+ 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
+S_Rad = MolEmb.Overlap_RBF(PARAMS)
+S_RadOrth = MatrixPower(S_Rad,-1./2)
+PARAMS["SRBF"] = S_RadOrth
+
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
+
 # Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
-if (0):
+def InterpolateGeometries():
 	a=MSet('cspbbr3_tess')
 	#a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/cspbbr3/pb_tess_6sc/')
 	#a.Save()
@@ -18,161 +28,18 @@ if (0):
 	mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
 	# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
-if (0):
-	a=MSet('toluene_tmp')
-	# a.ReadGDB9Unpacked(path='/media/sdb2/jeherr/TensorMol/datasets/benzene/', has_force=True)
-	# a.Save()
-	# a.WriteXYZ()
-	a.Load()
-	print "nmols:",len(a.mols)
-	TreatedAtoms = a.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	tset = TensorData(a,d)
-	tset.BuildTrainMolwise("toluene_tmp",TreatedAtoms)
-	tset = TensorData(None,None,"toluene_tmp_"+"GauSH",None,2000)
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
+# InterpoleGeometries()
 
-if (0):
-	a=MSet('OptMols')
-	a.ReadXYZ("OptMols")
-	test_mol=a.mols[0]
-	b=MSet("test_mol")
-	b.mols.append(test_mol)
-	TreatedAtoms = b.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	tset = TensorData(b,d)
-	tset.BuildTrainMolwise("test_mol",TreatedAtoms)
+def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_del/*/*/", energy=False, forces=False, mmff94=False):
+	import glob
+	a=MSet(set_)
+	for dir in glob.iglob(dir_):
+		a.ReadXYZUnpacked(dir, has_force=forces, has_energy=energy, has_mmff94=mmff94)
+	print len(a.mols)
+	a.Save()
+	a.WriteXYZ()
 
-if (0):
-	a=MSet("md_set")
-	#a.ReadGDB9Unpacked(path='/data/jeherr/TensorMol/datasets/md_datasets/md_set/', has_force=True)
-	#a.Save()
-	#a.WriteXYZ()
-	a.Load()
-	b=a.RotatedClone(3)
-	b.WriteXYZ("md_set_rot")
-	b.Save("md_set_rot")
-	a.Load()
-	print "nmols:",len(a.mols)
-	b=MSet("md_set_rotated")
-	b=a.RotatedClone(3)
-	b.Save()
-	print "nmols:",len(b.mols)
-	TreatedAtoms = a.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	tset = TensorData(a,d)
-	tset.BuildTrainMolwise("md_set_rotated",TreatedAtoms)
-	tset = TensorData(None,None,"md_set_rotated_"+"GauSH",None,2000)
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-	optimizer = Optimizer(manager)
-	optimizer.OptRealForce(test_mol)
-
-if(0):
-	a=MSet("benzene")
-	a.Load()
-	test_mol = a.mols[0]
-	test_mol.coords = test_mol.coords - np.average(test_mol.coords, axis=0)
-	test_mol.Distort()
-	manager=TFManage("md_set_rotated_GauSH_fc_sqdiff",None,False)
-	optimizer=Optimizer(manager)
-	optimizer.OptRealForce(test_mol)
-
-if(0):
-	# a=MSet("SmallMols")
-	# a.Load()
-	# a = a.RotatedClone(20)
-	#print "nmols:",len(a.mols)
-	#a.Save("SmallMols_20rot")
-	#a.WriteXYZ("SmallMols_20rot")
-	##a=MSet("mddataset_smallmols")
-	##a.Load()
-	#TreatedAtoms = a.AtomTypes()
-	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	#tset = TensorData(a,d)
-	#tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
-	tset = TensorData(None,None,"SmallMols_20rot_"+"GauSH")
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-	# a=MSet("toluene")
-	# a.Load()
-	# test_mol = a.mols[0]
-	# manager=TFManage("md_set_full_rot_log_GauSH_fc_sqdiff",None,False)
-	# optimizer = Optimizer(manager)
-	# optimizer.OptTFRealForce(test_mol)
-
-if(0):
-	#a=MSet("OptMols")
-	##a.ReadXYZ('OptMols')
-	##a.Save()
-	##a.WriteXYZ()
-	#a.Load()
-        #b=a.DistortAlongNormals(80, True, 0.7)
-	#print "nmols:",len(b.mols)
-	#c=b.RotatedClone(6)
-	#c.WriteXYZ("OptMols_NEQ_rot")
-	#c.Save("OptMols_NEQ_rot")
-	##b=MSet("md_set_rot")
-	##b.Load()
-	###print "nmols:",len(a.mols)
-	#print "nmols:",len(c.mols)
-	#TreatedAtoms = c.AtomTypes()
-	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="GoForce")
-	#tset = TensorData(c,d)
-	#tset.BuildTrainMolwise("OptMols_NEQ_rot",TreatedAtoms)
-	tset = TensorData(None,None,"OptMols_NEQ_rot_"+"GauSH")
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-	#optimizer = Optimizer(manager)
-	#optimizer.OptRealForce(test_mol)
-
-if(0):
-	#a=MSet("md_OptMols_gdb9clean")
-	#a.Save()
-	#a.WriteXYZ()
-	#print "nmols:",len(a.mols)
-	#TreatedAtoms = a.AtomTypes()
-	#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-	#tset = TensorData(a,d)
-	#tset.BuildTrainMolwise("md_OptMols_gdb9clean",TreatedAtoms)
-	tset = TensorData(None,None,"md_OptMols_gdb9clean_"+"GauSH")
-	manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-	#optimizer = Optimizer(manager)
-	#optimizer.OptRealForce(test_mol)
-
-# a=MSet("toluene_tmp")
-# a.Load()
-# test_mol = a.mols[0]
-#TreatedAtoms = a.AtomTypes()
-#d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-#tset = TensorData(a,d)
-#tset.BuildTrainMolwise("benzene_NEQ",TreatedAtoms)
-# tset = TensorData(None,None,"toluene_tmp_GauSH")
-# manager=TFManage("",tset,True,"fc_sqdiff") # True indicates train all atoms
-# manager=TFManage("toluene_tmp_GauSH_fc_sqdiff",None,False)
-# optimizer = Optimizer(manager)
-# optimizer.OptTFRealForce(test_mol)
-
-# b=MSet("mixed_KRR_rand")
-# b.ReadXYZUnpacked("/media/sdb2/jeherr/TensorMol/datasets/mixed_KRR/", has_force=True)
-# b = b.RotatedClone(1)
-# b.Save()
-# # b.Load()
-# TreatedAtoms = b.AtomTypes()
-# d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
-# tset = TensorData(b,d)
-# tset.BuildTrainMolwise("mixed_KRR_rand",TreatedAtoms)
-# tset = TensorData(None,None,"mixed_KRR_rand_GauSH")
-# # manager=TFManage("",tset,True,"KRR_sqdiff")
-# h_inst = Instance_KRR(tset, 1, None)
-# mae_h = h_inst.basis_opt_run()
-
-# import glob
-# a=MSet("SmallMols")
-# for dir in glob.iglob("/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_del/*/*/"):
-# 	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True, has_mmff94=True)
-# for dir in glob.iglob("/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt_del/*/*/"):
-# 	a.ReadXYZUnpacked(dir, has_force=True, has_energy=True, has_mmff94=True)
-# print len(a.mols)
-# a.Save()
-# a.WriteXYZ()
+# ReadSmallMols():
 
 def TrainKRR(set_ = "SmallMols", dig_ = "GauSH"):
 	PARAMS["RBFS"] = np.array([[0.1, 0.156787], [0.3, 0.3], [0.5, 0.5], [0.7, 0.7], [1.3, 1.3], [2.2, 2.4],
@@ -222,18 +89,6 @@ def BasisOpt_KRR(method_, set_, dig_, OType = None, Elements_ = []):
 #BasisOpt_KRR("KRR", "uracil_rand_20k", "GauSH", OType = "Force", Elements_ = [7])
 #H: R 5 L 2		C: R 5 L 3		N: R 6 L 4		O: R 5 L 3
 
-def BasisOptEvo_KRR(method_, set_, dig_, OType = None, Elements_ = []):
-	""" Optimizes a basis based on Kernel Ridge Regression """
-	a=MSet(set_)
-	a.Load()
-	TreatedAtoms = a.AtomTypes()
-	dig = Digester(TreatedAtoms, name_=dig_, OType_ = OType)
-	eopt = EmbeddingOptimizer(method_, a, dig, OType, Elements_)
-	eopt.Diff_Evo_Opt()
-	return
-
-# BasisOptEvo_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
-
 def BasisOpt_Ipecac(method_, set_, dig_):
 	""" Optimizes a basis based on Ipecac """
 	a=MSet(set_)
@@ -274,7 +129,7 @@ def TestIpecac(dig_ = "GauSH"):
 
 #TestIpecac()
 
-def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
+def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	"""
 	General Behler Parinello using ab-initio energies.
 	Args:
@@ -282,21 +137,46 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb", BuildTrain_=True):
 		dig_: the digester string
 	"""
 	print "Testing General Behler-Parrinello using ab-initio energies...."
-	if (BuildTrain_):
-		a=MSet(set_)
-		a.ReadXYZ(set_)
-		TreatedAtoms = a.AtomTypes()
-		print "TreatedAtoms ", TreatedAtoms
-		d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
-		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
-		tset.BuildTrain(set_)
-	tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
+	PARAMS["NormalizeOutputs"] = True
+	#	if (BuildTrain_): # Need to add missing parts of set to get this separated...
+	a=MSet(set_)
+	a.ReadXYZ(set_)
+	TreatedAtoms = a.AtomTypes()
+	print "TreatedAtoms ", TreatedAtoms
+	d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
+	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
+	tset.BuildTrain(set_)
+	#tset = TensorMolData_BP(MSet(),MolDigester([]),set_+"_"+dig_+"_BP")
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 	manager.Train(maxstep=500)  # train the neural network for 500 steps, by default it trainse 10000 steps and saved in ./networks.
 	# We should try to get optimizations working too...
 	return
 
 # TestBP()
+
+def TestANI1():
+	"""
+	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
+	"""
+	# a = MSet("uneq_chemspider")
+	# a.ReadXYZ("uneq_chemspider")
+	# a.Save()
+	a = MSet("uneq_chemspider")
+	a.Load()
+	a=a.RotatedClone(1)
+	print "Set elements: ", a.AtomTypes()
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="GauSH", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+	tset.BuildTrain("uneq_chemspider")
+	# tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
+	manager.Train(maxstep=2000)
+	#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+            #manager.Continue_Training(maxsteps=2)
+	return
+
+# TestANI1()
 
 def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=1):
 	if (BuildTrain_):
@@ -314,7 +194,7 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=1)
 		tset = TensorData(None,None,set_+"_"+dig_)
 	# manager=TFManage("",tset,True,"fc_sqdiff")
 
-TrainForces(set_ = "SmallMols_rand", BuildTrain_=True, numrot_=20)
+# TrainForces(set_ = "SmallMols_rand", BuildTrain_=True, numrot_=20)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -327,65 +207,164 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 
 # TestForces(set_ = "OptMols", mol=12)
 
-# a=MSet("toluene")
-# a.Load()
-# a=a.RotatedClone(1)
-# TreatedAtoms = a.AtomTypes()
-# from TensorMol.LinearOperations import MatrixPower
-# PARAMS["RBFS"] = np.array([[0.27423683, 0.26716042],[0.47262379, 0.44923476],[0.64926441, 0.65648269],[0.74980736, 0.13155188],
-# 				 [1.25029559, 1.25139068], [2.16625241, 2.34563379],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-# PARAMS["ANES"] = np.array([0.92957981, 1., 1., 1., 1., 1.64346076, 0.95090602, 0.95061522])
-# S_Rad = MolEmb.Overlap_RBF(PARAMS)
-# S_RadOrth = MatrixPower(S_Rad,-1./2)
-# PARAMS["SRBF"] = S_RadOrth
-# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-# tset=TensorData(a,d)
-# tset.BuildTrainMolwise("toluene", TreatedAtoms)
-# manager=TFManage("",tset,False,"fc_sqdiff")
-# manager.TrainElement(1)
-# PARAMS["RBFS"] = np.array([[0.50630276, 0.51372435],[0.60102497, 0.60916403],[0.60683637, 0.612518880],[1.25727903, 1.27596384],
-# 				 [1.90660759, 0.77445947], [2.17229787, 2.35759726],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-# PARAMS["ANES"] = np.array([0.34943752, 1., 1., 1., 1., 0.89604552,0.84949777,0.88465124])
-# S_Rad = MolEmb.Overlap_RBF(PARAMS)
-# S_RadOrth = MatrixPower(S_Rad,-1./2)
-# PARAMS["SRBF"] = S_RadOrth
-# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-# tset=TensorData(a,d)
-# tset.BuildTrainMolwise("toluene", TreatedAtoms)
-# manager.TrainElement(6)
+def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test John Herr's first Optimized Force Network.
+	OCSDB_test contains good crystal structures.
+	- Evaluate RMS forces on them.
+	- Optimize OCSDB_Dist02
+	- Evaluate the relative RMS's of these two.
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	a=MSet("OCSDB_test")
+	a.ReadXYZ("OCSDB_test")
+	b=MSet("OCSDB_Dist02")
+	b.ReadXYZ("OCSDB_Dist02")
+	print "A,B RMS (Angstrom): ",a.rms(b)
+	frcs = np.zeros(shape=(1,3))
+	for m in a.mols:
+		frc = tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
+		frcs=np.append(frcs,frc,axis=0)
+	print "RMS Force of crystal structures:",np.sqrt(np.sum(frcs*frcs,axis=(0,1))/(frcs.shape[0]-1))
+	b.name = "OCSDB_Dist02_OPTd"
+	optimizer  = Optimizer(tfm)
+	for i,m in enumerate(b.mols):
+		m = optimizer.OptTFRealForce(m,str(i))
+	b.WriteXYZ()
+	print "A,B (optd) RMS (Angstrom): ",a.rms(b)
+	return
 
-# a=MSet("optmol_12_2")
-# a.ReadXYZ()
-# b=MSet("OptLog_2")
-# b.ReadXYZ()
-# mol1=a.mols[0]
-# mol2=b.mols[126]
-# print mol1.rms_inv(mol2)
+# TestOCSDB()
 
-# a=MSet("toluene_0")
-# a.Load()
-# tmol = copy.deepcopy(a.mols[0])
-# manager=TFManage("toluene_0_GauSH_fc_sqdiff", None, False)
-# for i in range(len(tmol.atoms)):
-# 	outs = manager.TData.dig.Emb(tmol, i, tmol.coords[i],False)
-# 	print outs
+def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test NudgedElasticBand
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	optimizer  = Optimizer(tfm)
+	a=MSet("NEB_Berg")
+	a.ReadXYZ("NEB_Berg")
+	m0 = a.mols[0]
+	m1 = a.mols[1]
+	# These have to be aligned and optimized if you want a good PES.
+	m0.AlignAtoms(m1)
+	m0 = optimizer.OptTFRealForce(m0,"NebOptM0")
+	m1 = optimizer.OptTFRealForce(m1,"NebOptM1")
+	PARAMS["NebNumBeads"] = 30
+	PARAMS["NebK"] = 2.0
+	PARAMS["OptStepSize"] = 0.002
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 1.0
+	neb = NudgedElasticBand(tfm, m0, m1)
+	neb.OptNeb()
+	return
 
-# a=MSet("toluene_0")
-# a.Load()
-# b=MSet("toluene_1")
-# b.mols.append(copy.deepcopy(a.mols[0]))
-# TreatedAtoms = b.AtomTypes()
-# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-# tset=TensorData(b,d)
-# tset.BuildTrainMolwise(b, TreatedAtoms)
-# tset.BuildTrain(b, TreatedAtoms)
+# TestNeb()
 
-# a=MSet("toluene")
-# a.Load()
-# b=MSet("toluene_0")
-# for i in range(6000):
-# 	b.mols.append(copy.deepcopy(a.mols[0]))
-# b.Save()
+def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test NudgedElasticBand with LBFGS... not working :(
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	optimizer  = Optimizer(tfm)
+	a=MSet("NEB_Berg")
+	a.ReadXYZ("NEB_Berg")
+	m0 = a.mols[0]
+	m1 = a.mols[1]
+	# These have to be aligned and optimized if you want a good PES.
+	m0.AlignAtoms(m1)
+	PARAMS["RotAvOutputs"] = 10
+	PARAMS["DiisSize"] = 20
+	m0 = optimizer.OptTFRealForce(m0,"NebOptM0")
+	m1 = optimizer.OptTFRealForce(m1,"NebOptM1")
+	PARAMS["NebNumBeads"] = 30
+	PARAMS["NebK"] = 2.0
+	PARAMS["OptStepSize"] = 0.001
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["RotAvOutputs"] = 10
+	PARAMS["OptMomentumDecay"] = 1.0
+	neb = NudgedElasticBand(tfm, m0, m1)
+	neb.OptNebGLBFGS()
+	return
+
+#TestNebGLBFGS()
+
+def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
+	"""
+	Test MolecularDynamics
+	"""
+	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
+	a=MSet("OCSDB_test")
+	a.ReadXYZ("OCSDB_test")
+	m = a.mols[1]
+	# Convert the forces from kcal/mol ang to joules/mol ang.
+	ForceField = lambda x: 4183.9953*tfm.EvalRotAvForce(Mol.Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
+	PARAMS["MNHChain"] = 10
+	PARAMS["MDTemp"] = 300.0
+	PARAMS["MDThermostat"] = "NosePerParticle"
+	PARAMS["MDdt"] = 0.1 # In fs.
+	md = VelocityVerlet(ForceField,m)
+	md.Prop()
+	return
+
+# TestMD()
+
+def TestMorphIR():
+	"""
+	Try to model the IR spectra of Johnson's peptides...
+	Optimize, then get charges, then do an isotropic IR spectrum.
+	"""
+	a = MSet("johnsonmols")
+	a.ReadXYZ("johnsonmols")
+	manager= TFManage("SmallMols_20rot_GauSH_fc_sqdiff", None, False, RandomTData_=False, Trainable_=False)
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 0.9
+	PARAMS["OptStepSize"] = 0.02
+	PARAMS["OptMaxCycles"]=200
+	morphine = a.mols[1]
+	heroin = a.mols[2]
+	optimizer = Optimizer(manager)
+	optimizer.OptTFRealForce(morphine)
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	ForceField = lambda x: manager.EvalRotAvForce(Mol.Mol(morphine.atoms,x))
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol.Mol(morphine.atoms,x),False)[2][0]
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 10000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDV0"] = None
+	PARAMS["MDTemp"]= 1.0
+	annealMorph = Annealer(ForceField, ChargeField, morphine, "Anneal")
+	annealMorph.Prop()
+	morphine.coords = annealMorph.Minx.copy()
+	PARAMS["MDTemp"]= 0.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDFieldAmp"] = 20.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	md0 = IRTrajectory(ForceField, ChargeField, morphine, "MorphineIR")
+	md0.Prop()
+	WriteDerDipoleCorrelationFunction(md0.mu_his,"MorphineMutM0.txt")
+	return
+	optimizer.OptANI1(heroin)
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(heroin.atoms,x),True)
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(heroin.atoms,x),False)[2][0]
+	annealHeroin = Annealer(ForceField, ChargeField, heroin, "Anneal")
+	annealHeroin.Prop()
+	heroin.coords = annealHeroin.Minx.copy()
+	PARAMS["MDTemp"]= 0.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDFieldAmp"] = 3.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	md1 = IRTrajectory(ForceField, ChargeField, heroin, "HeroinIR")
+	md1.Prop()
+	WriteDerDipoleCorrelationFunction(md1.mu_his,"HeroinMutM0.txt")
+	return
+
+TestMorphIR()
 
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()
@@ -445,52 +424,3 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 # 	f.write("sym_ignore        true\n")
 # 	f.write("$end\n\n@@@\n\n")
 # f.close()
-
-#b = Basis_GauSH(Name_=None)
-#print b.rbfs
-
-#a=MSet("SmallMols_20rot")
-#a.Load()
-#TreatedAtoms = a.AtomTypes()
-#from TensorMol.LinearOperations import MatrixPower
-#PARAMS["RBFS"] = np.array([[0.27423683, 0.26716042],[0.47262379, 0.44923476],[0.64926441, 0.65648269],[0.74980736, 0.13155188],
-#				 [1.25029559, 1.25139068], [2.16625241, 2.34563379],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["ANES"] = np.array([0.92957981, 1., 1., 1., 1., 1.64346076, 0.95090602, 0.95061522])
-#S_Rad = MolEmb.Overlap_RBF(PARAMS)
-#S_RadOrth = MatrixPower(S_Rad,-1./2)
-#PARAMS["SRBF"] = S_RadOrth
-#d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-#tset=TensorData(a,d)
-#tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
-#manager=TFManage("",tset,False,"fc_sqdiff")
-#manager.TrainElement(1)
-#PARAMS["RBFS"] = np.array([[0.50630276, 0.51372435],[0.60102497, 0.60916403],[0.60683637, 0.612518880],[1.25727903, 1.27596384],
-#				 [1.90660759, 0.77445947], [2.17229787, 2.35759726],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["ANES"] = np.array([0.34943752, 1., 1., 1., 1., 0.89604552,0.84949777,0.88465124])
-#S_Rad = MolEmb.Overlap_RBF(PARAMS)
-#S_RadOrth = MatrixPower(S_Rad,-1./2)
-#PARAMS["SRBF"] = S_RadOrth
-#d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-#tset=TensorData(a,d)
-#tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
-#manager.TrainElement(6)
-#PARAMS["RBFS"] = np.array([[0.33774836, 0.21398177],[0.59872225, 0.45665845],[0.76715879, 0.11947128],[0.85878283, 0.29716973],
-#			[1.24966612, 1.25144069], [2.16175225, 2.33440959],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["ANES"] = np.array([1.15843474, 1., 1., 1., 1., 2.08340722, 1.20029765, 2.20548768])
-#S_Rad = MolEmb.Overlap_RBF(PARAMS)
-#S_RadOrth = MatrixPower(S_Rad,-1./2)
-#PARAMS["SRBF"] = S_RadOrth
-#d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-#tset=TensorData(a,d)
-#tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
-#manager.TrainElement(7)
-#PARAMS["RBFS"] = np.array([[0.50683002, 0.49276294],[0.6898681, 0.6898681],[0.74761888, 0.18893269],[0.81268781, 0.361204],
-#			[1.28118363, 1.28118364], [2.19357372, 2.39155314],[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["ANES"] = np.array([0.98552585, 1., 1., 1., 1., 1.55763799, 1.02150273, 1.01430531])
-#S_Rad = MolEmb.Overlap_RBF(PARAMS)
-#S_RadOrth = MatrixPower(S_Rad,-1./2)
-#PARAMS["SRBF"] = S_RadOrth
-#d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-#tset=TensorData(a,d)
-#tset.BuildTrainMolwise("SmallMols_20rot", TreatedAtoms)
-#manager.TrainElement(8)

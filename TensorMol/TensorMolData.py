@@ -320,6 +320,7 @@ class TensorMolData_BP(TensorMolData):
 
 	def CleanScratch(self):
 		TensorData.CleanScratch(self)
+		self.raw_it=None
 		self.CaseMetadata=None # case X molecule index , element type , first atom in this mol, last atom in this mol (exclusive)
 		self.scratch_meta = None
 		self.scratch_test_meta = None
@@ -442,6 +443,10 @@ class TensorMolData_BP(TensorMolData):
 		Note:
 			Also determines mean stoichiometry
 		"""
+		try:
+			self.HasGrad 
+		except:
+			self.HasGrad = False
 		if (self.ScratchState == 1):
 			return
 		if (self.HasGrad):

@@ -116,21 +116,16 @@ def LJKernels(Ds,Zs,Ee,Re):
 	# Zero distances will be set to 100.0 then masked to zero energy contributions.
 	ones = tf.ones(tf.shape(Ds))
 	zeros = tf.zeros(tf.shape(Ds))
-	ZeroTensor = tf.where(tf.less_equal(Ds,0.00001),ones,zeros)
+	ZeroTensor = tf.where(tf.less_equal(Ds,0.000000001),ones,zeros)
 	Ds += ZeroTensor
-	# Zero atomic numbers will be set to 1
-	Zones = tf.ones(tf.shape(Zs),dtype=tf.int32)
-	ZZeroTensor = tf.cast(tf.where(tf.equal(Zs,0),Zones,0*Zs),tf.float32)
-	Zs = tf.where(tf.equal(Zs,0),Zones,Zs)
+	# Zero atomic numbers will be set to 1 and masked elsewhere
+	Zs = tf.where(tf.equal(Zs,0),tf.ones_like(Zs),Zs)
 	# Extract De_ij and Re_ij
 	Zshp = tf.shape(Zs)
 	Zr = tf.reshape(Zs,[Zshp[0],Zshp[1],1])-1 # Indices start at 0 AN's start at 1.
 	Zij1 = tf.tile(Zr,[1,1,Zshp[1]]) # molXatomXatom
 	Zij2 = tf.transpose(Zij1,perm=[0,2,1])
 	Zij = tf.stack([Zij1,Zij2],axis=3) # molXatomXatomX2
-	# Construct a atomic number masks.
-	Zzij1 = tf.tile(ZZeroTensor,[1,1,Zshp[1]]) # mol X atom X atom.
-	Zzij2 = tf.transpose(Zzij1,perm=[0,2,1]) # mol X atom X atom.
 	# Gather desired LJ parameters.
 	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[1]*Zshp[1],2])
 	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[Zshp[0],Zshp[1],Zshp[1]])
@@ -140,11 +135,31 @@ def LJKernels(Ds,Zs,Ee,Re):
 	K = Eeij*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
 	# Use the ZeroTensors to mask the output for zero dist or AN.
 	K = tf.where(tf.equal(ZeroTensor,1.0),tf.zeros_like(K),K)
-	K = tf.where(tf.equal(Zzij1,1.0),tf.zeros_like(K),K)
-	K = tf.where(tf.equal(Zzij2,1.0),tf.zeros_like(K),K)
 	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
 	return K
+
+def LJEnergy_Numpy(XYZ,Z,Ee,Re):
+	"""
+	The same as the routine below, but
+	in numpy just to test.
+	"""
+	n = XYZ.shape[0]
+	D = np.zeros((n,n))
+	for i in range(n):
+		D[i,i] = 1.0
+		for j in range(n):
+			D[i,j] = np.linalg.norm(XYZ[i]-XYZ[j])
+	R = 1.0/D
+	K = 0.01*(np.power(R,12.0)-2.0*np.power(R,6.0))
+	En = 0.0
+	for i in range(n):
+		for j in range(n):
+			if j<=i:
+				K[i,j] = 0.
+			else:
+				En += K[i,j]
+	return En
 
 def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""
@@ -163,6 +178,21 @@ def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	Ks = LJKernels(Ds,Zs_,Ee_,Re_)
 	Ens = tf.reduce_sum(Ks,[1,2])
 	return Ens
+
+def HarmKernels(XYZs, Deqs, Keqs):
+	"""
+	Args:
+		XYZs: a nmol X maxnatom X 3 tensor of coordinates.
+		Deqs: a nmol X maxnatom X maxnatom tensor of Equilibrium distances
+		Keqs: a nmol X maxnatom X maxnatom tensor of Force constants.
+	"""
+	Ds = TFDistances(XYZs)
+	tmp = Ds - Deqs
+	tmp -= tf.matrix_diag(tf.matrix_diag_part(tmp))
+	K = Keqs*tmp*tmp
+	#K = tf.Print(K,[K],"Kern",100)
+	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
+	return K
 
 def CoulombKernel(D):
 	"""

@@ -704,13 +704,17 @@ class FragableClusterBF(Mol):
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
 		self.frag_energy_sum = dict() # sum of the energis of all the frags in certain oder
-		self.mbe_deri =None
+		self.mbe_force =dict()
+		self.nn_force = None
+		self.frag_force_sum = dict()
 		self.frag_dipole_sum = dict() 
 		self.mbe_dipole=dict()
 		self.nn_dipole = 0
+		self.nn_energy = 0.0
 		return
 
 	def Reset_Frags(self):
+		self.mbe_frags = {}
 		self.mbe_frags_deri=dict()
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
 		self.energy=None
@@ -730,7 +734,6 @@ class FragableClusterBF(Mol):
 
 	def Generate_MBE_term_General(self, order):
 		if order in self.mbe_frags.keys():
-			print ("MBE order", order, "already generated..skipping..")
 			return
 		if order==1:
 			self.mbe_frags[order] = []
@@ -757,36 +760,29 @@ class FragableClusterBF(Mol):
                                                         tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
                                                         mbe_terms = [frag_index]
                                                         tmp_mol = Mol(tmp_atom, tmp_coord)
-							print tmp_atom
+							tmp_mol.properties["mbe_atom_index"] = range(j, j+num_frag_atoms)
                                                         self.mbe_frags[order].append(tmp_mol)
                                                         j += num_frag_atoms
                                                         frag_index += 1
                                                         #print self.atoms_of_frags, tmp_list, self.type_of_frags
-                                                        #print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords, self.mbe_frags[order][-1].index
+                                                        #print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords
 						else:
 							j += 1
 		else:
 			self.mbe_frags[order] = []
 			mbe_terms=[]
 			time_log = time.time()
-			print ("generating the combinations for order: ", order)
 			time_now=time.time()
 			frag_case = 0
 			sample_index = range(len(self.mbe_frags[1]))
-			print("begin the most time consuming step: ")
 			tmp_time  = time.time()
 			sub_combinations = list(itertools.combinations(sample_index, order))
-			print "sub_combinations", sub_combinations
-			print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
 			for i in range (0, len(sub_combinations)):
 				term = list(sub_combinations[i])
 				if len(list(set(term))) < len(term):
 					continue
-				if frag_case%100==0:
-					print "working on frag:", frag_case
 				mbe_terms.append(term)
 				frag_case  += 1
-			print ("finished..takes", time_log-time.time(),"second")
 			for i in range (0, len(mbe_terms)):
 				atom_group = []
 				for index in mbe_terms[i]:
@@ -794,11 +790,14 @@ class FragableClusterBF(Mol):
 				tmp_coord = np.zeros((sum(atom_group), 3))
 				tmp_atom = np.zeros(sum(atom_group), dtype=np.uint8)
 				pointer = 0
+				mbe_atom_index = []
 				for j, index in enumerate(mbe_terms[i]):
 					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
 					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
+					mbe_atom_index += self.mbe_frags[1][index].properties["mbe_atom_index"]
 					pointer += atom_group[j]
 				tmp_mol = Mol(tmp_atom, tmp_coord)
+				tmp_mol.properties["mbe_atom_index"] = mbe_atom_index
 				self.mbe_frags[order].append(tmp_mol)
 			del sub_combinations
 		return
@@ -833,3 +832,18 @@ class FragableClusterBF(Mol):
                 print self.mbe_dipole, self.nn_dipole
                 return
 
+
+	def MBE_Force(self):
+                mono_num = len(self.mbe_frags[1])
+                self.nn_force = np.zeros((self.NAtoms(), 3))
+                for order in range (1, self.mbe_order+1):
+                        self.mbe_force[order] = self.frag_force_sum[order]
+                        if order == 1:
+                                self.nn_force += self.mbe_force[order]
+                                continue
+                        for sub_order in range (1, order):
+                                self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
+                        self.nn_force += self.mbe_force[order]
+		self.properties["mbe_deri"] = -self.nn_force
+                #print self.mbe_force, self.nn_force
+                return

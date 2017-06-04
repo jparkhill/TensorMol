@@ -1807,7 +1807,7 @@ static PyObject*  Make_Sym_Update (PyObject *self, PyObject  *args) {
 
 }
 
-static PyObject*  Make_Sym (PyObject *self, PyObject  *args) {
+static PyObject*  Make_Sym(PyObject *self, PyObject  *args) {
 
 	PyArrayObject   *xyz, *grids, *atoms_, *elements;
 	PyObject    *zeta_py, *eta1_py, *eta2_py, *Rs_py;
