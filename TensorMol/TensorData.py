@@ -139,16 +139,12 @@ class TensorData():
 		t0 = time.time()
 		ord = len(self.set.mols)
 		mols_done = 0
-		if self.dig.OType == "Del_Force":
-			self.coord_dict = {}
 		try:
 			for mi in range(ord):
 				m = self.set.mols[mi]
 				ins,outs = self.dig.TrainDigestMolwise(m)
-				# if np.any(np.abs(outs) > 100.0) or np.any(np.isinf(outs)) or np.any(np.isnan(outs)):
-				# 	continue
-				self.coord_dict[mi] = np.concatenate([m.atoms[:,None], m.coords], axis=1)
-				ins[:,-1] = mi
+				#if np.any(np.abs(outs-ins[:,-3:]) > 100.0):
+				#	continue
 				for i in range(m.NAtoms()):
 					# Route all the inputs and outputs to the appropriate place...
 					ai = atypes.tolist().index(m.atoms[i])
@@ -596,10 +592,10 @@ class TensorData():
 		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp" and self.ExpandIsometriesAltogether):
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)
-		if (tformer.innorm != None):
-			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):
 			to = tformer.NormalizeOuts(to)
+		if (tformer.innorm != None):
+			ti = tformer.NormalizeIns(ti)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]
