@@ -6,7 +6,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # step to test a BruteForce MBE model
-if (1):
+if (0):
 
 	if (1):
 		#a=MSet("H2O_mono")
@@ -29,35 +29,33 @@ if (1):
                         dipole, charge = dipole_manager.Eval_BPDipole_2(a.mols[0])
                         return np.asarray(charge[0])
 
-		PARAMS["MDThermostat"] = "Nose"
-                PARAMS["MDTemp"] = 200.0
-                PARAMS["MDdt"] = 0.2
-                md = VelocityVerlet(ForceField,a.mols[0],"H2O_udp_md",EnergyForceField)
-                md.Prop()
+		#PARAMS["MDThermostat"] = "Nose"
+                #PARAMS["MDTemp"] = 200.0
+                #PARAMS["MDdt"] = 0.2
+                #md = VelocityVerlet(ForceField,a.mols[0],"H2O_udp_md",EnergyForceField)
+                #md.Prop()
 
 
 		#optimizer = Optimizer(manager)
         	#optimizer.OptANI1(a.mols[0])
 
-		PARAMS["MDTemp"]= 0.0
-		PARAMS["MDThermostat"] = None
-		PARAMS["MDFieldAmp"] = 20.0 #0.00000001
+		PARAMS["MDFieldAmp"] = 0.0 #0.00000001
 		PARAMS["MDFieldTau"] = 0.4
-		PARAMS["MDFieldFreq"] = 0.1
+		PARAMS["MDFieldFreq"] = 0.8
 		PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-		#an = Annealer(EnergyForceField,None,a.mols[-1],"Anneal")
-		#an.Prop()
-		#a.mols[-1].coords = an.Minx.copy()
-        	#a.mols[-1].WriteXYZfile("./results/", "H2O_udp")
-	       	PARAMS["MDThermostat"] = None
-                PARAMS["MDTemp"] = 0.0
-                PARAMS["MDdt"] = 0.2
+	       	PARAMS["MDThermostat"] = "Nose"
+                PARAMS["MDTemp"] = 30
+                PARAMS["MDdt"] = 0.1
 		PARAMS["RemoveInvariant"]=True
-		PARAMS["MDMaxStep"] = 10000
 		PARAMS["MDV0"] = None
-		#md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_udp_IR_4")
-                #md.Prop()
-		#WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_IR_4.txt")
+		PARAMS["MDMaxStep"] = 10000
+		warm = VelocityVerlet(ForceField, a.mols[0],"warm",EnergyForceField)
+		warm.Prop()
+		a.mols[0].coords = warm.x.copy()
+		PARAMS["MDMaxStep"] = 40000
+		md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_udp_IR",warm.v.copy())
+                md.Prop()
+		WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_IR.txt")
 
 	if (0):
 		a=FragableMSetBF("H2O_mono")
@@ -101,6 +99,47 @@ if (0):
 		PARAMS["MDdt"] = 0.6
 		md = VelocityVerlet(ForceField,a.mols[0],"MBE_test_opt",EnergyForceField)
 		md.Prop()
+
+
+if (1):
+                a=MSet("water_small_md")
+                a.ReadXYZ("water_small_md")
+		OO_dist_list = []
+		OO_dist_list_trimer = []
+		min_accept = 2.7
+		max_accept = 3.0
+		tri_max_accept = 3.2
+		dimer_accept_rate = 0.01
+		trimer_accept_rate = 0.5
+		t = time.time()
+		for mol_index, mol in enumerate(a.mols):
+	          if 3000 < mol_index:
+			print mol_index
+			dist_mat =  MolEmb.Make_DistMat(mol.coords)
+			for i in range (0, mol.NAtoms()):
+				for j in range (i+1, mol.NAtoms()):
+					if dist_mat[i][j] < max_accept and mol.atoms[i] ==8 and mol.atoms[j] == 8:
+						p_accept = ((dist_mat[i][j]- max_accept) / (min_accept - max_accept))**3
+						if (random.random() < p_accept*dimer_accept_rate):
+							m = Mol(mol.atoms[[i,i+1,i+2, j, j+1, j+2]], mol.coords[[i,i+1,i+2, j, j+1, j+2]])
+							m.WriteXYZfile(fname="dimer")
+							#OO_dist_list.append(dist_mat[i][j])
+					if dist_mat[i][j] < tri_max_accept and mol.atoms[i] ==8 and mol.atoms[j] == 8:
+						for k in range (j+1, mol.NAtoms()):
+							if dist_mat[i][k] < tri_max_accept and dist_mat[j][k] < tri_max_accept and mol.atoms[k] ==8:
+								p_accept_trimer = ((dist_mat[i][j]- tri_max_accept) / (min_accept - tri_max_accept))**3* ((dist_mat[i][k]- tri_max_accept) / (min_accept - tri_max_accept))**3 * ((dist_mat[j][k]- tri_max_accept) / (min_accept - tri_max_accept))**3
+								if (random.random() < p_accept_trimer*trimer_accept_rate ):
+									m = Mol(mol.atoms[[i,i+1,i+2, j, j+1, j+2, k,k+1, k+2]], mol.coords[[i,i+1,i+2, j, j+1, j+2, k, k+1, k+2]])
+		                                                        m.WriteXYZfile(fname="trimer")
+									#OO_dist_list_trimer.append(dist_mat[i][j]*dist_mat[i][k]*dist_mat[j][k])
+		#print "len of list per case trimer:", len(OO_dist_list_trimer)/100.0 
+		#print "len of list per case:", len(OO_dist_list)/100.0
+		#print "time per case:", (time.time() - t)/ 100.0
+		#OO_dist_list = np.asarray(OO_dist_list)
+		#OO_dist_list_trimer = np.asarray(OO_dist_list_trimer)
+		#np.savetxt("OO_dist.dat", OO_dist_list)
+		#np.savetxt("OO_dist_trimer.dat", OO_dist_list_trimer)
+		
 
 
 # steps to train a NN-MBE model

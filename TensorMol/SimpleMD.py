@@ -482,7 +482,7 @@ class IRTrajectory(VelocityVerlet):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
-		WriteVelocityAutocorrelations(self.mu_his,vhis)
+		#WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 
 

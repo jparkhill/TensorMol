@@ -287,14 +287,14 @@ def TestIndoIR():
         Try to model the IR spectra of Johnson's peptides...
         Optimize, then get charges, then do an isotropic IR spectrum.
         """
-        a = MSet("random")
-        a.ReadXYZ("random")
+        a = MSet("johnsonmols")
+        a.ReadXYZ("johnsonmols")
         manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
         PARAMS["OptMomentum"] = 0.0
         PARAMS["OptMomentumDecay"] = 0.9
         PARAMS["OptStepSize"] = 0.02
         PARAMS["OptMaxCycles"]=200
-        indo = a.mols[1]
+        indo = a.mols[4]
 	print "number of atoms in indo", indo.NAtoms()
         #optimizer = Optimizer(manager)
         #optimizer.OptANI1(indo)
@@ -310,16 +310,38 @@ def TestIndoIR():
         annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
         annealIndo.Prop()
         indo.coords = annealIndo.Minx.copy()
-	indo.WriteXYZfile("./results/", "random_opt")
-        PARAMS["MDTemp"]= 0.0
-        PARAMS["MDThermostat"] = None
-        PARAMS["MDFieldAmp"] = 20.0 #0.00000001
+	indo.WriteXYZfile("./results/", "indo_opt")
+
+        PARAMS["MDFieldAmp"] = 0.0 #0.00000001
         PARAMS["MDFieldTau"] = 0.4
         PARAMS["MDFieldFreq"] = 0.8
         PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-        md0 = IRTrajectory(ForceField, ChargeField, indo, "RandomIR_2")
-        md0.Prop()
-        WriteDerDipoleCorrelationFunction(md0.mu_his,"RandomIR_2.txt")
+        PARAMS["MDThermostat"] = "Nose"
+        PARAMS["MDTemp"] = 30
+        PARAMS["MDdt"] = 0.1
+        PARAMS["RemoveInvariant"]=True
+        PARAMS["MDV0"] = None
+
+        PARAMS["MDMaxStep"] = 10000
+        warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
+        warm.Prop()
+        indo.coords = warm.x.copy()
+
+        PARAMS["MDMaxStep"] = 40000
+        md = IRTrajectory(ForceField, ChargeField, indo,"indo_IR_30K",warm.v.copy(),)
+        md.Prop()
+        WriteDerDipoleCorrelationFunction(md.mu_his,"indo_IR_30K.txt")
+
+
+        #PARAMS["MDTemp"]= 0.0
+        #PARAMS["MDThermostat"] = None
+        #PARAMS["MDFieldAmp"] = 20.0 #0.00000001
+        #PARAMS["MDFieldTau"] = 0.4
+        #PARAMS["MDFieldFreq"] = 0.8
+        #PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+        #md0 = IRTrajectory(ForceField, ChargeField, indo, "indo")
+        #md0.Prop()
+        #WriteDerDipoleCorrelationFunction(md0.mu_his,"indo.txt")
         return
 
 
