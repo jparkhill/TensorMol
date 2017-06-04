@@ -58,7 +58,7 @@ def WriteDerDipoleCorrelationFunction(MuTraj, name_="MutMu0.txt"):
 		time, mux, muy, muz ...
 	Returns: \sum_i \langle \dot{\mu_i(t)}\cdot \dot{\mu_i(0)} \rangle
 	"""
-	dt = MuTraj[0,0] - MuTraj[1,0]
+	dt = MuTraj[1,0] - MuTraj[0,0]
 	t0 = np.zeros((MuTraj.shape[0]-1,4))
 	for i in range(MuTraj.shape[0]-1):
 		t0[i,0] = MuTraj[i,0]

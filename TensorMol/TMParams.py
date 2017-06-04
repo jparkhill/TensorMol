@@ -91,7 +91,7 @@ class TMParams(dict):
 		self["MDIrForceMin"] = False
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
-		self["MDFieldAmp"] = 0.001
+		self["MDFieldAmp"] = 0.0
 		self["MDFieldFreq"] = 1.0/1.2
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
