@@ -292,10 +292,10 @@ def TestIndoIR():
         PARAMS["MDThermostat"] = "Nose"
         PARAMS["MDV0"] = None
         PARAMS["MDTemp"]= 1.0
-        annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
-        annealIndo.Prop()
-        indo.coords = annealIndo.Minx.copy()
-	indo.WriteXYZfile("./results/", "indo_opt")
+        #annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
+        #annealIndo.Prop()
+        #indo.coords = annealIndo.Minx.copy()
+	#indo.WriteXYZfile("./results/", "indo_opt")
 
         PARAMS["MDFieldAmp"] = 0.0 #0.00000001
         PARAMS["MDFieldTau"] = 0.4
@@ -307,12 +307,12 @@ def TestIndoIR():
         PARAMS["RemoveInvariant"]=True
         PARAMS["MDV0"] = None
 
-        PARAMS["MDMaxStep"] = 10000
+        PARAMS["MDMaxStep"] = 1000
         warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
         warm.Prop()
         indo.coords = warm.x.copy()
 
-        PARAMS["MDMaxStep"] = 40000
+        PARAMS["MDMaxStep"] = 4000
         md = IRTrajectory(ForceField, ChargeField, indo,"indo_IR_30K",warm.v.copy(),)
         md.Prop()
         WriteDerDipoleCorrelationFunction(md.mu_his,"indo_IR_30K.txt")
@@ -844,7 +844,8 @@ def TestEE():
 #Test_LJMD()
 #TestDipole()
 #TestJohnson()
-TestIR()
+#TestIR()
+TestIndoIR()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

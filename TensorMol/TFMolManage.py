@@ -350,6 +350,7 @@ class TFMolManage(TFManage):
 			total = mol_out[0][0]
 			for j in range (0, mol.NAtoms()):
 				total += ele_U[mol.atoms[j]]
+			#return total,total_gradient.reshape((-1,3))
 			return  total, (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
 		else:
 			#return total_gradient.reshape((-1,3)) 

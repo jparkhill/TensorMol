@@ -6,9 +6,40 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # step to test a BruteForce MBE model
-if (0):
-
+if (1):
 	if (1):
+		a=MSet("H2O_dimer_flip")
+                a.ReadXYZ("H2O_dimer_flip")
+		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)	
+		dipole_manager= TFMolManage("Mol_H2O_agumented_more_squeeze_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+		def EnAndForce(x_):
+                        a.mols[0].coords = x_
+                        energy, force = manager.Eval_BPForceSet(a)
+                        energy = energy[0]
+                        force = force[0]
+                        return energy, force
+                ForceField = lambda x: EnAndForce(x)[1]
+                EnergyForceField = lambda x: EnAndForce(x)
+
+                def ChargeField(x_):
+                        a.mols[0].coords = x_
+                        dipole, charge = dipole_manager.Eval_BPDipole_2(a.mols[0])
+                        return np.asarray(charge[0])
+		#optimizer = Optimizer(manager)
+		#optimizer.OptANI1(a.mols[0])		
+		PARAMS["MDdt"] = 0.2
+       	 	PARAMS["RemoveInvariant"]=True
+       	 	PARAMS["MDMaxStep"] = 10000
+       	 	PARAMS["MDThermostat"] = "Nose"
+       	 	PARAMS["MDV0"] = None
+       	 	PARAMS["MDTemp"]= 1.0
+       	 	annealIndo = Annealer(EnergyForceField, ChargeField, a.mols[0], "Anneal")
+       	 	annealIndo.Prop()
+       	 	a.mols[0].coords = annealIndo.Minx.copy()
+       	 	a.mols[0].WriteXYZfile("./results/", "h2o_dimer_opt")
+
+
+	if (0):
 		#a=MSet("H2O_mono")
 		#a.ReadXYZ("H2O_mono")
 		a=MSet("H2O_udp")
@@ -58,8 +89,8 @@ if (0):
 		WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_IR.txt")
 
 	if (0):
-		a=FragableMSetBF("H2O_mono")
-		a.ReadXYZ("H2O_mono")
+		a=FragableMSetBF("H2O_cluster")
+		a.ReadXYZ("H2O_cluster")
 		
 		print "Generate_All_MBE_term_General: "
 		a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
@@ -70,7 +101,7 @@ if (0):
 		mbe = NN_MBE_BF(manager, dipole_manager)
 
 		Opt = MBE_Optimizer(mbe)
-		for mol in a.mols[:-1]:
+		for mol in a.mols:
 			Opt.MBE_Opt(mol)
 			#mbe.NN_Energy_Force(mol)
 			#mbe.NN_Energy(mol)
@@ -101,25 +132,31 @@ if (0):
 		md.Prop()
 
 
-if (1):
+if (0):
                 a=MSet("water_small_md")
                 a.ReadXYZ("water_small_md")
 		OO_dist_list = []
 		OO_dist_list_trimer = []
 		min_accept = 2.7
-		max_accept = 3.0
-		tri_max_accept = 3.2
-		dimer_accept_rate = 0.01
-		trimer_accept_rate = 0.5
+		max_accept = 5
+		tri_max_accept = 4
+		dimer_accept_rate = 1.0/100.0
+		trimer_accept_rate = 1.0/6.0
 		t = time.time()
+		mono_index = 0
+		mono_max = 30000
 		for mol_index, mol in enumerate(a.mols):
-	          if 3000 < mol_index:
+	          if 1000 < mol_index :
 			print mol_index
 			dist_mat =  MolEmb.Make_DistMat(mol.coords)
 			for i in range (0, mol.NAtoms()):
+				if mono_index < mono_max and mol.atoms[i] == 8:
+					m = Mol(mol.atoms[[i,i+1,i+2]], mol.coords[[i,i+1,i+2]])
+                                	m.WriteXYZfile(fname="monomer")
+					mono_index += 1
 				for j in range (i+1, mol.NAtoms()):
 					if dist_mat[i][j] < max_accept and mol.atoms[i] ==8 and mol.atoms[j] == 8:
-						p_accept = ((dist_mat[i][j]- max_accept) / (min_accept - max_accept))**3
+						p_accept = ((dist_mat[i][j]- max_accept) / (min_accept - max_accept))**2
 						if (random.random() < p_accept*dimer_accept_rate):
 							m = Mol(mol.atoms[[i,i+1,i+2, j, j+1, j+2]], mol.coords[[i,i+1,i+2, j, j+1, j+2]])
 							m.WriteXYZfile(fname="dimer")
@@ -127,7 +164,7 @@ if (1):
 					if dist_mat[i][j] < tri_max_accept and mol.atoms[i] ==8 and mol.atoms[j] == 8:
 						for k in range (j+1, mol.NAtoms()):
 							if dist_mat[i][k] < tri_max_accept and dist_mat[j][k] < tri_max_accept and mol.atoms[k] ==8:
-								p_accept_trimer = ((dist_mat[i][j]- tri_max_accept) / (min_accept - tri_max_accept))**3* ((dist_mat[i][k]- tri_max_accept) / (min_accept - tri_max_accept))**3 * ((dist_mat[j][k]- tri_max_accept) / (min_accept - tri_max_accept))**3
+								p_accept_trimer = ((dist_mat[i][j]- tri_max_accept) / (min_accept - tri_max_accept))**2* ((dist_mat[i][k]- tri_max_accept) / (min_accept - tri_max_accept))**2 * ((dist_mat[j][k]- tri_max_accept) / (min_accept - tri_max_accept))**2
 								if (random.random() < p_accept_trimer*trimer_accept_rate ):
 									m = Mol(mol.atoms[[i,i+1,i+2, j, j+1, j+2, k,k+1, k+2]], mol.coords[[i,i+1,i+2, j, j+1, j+2, k, k+1, k+2]])
 		                                                        m.WriteXYZfile(fname="trimer")

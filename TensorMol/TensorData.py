@@ -74,7 +74,7 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.set=None
+		#self.set=None
 		return
 
 	def ReloadSet(self):

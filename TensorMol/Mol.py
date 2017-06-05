@@ -197,7 +197,7 @@ class Mol:
 			print "Read Failed.", Ex
 			raise Ex
 		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
-			self.Calculate_Atomization()
+			self.CalculateAtomization()
 		return
 
 	def FromXYZString(self,string):
