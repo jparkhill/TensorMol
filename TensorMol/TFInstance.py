@@ -704,9 +704,9 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 		LOGGER.debug("hidden3_units: "+str(hidden3_units))
 		# Hidden 1
 		with tf.name_scope('hidden1'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape-1)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
-			hidden1 = tf.nn.relu(tf.matmul(inputs, weights) + biases)
+			hidden1 = tf.nn.relu(tf.matmul(inputs[:-3], weights) + biases)
 			#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
 			#tf.summary.histogram(weights.name, weights)
 		# Hidden 2
@@ -727,7 +727,7 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 			delta = tf.matmul(hidden3, weights) + biases
 		# Linear
 		with tf.name_scope('regression_linear'):
-			delta_out = tf.multiply(tf.nn.relu(tf.slice(delta,[self.outshape],[self.outshape])),LJGradFunc(inputs[-1]))
+			delta_out = tf.multiply(tf.slice(delta,[self.outshape],[self.outshape]),inputs[-3:])
 			output = tf.add(tf.slice(delta,[0],[self.outshape]),delta_out)
 		return output
 
