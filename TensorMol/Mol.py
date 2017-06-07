@@ -192,7 +192,7 @@ class Mol:
 			print "Read Failed.", Ex
 			raise Ex
 		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
-			self.Calculate_Atomization()
+			self.CalculateAtomization()
 		return
 
 	def FromXYZString(self,string):
@@ -236,7 +236,8 @@ class Mol:
 					raise
 		with open(fpath+"/"+fname+".xyz", mode) as f:
 			natom = self.atoms.shape[0]
-			f.write(str(natom)+"\nComment: "+str(self.properties)+"\n")
+			f.write(str(natom)+"\nComment: \n")
+			#f.write(str(natom)+"\nComment: "+str(self.properties)+"\n")
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")

@@ -277,9 +277,9 @@ class Optimizer:
 			prev_m = Mol(m.atoms, m.coords)
 			#ForceFunction = lambda x: self.tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=1, Debug=False)
 			#DHess = DiagHess(ForceFunction,m.coords,veloc)
-			# if (rmsgrad > 0.06):
-			# 	m.coords = diis.NextStep(m.coords,veloc)
-			# else:
+			#if (rmsgrad > 0.06):
+			#	m.coords = diis.NextStep(m.coords,veloc)
+			#else:
 			c_veloc = (1.0-self.momentum)*self.fscale*veloc+self.momentum*old_veloc
 			old_veloc = self.momentum_decay*c_veloc
 			m.coords = m.coords + c_veloc

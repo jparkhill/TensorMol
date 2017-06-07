@@ -74,7 +74,7 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.set=None
+		#self.set=None
 		return
 
 	def ReloadSet(self):
@@ -685,10 +685,10 @@ class TensorData():
 		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp" and self.ExpandIsometriesAltogether):
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)
-		if (tformer.innorm != None):
-			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):
 			to = tformer.NormalizeOuts(to)
+		if (tformer.innorm != None):
+			ti = tformer.NormalizeIns(ti)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]

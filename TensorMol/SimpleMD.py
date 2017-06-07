@@ -467,7 +467,7 @@ class IRTrajectory(VelocityVerlet):
 			else:
 				self.x , self.v, self.a, self.EPot = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 
-			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>0.00005):
+			if (PARAMS["MDIrForceMin"] and self.EPot < self.MinE and abs(self.EPot - self.MinE)>0.00005):
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
 				self.MinS = step
@@ -476,13 +476,13 @@ class IRTrajectory(VelocityVerlet):
 				print self.x
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
-			if (step%7==0 and PARAMS["MDLogTrajectory"]):
+			if (step%50==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
-			if (step%200==0):
+			if (step%1000==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
-		WriteVelocityAutocorrelations(self.mu_his,vhis)
+		#WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 
 
