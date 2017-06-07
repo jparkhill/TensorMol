@@ -48,7 +48,7 @@ class TMParams(dict):
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001
 		self["batch_size"] = 8000
-		self["test_freq"] = 5
+		self["test_freq"] = 50
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
