@@ -236,15 +236,6 @@ class Digester:
 		Returns:
 			Two lists: containing inputs and outputs in order of eles_
 		"""
-		if (((self.name != "GauInv" and self.name !="GauSH")) or (self.OType != "GoForce" and self.OType!="GoForceSphere" and self.OType!="Force" and self.OType!="Del_Force" and self.OType !="ForceSphere" )):
-			raise Exception("Molwise Embedding not supported")
-		if (self.eshape==None or self.lshape==None):
-			if (mol_.DistMatrix == None):
-				mol_.BuildDistanceMatrix()
-			tinps, touts = self.Emb(mol_, 0, np.array([[0.0,0.0,0.0]]))
-			self.eshape = list(tinps[0].shape)
-			self.lshape = list(touts[0].shape)
-			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
 		return self.Emb(mol_,-1,mol_.coords[0], MakeOutputs_) # will deal with getting energies if it's needed.
 
 	def TrainDigest(self, mol_, ele_, MakeDebug=False):
