@@ -18,12 +18,20 @@ class TMParams(dict):
 		self["SH_NRAD"]=7
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
+<<<<<<< HEAD
 		#self["AN1_r_Rc"] = 6
 		#self["AN1_a_Rc"] = 4
+=======
+		#self["AN1_r_Rc"] = 5
+		#self["AN1_a_Rc"] = 3.5
+>>>>>>> db1ca8dfd175900c39606a92e7435a88acf646a6
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
 		self["AN1_eta"] = 4.0
 		self["AN1_zeta"] = 8.0
+		#self["AN1_num_r_Rs"] = 40
+		#self["AN1_num_a_Rs"] = 10
+		#self["AN1_num_a_As"] = 10
 		self["AN1_num_r_Rs"] = 32
 		self["AN1_num_a_Rs"] = 8
 		self["AN1_num_a_As"] = 8
@@ -48,7 +56,7 @@ class TMParams(dict):
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001
 		self["batch_size"] = 1000
-		self["test_freq"] = 10
+		self["test_freq"] = 50
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
@@ -89,6 +97,8 @@ class TMParams(dict):
 		self["MDLogTrajectory"] = True
 		self["MDUpdateCharges"] = True
 		self["MDIrForceMin"] = False
+		self["MDAnnealT0"] = 20.0
+		self["MDAnnealSteps"] = 500
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
 		self["MDFieldAmp"] = 0.0

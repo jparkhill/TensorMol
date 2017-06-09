@@ -59,6 +59,22 @@ def WriteDerDipoleCorrelationFunction(MuTraj, name_="MutMu0.txt"):
 	Returns: \sum_i \langle \dot{\mu_i(t)}\cdot \dot{\mu_i(0)} \rangle
 	"""
 	dt = MuTraj[1,0] - MuTraj[0,0]
+	dmu = np.diff(MuTraj[:,1:4],axis=0)/dt
+	n = dmu.shape[0]
+	nkept = int(n/4.)
+	tore = np.zeros((nkept,2))
+	tore[:,0] = np.array(range(nkept))*dt
+	tore[:nkept,1] = MolEmb.DipoleAutoCorr(dmu)[:nkept,0]
+	np.savetxt("./results/"+name_,tore)
+	return tore
+
+def WriteDerDipoleCorrelationFunctionOld(MuTraj, name_="MutMu0.txt"):
+	"""
+	Args:
+		time, mux, muy, muz ...
+	Returns: \sum_i \langle \dot{\mu_i(t)}\cdot \dot{\mu_i(0)} \rangle
+	"""
+	dt = MuTraj[1,0] - MuTraj[0,0]
 	t0 = np.zeros((MuTraj.shape[0]-1,4))
 	for i in range(MuTraj.shape[0]-1):
 		t0[i,0] = MuTraj[i,0]
