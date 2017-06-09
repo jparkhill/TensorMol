@@ -235,7 +235,7 @@ def IRProtocol(mol_, ForceField_, ChargeField_, name_= "IR"):
 	Args:
 		mol_: A molecule
 		ForceField_: An function returning Energy (Eh), and Force (j/Ang)
-		ChargeField_: A function returning charges.
+		ChargeField_: A function returning charges (atomic units)
 	"""
 	PARAMS["OptMomentum"] = 0.0
 	PARAMS["OptMomentumDecay"] = 0.9
@@ -249,18 +249,19 @@ def IRProtocol(mol_, ForceField_, ChargeField_, name_= "IR"):
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
 	PARAMS["MDTemp"]= 1.0
+	PARAMS["MDLogTrajectory"] = False
 	anneal = Annealer(ForceField_, None, optmol,name_+"_Anneal")
 	anneal.Prop()
 	optmol.coords = anneal.Minx.copy()
-	PARAMS["MDTemp"]= 60.0
+	PARAMS["MDTemp"]= 40.0
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDMaxStep"] = 1000
 	warm = VelocityVerlet(None,optmol,name_+"_Warm",ForceField_)
 	warm.Prop()
 	optmol.coords = warm.x.copy()
 	#Finally get the IR.
-	PARAMS["MDMaxStep"] = 40000
-	PARAMS["MDdt"] = 0.1
+	PARAMS["MDMaxStep"] = 16000
+	PARAMS["MDdt"] = 0.2
 	PARAMS["MDUpdateCharges"] = True
 	ir = IRTrajectory(ForceField_, ChargeField_, optmol,name_+"_IR", warm.v.copy())
 	ir.Prop()
@@ -687,9 +688,32 @@ def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	neb.OptNebGLBFGS()
 	return
 
+def Tata():
+	"""
+	Do some fun optimizations and stuff.
+	"""
+	a = MSet("tata")
+	a.ReadXYZ("tata")
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	mol = a.mols[0]
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(mol.atoms,x),True)
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(mol.atoms,x),False)[2][0]
+	PARAMS["OptMaxCycles"]=10
+	opt = GeomOptimizer(ForceField)
+	optmol = opt.Opt(mol)
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDV0"] = None
+	PARAMS["MDAnnealT0"] = 300.0
+	PARAMS["MDAnnealSteps"] = 500
+	md = Annealer(ForceField, None, optmol,"tata")
+	md.Prop()
+	return
+
 def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
-	Test MolecularDynamics
+	Test MolecularDynamics with John Herr's Force Network.
 	"""
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
 	a=MSet("OCSDB_test")
@@ -781,7 +805,8 @@ def TestEE():
 #Test_LJMD()
 #TestDipole()
 #TestJohnson()
-TestIR()
+#TestIR()
+Tata()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

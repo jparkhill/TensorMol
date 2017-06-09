@@ -493,11 +493,11 @@ class Annealer(IRTrajectory):
 		IRTrajectory.__init__(self, f_, q_, g0_, name_)
 		self.dt = 0.2
 		self.v *= 0.0
-		self.AnnealT0 = 20.0
+		self.AnnealT0 = PARAMS["MDAnnealT0"]
+		self.AnnealSteps = PARAMS["MDAnnealSteps"]
 		self.MinS = 0
 		self.MinE = 0.0
 		self.Minx = None
-		self.AnnealSteps = 500
 		self.AnnealThresh = AnnealThresh_
 		self.Tstat = NoseThermostat(self.m,self.v)
 		# The annealing program is 1K => 0K in 500 steps.
@@ -508,6 +508,7 @@ class Annealer(IRTrajectory):
 		Propagate VelocityVerlet
 		"""
 		step = 0
+		self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
 		while(step < self.AnnealSteps):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
@@ -529,7 +530,7 @@ class Annealer(IRTrajectory):
 				self.Minx = self.x.copy()
 				self.MinS = step
 				LOGGER.info("   -- cycling annealer -- ")
-				self.AnnealT0 = self.Tstat.T
+				self.AnnealT0 = self.Tstat.T+3.0
 				print self.x
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
@@ -537,7 +538,7 @@ class Annealer(IRTrajectory):
 			if (step%7==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
 		self.x = self.Minx.copy()
 		print "Achieved Minimum energy ", self.MinE, " at step ", step
 		return
