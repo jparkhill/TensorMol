@@ -74,7 +74,7 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.set=None
+		#self.set=None
 		return
 
 	def ReloadSet(self):
@@ -116,6 +116,8 @@ class TensorData():
 		The other version builds each element separately
 		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
+		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere" and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" )):
+			raise Exception("Molwise Embedding not supported")
 		if (self.set == None):
 			try:
 				self.ReloadSet()
@@ -205,6 +207,8 @@ class TensorData():
 		The other version builds each element separately
 		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
+		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere" and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" )):
+			raise Exception("Molwise Embedding not supported")
 		if (self.set == None):
 			try:
 				self.ReloadSet()
@@ -228,16 +232,12 @@ class TensorData():
 		t0 = time.time()
 		ord = len(self.set.mols)
 		mols_done = 0
-		if self.dig.OType == "Del_Force":
-			self.coord_dict = {}
 		try:
 			for mi in range(ord):
 				m = self.set.mols[mi]
 				ins,outs = self.dig.TrainDigestMolwise(m)
-				# if np.any(np.abs(outs) > 100.0) or np.any(np.isinf(outs)) or np.any(np.isnan(outs)):
-				# 	continue
-				self.coord_dict[mi] = np.concatenate([m.atoms[:,None], m.coords], axis=1)
-				ins[:,-1] = mi
+				if np.any(np.abs(outs) > 300.):
+					continue
 				for i in range(m.NAtoms()):
 					# Route all the inputs and outputs to the appropriate place...
 					ai = atypes.tolist().index(m.atoms[i])
@@ -685,10 +685,10 @@ class TensorData():
 		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp" and self.ExpandIsometriesAltogether):
 			print "Expanding the given set over isometries."
 			ti,to = GRIDS.ExpandIsometries(ti,to)
-		if (tformer.innorm != None):
-			ti = tformer.NormalizeIns(ti)
 		if (tformer.outnorm != None):
 			to = tformer.NormalizeOuts(to)
+		if (tformer.innorm != None):
+			ti = tformer.NormalizeIns(ti)
 		self.NTest = int(self.TestRatio * ti.shape[0])
 		self.scratch_inputs = ti[:ti.shape[0]-self.NTest]
 		self.scratch_outputs = to[:ti.shape[0]-self.NTest]

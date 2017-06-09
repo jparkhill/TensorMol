@@ -7,7 +7,7 @@ from TFManage import *
 from PhysicalData import *
 
 def RmsForce(f_):
-	return np.sum(np.linalg.norm(f_,axis=1))/f_.shape[0]
+	return np.mean(np.linalg.norm(f_,axis=1))
 
 def CenterOfMass(x_,m_):
 	return (np.einsum("m,mx->x",m_,x_)/np.sum(m_))

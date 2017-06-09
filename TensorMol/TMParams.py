@@ -18,12 +18,15 @@ class TMParams(dict):
 		self["SH_NRAD"]=7
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
-		#self["AN1_r_Rc"] = 6
-		#self["AN1_a_Rc"] = 4
+		#self["AN1_r_Rc"] = 5
+		#self["AN1_a_Rc"] = 3.5
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
 		self["AN1_eta"] = 4.0
 		self["AN1_zeta"] = 8.0
+		#self["AN1_num_r_Rs"] = 40
+		#self["AN1_num_a_Rs"] = 10
+		#self["AN1_num_a_As"] = 10
 		self["AN1_num_r_Rs"] = 32
 		self["AN1_num_a_Rs"] = 8
 		self["AN1_num_a_As"] = 8
@@ -41,14 +44,14 @@ class TMParams(dict):
 		self["BlurRadius"] = 0.05
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# MBE PARAMS
-		self["MBE_ORDER"] = 1
+		self["MBE_ORDER"] = 3
 		# Training Parameters
 		self["NeuronType"] = "relu"
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001
-		self["batch_size"] = 8000
-		self["test_freq"] = 5
+		self["batch_size"] = 1000
+		self["test_freq"] = 50
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
@@ -64,7 +67,7 @@ class TMParams(dict):
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
-		self["OptMaxCycles"]=1000
+		self["OptMaxCycles"]=10000
 		self["OptThresh"]=0.0005
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.004

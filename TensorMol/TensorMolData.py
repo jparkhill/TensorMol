@@ -32,15 +32,21 @@ class TensorMolData(TensorData):
 		self.order = order_
 		self.num_indis = num_indis_
 		self.NTrain = 0
-		self.MaxNAtoms = MSet_.MaxNAtoms()
+		#self.MaxNAtoms = MSet_.MaxNAtoms()
 		TensorData.__init__(self, MSet_,Dig_,Name_, type_=type_)
-		LOGGER.info("TensorMolData.type: %s",self.type)
-		LOGGER.info("TensorMolData.dig.name: %s",self.dig.name)
-		LOGGER.info("NMols in TensorMolData.set: %i", len(self.set.mols))
-		self.raw_it = iter(self.set.mols)
+		try:
+			LOGGER.info("TensorMolData.type: %s",self.type)
+			LOGGER.info("TensorMolData.dig.name: %s",self.dig.name)
+			LOGGER.info("NMols in TensorMolData.set: %i", len(self.set.mols))
+			self.raw_it = iter(self.set.mols) 
+		except:
+			print " do not include MSet"
 		self.MaxNAtoms = None
-		if (MSet_ != None):
-			self.MaxNAtoms = MSet_.MaxNAtoms()
+		try:
+			if (MSet_ != None):
+				self.MaxNAtoms = MSet_.MaxNAtoms()
+		except:
+			print "fail to load self.MaxNAtoms"
 		return
 
 	def QueryAvailable(self):

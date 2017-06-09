@@ -50,6 +50,8 @@ class Transformer:
 			if (train):
 				self.AssignInMeanStd(outs)
 			return self.NormInMeanStd(ins)
+		elif (self.innorm == "DeltaMeanStd"):
+			return self.NormInDeltaMeanStd(ins)
 
 	def NormalizeOuts(self, outs, train=True):
 		if (self.outnorm == "MeanStd"):
@@ -72,6 +74,10 @@ class Transformer:
 
 	def NormInMeanStd(self, ins):
 		return (ins - self.inmean)/self.instd
+
+	def NormInDeltaMeanStd(self, ins):
+		ins[:,-3:] = (ins[:,-3:] - self.outmean)/self.outstd
+		return ins
 
 	def AssignOutMeanStd(self, outs):
 		self.outmean = np.mean(outs)

@@ -109,23 +109,18 @@ class Mol:
 		rm = RotationMatrix_v2(randnums)
 		crds = np.copy(self.coords)
 		crds -= origin
-		for i in range(len(self.coords)):
-			self.coords[i] = np.dot(rm,crds[i])
+		self.coords = np.einsum("ij,kj->ki",rm, crds)
 		if ("forces" in self.properties.keys()):
 			# Must also rotate the force vectors
 			old_endpoints = crds+self.properties["forces"]
-			new_forces = np.zeros(crds.shape)
-			for i in range(len(self.coords)):
-				new_endpoint = np.dot(rm,old_endpoints[i])
-				new_forces[i] = new_endpoint - self.coords[i]
+			new_endpoint = np.einsum("ij,kj->ki",rm, old_endpoints)
+			new_forces = new_endpoint - self.coords
 			self.properties["forces"] = new_forces
 		if ("mmff94forces" in self.properties.keys()):
 			# Must also rotate the force vectors
 			old_endpoints = crds+self.properties["mmff94forces"]
-			new_forces = np.zeros(crds.shape)
-			for i in range(len(self.coords)):
-				new_endpoint = np.dot(rm,old_endpoints[i])
-				new_forces[i] = new_endpoint - self.coords[i]
+			new_endpoint = np.einsum("ij,kj->ki",rm, old_endpoints)
+			new_forces = new_endpoint - self.coords
 			self.properties["mmff94forces"] = new_forces
 		self.coords += origin
 
@@ -197,7 +192,7 @@ class Mol:
 			print "Read Failed.", Ex
 			raise Ex
 		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
-			self.Calculate_Atomization()
+			self.CalculateAtomization()
 		return
 
 	def FromXYZString(self,string):

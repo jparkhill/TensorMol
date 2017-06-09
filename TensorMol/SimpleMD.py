@@ -115,7 +115,7 @@ class NoseThermostat(Thermostat):
 		kedto2 = (1./2.)*np.dot(np.einsum("ia,ia->i",vdto2,vdto2),m_)
 		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2 - (((3.*self.N+1)/2.))*self.kT)
 		v = (vdto2 + (dt_/2.)*a)/(1 + (dt_/2.)*self.eta)
-		return x,v,a,e
+		return x,v,a,e,f_x_
 
 class NosePerParticleThermostat(Thermostat):
 	def __init__(self,m_,v_):
@@ -541,4 +541,53 @@ class Annealer(IRTrajectory):
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
 		self.x = self.Minx.copy()
 		print "Achieved Minimum energy ", self.MinE, " at step ", step
+		return
+
+class NoEnergyAnnealer(VelocityVerlet):
+	def __init__(self,f_,g0_,name_="anneal",AnnealThresh_ = 10.0):
+		PARAMS["MDThermostat"] = None
+		PARAMS["MDV0"] = None
+		VelocityVerlet.__init__(self, f_, g0_, name_)
+		self.dt = 0.2
+		self.v *= 0.0
+		self.AnnealT0 = 20.0
+		self.MinS = 0
+		self.MinF = 1e10
+		self.Minx = None
+		self.AnnealSteps = 3000
+		self.AnnealThresh = AnnealThresh_
+		self.Tstat = NoseThermostat(self.m,self.v)
+		# The annealing program is 1K => 0K in 500 steps.
+		return
+
+	def Prop(self):
+		"""
+		Propagate VelocityVerlet
+		"""
+		step = 0
+		while(step < self.AnnealSteps):
+			self.t = step*self.dt
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/IDEALGASR
+
+			# avoid the thermostat blowing up.
+			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
+			# First 50 steps without any thermostat.
+			self.x , self.v, self.a, self.EPot, self.frc = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+
+			if (RmsForce(self.frc) < self.MinF and abs(RmsForce(self.frc) - self.MinF)>self.AnnealThresh):
+				self.MinF = RmsForce(self.frc)
+				self.Minx = self.x.copy()
+				self.MinS = step
+				LOGGER.info("   -- cycling annealer -- ")
+				self.AnnealT0 = self.Tstat.T
+				print self.x
+				step=0
+
+			if (step%7==0 and PARAMS["MDLogTrajectory"]):
+				self.WriteTrajectory()
+			step+=1
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f ", self.name, step, self.t, self.KE, RmsForce(self.frc), self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff)
+		self.Minx = self.x.copy()
+		print "Achieved Minimum energy ", self.MinF, " at step ", step
 		return
