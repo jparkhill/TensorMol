@@ -200,12 +200,12 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
 	a.ReadXYZ()
 	tmol=copy.deepcopy(a.mols[mol])
-	tmol.Distort(0.2)
+	# tmol.Distort(0.1)
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+"fc_sqdiff", None, False)
 	opt=Optimizer(manager)
 	opt.OptTFRealForce(tmol)
 
-# TestForces(set_ = "OptMols", mol=12)
+TestForces(set_ = "tmp", mol=0)
 
 def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
@@ -364,7 +364,7 @@ def TestMorphIR():
 	WriteDerDipoleCorrelationFunction(md1.mu_his,"HeroinMutM0.txt")
 	return
 
-TestMorphIR()
+#TestMorphIR()
 
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()
