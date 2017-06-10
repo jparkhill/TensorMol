@@ -956,10 +956,10 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
 		output = tf.zeros([self.batch_size_output])
-		nrm1=5.0/(10+math.sqrt(float(self.inshape)))
-		nrm2=5.0/(10+math.sqrt(float(hidden1_units)))
-		nrm3=5.0/(10+math.sqrt(float(hidden2_units)))
-		nrm4=5.0/(10+math.sqrt(float(hidden3_units)))
+		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
+		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
+		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
+		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
 		grads = tf.zeros([self.batch_size_output, self.MaxN3])
 		for e in range(len(self.eles)):
 			branches.append([])
