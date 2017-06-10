@@ -83,7 +83,7 @@ class NN_MBE_BF:
 		#print mol.properties['mbe_deri']
                 return mol.nn_energy, mol.nn_force
 
-	def NN_Charge(self, mol):
+	def NN_Charge(self, mol):  # Dipole derived  from this charge is .743523777 times of the dipole from NN_Dipole, .743523777 = DebyPerAu/BohrPerAngs
 		s = MSet()
                 for order in range (1, self.mbe_order+1):
                         s.mols += mol.mbe_frags[order]
