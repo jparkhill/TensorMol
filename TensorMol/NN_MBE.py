@@ -5,6 +5,7 @@
 from Sets import *
 from TFMolManage import *
 from Mol import *
+from Electrostatics import *
 
 class NN_MBE:
 	def __init__(self,tfm_=None):
@@ -73,8 +74,8 @@ class NN_MBE_BF:
 			mol.frag_force_sum[order] = np.zeros((mol.NAtoms(),3))
 			for i, mol_frag in enumerate(mol.mbe_frags[order]):
 				mol.frag_force_sum[order][mol_frag.properties["mbe_atom_index"]] += forces[pointer+i]
-			print "energy of frags in order", order
-			print energies[pointer:pointer+len(mol.mbe_frags[order])]
+			#print "energy of frags in order", order
+			#print energies[pointer:pointer+len(mol.mbe_frags[order])]
                         mol.frag_energy_sum[order] = np.sum(energies[pointer:pointer+len(mol.mbe_frags[order])])
                         pointer += len(mol.mbe_frags[order])
                 mol.MBE_Energy()
@@ -82,3 +83,18 @@ class NN_MBE_BF:
 		#print mol.properties['mbe_deri']
                 return mol.nn_energy, mol.nn_force
 
+	def NN_Charge(self, mol):
+		s = MSet()
+                for order in range (1, self.mbe_order+1):
+                        s.mols += mol.mbe_frags[order]
+                dipoles, charges =  self.nn_dipole_mbe.Eval_BPDipole_2(s)
+		pointer = 0
+		for order in range(1, self.mbe_order+1):
+			mol.frag_charge_sum[order] = np.zeros(mol.NAtoms())
+			for i, mol_frag in enumerate(mol.mbe_frags[order]):
+				mol.frag_charge_sum[order][mol_frag.properties["mbe_atom_index"]] += charges[pointer+i]
+			#print "charge for order", order, mol.frag_charge_sum[order]
+                        pointer += len(mol.mbe_frags[order])
+		mol.MBE_Charge()
+		#print mol.mbe_charge
+		return	mol.nn_charge

@@ -711,6 +711,9 @@ class FragableClusterBF(Mol):
 		self.mbe_dipole=dict()
 		self.nn_dipole = 0
 		self.nn_energy = 0.0
+		self.frag_charge_sum = dict()
+		self.mbe_charge = dict()
+		self.nn_charge = None
 		return
 
 	def Reset_Frags(self):
@@ -847,3 +850,17 @@ class FragableClusterBF(Mol):
 		self.properties["mbe_deri"] = -self.nn_force
                 #print self.mbe_force, self.nn_force
                 return
+
+	def MBE_Charge(self):
+		mono_num = len(self.mbe_frags[1])
+                self.nn_charge = np.zeros(self.NAtoms())
+		for order in range (1, self.mbe_order+1):
+			self.mbe_charge[order] = self.frag_charge_sum[order]
+			if order == 1:
+				self.nn_charge += self.mbe_charge[order]
+				continue
+			for sub_order in range (1, order):
+				self.mbe_charge[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_charge[sub_order]
+			self.nn_charge += self.mbe_charge[order]
+		print self.nn_charge, " sum:", np.sum(self.nn_charge)
+		return

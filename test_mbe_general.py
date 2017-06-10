@@ -7,7 +7,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # step to test a BruteForce MBE model
 if (1):
-	if (1):
+	if (0):
 		a=MSet("H2O_cluster")
                 a.ReadXYZ("H2O_cluster")
 		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)	
@@ -88,7 +88,7 @@ if (1):
                 md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_IR.txt")
 
-	if (0):
+	if (1):
 		a=FragableMSetBF("H2O_cluster")
 		a.ReadXYZ("H2O_cluster")
 		
@@ -102,10 +102,11 @@ if (1):
 
 		Opt = MBE_Optimizer(mbe)
 		for mol in a.mols:
-			Opt.MBE_Opt(mol)
+			#Opt.MBE_Opt(mol)
 			#mbe.NN_Energy_Force(mol)
 			#mbe.NN_Energy(mol)
-			#mbe.NN_Dipole(mol)
+			mbe.NN_Dipole(mol)
+			mbe.NN_Charge(mol)
 
 if (0): 
                 a=FragableMSetBF("H2O_cluster_opt")
