@@ -694,6 +694,7 @@ class FragableClusterBF(Mol):
 	def __init__(self, atoms_ =  None, coords_ = None):
 		Mol.__init__(self,atoms_,coords_)
 		self.mbe_order = PARAMS["MBE_ORDER"]
+		print "MBE order:", self.mbe_order
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
                 self.type_of_frags_dict = {}
@@ -869,5 +870,7 @@ class FragableClusterBF(Mol):
 			for sub_order in range (1, order):
 				self.mbe_charge[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_charge[sub_order]
 			self.nn_charge += self.mbe_charge[order]
+			if order == PARAMS["Embedded_Charge_Order"]:
+				self.properties['embedded_charge'] = np.copy(self.nn_charge)
 		#print self.nn_charge, " sum:", np.sum(self.nn_charge)
 		return

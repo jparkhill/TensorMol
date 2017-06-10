@@ -49,7 +49,7 @@ class NN_MBE_BF:
 		mol.MBE_Energy()
                 return
 
-	def NN_Dipole(self, mol):
+	def NN_Dipole(self, mol): # unit: Debye
                 s = MSet()
                 for order in range (1, self.mbe_order+1):
                         s.mols += mol.mbe_frags[order]
@@ -61,6 +61,7 @@ class NN_MBE_BF:
                         pointer += len(mol.mbe_frags[order])
 		#print "mol.frag_dipole_sum[order] ", mol.frag_dipole_sum 
 		mol.MBE_Dipole()
+		print "mbe dipole: ", mol.nn_dipole
                 return
 
 	def NN_Energy_Force(self, mol):
@@ -83,7 +84,7 @@ class NN_MBE_BF:
 		#print mol.properties['mbe_deri']
                 return mol.nn_energy, mol.nn_force
 
-	def NN_Charge(self, mol):  # Dipole derived  from this charge is .743523777 times of the dipole from NN_Dipole, .743523777 = DebyPerAu/BohrPerAngs
+	def NN_Charge(self, mol):  # unit: au.  Dipole derived  from this charge has unit of au
 		s = MSet()
                 for order in range (1, self.mbe_order+1):
                         s.mols += mol.mbe_frags[order]
@@ -96,5 +97,14 @@ class NN_MBE_BF:
 			#print "charge for order", order, mol.frag_charge_sum[order]
                         pointer += len(mol.mbe_frags[order])
 		mol.MBE_Charge()
+		mol.nn_charge = mol.nn_charge/BOHRPERA
+		mol.properties['embedded_charge'] =  mol.properties['embedded_charge']/BOHRPERA
+		#print "coords: ", mol.coords
+		print "charge dipole: ", Dipole(mol.coords, mol.nn_charge)
+		for i, mol_frag in enumerate(mol.mbe_frags[1]):
+			mol_frag.properties["atom_charges"] = np.copy(mol.properties['embedded_charge'][mol_frag.properties["mbe_atom_index"]])
+		for i in range (0, len(mol.mbe_frags[1])):
+			for j  in range (i+1, len(mol.mbe_frags[1])):
+				print "charge - charge interaction:", ChargeCharge(mol.mbe_frags[1][i], mol.mbe_frags[1][j])
 		#print mol.mbe_charge
 		return	mol.nn_charge
