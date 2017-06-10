@@ -717,7 +717,7 @@ class FragableClusterBF(Mol):
 		return
 
 	def Reset_Frags(self):
-		self.mbe_frags = {}
+		#self.mbe_frags = {}
 		self.mbe_frags_deri=dict()
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
 		self.energy=None
@@ -725,6 +725,12 @@ class FragableClusterBF(Mol):
 		self.frag_energy_sum = dict() 
 		self.mbe_deri =None
 		self.nn_energy=None
+		for order in range (1, self.mbe_order+1):
+			for mol_frag in self.mbe_frags[order]:
+				#print "old: ", mol_frag.coords
+				mol_frag.coords = self.coords[mol_frag.properties["mbe_atom_index"]]
+				#print "new:", mol_frag.coords
+		#self.mbe_frags = {}
 		return
 
 
@@ -801,6 +807,7 @@ class FragableClusterBF(Mol):
 					pointer += atom_group[j]
 				tmp_mol = Mol(tmp_atom, tmp_coord)
 				tmp_mol.properties["mbe_atom_index"] = mbe_atom_index
+				#print "tmp_coords: ", tmp_mol.coords
 				self.mbe_frags[order].append(tmp_mol)
 			del sub_combinations
 		return
@@ -862,5 +869,5 @@ class FragableClusterBF(Mol):
 			for sub_order in range (1, order):
 				self.mbe_charge[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_charge[sub_order]
 			self.nn_charge += self.mbe_charge[order]
-		print self.nn_charge, " sum:", np.sum(self.nn_charge)
+		#print self.nn_charge, " sum:", np.sum(self.nn_charge)
 		return
