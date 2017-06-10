@@ -92,6 +92,8 @@ class TMParams(dict):
 		self["MDLogTrajectory"] = True
 		self["MDUpdateCharges"] = True
 		self["MDIrForceMin"] = False
+		self["MDAnnealT0"] = 20.0
+		self["MDAnnealSteps"] = 500
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
 		self["MDFieldAmp"] = 0.0

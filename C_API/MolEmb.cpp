@@ -1098,6 +1098,29 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+static PyObject* DipoleAutoCorr(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &xyz))
+	return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nat,1};
+	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *SH_data,*xyz_data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+#pragma omp parallel for
+	for (int i=0; i < nat; ++i) // Distance between points.
+	{
+		for (int j=0; j < nat-i; ++j) // points to sum over.
+		{
+			SH_data[i] += (xyz_data[j*3+0]*xyz_data[(j+i)*3+0]+xyz_data[j*3+1]*xyz_data[(j+i)*3+1]+xyz_data[j*3+2]*xyz_data[(j+i)*3+2]);
+		}
+		SH_data[i] /= double(nat-i);
+	}
+	return SH;
+}
+
 static PyObject* Norm_Matrices(PyObject *self, PyObject *args)
 {
 	PyArrayObject *dmat1, *dmat2;
@@ -1911,6 +1934,8 @@ static PyObject*  Make_Sym(PyObject *self, PyObject  *args) {
 
 static PyMethodDef EmbMethods[] =
 {
+	{"DipoleAutoCorr", DipoleAutoCorr, METH_VARARGS,
+	"DipoleAutoCorr method"},
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
 	"Make_DistMat method"},
 	{"Norm_Matrices", Norm_Matrices, METH_VARARGS,
