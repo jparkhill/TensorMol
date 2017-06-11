@@ -107,7 +107,7 @@ if (1):
 			#Opt.MBE_Opt(mol)
 			#mbe.NN_Energy_Force(mol)
 			mbe.NN_Energy(mol, False)
-			mbe.NN_Dipole(mol)
+			#mbe.NN_Dipole(mol)
 			mbe.NN_Charge(mol)
 			mbe.NN_Energy(mol, True)
 
