@@ -112,13 +112,14 @@ def TestBP_WithGrad():
 		a.Load()
 		a.pop(45000) # help out my puny laptop
 		for mol in a.mols:
-			mol.properties['force'] /= (BOHRPERA*BOHRPERA)
+			mol.properties['force'] *= BOHRPERA
+			#mol.properties['force'] /= (BOHRPERA*BOHRPERA)
 			mol.CalculateAtomization()
-		PARAMS["AN1_r_Rc"] = 4.6
-		PARAMS["AN1_a_Rc"] = 3.1
+		PARAMS["AN1_r_Rc"] = 6
+		PARAMS["AN1_a_Rc"] = 4
 		PARAMS["AN1_eta"] = 4.0
 		PARAMS["AN1_zeta"] = 8.0
-		PARAMS["AN1_num_r_Rs"] = 16
+		PARAMS["AN1_num_r_Rs"] = 8
 		PARAMS["AN1_num_a_Rs"] = 4
 		PARAMS["AN1_num_a_As"] = 4
 		PARAMS["batch_size"] = 1500

@@ -89,10 +89,10 @@ if (1):
 		WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_IR.txt")
 
 	if (1):
-		#a=FragableMSetBF("H2O_cluster")
-		#a.ReadXYZ("H2O_cluster")
-		a=FragableMSetBF("H2O_dimer")
-                a.ReadXYZ("H2O_dimer")	
+		a=FragableMSetBF("H2O_cluster")
+		a.ReadXYZ("H2O_cluster")
+		#a=FragableMSetBF("H2O_dimer")
+                #a.ReadXYZ("H2O_dimer")	
 	
 		print "Generate_All_MBE_term_General: "
 		a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
@@ -105,10 +105,11 @@ if (1):
 		Opt = MBE_Optimizer(mbe)
 		for mol in a.mols:
 			#Opt.MBE_Opt(mol)
-			mbe.NN_Energy_Force(mol)
-			#mbe.NN_Energy(mol)
+			#mbe.NN_Energy_Force(mol)
+			mbe.NN_Energy(mol, False)
 			mbe.NN_Dipole(mol)
 			mbe.NN_Charge(mol)
+			mbe.NN_Energy(mol, True)
 
 if (0): 
                 a=FragableMSetBF("H2O_cluster_opt", center_=False)

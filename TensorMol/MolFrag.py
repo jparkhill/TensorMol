@@ -1,11 +1,8 @@
-"""
-Kun: please move your work to this separate file to keep stuff organized.
-"""
 from Util import *
 import numpy as np
 import random, math
 from Mol import *
-
+from Electrostatics import *
 
 class FragableCluster(Mol):
 	""" Provides a cluster which can be fragmented into molecules"""
@@ -691,10 +688,13 @@ class Frag(Mol):
 
 class FragableClusterBF(Mol):
 	""" All the monomers can pair with each other, no cutoff"""
-	def __init__(self, atoms_ =  None, coords_ = None):
+	def __init__(self, atoms_ =  None, coords_ = None, center_= "COM", cutoff_ = 4.6, width_ = 0.5):
 		Mol.__init__(self,atoms_,coords_)
 		self.mbe_order = PARAMS["MBE_ORDER"]
 		print "MBE order:", self.mbe_order
+		self.center = "Heaviest"
+		self.properties['cutoff'] = cutoff_
+		self.properties['erf_width'] = width_
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
                 self.type_of_frags_dict = {}
@@ -771,6 +771,16 @@ class FragableClusterBF(Mol):
                                                         mbe_terms = [frag_index]
                                                         tmp_mol = Mol(tmp_atom, tmp_coord)
 							tmp_mol.properties["mbe_atom_index"] = range(j, j+num_frag_atoms)
+							if self.center == "Heaviest": # take the first heaviest one
+								tmp_mol.properties["center_atom"] = np.where(tmp_mol.atoms == max(tmp_mol.atoms))[0][0]
+								tmp_mol.properties["center"] = tmp_mol.coords[np.where(tmp_mol.atoms == max(tmp_mol.atoms))[0][0]]
+							elif self.center == "COM":
+								tmp_mol.properties["center"] = tmp_mol.Center("Mass")
+							elif self.center == "COP":
+								tmp_mol.properties["center"] = tmp_mol.Center("Atom")
+							else:
+								print "This type of center is not implemented yet, set to COM as center"
+								tmp_mol.properties["center"] = tmp_mol.Center("Mass")
                                                         self.mbe_frags[order].append(tmp_mol)
                                                         j += num_frag_atoms
                                                         frag_index += 1
@@ -801,13 +811,17 @@ class FragableClusterBF(Mol):
 				tmp_atom = np.zeros(sum(atom_group), dtype=np.uint8)
 				pointer = 0
 				mbe_atom_index = []
+				frag_mono_center = []
 				for j, index in enumerate(mbe_terms[i]):
 					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
 					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
 					mbe_atom_index += self.mbe_frags[1][index].properties["mbe_atom_index"]
+					frag_mono_center.append(self.mbe_frags[1][index].properties["center"])
 					pointer += atom_group[j]
 				tmp_mol = Mol(tmp_atom, tmp_coord)
 				tmp_mol.properties["mbe_atom_index"] = mbe_atom_index
+				tmp_mol.properties["mono_index"] = mbe_terms[i]
+				tmp_mol.properties["center"] = frag_mono_center
 				#print "tmp_coords: ", tmp_mol.coords
 				self.mbe_frags[order].append(tmp_mol)
 			del sub_combinations
@@ -828,6 +842,43 @@ class FragableClusterBF(Mol):
 		print self.mbe_energy, self.nn_energy
 		return 
 					
+
+        def MBE_Energy_Embed(self):
+		self.properties["mbe_energy_embed"] = dict()
+                mono_num = len(self.mbe_frags[1])
+                self.nn_energy = 0.0
+                for order in range (1, self.mbe_order+1):
+                        self.mbe_energy[order] = self.frag_energy_sum[order]
+			self.properties["mbe_energy_embed"][order] = self.mbe_energy[order]
+                        if order == 1:
+                                self.nn_energy += self.properties["mbe_energy_embed"][order]
+                                continue
+			if order == 2:
+				self.properties["mbe_energy_embed"][order] = 0.0
+				self.mbe_energy[order] = 0.0
+				for mol_frag in self.mbe_frags[order]:
+					nn_2b = mol_frag.properties["nn_energy"] - self.mbe_frags[1][mol_frag.properties["mono_index"][0]].properties["nn_energy"] -  self.mbe_frags[1][mol_frag.properties["mono_index"][1]].properties["nn_energy"]
+					tmp_monos = []
+					sub_pointer = 0
+					for mono_index in mol_frag.properties["mono_index"]:
+                                                tmp_monos.append(Mol(self.atoms[self.mbe_frags[1][mono_index].properties["mbe_atom_index"]], self.coords[self.mbe_frags[1][mono_index].properties["mbe_atom_index"]]))
+                                                tmp_monos[-1].properties["atom_charges"] = mol_frag.properties["atom_charges"][sub_pointer:sub_pointer+len(self.mbe_frags[1][mono_index].properties["mbe_atom_index"])]/BOHRPERA
+                                                sub_pointer += len(self.mbe_frags[1][mono_index].properties["mbe_atom_index"])
+                                        cc_2b = ChargeCharge(tmp_monos[0], tmp_monos[1])
+					dist =  (sum(np.square(mol_frag.properties["center"][0] - mol_frag.properties["center"][1])))**0.5
+					avg_2b = (1.0-math.erf((dist - self.properties["cutoff"])/self.properties["erf_width"]))/2.0*nn_2b + (1.0+math.erf((dist - self.properties["cutoff"])/self.properties["erf_width"]))/2.0*cc_2b
+					self.mbe_energy[order] += nn_2b
+					self.properties["mbe_energy_embed"][order] += avg_2b
+				self.nn_energy += self.properties["mbe_energy_embed"][order]	
+				continue
+                        for sub_order in range (1, order):
+                                self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
+				self.properties["mbe_energy_embed"][order]  = self.mbe_energy[order]
+                        self.nn_energy += self.properties["mbe_energy_embed"][order]
+                #print self.mbe_energy, self.properties["mbe_energy_embed"], self.nn_energy
+                return
+
+
 
         def MBE_Dipole(self):
                 mono_num = len(self.mbe_frags[1])
