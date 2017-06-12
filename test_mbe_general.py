@@ -98,8 +98,8 @@ if (1):
 		a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
 		print "End of Generate_All_MBE_term_General"	
 
-		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
-		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
+		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
 		mbe = NN_MBE_BF(manager, dipole_manager)
 
 		Opt = MBE_Optimizer(mbe)
