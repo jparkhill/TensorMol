@@ -306,6 +306,7 @@ class TensorMolData_BP(TensorMolData):
 		self.scratch_test_meta = None
 		self.scratch_grads = None
 		self.scratch_test_grads = None
+		self.HasGrad = WithGrad_ # whether to pass around the gradient.
 		TensorMolData.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
 		self.eles = []
 		if (MSet_ != None):
@@ -316,11 +317,11 @@ class TensorMolData_BP(TensorMolData):
 		self.test_mols_done = False
 		self.test_begin_mol  = None
 		self.test_mols = []
-		self.HasGrad = WithGrad_ # whether to pass around the gradient.
 		self.MaxN3 = None # The most coordinates in the set.
 		print "TensorMolData_BP.eles", self.eles
+		print "self.HasGrad:", self.HasGrad
 		if (self.HasGrad):
-			self.MaxN3 = 3*np.max([m.NAtoms() for m in MSet_.mols])
+			self.MaxN3 = 3*np.max([m.NAtoms() for m in self.set.mols])
 			print "TensorMolData_BP.MaxN3", self.MaxN3
 		return
 
@@ -593,6 +594,7 @@ class TensorMolData_BP(TensorMolData):
 		#print "outputs",outputs
 		self.ScratchPointer += ncases
 		if (self.HasGrad):
+			#print "inputs: ", inputs[0].shape, " inputgs:", inputgs[0], inputgs[0].shape, " outputs", outputs.shape, " matrices", matrices.shape
 			return [inputs, inputgs, matrices, outputs]
 		else:
 			return [inputs, matrices, outputs]
