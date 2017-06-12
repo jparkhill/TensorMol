@@ -792,6 +792,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		feed_dict=self.fill_feed_dict(batch_data)
 		if (IfGrad):
 			mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+			print ("atom_outputs:", atom_outputs)
 			return mol_output, atom_outputs, gradient
 		else:
 			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
@@ -807,6 +808,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None, self.batch_size_output])))
 			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
+			#self.gradient = tf.gradients(self.atom_outputs, self.inp_pl)
 			self.gradient = tf.gradients(self.output, self.inp_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)

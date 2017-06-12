@@ -963,7 +963,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 
 		delta_charge = tf.multiply(netcharge_output, natom_pl)
 		delta_charge = tf.transpose(delta_charge)
-		total_atom = 0
+		#total_atom = 0
 		scaled_charge_list = []
 		#for e in range(len(self.eles)):
 		#	total_atom = total_atom + tf.shape(atom_outputs[e])[1]
@@ -993,7 +993,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		tf.verify_tensor_all_finite(netcharge_output,"Nan in output!!!")
 		tf.verify_tensor_all_finite(dipole_output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
-		return  dipole_output, scaled_charge_list,  scaled_netcharge_output#atom_outputs
+		#return  dipole_output, scaled_charge_list,  scaled_netcharge_output#atom_outputs
+		return  dipole_output, atom_outputs, scaled_netcharge_output#atom_outputs
 
 	def fill_feed_dict(self, batch_data):
 		"""
@@ -1113,9 +1114,11 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			dipole, total_loss_value, loss_value,  atom_outputs = self.sess.run([ self.dipole_output, self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
 			return   dipole/AUPERDEBYE, atom_outputs
 		else:
-			print ("sess: ", self.sess.run([ self.dipole_output, self.total_loss, self.loss, self.atom_outputs, self.charge_gradient],  feed_dict=feed_dict))
 			dipole, total_loss_value, loss_value,  atom_outputs, charge_gradient = self.sess.run([ self.dipole_output, self.total_loss, self.loss, self.atom_outputs, self.charge_gradient],  feed_dict=feed_dict)
-			print ("atom_outputs:", atom_outputs, " charge_gradient:", charge_gradient)
+			print ("atom_outputs:", atom_outputs, " charge_gradient:", charge_gradient, "length of charge_gradient:", len(charge_gradient))
+			#for grad in charge_gradient:
+			#	print ("length of grad:", len(grad))
+			#	print (grad[0])
                         return   dipole/AUPERDEBYE, atom_outputs, charge_gradient
 
 	def Eval_Prepare(self):
@@ -1135,8 +1138,12 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
                                 self.coords_pl.append(tf.placeholder(tf.float32, shape=tuple([None, 3])))
                         self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 3]))
                         self.natom_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output, 1]))
-                        self.dipole_output, self.atom_outputs,  self.net_charge  = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
-			self.charge_gradient = tf.gradients(self.dipole_output, self.inp_pl)
+                        self.dipole_output, self.atom_outputs, self.net_charge  = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
+			#self.charge_gradient = tf.gradients(self.dipole_output, self.inp_pl)
+			self.charge_gradient = []
+			for e in range(len(self.eles)):
+			#	print ("self.atom_outputs[e] shape:", self.atom_outputs[e].shape)
+				self.charge_gradient.append(tf.gradients(self.atom_outputs[e], self.inp_pl))
                         self.check = tf.add_check_numerics_ops()
                         self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)

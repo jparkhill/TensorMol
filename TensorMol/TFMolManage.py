@@ -260,9 +260,23 @@ class TFMolManage(TFManage):
                         offsets[ei] += 1
                 t = time.time()
                 pointers = [0 for ele in self.TData.eles]
+		print "inputs:", inputs
                 mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
+		#for gradient in nn_gradient:
+		#	print "force gradient shape:", gradient.shape
+		#print "force gradient :", nn_gradient[0][-1], " atom_out", atom_out[0]
+		#print "force gradient H:", nn_gradient[0]
+		#print "force gradient O:", nn_gradient[1]
+		#print "mol_out shape:", mol_out[0].shape
 
-		
+		inputs[0][-1][1] += 0.01
+		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
+                #for gradient in nn_gradient:
+                #        print "force gradient shape:", gradient.shape
+		#print "force gradient :", nn_gradient[0][-1], " atom_out", atom_out[0]
+		#print "force gradient H:", nn_gradient[0]
+                #print "force gradient O:", nn_gradient[1]
+                #print "mol_out shape:", mol_out[0].shape
 
 
                 total_gradient_list = []
@@ -721,6 +735,7 @@ class TFMolManage(TFManage):
 		elif (mol_set, MSet):
                         nmols = len(mol_set.mols)
                         natoms = mol_set.NAtoms()
+			print "number of molecules in the set:", nmols
                         cases = np.zeros(tuple([natoms]+list(self.TData.dig.eshape)))
                         dummy_outputs = np.zeros((nmols, 3))
                         natom_in_mol = np.zeros((nmols, 1))
@@ -769,12 +784,13 @@ class TFMolManage(TFManage):
                                 natom_in_mol[outputpointer] = meta[i,3] - meta[i,2]
                                 offsets[ei] += 1
                         t = time.time()
-			dipole, atomcharge  = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], False)
-			#print charge_gradient, atomcharge
+			#dipole, atomcharge  = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], False)
+			dipole, atomcharge, charge_gradient = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], True)
+			#print  atomcharge
 			#for grad in charge_gradient:
 			#	print "shape:", grad.shape
-			#inputs[0][0][0] += 0.01
-			#dipole, atomcharge, charge_gradient = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], True)
+			inputs[1][-1][1] += 0.01
+			dipole, atomcharge, charge_gradient = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], True)
 			#print  atomcharge
 		else:
 			raise Exception("wrong input")

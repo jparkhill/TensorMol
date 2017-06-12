@@ -106,10 +106,10 @@ if (1):
 		for mol in a.mols:
 			#Opt.MBE_Opt(mol)
 			#mbe.NN_Energy_Force(mol)
-			mbe.NN_Energy(mol, False)
+			#mbe.NN_Energy(mol, False)
 			#mbe.NN_Dipole(mol)
 			mbe.NN_Charge(mol)
-			mbe.NN_Energy(mol, True)
+			#mbe.NN_Energy(mol, True)
 
 if (0): 
                 a=FragableMSetBF("H2O_cluster_opt", center_=False)
