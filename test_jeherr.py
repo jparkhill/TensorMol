@@ -27,8 +27,8 @@ PARAMS["SRBF"] = S_RadOrth
 #PARAMS["InNormRoutine"] = "MinMax"
 PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-self["max_steps"] = 1000
-self["batch_size"] = 8000
+PARAMS["max_steps"] = 1000
+PARAMS["batch_size"] = 8000
 
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
@@ -432,15 +432,46 @@ def Test_LJMD():
 	md.Prop()
 	return
 
+def Eval_LJBatch(LJP_, tset_ = None, REns_ = None):
+	"""
+	Test TensorFlow LJ fluid Molecular dynamics
+	"""
+	ins = MolInstance_DirectForce(tset_,None,False,"LJ")
+	ins.train_prepare()
+	batch_data = tset_.RawBatch(nmol=60000)
+	if (not np.all(np.isfinite(batch_data[0]))):
+		print("Bad Batch...0 ")
+	if (not np.all(np.isfinite(batch_data[1]))):
+		print("Bad Batch...1 ")
+	E_batch = np.full(batch_data[0].shape, LJP_[0])
+	R_batch = np.full(batch_data[0].shape, LJP_[1])
+	feeddict={i:d for i,d in zip([ins.inp_pl, ins.frce_pl, ins.E_pl, ins.R_pl],[batch_data[0],batch_data[1],E_batch, R_batch])}
+	Ens = ins.sess.run(ins.energiesER,feed_dict=feeddict)
+	Ens[Ens == np.inf] = 1.e10
+	return np.mean(np.abs(Ens - REns_))
+
+def Brute_LJParams():
+	a=MSet("SmallMols_rand")
+	a.Load()
+	REns = np.zeros(len(a.mols))
+	for i, mol in enumerate(a.mols):
+		REns[i] = float(mol.properties["energy"])
+	REns[REns == np.inf] = 1.e10
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
+	tset = TensorMolData(a,d)
+	LJP = np.array((0.316, 1.0))
+	print Eval_LJBatch(LJP, tset, REns)
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="aspirin", dir_="/media/sdb2/jeherr/TensorMol/datasets/md_datasets/aspirin/", forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH")
-# RandomSmallSet("SmallMols", 100000)
+# RandomSmallSet("SmallMols", 60000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # TestIpecac()
 # TestBP()
 # TestANI1()
-TrainForces(set_ = "aspirin_5rot", BuildTrain_=True, numrot_=None)
+# TrainForces(set_ = "aspirin_5rot", BuildTrain_=True, numrot_=None)
 # TestForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()
@@ -448,6 +479,8 @@ TrainForces(set_ = "aspirin_5rot", BuildTrain_=True, numrot_=None)
 # TestMD()
 # TestAnneal()
 # TestMorphIR()
+# Eval_LJBatch()
+Brute_LJParams()
 
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()

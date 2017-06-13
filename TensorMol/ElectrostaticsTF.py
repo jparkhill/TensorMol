@@ -149,6 +149,8 @@ def LJEnergy_Numpy(XYZ,Z,Ee,Re):
 	for i in range(n):
 		D[i,i] = 1.0
 		for j in range(n):
+			if i == j:
+				continue
 			D[i,j] = np.linalg.norm(XYZ[i]-XYZ[j])
 	R = 1.0/D
 	K = 0.01*(np.power(R,12.0)-2.0*np.power(R,6.0))
@@ -160,6 +162,24 @@ def LJEnergy_Numpy(XYZ,Z,Ee,Re):
 			else:
 				En += K[i,j]
 	return En
+
+def LJEnergy(XYZs_,Zs_,Ee_, Re_):
+	"""
+	Returns LJ Energy of single molecule.
+	Input can be padded with zeros. That will be
+	removed by LJKernels.
+
+	Args:
+		XYZs_: maxatom X 3 coordinate tensor.
+		Zs_: maxatom X 1 atomic number tensor.
+		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Epsilon parameter matrix.
+		Re_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
+	"""
+	Ds = TFDistance(XYZs_)
+	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
+	Ks = LJKernel(Ds,Zs_,Ee_,Re_)
+	Ens = tf.reduce_sum(Ks)
+	return Ens
 
 def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""
