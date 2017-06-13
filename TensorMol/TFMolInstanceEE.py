@@ -1115,8 +1115,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		if not IfChargeGrad:
-			output_list  = self.sess.run([ self.output_list],  feed_dict=feed_dict)
-			return   output_list[0]/AUPERDEBYE, output_list[1]
+			output_list  = self.sess.run( [self.output_list],  feed_dict=feed_dict)
+			return   output_list[0][0]/AUPERDEBYE, output_list[0][1]
 		else:
 			#dipole, total_loss_value, loss_value,  atom_outputs, charge_gradient = self.sess.run([ self.dipole_output, self.total_loss, self.loss, self.atom_outputs, self.charge_gradient],  feed_dict=feed_dict)
 			output_list, charge_gradient = self.sess.run([  self.output_list, self.charge_gradient],  feed_dict=feed_dict)

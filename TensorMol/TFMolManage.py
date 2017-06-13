@@ -784,13 +784,8 @@ class TFMolManage(TFManage):
                                 natom_in_mol[outputpointer] = meta[i,3] - meta[i,2]
                                 offsets[ei] += 1
                         t = time.time()
-			#dipole, atomcharge  = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], False)
-			dipole, atomcharge, charge_gradient = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], True)
-			#print  atomcharge
-			#for grad in charge_gradient:
-			#	print "shape:", grad.shape
-			inputs[1][-1][1] += 0.01
-			dipole, atomcharge, charge_gradient = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], True)
+			dipole, atomcharge  = self.Instances.evaluate([inputs, matrices, xyz, 1.0/natom_in_mol, dummy_outputs], False)
+			print dipole, atomcharge
 			#print  atomcharge
 		else:
 			raise Exception("wrong input")
