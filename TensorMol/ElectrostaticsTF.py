@@ -29,7 +29,7 @@ def TFDistance(A):
 	r = tf.reshape(r, [-1, 1]) # For the later broadcast.
 	# Tensorflow can only reverse mode grad the sqrt if all these elements
 	# are nonzero
-	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r) + 0.000000000000000000000000001
+	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r) + 1e-26
 	return tf.sqrt(D)
 
 def TFDistances(r_):
@@ -47,7 +47,7 @@ def TFDistances(r_):
 	rmtt = tf.transpose(rmt,perm=[0,2,1])
 	# Tensorflow can only reverse mode grad of sqrt if all these elements
 	# are nonzero
-	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 0.000000000000000000000000001
+	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 1e-26
 	return tf.sqrt(D)
 
 def MorseKernel(D,Z,Ae,De,Re):

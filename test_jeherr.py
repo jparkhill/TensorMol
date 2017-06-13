@@ -432,41 +432,49 @@ def Test_LJMD():
 	md.Prop()
 	return
 
-def Eval_LJBatch(LJP_, tset_ = None, REns_ = None):
+def Eval_LJBatch(LJP_, data_ = None):
 	"""
 	Test TensorFlow LJ fluid Molecular dynamics
 	"""
-	ins = MolInstance_DirectForce(tset_,None,False,"LJ")
-	ins.train_prepare()
-	batch_data = tset_.RawBatch(nmol=60000)
-	if (not np.all(np.isfinite(batch_data[0]))):
-		print("Bad Batch...0 ")
-	if (not np.all(np.isfinite(batch_data[1]))):
-		print("Bad Batch...1 ")
-	E_batch = np.full(batch_data[0].shape, LJP_[0])
-	R_batch = np.full(batch_data[0].shape, LJP_[1])
-	feeddict={i:d for i,d in zip([ins.inp_pl, ins.frce_pl, ins.E_pl, ins.R_pl],[batch_data[0],batch_data[1],E_batch, R_batch])}
-	Ens = ins.sess.run(ins.energiesER,feed_dict=feeddict)
-	Ens[Ens == np.inf] = 1.e10
-	return np.mean(np.abs(Ens - REns_))
+	inp_shp = tf.shape(data_[0])
+	nmol = inp_shp[0]
+	maxnatom = inp_shp[1]
+	XYZs = tf.to_float(tf.slice(data_[0],[0,0,1],[-1,-1,-1]))
+	REns = tf.convert_to_tensor(data_[1][:,0,0],dtype=tf.float32)
+	Zs = tf.cast(tf.reshape(tf.slice(data_[0],[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
+	LJe = tf.Variable(LJP_[0]*tf.ones([8,8]))
+	LJr = tf.Variable(LJP_[1]*tf.ones([8,8]))
+	Ens = LJEnergies(XYZs, Zs, LJe, LJr)
+	diff = tf.reduce_mean(tf.abs(tf.subtract(Ens, REns)))
+	init = tf.global_variables_initializer()
+	with tf.Session() as sess:
+		sess.run(init)
+		result = sess.run(diff)
+	return result
 
 def Brute_LJParams():
 	a=MSet("SmallMols_rand")
 	a.Load()
 	REns = np.zeros(len(a.mols))
-	for i, mol in enumerate(a.mols):
-		REns[i] = float(mol.properties["energy"])
-	REns[REns == np.inf] = 1.e10
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
 	tset = TensorMolData(a,d)
-	LJP = np.array((0.316, 1.0))
-	print Eval_LJBatch(LJP, tset, REns)
+	batch_data = tset.RawBatch(nmol=30000)
+	REns = batch_data[1][:,0,0]
+	if (not np.all(np.isfinite(batch_data[0]))):
+		print("Bad Batch...0 ")
+	if (not np.all(np.isfinite(batch_data[1]))):
+		print("Bad Batch...1 ")
+	# LJP = np.array((0.316, 1.0))
+	import scipy.optimize
+	rranges = (slice(-4, 4, 0.05), slice(-4, 4, 0.05))
+	resbrute = scipy.optimize.brute(Eval_LJBatch, rranges, args=tset, full_output=True, finish=scipy.optimize.fmin)
+	print Eval_LJBatch(LJP, batch_data, REns)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="aspirin", dir_="/media/sdb2/jeherr/TensorMol/datasets/md_datasets/aspirin/", forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH")
-# RandomSmallSet("SmallMols", 60000)
+# RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # TestIpecac()
 # TestBP()
