@@ -88,7 +88,7 @@ if (1):
                 md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_IR.txt")
 
-	if (1):
+	if (0):
 		a=FragableMSetBF("H2O_cluster")
 		a.ReadXYZ("H2O_cluster")
 		#a=FragableMSetBF("H2O_dimer")
@@ -110,6 +110,16 @@ if (1):
 			#mbe.NN_Dipole(mol)
 			mbe.NN_Charge(mol)
 			#mbe.NN_Energy(mol, True)
+
+
+	if (1):
+		a = MSet("H2O_udp")
+		a.ReadXYZ("H2O_udp")
+		#manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
+                dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
+		for mol in a.mols:
+			#manager.Eval_BPForceSingle(mol)
+			dipole_manager.Eval_BPDipoleGrad_2(mol)
 
 if (0): 
                 a=FragableMSetBF("H2O_cluster_opt", center_=False)
