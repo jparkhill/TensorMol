@@ -120,6 +120,7 @@ if (1):
 		for mol in a.mols:
 			#manager.Eval_BPForceSingle(mol)
 			dipole_manager.Eval_BPDipoleGrad_2(mol)
+		#dipole_manager.Eval_BPDipoleGrad_2(a)
 
 if (0): 
                 a=FragableMSetBF("H2O_cluster_opt", center_=False)
