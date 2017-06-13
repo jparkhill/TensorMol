@@ -263,7 +263,10 @@ def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
 	for l in s:
 		print "Central Energy (cm**-1): ", np.sign(l)*np.sqrt(KCONVERT*abs(l))*CMCONVERT
 	print "--"
-	return
+	# Get the actual normal modes, for visualization sake. 
+	w,v = np.linalg.eigh(cHess)
+	print w 
+	return w, v 
 
 def LineSearch(f_, x0_, p_, thresh = 0.00001):
 	'''

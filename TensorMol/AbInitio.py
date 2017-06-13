@@ -47,3 +47,37 @@ def QchemDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
 		if line.count(' met')>0:
 			return np.array([float(line.split()[1])])[0]
 	return np.array([0.0])[0]
+
+def PullFreqData():
+	a = open("/media/sdb1/dtoth/qchem_jobs/new/phenol.out", "r+") #Change file name 
+	# each time to read correct output file
+	f=open("phenol_freq.dat", "w") #Change file name to whatever you want -- 
+	# make sure it's different each time 
+	lines = a.readlines()
+	data = []
+	ip = 0
+	for i, line in enumerate(lines):
+	    if line.count("NAtoms") > 0:
+	        atoms = int(lines[i+1].split()[0])
+	        break 
+	nm = np.zeros((3*atoms-6, atoms, 3))
+	for i, line in enumerate(lines):
+	    if "Frequency:" in line:
+	        freq = [line.split()[1], line.split()[2],line.split()[3]]
+	        intens = [lines[i+4].split()[2], lines[i+4].split()[3],lines[i+4].split()[4]]
+	        f.write(freq[0] + "   " + intens[0] + "\n")
+	        f.write(freq[1] + "   " + intens[1] + "\n")
+	        f.write(freq[2] + "   " + intens[2] + "\n")
+	    if "Raman Active" in line:
+	        for j in range(atoms):
+	            it = 0
+	            for k in range(3):
+	                for l in range(3):
+	                    nm[it+ip,j,l] = float(lines[i+j+2].split()[k*3+l+1])
+	                it += 1
+	        ip += 3
+	        # f.write(nm[0] + "  " + nm)
+	np.save("morphine_nm.npy", nm)
+	
+	f.close()   
+

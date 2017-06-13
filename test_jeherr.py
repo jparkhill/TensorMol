@@ -193,12 +193,13 @@ def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
 	a.ReadXYZ()
 	tmol=copy.deepcopy(a.mols[mol])
-	# tmol.Distort(0.2)
+	# tmol.Distort(0.1)
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+"fc_sqdiff", None, False)
 	opt=Optimizer(manager)
 	t1=time.time()
 	opt.OptTFRealForce(tmol)
-	print time.time()-t1
+	#TestForces(set_ = "tmp", mol=0)
+	#print time.time()-t1
 
 def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""

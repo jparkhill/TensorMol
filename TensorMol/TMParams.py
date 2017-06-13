@@ -18,8 +18,6 @@ class TMParams(dict):
 		self["SH_NRAD"]=7
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
-		#self["AN1_r_Rc"] = 5
-		#self["AN1_a_Rc"] = 3.5
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
 		self["AN1_eta"] = 4.0
@@ -69,9 +67,9 @@ class TMParams(dict):
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
 		self["OptMaxCycles"]=10000
-		self["OptThresh"]=0.0005
+		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
-		self["OptStepSize"] = 0.004
+		self["OptStepSize"] = 0.0005
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
