@@ -18,13 +18,6 @@ class TMParams(dict):
 		self["SH_NRAD"]=7
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
-<<<<<<< HEAD
-		#self["AN1_r_Rc"] = 6
-		#self["AN1_a_Rc"] = 4
-=======
-		#self["AN1_r_Rc"] = 5
-		#self["AN1_a_Rc"] = 3.5
->>>>>>> db1ca8dfd175900c39606a92e7435a88acf646a6
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
 		self["AN1_eta"] = 4.0

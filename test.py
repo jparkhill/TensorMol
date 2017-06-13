@@ -113,11 +113,11 @@ def TestBP_WithGrad():
 	for mol in a.mols:
 		mol.properties['force'] /= (BOHRPERA*BOHRPERA)
 		mol.CalculateAtomization()
-	PARAMS["AN1_r_Rc"] = 4.6
-	PARAMS["AN1_a_Rc"] = 3.1
+	PARAMS["AN1_r_Rc"] = 6.
+	PARAMS["AN1_a_Rc"] = 4.
 	PARAMS["AN1_eta"] = 4.0
 	PARAMS["AN1_zeta"] = 8.0
-	PARAMS["AN1_num_r_Rs"] = 16
+	PARAMS["AN1_num_r_Rs"] = 8
 	PARAMS["AN1_num_a_Rs"] = 4
 	PARAMS["AN1_num_a_As"] = 4
 	PARAMS["batch_size"] = 1500
@@ -235,7 +235,7 @@ def IRProtocol(mol_, ForceField_, ChargeField_, name_= "IR"):
 	Args:
 		mol_: A molecule
 		ForceField_: An function returning Energy (Eh), and Force (j/Ang)
-		ChargeField_: A function returning charges (atomic units)
+		ChargeField_: A function returning charges.
 	"""
 	PARAMS["OptMomentum"] = 0.0
 	PARAMS["OptMomentumDecay"] = 0.9
@@ -249,19 +249,18 @@ def IRProtocol(mol_, ForceField_, ChargeField_, name_= "IR"):
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
 	PARAMS["MDTemp"]= 1.0
-	PARAMS["MDLogTrajectory"] = False
 	anneal = Annealer(ForceField_, None, optmol,name_+"_Anneal")
 	anneal.Prop()
 	optmol.coords = anneal.Minx.copy()
-	PARAMS["MDTemp"]= 40.0
+	PARAMS["MDTemp"]= 60.0
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDMaxStep"] = 1000
 	warm = VelocityVerlet(None,optmol,name_+"_Warm",ForceField_)
 	warm.Prop()
 	optmol.coords = warm.x.copy()
 	#Finally get the IR.
-	PARAMS["MDMaxStep"] = 16000
-	PARAMS["MDdt"] = 0.2
+	PARAMS["MDMaxStep"] = 40000
+	PARAMS["MDdt"] = 0.1
 	PARAMS["MDUpdateCharges"] = True
 	ir = IRTrajectory(ForceField_, ChargeField_, optmol,name_+"_IR", warm.v.copy())
 	ir.Prop()
@@ -331,53 +330,69 @@ def TestIndoIR():
         return
 def david_testIR():
 	"""
-        Try to model the IR spectra of Johnson's peptides...
-        Optimize, then get charges, then do an isotropic IR spectrum.
-        """
-        a = MSet("david_test")
-        a.ReadXYZ("david_test")
-        manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-        PARAMS["OptMomentum"] = 0.0
-        PARAMS["OptMomentumDecay"] = 0.9
-        PARAMS["OptStepSize"] = 0.02
-        PARAMS["OptMaxCycles"]=200
-        indo = a.mols[7]
+	Try to model the IR spectra of Johnson's peptides...
+	Optimize, then get charges, then do an isotropic IR spectrum.
+	"""
+	a = MSet("david_test")
+	a.ReadXYZ("david_test")
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 0.9
+	PARAMS["OptStepSize"] = 0.02
+	PARAMS["OptMaxCycles"]=200
+	indo = a.mols[6]
 	print "number of atoms in indo", indo.NAtoms()
-        #optimizer = Optimizer(manager)
-        #optimizer.OptANI1(indo)
-        qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-        ForceField = lambda x: manager.Eval_BPForceSingle(Mol(indo.atoms,x),True)
-        ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(indo.atoms,x),False)[2][0]
-        PARAMS["MDdt"] = 0.2
-        PARAMS["RemoveInvariant"]=True
-        PARAMS["MDMaxStep"] = 10000
-        PARAMS["MDThermostat"] = "Nose"
-        PARAMS["MDV0"] = None
-        PARAMS["MDTemp"]= 1.0
-        annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
-        annealIndo.Prop()
-        indo.coords = annealIndo.Minx.copy()
+	#optimizer = Optimizer(manager)
+	#optimizer.OptANI1(indo)
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	EnergyField = lambda x: manager.Eval_BPForceSingle(Mol(indo.atoms,x),True)[0]
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(indo.atoms,x),True)
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(indo.atoms,x),False)[2][0]
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 100
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDV0"] = None
+	PARAMS["MDTemp"]= 1.0
+	annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
+	annealIndo.Prop()
+	indo.coords = annealIndo.Minx.copy()
 	indo.WriteXYZfile("./results/", "davidIR_opt")
+	# Perform a Harmonic analysis 
+	m=indo 
+	print "Harmonic Analysis"
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
+	v = v.real 
+	print np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
+	for i in range(3*m.NAtoms()): 
+		print np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
+		nm = v[:,i].reshape((m.NAtoms(),3))
+		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
+		print nm
+		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
+			mdisp = Mol(m.atoms,m.coords+alpha*nm)
+			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
 
-        PARAMS["MDFieldAmp"] = 0.0 #0.00000001
-        PARAMS["MDFieldTau"] = 0.4
-        PARAMS["MDFieldFreq"] = 0.8
-        PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-        PARAMS["MDThermostat"] = "Nose"
-        PARAMS["MDTemp"] = 30
-        PARAMS["MDdt"] = 0.1
-        PARAMS["RemoveInvariant"]=True
-        PARAMS["MDV0"] = None
+		PARAMS["MDFieldAmp"] = 0.0 #0.00000001
+		PARAMS["MDFieldTau"] = 0.4
+		PARAMS["MDFieldFreq"] = 0.8
+		PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+		PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDTemp"] = 30
+		PARAMS["MDdt"] = 0.1
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDV0"] = None
 
-        PARAMS["MDMaxStep"] = 10000
-        warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
-        warm.Prop()
-        indo.coords = warm.x.copy()
+		PARAMS["MDMaxStep"] = 10000
+		warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
+		warm.Prop()
+		indo.coords = warm.x.copy()
 
-        PARAMS["MDMaxStep"] = 40000
-        md = IRTrajectory(ForceField, ChargeField, indo,"david_IR_30K",warm.v.copy(),)
-        md.Prop()
-        WriteDerDipoleCorrelationFunction(md.mu_his,"david_IR_30K.txt")
+		PARAMS["MDMaxStep"] = 40000
+		md = IRTrajectory(ForceField, ChargeField, indo,"david_IR_30K",warm.v.copy(),)
+		md.Prop()
+		WriteDerDipoleCorrelationFunction(md.mu_his,"david_IR_30K.txt")
 
 
         #PARAMS["MDTemp"]= 0.0
@@ -389,8 +404,50 @@ def david_testIR():
         #md0 = IRTrajectory(ForceField, ChargeField, indo, "indo")
         #md0.Prop()
         #WriteDerDipoleCorrelationFunction(md0.mu_his,"indo.txt")
-        return
+	return
 
+def david_HarmonicAnalysis():
+	# print "TestIR"
+	a = MSet("david_test")
+	a.ReadXYZ("david_test")
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	# PARAMS["OptMomentum"] = 0.0
+	# PARAMS["OptMomentumDecay"] = 0.9
+	# PARAMS["OptStepSize"] = 0.02
+	# PARAMS["OptMaxCycles"]=200
+	indo = a.mols[6]
+	# print "number of atoms in indo", indo.NAtoms()
+	# #optimizer = Optimizer(manager)
+	# #optimizer.OptANI1(indo)
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	EnergyField = lambda x: manager.Eval_BPForceSingle(Mol(indo.atoms,x),True)[0]
+	# ForceField = lambda x: manager.Eval_BPForceSingle(Mol(indo.atoms,x),True)
+	# ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(indo.atoms,x),False)[2][0]
+	# PARAMS["MDdt"] = 0.2
+	# PARAMS["RemoveInvariant"]=True
+	# PARAMS["MDMaxStep"] = 100
+	# PARAMS["MDThermostat"] = "Nose"
+	# PARAMS["MDV0"] = None
+	# PARAMS["MDTemp"]= 1.0
+	# annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
+	# annealIndo.Prop()
+	# indo.coords = annealIndo.Minx.copy()
+	# indo.WriteXYZfile("./results/", "davidIR_opt")
+	# # Perform a Harmonic analysis 
+	m=indo 
+	print "Harmonic Analysis"
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
+	v = v.real 
+	return np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
+	for i in range(3*m.NAtoms()): 
+		return np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
+		nm = v[:,i].reshape((m.NAtoms(),3))
+		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
+		return nm
+		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
+			mdisp = Mol(m.atoms,m.coords+alpha*nm)
+			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
 
 def TestIR():
 	"""
@@ -812,32 +869,9 @@ def TestNebGLBFGS(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	neb.OptNebGLBFGS()
 	return
 
-def Tata():
-	"""
-	Do some fun optimizations and stuff.
-	"""
-	a = MSet("tata")
-	a.ReadXYZ("tata")
-	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	mol = a.mols[0]
-	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(mol.atoms,x),True)
-	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(mol.atoms,x),False)[2][0]
-	PARAMS["OptMaxCycles"]=10
-	opt = GeomOptimizer(ForceField)
-	optmol = opt.Opt(mol)
-	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDThermostat"] = "Nose"
-	PARAMS["MDV0"] = None
-	PARAMS["MDAnnealT0"] = 300.0
-	PARAMS["MDAnnealSteps"] = 500
-	md = Annealer(ForceField, None, optmol,"tata")
-	md.Prop()
-	return
-
 def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
-	Test MolecularDynamics with John Herr's Force Network.
+	Test MolecularDynamics
 	"""
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
 	a=MSet("OCSDB_test")
@@ -930,11 +964,9 @@ def TestEE():
 #TestDipole()
 #TestJohnson()
 #TestIR()
-<<<<<<< HEAD
 # TestIndoIR()
-david_testIR()
-=======
->>>>>>> db1ca8dfd175900c39606a92e7435a88acf646a6
+# david_testIR()
+david_HarmonicAnalysis()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

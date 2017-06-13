@@ -342,7 +342,7 @@ class VelocityVerlet:
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
-				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 
 			self.md_log[step,0] = self.t
 			self.md_log[step,4] = self.KE
@@ -465,7 +465,7 @@ class IRTrajectory(VelocityVerlet):
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 			else:
-				self.x , self.v, self.a, self.EPot = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
+				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 
 			if (PARAMS["MDIrForceMin"] and self.EPot < self.MinE and abs(self.EPot - self.MinE)>0.00005):
 				self.MinE = self.EPot
@@ -523,7 +523,7 @@ class Annealer(IRTrajectory):
 			# avoid the thermostat blowing up.
 			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
 			# First 50 steps without any thermostat.
-			self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+			self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 
 			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh):
 				self.MinE = self.EPot
