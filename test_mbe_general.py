@@ -117,10 +117,10 @@ if (1):
 		a.ReadXYZ("H2O_udp")
 		#manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
                 dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
-		for mol in a.mols:
+		#for mol in a.mols:
 			#manager.Eval_BPForceSingle(mol)
-			dipole_manager.Eval_BPDipoleGrad_2(mol)
-		#dipole_manager.Eval_BPDipoleGrad_2(a)
+		#	dipole_manager.Eval_BPDipoleGrad_2(mol)
+		print dipole_manager.Eval_BPDipoleGrad_2(a)
 
 if (0): 
                 a=FragableMSetBF("H2O_cluster_opt", center_=False)

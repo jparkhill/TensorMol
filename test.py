@@ -107,7 +107,6 @@ def TestBP_WithGrad():
 	"""
 	copy glymd.pdb from the google drive...
 	"""
-<<<<<<< HEAD
 	a = MSet("glymd")
 	a.Load()
 	a.pop(45000) # help out my puny laptop
@@ -134,7 +133,6 @@ def TestBP_WithGrad():
 	if (0):
 		# Train the atomization energy in a normal BP network to test.
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-=======
 	if (1):
 		a = MSet("glymd")
 		a.Load()
@@ -143,8 +141,8 @@ def TestBP_WithGrad():
 			mol.properties['force'] *= BOHRPERA
 			#mol.properties['force'] /= (BOHRPERA*BOHRPERA)
 			mol.CalculateAtomization()
-		PARAMS["AN1_r_Rc"] = 6
-		PARAMS["AN1_a_Rc"] = 4
+		PARAMS["AN1_r_Rc"] = 4.6
+		PARAMS["AN1_a_Rc"] = 3.1
 		PARAMS["AN1_eta"] = 4.0
 		PARAMS["AN1_zeta"] = 8.0
 		PARAMS["AN1_num_r_Rs"] = 8
@@ -169,7 +167,6 @@ def TestBP_WithGrad():
 			manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
 			manager.Train(maxstep=200)
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AEAndForce")  # Initialize a digester that apply descriptor for the fragme
->>>>>>> cf81a45b95f32cfca170d1b4105875214de21ac9
 		print "Set elements: ", a.AtomTypes()
 		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol", WithGrad_=True)
 		tset.BuildTrain("glymd", append=False, max_nmols_=1000000, WithGrad_=True)
