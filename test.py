@@ -107,7 +107,6 @@ def TestBP_WithGrad():
 	"""
 	copy glymd.pdb from the google drive...
 	"""
-<<<<<<< HEAD
 	a = MSet("glymd")
 	a.Load()
 	a.pop(45000) # help out my puny laptop
@@ -134,7 +133,6 @@ def TestBP_WithGrad():
 	if (0):
 		# Train the atomization energy in a normal BP network to test.
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-=======
 	if (1):
 		a = MSet("glymd")
 		a.Load()
@@ -169,7 +167,6 @@ def TestBP_WithGrad():
 			manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
 			manager.Train(maxstep=200)
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AEAndForce")  # Initialize a digester that apply descriptor for the fragme
->>>>>>> cf81a45b95f32cfca170d1b4105875214de21ac9
 		print "Set elements: ", a.AtomTypes()
 		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol", WithGrad_=True)
 		tset.BuildTrain("glymd", append=False, max_nmols_=1000000, WithGrad_=True)
@@ -492,15 +489,15 @@ def david_HarmonicAnalysis():
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
 	v = v.real 
-	return np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
+	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
 	for i in range(3*m.NAtoms()): 
-		return np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
+		np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
 		nm = v[:,i].reshape((m.NAtoms(),3))
 		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
-		return nm
 		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
 			mdisp = Mol(m.atoms,m.coords+alpha*nm)
 			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
+	return nm
 
 def TestIR():
 	"""
@@ -1011,7 +1008,7 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-TestBP_WithGrad()
+# TestBP_WithGrad()
 #Test_ULJ()
 #Test_LJMD()
 #TestDipole()

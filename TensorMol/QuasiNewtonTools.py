@@ -233,14 +233,21 @@ def InternalCoordinates(x_,m):
 	print "Number of Internal Coordinates: ", nint
 	return S
 
-def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
+def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04, WriteNM_=False):
 	"""
 	Perform a finite difference normal mode analysis
 	of a molecule. basically implements http://gaussian.com/vib/
-	f_: Energies in Hartree.
-	x_: Coordinates (A)
-	m_: masses (kg/mol)
-	grad_: forces in Hartree/angstrom if available.
+	
+	Args: 
+		f_: Energies in Hartree.
+		x_: Coordinates (A)
+		m_: masses (kg/mol)
+		grad_: forces in Hartree/angstrom if available. (unused)
+		eps_: finite difference step
+		WriteNM_: Whether to write the normal modes to readable files 
+
+	Returns: 
+		Frequencies in wavenumbers and Normal modes (cart)
 	"""
 	n = m_.shape[0]
 	n3 = 3*n
@@ -265,8 +272,18 @@ def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04):
 	print "--"
 	# Get the actual normal modes, for visualization sake. 
 	w,v = np.linalg.eigh(cHess)
-	print w 
-	return w, v 
+	v = v.real 
+	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
+	nm = v[:,i].reshape((n,3))
+	nm *= np.sqrt(np.array([m_ for i in range(3)])).T
+	nm = nm.reshape(n*3)
+	#if (WriteNM_):
+	#	for i in range(3*m_.NAtoms()): 	
+	#		tmp = nm[i].reshape((m_.NAtoms(),3))
+	#		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
+	#			mdisp = Mol(m_.atoms,m.coords+alpha*tmp)
+	#			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
+	return wave, nm
 
 def LineSearch(f_, x0_, p_, thresh = 0.00001):
 	'''
