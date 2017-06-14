@@ -433,16 +433,11 @@ def Test_LJMD():
 	md.Prop()
 	return
 
-def Eval_LJBatch(LJP_, data_ = None):
+def Eval_LJBatch(LJP_, *params):
 	"""
 	Test TensorFlow LJ fluid Molecular dynamics
 	"""
-	inp_shp = tf.shape(data_[0])
-	nmol = inp_shp[0]
-	maxnatom = inp_shp[1]
-	XYZs = tf.to_float(tf.slice(data_[0],[0,0,1],[-1,-1,-1]))
-	REns = tf.convert_to_tensor(data_[1][:,0,0],dtype=tf.float32)
-	Zs = tf.cast(tf.reshape(tf.slice(data_[0],[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
+	XYZs, Zs, REns = params
 	LJe = tf.Variable(LJP_[0]*tf.ones([8,8]))
 	LJr = tf.Variable(LJP_[1]*tf.ones([8,8]))
 	Ens = LJEnergies(XYZs, Zs, LJe, LJr)
@@ -466,11 +461,97 @@ def Brute_LJParams():
 		print("Bad Batch...0 ")
 	if (not np.all(np.isfinite(batch_data[1]))):
 		print("Bad Batch...1 ")
+	inp_shp = tf.shape(batch_data[0])
+	nmol = inp_shp[0]
+	maxnatom = inp_shp[1]
+	XYZs = tf.to_float(tf.slice(batch_data[0],[0,0,1],[-1,-1,-1]))
+	REns = tf.convert_to_tensor(batch_data[1][:,0,0],dtype=tf.float32)
+	Zs = tf.cast(tf.reshape(tf.slice(batch_data[0],[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
+	params = (XYZs, Zs, REns)
 	# LJP = np.array((0.316, 1.0))
 	import scipy.optimize
-	rranges = (slice(-4, 4, 0.05), slice(-4, 4, 0.05))
-	resbrute = scipy.optimize.brute(Eval_LJBatch, rranges, args=tset, full_output=True, finish=scipy.optimize.fmin)
-	print Eval_LJBatch(LJP, batch_data, REns)
+	rranges = (slice(-4, 4, 0.25), slice(-4, 4, 0.25))
+	resbrute = scipy.optimize.brute(Eval_LJBatch, rranges, args=params, full_output=True, finish=scipy.optimize.fmin)
+	print resbrute[0]
+	print resbrute[1]
+	# print Eval_LJBatch(LJP, batch_data)
+
+def Eval_LJBatch2(LJP_, *params):
+	"""
+	Test TensorFlow LJ fluid Molecular dynamics
+	"""
+	XYZs, Zs, REns = params
+
+	Ens = LJEnergies(XYZs, Zs, LJe, LJr)
+	diff = tf.reduce_mean(tf.abs(tf.subtract(Ens, REns)))
+	init = tf.global_variables_initializer()
+	with tf.Session() as sess:
+		sess.run(init)
+		result = sess.run(diff)
+	return result
+
+def Prepare_LJBatch(data_):
+	with tf.Graph().as_default():
+		# Ee_pl=tf.placeholder(tf.float32, shape=tuple(1))
+		# Re_pl = tf.placeholder(tf.float32, shape=tuple(1))
+		Ee_pl = tf.constant(0.316, dtype=tf.float32)
+		Re_pl = tf.constant(1.0, dtype=tf.float32)
+		inp_shp = tf.shape(data_[0])
+		nmol = inp_shp[0]
+		maxnatom = inp_shp[1]
+		XYZs = tf.to_float(tf.slice(data_[0],[0,0,1],[-1,-1,-1]))
+		REns = tf.convert_to_tensor(data_[1][:,0,0],dtype=tf.float32)
+		Zs = tf.cast(tf.reshape(tf.slice(data_[0],[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
+		LJe = tf.Variable(Ee_pl*tf.ones([8,8]))
+		LJr = tf.Variable(Re_pl*tf.ones([8,8]))
+		Ens = LJEnergies(XYZs, Zs, LJe, LJr)
+		mae = tf.reduce_mean(tf.abs(tf.subtract(Ens, REns)))
+		# params = (XYZs, Zs, REns)
+		init = tf.global_variables_initializer()
+		sess = tf.Session()
+		sess.run(init)
+		# result = sess.run(mae)
+	# return result
+
+def LJ_BatchEval(sess_):
+	result = sess_.run(mae)
+	return result
+
+def LJ_Brute():
+	a=MSet("SmallMols_rand")
+	a.Load()
+	REns = np.zeros(len(a.mols))
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
+	tset = TensorMolData(a,d)
+	batch_data = tset.RawBatch(nmol=30000)
+	# REns = batch_data[1][:,0,0]
+	Prepare_LJBatch(batch_data)
+	print LJ_BatchEval(sess)
+
+
+		# LJP = np.array((0.316, 1.0))
+		# import scipy.optimize
+		# rranges = (slice(-4, 4, 0.25), slice(-4, 4, 0.25))
+		# resbrute = scipy.optimize.brute(Eval_LJBatch, rranges, args=params, full_output=True, finish=scipy.optimize.fmin)
+		# print resbrute[0]
+		# print resbrute[1]
+	# print Eval_LJBatch(LJP, batch_data)
+
+def tmp():
+	a=MSet("SmallMols_rand")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
+	tset = TensorMolData(a,d)
+	ins = MolInstance_DirectForce_tmp(tset,None,False,"Harm")
+	ins.train_prepare()
+	import scipy.optimize
+	rranges = (slice(-1000, 1000, 10), slice(0.5, 6, 0.25))
+	resbrute = scipy.optimize.brute(ins.LJFrc, rranges, full_output=True, finish=scipy.optimize.fmin)
+	print resbrute[0]
+	print resbrute[1]
+	# print ins.LJFrc(p)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="aspirin", dir_="/media/sdb2/jeherr/TensorMol/datasets/md_datasets/aspirin/", forces=True)
@@ -489,7 +570,9 @@ def Brute_LJParams():
 # TestAnneal()
 # TestMorphIR()
 # Eval_LJBatch()
-Brute_LJParams()
+# LJ_Brute()
+tmp()
+
 
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()

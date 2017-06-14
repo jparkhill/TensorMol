@@ -1113,6 +1113,20 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		if not self.sess:
 			LOGGER.info("loading the session..")
 			self.Eval_Prepare()
+
+		#feed_dict=self.fill_feed_dict(batch_data)
+		#output_list, charge_gradient = self.sess.run([  self.output_list, self.charge_gradient],  feed_dict=feed_dict)
+
+		#for i in range (0, batch_data[0][-1][-1].shape[0]):
+		#	print("i:", i)
+		#	import copy
+		#	new_batch_data=copy.deepcopy(batch_data)
+		#	#new_batch_data = list(batch_data)
+		#	new_batch_data[0][-1][-1][i] += 0.01
+		#	feed_dict=self.fill_feed_dict(new_batch_data)
+		#	new_output_list, new_charge_gradient = self.sess.run([  self.output_list, self.charge_gradient],  feed_dict=feed_dict)
+		#	print ("new_charge_gradient: ", charge_gradient[-1][-1][i],  new_charge_gradient[-1][-1][i], " numerical: ", (new_output_list[2][-1][-1][-1]-output_list[2][-1][-1][-1])/0.01)
+
 		feed_dict=self.fill_feed_dict(batch_data)
 		if not IfChargeGrad:
 			output_list  = self.sess.run( [self.output_list],  feed_dict=feed_dict)
@@ -1120,6 +1134,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		else:
 			#dipole, total_loss_value, loss_value,  atom_outputs, charge_gradient = self.sess.run([ self.dipole_output, self.total_loss, self.loss, self.atom_outputs, self.charge_gradient],  feed_dict=feed_dict)
 			output_list, charge_gradient = self.sess.run([  self.output_list, self.charge_gradient],  feed_dict=feed_dict)
+			#print ("unscaled_charge:\n", output_list[2],"\n")
                         #print ("scaled_atom_outputs:", output_list[1], "unscaled_atom_outputs:", output_list[2], " charge_gradient:", charge_gradient, "length of charge_gradient:", len(charge_gradient))
                         return   output_list[0]/AUPERDEBYE, output_list[1], charge_gradient
 

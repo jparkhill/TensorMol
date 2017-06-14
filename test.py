@@ -141,8 +141,8 @@ def TestBP_WithGrad():
 			mol.properties['force'] *= BOHRPERA
 			#mol.properties['force'] /= (BOHRPERA*BOHRPERA)
 			mol.CalculateAtomization()
-		PARAMS["AN1_r_Rc"] = 6
-		PARAMS["AN1_a_Rc"] = 4
+		PARAMS["AN1_r_Rc"] = 4.6
+		PARAMS["AN1_a_Rc"] = 3.1
 		PARAMS["AN1_eta"] = 4.0
 		PARAMS["AN1_zeta"] = 8.0
 		PARAMS["AN1_num_r_Rs"] = 8

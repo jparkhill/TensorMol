@@ -790,9 +790,21 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			print ("loading the session..")
 			self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
+
+		#mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+		#for i in range (0, batch_data[0][-1][-1].shape[0]):
+                #        print("i:", i)
+                #        import copy
+                #        new_batch_data=copy.deepcopy(batch_data)
+                #        #new_batch_data = list(batch_data)
+                #        new_batch_data[0][-1][-1][i] += 0.01
+                #        feed_dict=self.fill_feed_dict(new_batch_data)
+		#	new_mol_output, total_loss_value, loss_value, new_atom_outputs, new_gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+                #        print ("new_charge_gradient: ", gradient[-1][-1][i],  new_gradient[-1][-1][i], " numerical: ", (new_atom_outputs[-1][-1][-1]- atom_outputs[-1][-1][-1])/0.01)
+
 		if (IfGrad):
 			mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-			print ("atom_outputs:", atom_outputs)
+			#print ("atom_outputs:", atom_outputs)
 			return mol_output, atom_outputs, gradient
 		else:
 			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)

@@ -812,15 +812,18 @@ class FragableClusterBF(Mol):
 				pointer = 0
 				mbe_atom_index = []
 				frag_mono_center = []
+				natom_each_mono = []
 				for j, index in enumerate(mbe_terms[i]):
 					tmp_coord[pointer:pointer+atom_group[j],:] = self.mbe_frags[1][index].coords
 					tmp_atom[pointer:pointer+atom_group[j]] = self.mbe_frags[1][index].atoms
 					mbe_atom_index += self.mbe_frags[1][index].properties["mbe_atom_index"]
+					natom_each_mono.append(len(self.mbe_frags[1][index].properties["mbe_atom_index"]))
 					frag_mono_center.append(self.mbe_frags[1][index].properties["center"])
 					pointer += atom_group[j]
 				tmp_mol = Mol(tmp_atom, tmp_coord)
 				tmp_mol.properties["mbe_atom_index"] = mbe_atom_index
 				tmp_mol.properties["mono_index"] = mbe_terms[i]
+				tmp_mol.properties["natom_each_mono"] = natom_each_mono
 				tmp_mol.properties["center"] = frag_mono_center
 				#print "tmp_coords: ", tmp_mol.coords
 				self.mbe_frags[order].append(tmp_mol)
@@ -838,6 +841,7 @@ class FragableClusterBF(Mol):
 				continue 
 			for sub_order in range (1, order):
 				self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
+			print "order: ", order, self.mbe_energy[order]
 			self.nn_energy += self.mbe_energy[order]	
 		print self.mbe_energy, self.nn_energy
 		return 
@@ -856,19 +860,20 @@ class FragableClusterBF(Mol):
 			if order == 2:
 				self.properties["mbe_energy_embed"][order] = 0.0
 				self.mbe_energy[order] = 0.0
+				cc_2b_sum = 0.0
+				nn_2b_sum = 0.0
+				avg_2b_sum = 0.0
 				for mol_frag in self.mbe_frags[order]:
 					nn_2b = mol_frag.properties["nn_energy"] - self.mbe_frags[1][mol_frag.properties["mono_index"][0]].properties["nn_energy"] -  self.mbe_frags[1][mol_frag.properties["mono_index"][1]].properties["nn_energy"]
-					tmp_monos = []
-					sub_pointer = 0
-					for mono_index in mol_frag.properties["mono_index"]:
-                                                tmp_monos.append(Mol(self.atoms[self.mbe_frags[1][mono_index].properties["mbe_atom_index"]], self.coords[self.mbe_frags[1][mono_index].properties["mbe_atom_index"]]))
-                                                tmp_monos[-1].properties["atom_charges"] = mol_frag.properties["atom_charges"][sub_pointer:sub_pointer+len(self.mbe_frags[1][mono_index].properties["mbe_atom_index"])]/BOHRPERA
-                                                sub_pointer += len(self.mbe_frags[1][mono_index].properties["mbe_atom_index"])
-                                        cc_2b = ChargeCharge(tmp_monos[0], tmp_monos[1])
+					cc_2b = Dimer_ChargeCharge(mol_frag)
 					dist =  (sum(np.square(mol_frag.properties["center"][0] - mol_frag.properties["center"][1])))**0.5
 					avg_2b = (1.0-math.erf((dist - self.properties["cutoff"])/self.properties["erf_width"]))/2.0*nn_2b + (1.0+math.erf((dist - self.properties["cutoff"])/self.properties["erf_width"]))/2.0*cc_2b
 					self.mbe_energy[order] += nn_2b
 					self.properties["mbe_energy_embed"][order] += avg_2b
+					cc_2b_sum += cc_2b
+					nn_2b_sum += nn_2b
+					avg_2b_sum += avg_2b
+				print "nn_2b_sum:", nn_2b_sum, "  cc_2b_sum:", cc_2b_sum, " avg_2b_sum:", avg_2b_sum
 				self.nn_energy += self.properties["mbe_energy_embed"][order]	
 				continue
                         for sub_order in range (1, order):
@@ -909,6 +914,39 @@ class FragableClusterBF(Mol):
 		self.properties["mbe_deri"] = -self.nn_force
                 #print self.mbe_force, self.nn_force
                 return
+
+
+	def MBE_Force_Embed(self):
+		mono_num = len(self.mbe_frags[1])
+                self.nn_force = np.zeros((self.NAtoms(), 3))
+                for order in range (1, self.mbe_order+1):
+                        self.mbe_force[order] = self.frag_force_sum[order]
+                        if order == 1:
+                                self.nn_force += self.mbe_force[order]
+                                continue
+			if order == 2:
+				cc_2b_grad_sum = np.zeros((self.NAtoms(), 3))
+				nn_2b_grad_sum = np.zeros((self.NAtoms(), 3))
+				for mol_frag in self.mbe_frags[order]:
+					cc_2b_grad = np.zeros((self.NAtoms(), 3))
+					nn_2b_grad = np.zeros((self.NAtoms(), 3))
+					cc_2b_grad[mol_frag.properties["mbe_atom_index"]] = Dimer_ChargeCharge_Grad(mol_frag)
+					mono_1_grads = self.mbe_frags[1][mol_frag.properties["mono_index"][0]].properties["nn_energy_grads"]
+					mono_2_grads = self.mbe_frags[1][mol_frag.properties["mono_index"][1]].properties["nn_energy_grads"]
+					nn_2b_grad[mol_frag.properties["mbe_atom_index"]] = mol_frag.properties["nn_energy_grads"] - np.lib.pad(mono_1_grads,((0, mol_frag.properties["natom_each_mono"][1]),(0,0)),'constant', constant_values = (0)) - np.lib.pad(mono_2_grads,((mol_frag.properties["natom_each_mono"][0], 0),(0,0)),'constant', constant_values = (0))
+					#print "grads:",  mol_frag.properties["nn_energy_grads"]/JOULEPERHARTREE, " energy:",mol_frag.properties["nn_energy"], " coords:", mol_frag.coords
+					nn_2b_grad_sum += nn_2b_grad
+					cc_2b_grad_sum += cc_2b_grad
+					#print "atoms in frag:", mol_frag.properties["mbe_atom_index"]
+					#print "gradient:", Dimer_ChargeCharge_Grad(mol_frag)
+				print "cc_2b_grad_sum:", cc_2b_grad_sum, "nn_2b_grad_sum:", nn_2b_grad_sum/JOULEPERHARTREE
+                        for sub_order in range (1, order):
+                                self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
+			if order ==2:
+				print "nn_2b_grad_sum:", self.mbe_force[order]/JOULEPERHARTREE
+                        self.nn_force += self.mbe_force[order]
+                self.properties["mbe_deri"] = -self.nn_force
+                #print self.mbe_force, self.nn_force
 
 	def MBE_Charge(self):
 		mono_num = len(self.mbe_frags[1])
