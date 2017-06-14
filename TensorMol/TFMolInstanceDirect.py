@@ -219,12 +219,11 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 				TData_: A TensorMolData instance.
 				Name_: A name for this instance.
 		"""
-		self.NetType = "LJForce"
+		self.NetType = "LJE"
 		self.TData = TData_
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
 		self.MaxNAtoms = TData_.MaxNAtoms
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 		self.batch_size_output = 10000
 		self.inp_pl=None
 		self.frce_pl=None
@@ -243,6 +242,7 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		self.Deq = None
 		self.dbg1 = None
 		self.dbg2 = None
+		self.batch_data = self.TData.RawBatch(nmol=30000)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 
 	def train_prepare(self,  continue_training =False):
@@ -254,31 +254,24 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		        continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.inp_pl=tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,4]))
-			self.frce_pl = tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,3]))
-			self.E_pl = tf.placeholder(tf.float32, shape=1)
-			self.R_pl = tf.placeholder(tf.float32, shape=1)
-			if (self.ForceType=="LJ"):
-				self.LJe = tf.Variable(0.316*tf.ones([8,8]),trainable=True)
-				self.LJr = tf.Variable(tf.ones([8,8]),trainable=True)
-				# These are squared later to keep them positive.
-				self.energies, self.forces = self.LJFrc(self.inp_pl)
-				self.energiesER = self.LJER(self.inp_pl,self.E_pl, self.R_pl)
-				self.total_loss, self.loss = self.loss_op(self.forces, self.frce_pl)
-				self.train_op = self.training(self.total_loss, PARAMS["learning_rate"], PARAMS["momentum"])
-				self.saver = tf.train.Saver()
-			elif (self.ForceType=="Harm"):
-				self.energies, self.forces = self.HarmFrc(self.inp_pl)
-			else:
-				raise Exception("Unknown Kernel")
-			self.summary_op = tf.summary.merge_all()
+			self.LJe = tf.placeholder(tf.float32, shape=(),name="Ee_pl")
+			self.LJr = tf.placeholder(tf.float32, shape=(),name="Re_pl")
+			# self.Ee_pl = tf.constant(0.316, dtype=tf.float32)
+			# self.Re_pl = tf.constant(1.0, dtype=tf.float32)
+			self.inp_shp = tf.shape(self.batch_data[0])
+			self.nmol = self.inp_shp[0]
+			self.maxnatom = self.inp_shp[1]
+			self.XYZs = tf.to_float(tf.slice(self.batch_data[0],[0,0,1],[-1,-1,-1]))
+			self.REns = tf.convert_to_tensor(self.batch_data[1][:,0,0],dtype=tf.float32)
+			self.Zs = tf.cast(tf.reshape(tf.slice(self.batch_data[0],[0,0,0],[-1,-1,1]),[self.nmol,self.maxnatom,1]),tf.int32)
+			self.Ens = LJEnergies(self.XYZs, self.Zs, self.LJe, self.LJr)
+			self.mae = tf.reduce_mean(tf.abs(tf.subtract(self.Ens, self.REns)))
+			# params = (XYZs, Zs, REns)
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
-		return
 
-	def LJER(self, inp_pl,E_pl,R_pl):
+	def LJER(self,inp_pl,E_pl,R_pl):
 		"""
 		with the current LJe, and LJr.
 
@@ -300,3 +293,16 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		Ens = LJEnergies(XYZs, Zs, LJe2, LJr2)
 		#Ens = tf.Print(Ens,[Ens],"Energies",5000,5000)
 		return Ens
+
+	def LJFrc(self, params):
+		"""
+		Compute forces for a batch of molecules
+		with the current LJe, and LJr.
+
+		Args:
+			inp_pl: placeholder for the NMol X MaxNatom X 4 tensor of Z,x,y,z
+		"""
+		print(params)
+		feeddict = {self.LJe:params[0], self.LJr:params[1]}
+		result = self.sess.run(self.mae,feed_dict=feeddict)
+		return result
