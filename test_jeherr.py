@@ -546,8 +546,12 @@ def tmp():
 	tset = TensorMolData(a,d)
 	ins = MolInstance_DirectForce_tmp(tset,None,False,"Harm")
 	ins.train_prepare()
-	p=np.array((0.316, 1.0))
-	print ins.LJFrc(p)
+	import scipy.optimize
+	rranges = (slice(-1000, 1000, 10), slice(0.5, 6, 0.25))
+	resbrute = scipy.optimize.brute(ins.LJFrc, rranges, full_output=True, finish=scipy.optimize.fmin)
+	print resbrute[0]
+	print resbrute[1]
+	# print ins.LJFrc(p)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="aspirin", dir_="/media/sdb2/jeherr/TensorMol/datasets/md_datasets/aspirin/", forces=True)

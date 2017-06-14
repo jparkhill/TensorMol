@@ -195,7 +195,9 @@ def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""
 	Ds = TFDistances(XYZs_)
 	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
-	Ks = LJKernels(Ds,Zs_,Ee_,Re_)
+	LJe = Ee_*tf.ones([8,8])
+	LJr = Re_*tf.ones([8,8])
+	Ks = LJKernels(Ds,Zs_,LJe,LJr)
 	Ens = tf.reduce_sum(Ks,[1,2])
 	return Ens
 

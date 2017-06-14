@@ -254,8 +254,8 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		        continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.Ee_pl = tf.placeholder(tf.float32, shape=(1),name="Ee_pl")
-			self.Re_pl = tf.placeholder(tf.float32, shape=(1),name="Re_pl")
+			self.LJe = tf.placeholder(tf.float32, shape=(),name="Ee_pl")
+			self.LJr = tf.placeholder(tf.float32, shape=(),name="Re_pl")
 			# self.Ee_pl = tf.constant(0.316, dtype=tf.float32)
 			# self.Re_pl = tf.constant(1.0, dtype=tf.float32)
 			self.inp_shp = tf.shape(self.batch_data[0])
@@ -264,8 +264,6 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 			self.XYZs = tf.to_float(tf.slice(self.batch_data[0],[0,0,1],[-1,-1,-1]))
 			self.REns = tf.convert_to_tensor(self.batch_data[1][:,0,0],dtype=tf.float32)
 			self.Zs = tf.cast(tf.reshape(tf.slice(self.batch_data[0],[0,0,0],[-1,-1,1]),[self.nmol,self.maxnatom,1]),tf.int32)
-			self.LJe = tf.Variable(tf.ones([8,8]))
-			self.LJr = tf.Variable(tf.ones([8,8]))
 			self.Ens = LJEnergies(self.XYZs, self.Zs, self.LJe, self.LJr)
 			self.mae = tf.reduce_mean(tf.abs(tf.subtract(self.Ens, self.REns)))
 			# params = (XYZs, Zs, REns)
@@ -304,7 +302,7 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		Args:
 			inp_pl: placeholder for the NMol X MaxNatom X 4 tensor of Z,x,y,z
 		"""
-		print("Shape of params[0]")
-		feeddict = {self.Ee_pl:np.array([1.],dtype=np.float32), self.Re_pl:np.array([1.],dtype=np.float32)}
+		print(params)
+		feeddict = {self.LJe:params[0], self.LJr:params[1]}
 		result = self.sess.run(self.mae,feed_dict=feeddict)
 		return result
