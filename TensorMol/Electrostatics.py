@@ -24,7 +24,7 @@ def Dipole(x_, q_):
 
 
 def ChargeCharge(m1_, m2_):
-	"""calcuate  the charge-charge interaction energy between two molecules"""
+	"""calculate  the charge-charge interaction energy between two molecules"""
 	cc_energy = 0.0
 	for i in range (0, m1_.NAtoms()):
 		for j in range (0, m2_.NAtoms()):
@@ -32,6 +32,34 @@ def ChargeCharge(m1_, m2_):
 			cc_energy += m1_.properties['atom_charges'][i]*m2_.properties['atom_charges'][j]/dist
 	return cc_energy
 
+def Dimer_ChargeCharge(m_):
+	"""calculate the charge-charge interaction between two monomer in a dimer"""	
+	cc_energy = 0.0
+	seperate_index = m_.properties["natom_each_mono"][0]
+	if type(m_.DistMatrix) is not np.ndarray:
+		m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+	for i in range (0, seperate_index):
+		for j in range (seperate_index, m_.NAtoms()):
+			cc_energy += m_.properties['atom_charges'][i]*m_.properties['atom_charges'][j]/(m_.DistMatrix[i][j]*BOHRPERA)
+	return cc_energy
+
+def Dimer_ChargeCharge_Grad(m_):
+	"""calculate the gradient of charge-charge interaction between two monomer in a dimer"""
+	if type(m_.DistMatrix) is not np.ndarray:
+                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+	cc_energy_grad = np.zeros((m_.NAtoms(), 3))
+	seperate_index = m_.properties["natom_each_mono"][0]
+	for i in range (0, m_.NAtoms()):
+		for j in range (0, seperate_index):
+			for k in range (seperate_index, m_.NAtoms()):
+				for q in range (0, 3):
+					if j == i:
+						cc_energy_grad[i][q] += (m_.properties['atom_charges_grads'][j][i][q]*m_.properties['atom_charges'][k]+m_.properties['atom_charges'][j]*m_.properties['atom_charges_grads'][k][i][q])/(m_.DistMatrix[j][k]*BOHRPERA) - (m_.properties['atom_charges'][j]*m_.properties['atom_charges'][k]*(m_.coords[j][q]-m_.coords[k][q]))/(m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*BOHRPERA)
+					elif k == i:
+						cc_energy_grad[i][q] += (m_.properties['atom_charges_grads'][j][i][q]*m_.properties['atom_charges'][k]+m_.properties['atom_charges'][j]*m_.properties['atom_charges_grads'][k][i][q])/(m_.DistMatrix[j][k]*BOHRPERA) - (m_.properties['atom_charges'][j]*m_.properties['atom_charges'][k]*(m_.coords[k][q]-m_.coords[j][q]))/(m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*BOHRPERA)
+					else:	
+						cc_energy_grad[i][q] += (m_.properties['atom_charges_grads'][j][i][q]*m_.properties['atom_charges'][k]+m_.properties['atom_charges'][j]*m_.properties['atom_charges_grads'][k][i][q])/(m_.DistMatrix[j][k]*BOHRPERA)
+	return cc_energy_grad
 
 def ElectricFieldForce(q_,E_):
 	"""

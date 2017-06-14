@@ -781,7 +781,7 @@ class TFMolManage(TFManage):
 			for j in range (0, mol.NAtoms()):
 				atom_type = mol.atoms[j]
 				atom_index = eles.index(atom_type)
-				tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]
+				tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]/BOHRPERA  # hacky way to do
 				pointers[atom_index] +=1
 			molatomcharge.append(tmp_atomcharge)
 		return dipole, molatomcharge
@@ -855,7 +855,7 @@ class TFMolManage(TFManage):
 				total_unscaled_gradient = []
 				for i in range (0, len(charge_gradients)): # Loop over element types.
 		                        total_unscaled_gradient += list(np.einsum("aij,ai->aj", inputs_grads[i],  charge_gradients[i])) # Chain rule.
-				total_unscaled_gradient  = np.asarray(total_unscaled_gradient)
+				total_unscaled_gradient  = np.asarray(total_unscaled_gradient)/BOHRPERA  # hacky way to do
 				total_scaled_gradient =  total_unscaled_gradient - np.sum(total_unscaled_gradient, axis=0)/total_unscaled_gradient.shape[0]
 				total_scaled_gradient_list = []
 				ele_pointer = 0
@@ -932,7 +932,7 @@ class TFMolManage(TFManage):
 					ele_desp_grads = np.asarray([ tmp_array for k, tmp_array in enumerate(inputs_grads[j]) if k in ele_index])
 					ele_nn_grads = np.asarray([ tmp_array for k, tmp_array in enumerate(charge_gradients[j]) if k in ele_index])
 					total_unscaled_gradient += list(np.einsum("ad,adx->ax", ele_nn_grads, ele_desp_grads))
-				total_unscaled_gradient  = np.asarray(total_unscaled_gradient)
+				total_unscaled_gradient  = np.asarray(total_unscaled_gradient)/BOHRPERA  #hack way to do
                                 total_scaled_gradient =  total_unscaled_gradient - np.sum(total_unscaled_gradient, axis=0)/total_unscaled_gradient.shape[0]
                                 total_scaled_gradient_tmp = []
                                 ele_pointer = 0
@@ -957,7 +957,7 @@ class TFMolManage(TFManage):
 			for j in range (0, mol.NAtoms()):
 				atom_type = mol.atoms[j]
 				atom_index = eles.index(atom_type)
-				tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]
+				tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]/BOHRPERA  #hacky way to do
 				tmp_atomcharge_gradient[j] = total_scaled_gradient_list[atom_index][pointers[atom_index]].reshape((-1,3)) 
 				pointers[atom_index] +=1
 			molatomcharge.append(tmp_atomcharge)
