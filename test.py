@@ -489,15 +489,15 @@ def david_HarmonicAnalysis():
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
 	v = v.real 
-	return np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
+	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
 	for i in range(3*m.NAtoms()): 
-		return np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
+		np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
 		nm = v[:,i].reshape((m.NAtoms(),3))
 		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
-		return nm
 		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
 			mdisp = Mol(m.atoms,m.coords+alpha*nm)
 			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
+	return nm
 
 def TestIR():
 	"""
@@ -1008,7 +1008,7 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-TestBP_WithGrad()
+# TestBP_WithGrad()
 #Test_ULJ()
 #Test_LJMD()
 #TestDipole()
