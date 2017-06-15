@@ -111,20 +111,24 @@ def TestIpecac(dig_ = "GauSH"):
 	""" Tests reversal of an embedding type """
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
-	m = a.mols[5]
+	m = a.mols[1]
 	print m.atoms
-	m.WriteXYZfile("./results/", "Before")
+	# m.WriteXYZfile("./results/", "Before")
 	goodcrds = m.coords.copy()
 	m.BuildDistanceMatrix()
 	gooddmat = m.DistMatrix
 	print "Good Coordinates", goodcrds
 	TreatedAtoms = m.AtomTypes()
-	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
-	emb = dig.TrainDigestMolwise(m,MakeOutputs_=False)
+	dig = MolDigester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+	emb = dig.Emb(m, MakeOutputs=False)
 	m.Distort()
-	m.WriteXYZfile("./results/", "Distorted")
-	bestfit = ReverseAtomwiseEmbedding(dig, emb, atoms_=m.atoms, guess_=m.coords,GdDistMatrix=gooddmat)
-	bestfit.WriteXYZfile("./results/", "BestFit")
+	ip = Ipecac.Ipecac(a, dig, eles_=[1,6,7,8])
+	# m.WriteXYZfile("./results/", "Distorted")
+	bestfit = ip.ReverseAtomwiseEmbedding(emb, atoms_=m.atoms, guess_=m.coords,GdDistMatrix=gooddmat)
+	# bestfit = ReverseAtomwiseEmbedding(dig, emb, atoms_=m.atoms, guess_=None,GdDistMatrix=gooddmat)
+	# print bestfit.atoms
+	print m.atoms
+	# bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 
 def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
@@ -558,7 +562,7 @@ def tmp():
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH")
 # RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
-# TestIpecac()
+TestIpecac()
 # TestBP()
 # TestANI1()
 # TrainForces(set_ = "aspirin_5rot", BuildTrain_=True, numrot_=None)
@@ -571,7 +575,7 @@ def tmp():
 # TestMorphIR()
 # Eval_LJBatch()
 # LJ_Brute()
-tmp()
+# tmp()
 
 
 # a=MSet("pentane_eq_align")
