@@ -258,10 +258,13 @@ class TFMolManage(TFManage):
                         matrices[ei][offsets[ei], outputpointer] = 1.0
 			atom_index_in_mol[ei].append(currentmol)
                         offsets[ei] += 1
+		print ("data prepare cost:", time.time() -t)
                 t = time.time()
                 pointers = [0 for ele in self.TData.eles]
                 mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
+		print ("acutuall evaluation cost:", time.time() -t)
 
+		t = time.time()
                 total_gradient_list = []
 		total_energy_list = []
                 for i in range (0, nmols):
@@ -281,6 +284,7 @@ class TFMolManage(TFManage):
                         	total_energy_list.append(total)
 			else:
 				total_energy_list.append(total)
+		print ("recombine molecule cost:", time.time() -t)
                 return total_energy_list, total_gradient_list
 
 

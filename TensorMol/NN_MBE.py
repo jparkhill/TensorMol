@@ -74,9 +74,11 @@ class NN_MBE_BF:
                 s = MSet()
                 for order in range (1, self.mbe_order+1):
                         s.mols += mol.mbe_frags[order]
+		t = time.time()
                 energies, forces =  self.nn_mbe.Eval_BPForceSet(s)
+		print "actual evaluation cost:", time.time() -t
 		energies = np.asarray(energies)
-		print "energies: ", energies
+		#print "energies: ", energies
                 pointer = 0
                 for order in range (1, self.mbe_order+1):
 			mol.frag_force_sum[order] = np.zeros((mol.NAtoms(),3))
@@ -91,12 +93,21 @@ class NN_MBE_BF:
 					mol_frag.properties["nn_energy_grads"] = forces[pointer+i]
                         pointer += len(mol.mbe_frags[order])
 		if embed_:
+			t = time.time()
                         mol.MBE_Energy_Embed()
+			print "MBE_Energy_Embed cost:", t-time.time()
+			t = time.time()
 			mol.MBE_Force_Embed()
+			print "MBE_Force_Embed cost:", t-time.time()
                 else:
+			t = time.time()
                         mol.MBE_Energy()
+			print "MBE_Energy_Embed cost:", t-time.time()
+			t = time.time()
 			mol.MBE_Force()
+			print "MBE_Force_Embed cost:", t-time.time()
 		#print mol.properties['mbe_deri']
+		#print mol.nn_energy, mol.nn_force
                 return mol.nn_energy, mol.nn_force
 
 	def NN_Charge(self, mol, grads_= False):  # unit: au.  Dipole derived  from this charge has unit of au
@@ -118,11 +129,13 @@ class NN_MBE_BF:
 					if grads_:
 						mol_frag.properties["atom_charges_grads"] = gradient[pointer+i]
                         pointer += len(mol.mbe_frags[order])
+		t = time.time()
 		mol.MBE_Charge()
-		mol.properties['embedded_charge'] =  mol.properties['embedded_charge']
-		print "charge dipole: ", Dipole(mol.coords, mol.nn_charge)
-		for i, mol_frag in enumerate(mol.mbe_frags[1]):
-			mol_frag.properties["atom_charges"] = np.copy(mol.properties['embedded_charge'][mol_frag.properties["mbe_atom_index"]])
+		print "MBE_Charge cost:", time.time() -t
+		#mol.properties['embedded_charge'] =  mol.properties['embedded_charge']
+		#print "charge dipole: ", Dipole(mol.coords, mol.nn_charge)
+		#for i, mol_frag in enumerate(mol.mbe_frags[1]):
+		#	mol_frag.properties["atom_charges"] = np.copy(mol.properties['embedded_charge'][mol_frag.properties["mbe_atom_index"]])
 		#charge_charge_sum = 0.0
 		#for i in range (0, len(mol.mbe_frags[1])):
 		#	for j  in range (i+1, len(mol.mbe_frags[1])):

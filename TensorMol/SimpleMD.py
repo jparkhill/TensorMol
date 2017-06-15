@@ -93,7 +93,7 @@ class NoseThermostat(Thermostat):
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		return
 
-	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_=False):
+	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_ = True):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
@@ -339,6 +339,7 @@ class VelocityVerlet:
 		step = 0
 		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
 		while(step < self.maxstep):
+			t = time.time()
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/IDEALGASR
@@ -359,6 +360,7 @@ class VelocityVerlet:
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+			print ("per step cost:", time.time() -t )
 		return
 
 class IRTrajectory(VelocityVerlet):

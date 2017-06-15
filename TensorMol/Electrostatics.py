@@ -61,6 +61,25 @@ def Dimer_ChargeCharge_Grad(m_):
 						cc_energy_grad[i][q] += (m_.properties['atom_charges_grads'][j][i][q]*m_.properties['atom_charges'][k]+m_.properties['atom_charges'][j]*m_.properties['atom_charges_grads'][k][i][q])/(m_.DistMatrix[j][k]*BOHRPERA)
 	return cc_energy_grad
 
+def Dimer_Cutoff_Grad(m_, dist_, cutoff_, cutoff_width_):
+	"""calculate the gradient of cutoff function: (1+tanh((dist-cutoff)/cutoff_width))/2.0, where dist is the distance between the COM of two monoers"""
+	if type(m_.DistMatrix) is not np.ndarray:
+                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+	cutoff_grad = np.zeros((m_.NAtoms(), 3))
+	seperate_index = m_.properties["natom_each_mono"][0]
+	mass = np.array(map(lambda x: ATOMICMASSES[x-1],m_.atoms))
+	mass_sum_1 = np.sum(mass[:seperate_index])
+	mass_sum_2 = np.sum(mass[seperate_index:])
+	A = 1.0/2.0*(1 - math.tanh((dist_ - cutoff_)/cutoff_width_)**2)/cutoff_width_
+	for i in range (0, m_.NAtoms()):
+		for q in range (0, 3):
+			if i < seperate_index:
+				cutoff_grad[i][q] = A/dist_*(m_.properties["center"][0][q] - m_.properties["center"][1][q])*mass[i]/mass_sum_1
+			else:
+				cutoff_grad[i][q] = A/dist_*(m_.properties["center"][1][q] - m_.properties["center"][0][q])*mass[i]/mass_sum_2
+	return cutoff_grad
+
+
 def ElectricFieldForce(q_,E_):
 	"""
 	Both are received in atomic units.

@@ -6,7 +6,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 # step to test a BruteForce MBE model
-if (1):
+if (0):
 	if (0):
 		a=MSet("H2O_cluster")
                 a.ReadXYZ("H2O_cluster")
@@ -122,9 +122,9 @@ if (1):
 		#	dipole_manager.Eval_BPDipoleGrad_2(mol)
 		print dipole_manager.Eval_BPDipoleGrad_2(a)
 
-if (0): 
-                a=FragableMSetBF("H2O_cluster_opt", center_=False)
-                a.ReadXYZ("H2O_cluster_opt")
+if (1): 
+                a=FragableMSetBF("H2O_cluster_larger")
+                a.ReadXYZ("H2O_cluster_larger")
 
                 print "Generate_All_MBE_term_General: "
                 a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
@@ -136,8 +136,10 @@ if (0):
                 def EnAndForce(x_):
 			a.mols[0].coords = x_
 			a.mols[0].Reset_Frags()
-			#a.mols[0].Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])	
-			return mbe.NN_Energy_Force(a.mols[0])
+			t = time.time()
+			#mbe.NN_Charge(a.mols[0], True)
+			#print "NN_Charge cost:", time.time() -t
+			return mbe.NN_Energy_Force(a.mols[0], False)
 		ForceField = lambda x: EnAndForce(x)[1]
 		EnergyForceField = lambda x: EnAndForce(x)
 	
@@ -168,7 +170,7 @@ if (0):
                 PARAMS["MDFieldFreq"] = 0.8
                 PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
                 PARAMS["MDThermostat"] = "Nose"
-		PARAMS["MDTemp"] = 300
+		PARAMS["MDTemp"] = 200
                 #PARAMS["MDTemp"] = 30
                 PARAMS["MDdt"] = 0.1
                 PARAMS["RemoveInvariant"]=True

@@ -278,7 +278,7 @@ class Mol:
 	def Center(self, CenterOf="Atom"):
 		''' Returns the center of atom or mass'''
 		if (CenterOf == "Mass"):
-			m = np.array(map(lambda x: ATOMICMASSES[x],self.atoms))
+			m = np.array(map(lambda x: ATOMICMASSES[x-1],self.atoms))
 			return np.einsum("ax,a->x",self.coords,m)/np.sum(m)
 		else:
 			return np.average(self.coords,axis=0)
