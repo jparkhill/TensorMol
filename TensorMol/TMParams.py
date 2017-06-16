@@ -7,7 +7,7 @@ class TMParams(dict):
 		myparam = kwargs.pop('myparam', '')
 		dict.__init__(self, *args, **kwargs )
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
-		self["check_level"] = 3 # whether to test the consistency of several things...
+		self["check_level"] = 1 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
 		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
@@ -43,7 +43,7 @@ class TMParams(dict):
 		self["Classify"] = False # Whether to use a classifier histogram scheme rather than normal output.
 		# MBE PARAMS
 		self["Embedded_Charge_Order"] = 2
-		self["MBE_ORDER"] = 3
+		self["MBE_ORDER"] = 2
 		# Training Parameters
 		self["NeuronType"] = "relu"
 		self["learning_rate"] = 0.001

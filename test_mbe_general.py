@@ -3,10 +3,10 @@ from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
 # step to test a BruteForce MBE model
-if (0):
+if (1):
 	if (0):
 		a=MSet("H2O_cluster")
                 a.ReadXYZ("H2O_cluster")
@@ -39,11 +39,12 @@ if (0):
        	 	#a.mols[0].WriteXYZfile("./results/", "h2o_dimer_opt")
 
 
-	if (0):
+	if (1):
 		#a=MSet("H2O_mono")
 		#a.ReadXYZ("H2O_mono")
-		a=MSet("H2O_4water")
-                a.ReadXYZ("H2O_4water")
+		a=MSet("H2O_udp")
+                a.ReadXYZ("H2O_udp")
+		#manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
 		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
 		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
                 def EnAndForce(x_):
@@ -67,6 +68,13 @@ if (0):
                 #md.Prop()
 
 
+                #PARAMS["MDThermostat"] = None
+                #PARAMS["MDTemp"] = 0.0
+                #PARAMS["MDdt"] = 0.2
+                #md = VelocityVerlet(ForceField,a.mols[0],"MBE_test_opt",EnergyForceField)
+                #md.Prop()
+
+
 		#optimizer = Optimizer(manager)
         	#optimizer.OptANI1(a.mols[0])
 
@@ -84,13 +92,13 @@ if (0):
 		warm.Prop()
 		a.mols[0].coords = warm.x.copy()
 		PARAMS["MDMaxStep"] = 40000
-		md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_udp_IR",warm.v.copy())
+		md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_udp_again_1_IR",warm.v.copy())
                 md.Prop()
-		WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_IR.txt")
+		WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_again_2_IR.txt")
 
-	if (1):
-		a=FragableMSetBF("H2O_cluster")
-		a.ReadXYZ("H2O_cluster")
+	if (0):
+		a=FragableMSetBF("H2O_cluster_b3lyp_opt")
+		a.ReadXYZ("H2O_cluster_b3lyp_opt")
 		#a=FragableMSetBF("H2O_dimer")
                 #a.ReadXYZ("H2O_dimer")	
 	
@@ -104,12 +112,12 @@ if (0):
 
 		Opt = MBE_Optimizer(mbe)
 		for mol in a.mols:
-			#Opt.MBE_Opt(mol)
+			Opt.MBE_Opt(mol)
 			#mbe.NN_Energy_Force(mol)
 			#mbe.NN_Energy(mol, False)
 			#mbe.NN_Dipole(mol)
-			mbe.NN_Charge(mol, True)
-			mbe.NN_Energy_Force(mol, True)
+			#mbe.NN_Charge(mol, True)
+			#mbe.NN_Energy_Force(mol, True)
 
 
 	if (0):
@@ -122,15 +130,15 @@ if (0):
 		#	dipole_manager.Eval_BPDipoleGrad_2(mol)
 		print dipole_manager.Eval_BPDipoleGrad_2(a)
 
-if (1): 
-                a=FragableMSetBF("H2O_cluster_larger")
-                a.ReadXYZ("H2O_cluster_larger")
+if (0): 
+                a=FragableMSetBF("H2O_cluster_b3lyp_opt")
+                a.ReadXYZ("H2O_cluster_b3lyp_opt")
 
                 print "Generate_All_MBE_term_General: "
                 a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
                 print "End of Generate_All_MBE_term_General"
-		#manager= TFMolManage("Mol_H2O_augmented_more_400K_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1",None,False)
-                manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
+		manager= TFMolManage("Mol_H2O_augmented_more_400K_cutoff5_ANI1_Sym_fc_sqdiff_BP_1",None,False)
+                #manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
                 dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
                 mbe = NN_MBE_BF(manager, dipole_manager)
                 def EnAndForce(x_):
@@ -139,7 +147,7 @@ if (1):
 			t = time.time()
 			#mbe.NN_Charge(a.mols[0], True)
 			#print "NN_Charge cost:", time.time() -t
-			return mbe.NN_Energy_Force(a.mols[0], False)
+			return mbe.NN_Energy_Force(a.mols[0])
 		ForceField = lambda x: EnAndForce(x)[1]
 		EnergyForceField = lambda x: EnAndForce(x)
 	
@@ -147,9 +155,12 @@ if (1):
                         a.mols[0].coords = x_
                         charge =  mbe.NN_Charge(a.mols[0])
                         return charge
+
+		#optimizer = Optimizer(manager)
+		#optimizer.OptANI1(a.mols[0])
 	
 		#PARAMS["MDThermostat"] = None
-		#PARAMS["MDTemp"] = 200.0
+		#PARAMS["MDTemp"] = 0.0
 		#PARAMS["MDdt"] = 0.2
 		#md = VelocityVerlet(ForceField,a.mols[0],"MBE_test_opt",EnergyForceField)
 		#md.Prop()
@@ -160,6 +171,8 @@ if (1):
                 #PARAMS["MDThermostat"] = "Nose"
                 #PARAMS["MDV0"] = None
                 #PARAMS["MDTemp"]= 1.0
+		#PARAMS["MDAnnealT0"] = 20.0
+                #PARAMS["MDAnnealSteps"] = 1000
                 #annealH2O = Annealer(EnergyForceField, ChargeField, a.mols[0], "Anneal")
                 #annealH2O.Prop()
 		#a.mols[0].coords = annealH2O.Minx.copy()
@@ -170,7 +183,7 @@ if (1):
                 PARAMS["MDFieldFreq"] = 0.8
                 PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
                 PARAMS["MDThermostat"] = "Nose"
-		PARAMS["MDTemp"] = 200
+		PARAMS["MDTemp"] = 30
                 #PARAMS["MDTemp"] = 30
                 PARAMS["MDdt"] = 0.1
                 PARAMS["RemoveInvariant"]=True
@@ -180,9 +193,9 @@ if (1):
                 warm.Prop()
                 a.mols[0].coords = warm.x.copy()
                 PARAMS["MDMaxStep"] = 40000
-                md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_cluster_IR",warm.v.copy())
+                md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_cluster_b3lyp_opt_MBE_30K_IR",warm.v.copy())
                 md.Prop()
-                WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_cluster_IR.txt")
+                WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_cluster_b3lyp_opt_MBE_30K_IR.txt")
 
 
 if (0):

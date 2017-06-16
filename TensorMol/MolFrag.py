@@ -688,7 +688,7 @@ class Frag(Mol):
 
 class FragableClusterBF(Mol):
 	""" All the monomers can pair with each other, no cutoff"""
-	def __init__(self, atoms_ =  None, coords_ = None, center_= "COM", cutoff_ = 4.6, width_ = 0.4):
+	def __init__(self, atoms_ =  None, coords_ = None, center_= "COM", cutoff_ = 2, width_ = 0.4):
 		Mol.__init__(self,atoms_,coords_)
 		self.mbe_order = PARAMS["MBE_ORDER"]
 		print "MBE order:", self.mbe_order
@@ -915,7 +915,7 @@ class FragableClusterBF(Mol):
                         for sub_order in range (1, order):
                                 self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
                         self.nn_force += self.mbe_force[order]
-		self.properties["mbe_deri"] = -self.nn_force
+		self.properties["mbe_deri"] = -self.nn_force/JOULEPERHARTREE
                 #print self.mbe_force, self.nn_force
                 return
 
@@ -959,7 +959,7 @@ class FragableClusterBF(Mol):
                                 self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
 				self.properties["mbe_energy_embed_force"][order] = self.mbe_force[order]
                         self.nn_force += self.properties["mbe_energy_embed_force"][order]
-                self.properties["mbe_deri"] = -self.nn_force
+                self.properties["mbe_deri"] = -self.nn_force/JOULEPERHARTREE
 		return
 
 	def MBE_Charge(self):
