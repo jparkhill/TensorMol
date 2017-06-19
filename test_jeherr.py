@@ -17,33 +17,33 @@ PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [
 							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
 							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 PARAMS["ANES"] = np.array([[1.02539286, 1., 1., 1., 1., 2.18925953, 2.71734044, 3.03417733]])
-PARAMS["SH_NRAD"] = 8
-PARAMS["SH_LMAX"] = 3
+PARAMS["SH_NRAD"] = 12
+PARAMS["SH_LMAX"] = 4
 PARAMS["RandomizeData"] = True
 S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
 PARAMS["SRBF"] = S_RadOrth
 #PARAMS["InNormRoutine"] = "MinMax"
 PARAMS["OutNormRoutine"] = "MeanStd"
-PARAMS["TestRatio"] = 0.5
-PARAMS["max_steps"] = 2000
+PARAMS["TestRatio"] = 0.2
+PARAMS["max_steps"] = 5000
 PARAMS["batch_size"] = 8000
 
-PARAMS["AN1_r_Rc"] = 6.
-PARAMS["AN1_a_Rc"] = 4.
-PARAMS["AN1_eta"] = 4.0
-PARAMS["AN1_zeta"] = 8.0
-PARAMS["AN1_num_r_Rs"] = 16
-PARAMS["AN1_num_a_Rs"] = 4
-PARAMS["AN1_num_a_As"] = 8
-PARAMS["hidden1"] = 64
-PARAMS["hidden2"] = 128
-PARAMS["hidden3"] = 64
-PARAMS["max_steps"] = 1001
-PARAMS["GradWeight"] = 1.0
-PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
-PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
-PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
+#PARAMS["AN1_r_Rc"] = 6.
+#PARAMS["AN1_a_Rc"] = 4.
+#PARAMS["AN1_eta"] = 4.0
+#PARAMS["AN1_zeta"] = 8.0
+#PARAMS["AN1_num_r_Rs"] = 16
+#PARAMS["AN1_num_a_Rs"] = 4
+#PARAMS["AN1_num_a_As"] = 8
+#PARAMS["hidden1"] = 64
+#PARAMS["hidden2"] = 128
+#PARAMS["hidden3"] = 64
+#PARAMS["max_steps"] = 1001
+#PARAMS["GradWeight"] = 1.0
+#PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
+#PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
+#PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
 
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
@@ -198,7 +198,8 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 		tset.BuildTrainMolwise_tmp(set_,TreatedAtoms)
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,True,"fc_sqdiff")
+	manager=TFManage("",tset,False,"fc_sqdiff")
+	manager.TrainElement(7)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -461,14 +462,14 @@ def Brute_LJParams():
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="ammonia", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/amines_2/ammonia2/", energy=True, forces=True)
-TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
+# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
 # TestBP()
 # TestANI1()
-# TrainForces(set_ = "ammonia_20rot", BuildTrain_=True, numrot_=None)
+TrainForces(set_ = "SmallMols_20rot", BuildTrain_=False, numrot_=None)
 # TestForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()
