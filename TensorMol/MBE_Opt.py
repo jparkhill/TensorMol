@@ -10,8 +10,8 @@ from NN_MBE import *
 class MBE_Optimizer:
     def __init__(self,nn_mbe_):
     	self.energy_thresh = 1e-9
-    	self.force_thresh = 0.001
-    	self.step_size = 1.0
+    	self.force_thresh = 0.00001
+    	self.step_size = 0.1
     	self.momentum = 0.9
     	self.momentum_decay = 0.7
     	self.max_opt_step = 10000

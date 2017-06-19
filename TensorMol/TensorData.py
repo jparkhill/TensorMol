@@ -135,8 +135,8 @@ class TensorData():
 			for m in self.set.mols:
 				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
 		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
-		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
-		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float64) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float64) for element in atypes]
 		casep_list = [0 for element in atypes]
 		t0 = time.time()
 		ord = len(self.set.mols)
@@ -226,8 +226,8 @@ class TensorData():
 			for m in self.set.mols:
 				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
 		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
-		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
-		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float64) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float64) for element in atypes]
 		casep_list = [0 for element in atypes]
 		t0 = time.time()
 		ord = len(self.set.mols)
@@ -327,8 +327,8 @@ class TensorData():
 		for element in atypes:
 			DebugCases=[]
 			print "Digesting atom: ", element
-			cases = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32)
-			labels = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32)
+			cases = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float64)
+			labels = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float64)
 			casep = 0
 			t0 = time.time()
 			for mi in range(len(self.set.mols)):
@@ -472,8 +472,8 @@ class TensorData():
 			self.LoadElementToScratch(ele,False)
 		if (ncases>self.scratch_test_inputs.shape[0]):
 			print "Test Data is less than the batchsize... :( "
-			tmpinputs=np.zeros(shape=tuple([ncases]+list(self.dig.eshape)), dtype=np.float32)
-			tmpoutputs=np.zeros(shape=tuple([ncases]+list(self.dig.lshape)), dtype=np.float32)
+			tmpinputs=np.zeros(shape=tuple([ncases]+list(self.dig.eshape)), dtype=np.float64)
+			tmpoutputs=np.zeros(shape=tuple([ncases]+list(self.dig.lshape)), dtype=np.float64)
 			tmpinputs[0:self.scratch_test_inputs.shape[0]] += self.scratch_test_inputs
 			tmpoutputs[0:self.scratch_test_outputs.shape[0]] += self.scratch_test_outputs
 			return (tmpinputs[ncases*(ministep):ncases*(ministep+1)], tmpoutputs[ncases*(ministep):ncases*(ministep+1)])

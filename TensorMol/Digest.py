@@ -67,7 +67,7 @@ class Digester:
 		disps = samplingfunc_v2(self.TrainSampDistance * np.random.random(self.NTrainSamples), self.TrainSampDistance)
 		theta  = np.random.random(self.NTrainSamples)* math.pi
 		phi = np.random.random(self.NTrainSamples)* math.pi * 2
-		grids  = np.zeros((self.NTrainSamples,3),dtype=np.float32)
+		grids  = np.zeros((self.NTrainSamples,3),dtype=np.float64)
 		grids[:,0] = disps*np.cos(theta)
 		grids[:,1] = disps*np.sin(theta)*np.cos(phi)
 		grids[:,2] = disps*np.sin(theta)*np.sin(phi)
@@ -254,8 +254,8 @@ class Digester:
 			self.lshape = list(touts[0].shape)
 			LOGGER.debug("Assigned Digester shapes: "+str(self.eshape)+str(self.lshape))
 		ncase = mol_.NumOfAtomsE(ele_)*self.NTrainSamples
-		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float32)
-		outs = np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float32)
+		ins = np.zeros(shape=tuple([ncase]+list(self.eshape)),dtype=np.float64)
+		outs = np.zeros(shape=tuple([ncase]+list(self.lshape)),dtype=np.float64)
 		dbg=[]
 		casep=0
 		for i in range(len(mol_.atoms)):
@@ -317,7 +317,7 @@ class Digester:
 			eta2.append(0.002*(2**i))
 			Rs.append(i*SensRadius/float(ngrid))
 		SYM =  MolEmb.Make_Sym(coords_, xyz_, ats_, eles, at_, SensRadius, zeta, eta1, eta2, Rs)
-		SYM = np.asarray(SYM[0], dtype=np.float32)
+		SYM = np.asarray(SYM[0], dtype=np.float64)
 		SYM = SYM.reshape((SYM.shape[0]/self.nsym, self.nsym,  SYM.shape[1] *  SYM.shape[2]))
 		return SYM
 
@@ -329,6 +329,6 @@ class Digester:
 			tmp=math.log(eta_max/eta_min)/(ngrid-1)*i
 			eta.append(pow(math.e, tmp)*eta_min)
 		PGaussian = MolEmb.Make_PGaussian(coords_, xyz_, ats_, eles_, at_, SensRadius, eta)
-		PGaussian = np.asarray(PGaussian[0], dtype=np.float32)
+		PGaussian = np.asarray(PGaussian[0], dtype=np.float64)
                 PGaussian = PGaussian.reshape((PGaussian.shape[0]/self.npgaussian, self.npgaussian,  PGaussian.shape[1] *  PGaussian.shape[2]))
                 return PGaussian

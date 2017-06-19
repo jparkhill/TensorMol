@@ -1,6 +1,7 @@
 import logging, time, os
 from math import pi as Pi
 import numpy as np
+import tensorflow as tf
 
 class TMParams(dict):
 	def __init__(self, *args, **kwargs ):
@@ -46,6 +47,7 @@ class TMParams(dict):
 		self["MBE_ORDER"] = 3
 		# Training Parameters
 		self["NeuronType"] = "relu"
+		self["tf_prec"] = "tf.float32"
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001

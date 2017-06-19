@@ -68,6 +68,7 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_LJForce(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
+		self.n_train = PARAMS["max_steps"]
 		self.Instances.train(self.n_train) # Just for the sake of debugging.
 		nm = self.Instances.name
 		# Here we should print some summary of the pupil's progress as well, maybe.
@@ -78,10 +79,11 @@ class TFMolManage(TFManage):
 		return
 
 	def Continue_Training(self, maxsteps):   # test a pretrained network
+		self.n_train = PARAMS["max_steps"]
 		self.Instances.TData = self.TData
 		self.Instances.TData.LoadDataToScratch(self.Instances.tformer)
 		self.Instances.Prepare()
-		self.Instances.continue_training(maxsteps)
+		self.Instances.continue_training(self.n_train)
 		self.Save()
 		return
 
