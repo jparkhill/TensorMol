@@ -129,6 +129,8 @@ class Digester:
 			Ins= self.make_sym(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="PGaussian"):
 			Ins= self.make_pgaussian(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
+		elif(self.name == "ANI1_Sym"):
+			Ins = MolEmb.Make_ANI1_Sym(PARAMS, mol_.coords,  mol_.atoms, self.eles, at_)
 		else:
 			raise Exception("Unknown Embedding Function.")
 		#self.embtime += (time.time() - start)
@@ -176,6 +178,14 @@ class Digester:
 						Outs = mol_.properties['sphere_forces'][at_].reshape((1,3))
 				else:
 					raise Exception("Mol Is missing spherical force. ")
+			elif (self.OType=="ForceMag"):
+				if ( "forces" in mol_.properties):
+					if (at_<0):
+						Outs = np.array(np.linalg.norm(mol_.properties['forces'], axis=1))
+					else:
+						Outs = np.array(np.linalg.norm(mol_.properties['forces'][at_])).reshape((1,1))
+				else:
+					raise Exception("Mol Is missing force. ")
 			elif (self.OType=="StoP"):
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):

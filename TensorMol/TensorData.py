@@ -116,7 +116,8 @@ class TensorData():
 		The other version builds each element separately
 		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
-		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere" and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" )):
+		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH" and self.dig.name !="ANI1_Sym")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere"
+ 								and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" and self.dig.OType !="ForceMag")):
 			raise Exception("Molwise Embedding not supported")
 		if (self.set == None):
 			try:
@@ -487,10 +488,7 @@ class TensorData():
 			print "Evaluating, ", len(desired), " predictions... "
 			print desired.shape, predicted.shape
 			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
-				ders=np.zeros(len(desired))
-				#comp=np.zeros(len(desired))
-				for i in range(len(desired)):
-					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+				ders = np.linalg.norm(predicted[:,-3:]-desired[:,-3:])
 				for i in range(100):
 					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
@@ -501,16 +499,20 @@ class TensorData():
 				# Convert them back to cartesian
 				desiredc = SphereToCartV(desired)
 				predictedc = SphereToCartV(predicted)
-				ders=np.zeros(len(desired))
-				#comp=np.zeros(len(desired))
-				for i in range(len(desiredc)):
-					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
+				ders = np.linalg.norm(predictedc[:,-3:]-desiredc[:,-3:])
 				for i in range(100):
 					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(predicted[:,-3:]-desired[:,-3:])), np.std(np.absolute(predicted[:,-3:]-desired[:,-3:])))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
 				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+			elif (self.dig.OType == "ForceMag"):
+				ders = predicted-desired
+				for i in range(100):
+					print "Desired: ",i,desired[i]," Predicted: ",predicted[i]
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(predicted[:]-desired[:])), np.std(np.absolute(predicted[:]-desired[:])))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:],axis=0)),str(np.average(predicted[:],axis=0)))
 			elif (self.dig.OType=="SmoothP"):
 				ders=np.zeros(len(desired))
 				iers=np.zeros(len(desired))
