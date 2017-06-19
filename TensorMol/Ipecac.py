@@ -24,7 +24,7 @@ class Ipecac:
 		self.dig = dig_
 		self.eles = eles_
 
-	def ReverseAtomwiseEmbedding(self, emb_,atoms_=None, guess_=None, GdDistMatrix=None):
+	def ReverseAtomwiseEmbedding(self, emb_,atoms_, guess_, GdDistMatrix):
 		"""
 		Args:
 			atoms_: a list of element types for which this routine provides coords.
@@ -34,9 +34,6 @@ class Ipecac:
 			A best-fit version of a molecule which produces an embedding as close to emb_ as possible.
 		"""
 		natoms = emb_.shape[0]
-		# Construct a random non-clashing guess.
-		# this is the tricky step, a random guess probably won't work.
-
 		if atoms_ == None:
 			atoms = np.full((natoms),6)
 		else:
@@ -77,11 +74,9 @@ class Ipecac:
 				mn.BuildDistanceMatrix()
 				print "Distance error : ", np.sqrt(np.sum((GdDistMatrix-mn.DistMatrix)*(GdDistMatrix-mn.DistMatrix)))
 		import scipy.optimize
-		import time
-		t1=time.time()
 		step = 0
-		# res=scipy.optimize.minimize(objective,coords.reshape(natoms*3),method='L-BFGS-B',tol=0.000001,options={"maxiter":5000000,"maxfun":10000000},callback=callbk)
-		res=scipy.optimize.minimize(objective,coords.reshape(natoms*3),method='SLSQP',tol=0.000001,options={"maxiter":5000000},callback=callbk)
+		res=optimize.minimize(objective,coords.reshape(natoms*3),method='L-BFGS-B',tol=1.e-12,options={"maxiter":5000000,"maxfun":10000000},callback=callbk)
+		# res=scipy.optimize.minimize(objective,coords.reshape(natoms*3),method='SLSQP',tol=0.000001,options={"maxiter":5000000},callback=callbk)
 		# coords = res.x.reshape(natoms,3)
 		# res=scipy.optimize.minimize(objective,coords.reshape(natoms*3),method='Powell',tol=0.000001,options={"maxiter":5000000},callback=callbk)
 		# while (self.EmbAtomwiseErr(Mol(atoms_,coords),emb_) > 1.e-5) and (step < 10):
@@ -91,9 +86,8 @@ class Ipecac:
 		# 	coords = res.x.reshape(natoms,3)
 		# 	mfit = Mol(atoms_, coords)
 		# 	atoms_ = self.BruteForceAtoms(mfit, emb_)
-		print time.time()-t1
 		mfit = Mol(atoms, res.x.reshape(natoms,3))
-		print self.DistanceErr(GdDistMatrix, mfit)
+		self.DistanceErr(GdDistMatrix, mfit)
 		return mfit
 
 	def BruteForceAtoms(self, mol_, emb_):
@@ -115,6 +109,7 @@ class Ipecac:
 	def EmbAtomwiseErr(self, mol_,emb_):
 		ins = self.dig.Emb(mol_,MakeOutputs=False)
 		err = np.sqrt(np.sum((ins-emb_)*(ins-emb_)))
+		# print "Emb err: ", err
 		return err
 
 	def DistanceErr(self, GdDistMatrix_, mol_):

@@ -8,27 +8,42 @@ import time
 # PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
 # PARAMS["RBFS"] = np.array([[0.1, 0.2], [0.2, 0.3], [0.5, 0.35], [0.9, 0.3], [1.1, 0.3], [1.3, 0.3], [1.6, 0.4], [1.9, 0.5],
 # 				[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["RBFS"] = np.array([[0.25273295, 0.1703841], [0.39848207, 0.48457397], [0.47375485, 0.56780088], [1.1050287, 0.54182982], [1.18810507, 0.31560173],
-#							[1.39287101, 0.2795489], [1.66655481, 0.52065303], [1.98189062, 0.49321721]])
 # PARAMS["ANES"] = np.array([2.20, 1., 1., 1., 1., 2.55, 3.04, 3.98])
 # PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
 #   							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
 # 							[2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
-  							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
+ 							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
 							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
 							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 PARAMS["ANES"] = np.array([[1.02539286, 1., 1., 1., 1., 2.18925953, 2.71734044, 3.03417733]])
-PARAMS["SH_NRAD"] = 18
-PARAMS["SH_LMAX"] = 3
+PARAMS["SH_NRAD"] = 12
+PARAMS["SH_LMAX"] = 4
+PARAMS["RandomizeData"] = True
 S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
 PARAMS["SRBF"] = S_RadOrth
 #PARAMS["InNormRoutine"] = "MinMax"
 PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 1000
+PARAMS["max_steps"] = 5000
 PARAMS["batch_size"] = 8000
+
+#PARAMS["AN1_r_Rc"] = 6.
+#PARAMS["AN1_a_Rc"] = 4.
+#PARAMS["AN1_eta"] = 4.0
+#PARAMS["AN1_zeta"] = 8.0
+#PARAMS["AN1_num_r_Rs"] = 16
+#PARAMS["AN1_num_a_Rs"] = 4
+#PARAMS["AN1_num_a_As"] = 8
+#PARAMS["hidden1"] = 64
+#PARAMS["hidden2"] = 128
+#PARAMS["hidden3"] = 64
+#PARAMS["max_steps"] = 1001
+#PARAMS["GradWeight"] = 1.0
+#PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
+#PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
+#PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
 
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
@@ -57,11 +72,11 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	a.Save()
 
 
-def TrainKRR(set_ = "SmallMols", dig_ = "GauSH"):
+def TrainKRR(set_ = "SmallMols", dig_ = "GauSH", OType_ ="Force"):
 	a=MSet("SmallMols_rand")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+	d = Digester(TreatedAtoms, name_=dig_,OType_ =OType_)
 	tset = TensorData(a,d)
 	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
 	manager=TFManage("",tset,True,"KRR_sqdiff")
@@ -93,17 +108,10 @@ def BasisOpt_Ipecac(method_, set_, dig_):
 	""" Optimizes a basis based on Ipecac """
 	a=MSet(set_)
 	a.Load()
-	b=MSet("SmallMolsRand")
-	mols = random.sample(range(len(a.mols)), 10)
-	#Remove half of a
-	for i in mols:
-		b.mols.append(a.mols[i])
-	# for i in range(len(c.mols)):
-	# 	b.mols.append(c.mols[i])
-	print "Number of mols: ", len(b.mols)
-	TreatedAtoms = b.AtomTypes()
-	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
-	eopt = EmbeddingOptimizer(b,dig)
+	print "Number of mols: ", len(a.mols)
+	TreatedAtoms = a.AtomTypes()
+	dig = MolDigester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+	eopt = EmbeddingOptimizer("Ipecac", a, dig, "radial")
 	eopt.PerformOptimization()
 	return
 
@@ -191,7 +199,7 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
 	manager=TFManage("",tset,False,"fc_sqdiff")
-	manager.TrainElement(6)
+	manager.TrainElement(7)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -437,112 +445,7 @@ def Test_LJMD():
 	md.Prop()
 	return
 
-def Eval_LJBatch(LJP_, *params):
-	"""
-	Test TensorFlow LJ fluid Molecular dynamics
-	"""
-	XYZs, Zs, REns = params
-	LJe = tf.Variable(LJP_[0]*tf.ones([8,8]))
-	LJr = tf.Variable(LJP_[1]*tf.ones([8,8]))
-	Ens = LJEnergies(XYZs, Zs, LJe, LJr)
-	diff = tf.reduce_mean(tf.abs(tf.subtract(Ens, REns)))
-	init = tf.global_variables_initializer()
-	with tf.Session() as sess:
-		sess.run(init)
-		result = sess.run(diff)
-	return result
-
 def Brute_LJParams():
-	a=MSet("SmallMols_rand")
-	a.Load()
-	REns = np.zeros(len(a.mols))
-	TreatedAtoms = a.AtomTypes()
-	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
-	tset = TensorMolData(a,d)
-	batch_data = tset.RawBatch(nmol=30000)
-	REns = batch_data[1][:,0,0]
-	if (not np.all(np.isfinite(batch_data[0]))):
-		print("Bad Batch...0 ")
-	if (not np.all(np.isfinite(batch_data[1]))):
-		print("Bad Batch...1 ")
-	inp_shp = tf.shape(batch_data[0])
-	nmol = inp_shp[0]
-	maxnatom = inp_shp[1]
-	XYZs = tf.to_float(tf.slice(batch_data[0],[0,0,1],[-1,-1,-1]))
-	REns = tf.convert_to_tensor(batch_data[1][:,0,0],dtype=tf.float32)
-	Zs = tf.cast(tf.reshape(tf.slice(batch_data[0],[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
-	params = (XYZs, Zs, REns)
-	# LJP = np.array((0.316, 1.0))
-	import scipy.optimize
-	rranges = (slice(-4, 4, 0.25), slice(-4, 4, 0.25))
-	resbrute = scipy.optimize.brute(Eval_LJBatch, rranges, args=params, full_output=True, finish=scipy.optimize.fmin)
-	print resbrute[0]
-	print resbrute[1]
-	# print Eval_LJBatch(LJP, batch_data)
-
-def Eval_LJBatch2(LJP_, *params):
-	"""
-	Test TensorFlow LJ fluid Molecular dynamics
-	"""
-	XYZs, Zs, REns = params
-
-	Ens = LJEnergies(XYZs, Zs, LJe, LJr)
-	diff = tf.reduce_mean(tf.abs(tf.subtract(Ens, REns)))
-	init = tf.global_variables_initializer()
-	with tf.Session() as sess:
-		sess.run(init)
-		result = sess.run(diff)
-	return result
-
-def Prepare_LJBatch(data_):
-	with tf.Graph().as_default():
-		# Ee_pl=tf.placeholder(tf.float32, shape=tuple(1))
-		# Re_pl = tf.placeholder(tf.float32, shape=tuple(1))
-		Ee_pl = tf.constant(0.316, dtype=tf.float32)
-		Re_pl = tf.constant(1.0, dtype=tf.float32)
-		inp_shp = tf.shape(data_[0])
-		nmol = inp_shp[0]
-		maxnatom = inp_shp[1]
-		XYZs = tf.to_float(tf.slice(data_[0],[0,0,1],[-1,-1,-1]))
-		REns = tf.convert_to_tensor(data_[1][:,0,0],dtype=tf.float32)
-		Zs = tf.cast(tf.reshape(tf.slice(data_[0],[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
-		LJe = tf.Variable(Ee_pl*tf.ones([8,8]))
-		LJr = tf.Variable(Re_pl*tf.ones([8,8]))
-		Ens = LJEnergies(XYZs, Zs, LJe, LJr)
-		mae = tf.reduce_mean(tf.abs(tf.subtract(Ens, REns)))
-		# params = (XYZs, Zs, REns)
-		init = tf.global_variables_initializer()
-		sess = tf.Session()
-		sess.run(init)
-		# result = sess.run(mae)
-	# return result
-
-def LJ_BatchEval(sess_):
-	result = sess_.run(mae)
-	return result
-
-def LJ_Brute():
-	a=MSet("SmallMols_rand")
-	a.Load()
-	REns = np.zeros(len(a.mols))
-	TreatedAtoms = a.AtomTypes()
-	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
-	tset = TensorMolData(a,d)
-	batch_data = tset.RawBatch(nmol=30000)
-	# REns = batch_data[1][:,0,0]
-	Prepare_LJBatch(batch_data)
-	print LJ_BatchEval(sess)
-
-
-		# LJP = np.array((0.316, 1.0))
-		# import scipy.optimize
-		# rranges = (slice(-4, 4, 0.25), slice(-4, 4, 0.25))
-		# resbrute = scipy.optimize.brute(Eval_LJBatch, rranges, args=params, full_output=True, finish=scipy.optimize.fmin)
-		# print resbrute[0]
-		# print resbrute[1]
-	# print Eval_LJBatch(LJP, batch_data)
-
-def tmp():
 	a=MSet("SmallMols_rand")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -558,14 +461,15 @@ def tmp():
 	# print ins.LJFrc(p)
 
 # InterpoleGeometries()
-# ReadSmallMols(set_="aspirin", dir_="/media/sdb2/jeherr/TensorMol/datasets/md_datasets/aspirin/", forces=True)
-# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH")
+# ReadSmallMols(set_="ammonia", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/amines_2/ammonia2/", energy=True, forces=True)
+# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
-TestIpecac()
+# BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
+# TestIpecac()
 # TestBP()
 # TestANI1()
-# TrainForces(set_ = "aspirin_5rot", BuildTrain_=True, numrot_=None)
+TrainForces(set_ = "SmallMols_20rot", BuildTrain_=False, numrot_=None)
 # TestForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()
@@ -573,9 +477,7 @@ TestIpecac()
 # TestMD()
 # TestAnneal()
 # TestMorphIR()
-# Eval_LJBatch()
-# LJ_Brute()
-# tmp()
+# Brute_LJParams()
 
 
 # a=MSet("pentane_eq_align")

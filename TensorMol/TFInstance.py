@@ -316,20 +316,20 @@ class Instance:
 		with tf.name_scope('hidden1'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
-			hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
+			hidden1 = tf.nn.elu(tf.matmul(images, weights) + biases)
 			#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
 			#tf.summary.histogram(weights.name, weights)
 		# Hidden 2
 		with tf.name_scope('hidden2'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden2_units]),name='biases')
-			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
+			hidden2 = tf.nn.elu(tf.matmul(hidden1, weights) + biases)
 
 		# Hidden 3
 		with tf.name_scope('hidden3'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
-			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
+			hidden3 = tf.nn.elu(tf.matmul(hidden2, weights) + biases)
 		# Linear
 		with tf.name_scope('regression_linear'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
