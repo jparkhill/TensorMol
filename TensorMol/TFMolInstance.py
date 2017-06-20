@@ -65,10 +65,10 @@ class MolInstance(Instance):
 			hidden2 = self.activation_function(tf.matmul(hidden1, weights) + biases)
 		# Linear
 		with tf.name_scope('regression_linear'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([self.outshape], dtype=self.tf_prec),
-				name='biases')
-				output = tf.matmul(hidden2, weights) + biases
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([self.outshape], dtype=self.tf_prec),
+			name='biases')
+			output = tf.matmul(hidden2, weights) + biases
 		return output
 
 	def train(self, mxsteps, continue_training= False):
