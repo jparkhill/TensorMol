@@ -45,6 +45,10 @@ class Instance:
 		self.PreparedFor=0
 		self.HiddenLayers = PARAMS["HiddenLayers"]
 		self.HiddenNeurons = PARAMS["HiddenNeurons"]
+		try:
+                        self.tf_prec
+                except:
+                        self.tf_prec = eval(PARAMS["tf_prec"])
 		self.hidden1 = PARAMS["hidden1"]
 		self.hidden2 = PARAMS["hidden2"]
 		self.hidden3 = PARAMS["hidden3"]
@@ -73,6 +77,7 @@ class Instance:
 
 		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
 		LOGGER.info("self.batch_size: "+str(self.batch_size))
+		LOGGER.info("self.max_steps: "+str(self.max_steps))
 
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
@@ -260,7 +265,7 @@ class Instance:
 		Returns:
 		Variable Tensor
 		"""
-		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev), name=var_name)
+		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev, dtype=self.tf_prec), name=var_name)
 		if var_wd is not None:
 			try:
 				weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
@@ -597,8 +602,8 @@ class Instance_fc_classify(Instance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(tf.float32, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
-		outputs_pl = tf.placeholder(tf.float32, shape=(batch_size))
+		inputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
+		outputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size))
 		return inputs_pl, outputs_pl
 
 	def justpreds(self, output):
@@ -712,8 +717,8 @@ class Instance_fc_sqdiff(Instance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size]+list(self.inshape)))
-		outputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size]+list(self.outshape)))
+		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.inshape)))
+		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.outshape)))
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
@@ -793,25 +798,25 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 		# Hidden 1
 		with tf.name_scope('hidden1'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
+			biases = tf.Variable(tf.zeros([hidden1_units], dtype=self.tf_prec), name='biases')
 			hidden1 = tf.nn.relu(tf.matmul(inputs[:-3], weights) + biases)
 			#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
 			#tf.summary.histogram(weights.name, weights)
 		# Hidden 2
 		with tf.name_scope('hidden2'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden2_units]),name='biases')
+			biases = tf.Variable(tf.zeros([hidden2_units], dtype=self.tf_prec),name='biases')
 			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
 
 		# Hidden 3
 		with tf.name_scope('hidden3'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
+			biases = tf.Variable(tf.zeros([hidden3_units], dtype=self.tf_prec),name='biases')
 			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
 		#Delta Layer
 		with tf.name_scope('delta_layer'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(2*self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
+			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
 			delta = tf.matmul(hidden3, weights) + biases
 		# Linear
 		with tf.name_scope('regression_linear'):
@@ -845,15 +850,15 @@ class Instance_conv2d_sqdiff(Instance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size,self.inshape]))
-		outputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size, self.outshape]))
+		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size,self.inshape]))
+		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size, self.outshape]))
 		return inputs_pl, outputs_pl
 
 	def _weight_variable(self, name, shape):
-		return tf.get_variable(name, shape, tf.float32, tf.truncated_normal_initializer(stddev=0.01))
+		return tf.get_variable(name, shape, self.tf_prec, tf.truncated_normal_initializer(stddev=0.01))
 
 	def _bias_variable(self, name, shape):
-		return tf.get_variable(name, shape, tf.float32, tf.constant_initializer(0.01, dtype=tf.float32))
+		return tf.get_variable(name, shape, self.tf_prec, tf.constant_initializer(0.01, dtype=self.tf_prec))
 
 	def conv2d(self, x, W, b, strides=1):
 		"""
@@ -1023,15 +1028,15 @@ class Instance_3dconv_sqdiff(Instance):
 		if (self.inshape[0]!=GRIDS.NGau3):
 			print("Bad inputs... ", self.inshape)
 			raise Exception("Nonsquare")
-		inputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size,GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1]))
-		outputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size]+list(self.outshape)))
+		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size,GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1]))
+		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.outshape)))
 		return inputs_pl, outputs_pl
 
 	def _weight_variable(self, name, shape):
-		return tf.get_variable(name, shape, tf.float32, tf.truncated_normal_initializer(stddev=0.01))
+		return tf.get_variable(name, shape, self.tf_prec, tf.truncated_normal_initializer(stddev=0.01))
 
 	def _bias_variable(self, name, shape):
-		return tf.get_variable(name, shape, tf.float32, tf.constant_initializer(0.01, dtype=tf.float32))
+		return tf.get_variable(name, shape, self.tf_prec, tf.constant_initializer(0.01, dtype=self.tf_prec))
 
 	def inference(self, input):
 		FC_SIZE = 512

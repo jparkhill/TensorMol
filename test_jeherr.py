@@ -465,7 +465,7 @@ def Brute_LJParams():
 # InterpoleGeometries()
 # ReadSmallMols(set_="ammonia", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/amines_2/ammonia2/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 100000)
+# RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()

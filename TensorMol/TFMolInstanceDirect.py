@@ -60,8 +60,8 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.inp_pl=tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,4]))
-			self.frce_pl = tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,3])) # Forces.
+			self.inp_pl=tf.placeholder(self.tf_prec, shape=tuple([None,self.MaxNAtoms,4]))
+			self.frce_pl = tf.placeholder(self.tf_prec, shape=tuple([None,self.MaxNAtoms,3])) # Forces.
 			if (self.ForceType=="LJ"):
 				self.LJe = tf.Variable(0.316*tf.ones([8,8]),trainable=True)
 				self.LJr = tf.Variable(tf.ones([8,8]),trainable=True)
@@ -136,16 +136,16 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		maxnatom = inp_shp[1]
 		XYZs = tf.slice(inp_pl,[0,0,1],[-1,-1,-1])
 		Zs = tf.cast(tf.reshape(tf.slice(inp_pl,[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
-		ZZeroTensor = tf.cast(tf.where(tf.equal(Zs,0),tf.ones_like(Zs),tf.zeros_like(Zs)),tf.float32)
+		ZZeroTensor = tf.cast(tf.where(tf.equal(Zs,0),tf.ones_like(Zs),tf.zeros_like(Zs)),self.tf_prec)
 		# Construct a atomic number masks.
 		Zshp = tf.shape(Zs)
 		Zzij1 = tf.tile(ZZeroTensor,[1,1,Zshp[1]]) # mol X atom X atom.
 		Zzij2 = tf.transpose(Zzij1,perm=[0,2,1]) # mol X atom X atom.
-		Deqs = tf.ones((nmol,maxnatom,maxnatom))
-		Keqs = 0.001*tf.ones((nmol,maxnatom,maxnatom))
+		Deqs = tf.ones((nmol,maxnatom,maxnatom),dtype=self.tf_prec)
+		Keqs = 0.001*tf.ones((nmol,maxnatom,maxnatom),dtype=self.tf_prec)
 		K = HarmKernels(XYZs, Deqs, Keqs)
-		K = tf.where(tf.equal(Zzij1,1.0),tf.zeros_like(K),K)
-		K = tf.where(tf.equal(Zzij2,1.0),tf.zeros_like(K),K)
+		K = tf.where(tf.equal(Zzij1,1.0),tf.zeros_like(K,dtype=self.tf_prec),K)
+		K = tf.where(tf.equal(Zzij2,1.0),tf.zeros_like(K,dtype=self.tf_prec),K)
 		Ens = tf.reduce_sum(K,[1,2])
 		frcs = -1.0*(tf.gradients(Ens, XYZs)[0])
 		#frcs = tf.Print(frcs,[frcs],"Forces",1000,1000)
@@ -254,15 +254,16 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		        continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.LJe = tf.placeholder(tf.float32, shape=(),name="Ee_pl")
-			self.LJr = tf.placeholder(tf.float32, shape=(),name="Re_pl")
-			# self.Ee_pl = tf.constant(0.316, dtype=tf.float32)
-			# self.Re_pl = tf.constant(1.0, dtype=tf.float32)
+			self.LJe = tf.placeholder(self.tf_prec, shape=(),name="Ee_pl")
+			self.LJr = tf.placeholder(self.tf_prec, shape=(),name="Re_pl")
+			# self.Ee_pl = tf.constant(0.316, dtype=self.tf_prec)
+			# self.Re_pl = tf.constant(1.0, dtype=self.tf_prec)
 			self.inp_shp = tf.shape(self.batch_data[0])
 			self.nmol = self.inp_shp[0]
 			self.maxnatom = self.inp_shp[1]
-			self.XYZs = tf.to_float(tf.slice(self.batch_data[0],[0,0,1],[-1,-1,-1]))
-			self.REns = tf.convert_to_tensor(self.batch_data[1][:,0,0],dtype=tf.float32)
+			self.XYZs= tf.cast(tf.slice(self.batch_data[0],[0,0,1],[-1,-1,-1]), self.tf_prec)
+			#self.XYZs = tf.to_float(tf.slice(self.batch_data[0],[0,0,1],[-1,-1,-1]))
+			self.REns = tf.convert_to_tensor(self.batch_data[1][:,0,0],dtype=self.tf_prec)
 			self.Zs = tf.cast(tf.reshape(tf.slice(self.batch_data[0],[0,0,0],[-1,-1,1]),[self.nmol,self.maxnatom,1]),tf.int32)
 			self.Ens = LJEnergies(self.XYZs, self.Zs, self.LJe, self.LJr)
 			self.mae = tf.reduce_mean(tf.abs(tf.subtract(self.Ens, self.REns)))
