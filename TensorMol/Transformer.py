@@ -34,9 +34,6 @@ class Transformer:
 		LOGGER.info("-------------------- ")
 		LOGGER.info("Transformer Information ")
 		LOGGER.info("self.innorm: "+str(self.innorm))
-		if (self.innorm == "MeanStd"):
-			LOGGER.info("self.inmean: "+str(self.inmean))
-			LOGGER.info("self.instd: "+str(self.instd))
 		LOGGER.info("self.outnorm: "+str(self.outnorm))
 		if (self.outnorm == "MeanStd"):
 			LOGGER.info("self.outmean: "+str(self.outmean))
