@@ -688,7 +688,7 @@ class Frag(Mol):
 
 class FragableClusterBF(Mol):
 	""" All the monomers can pair with each other, no cutoff"""
-	def __init__(self, atoms_ =  None, coords_ = None, center_= "COM", cutoff_ = 2, width_ = 0.4):
+	def __init__(self, atoms_ =  None, coords_ = None, center_= "COM", cutoff_ = 4.6, width_ = 0.4):
 		Mol.__init__(self,atoms_,coords_)
 		self.mbe_order = PARAMS["MBE_ORDER"]
 		print "MBE order:", self.mbe_order
