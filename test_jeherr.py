@@ -29,7 +29,7 @@ PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
 PARAMS["max_steps"] = 5000
 PARAMS["batch_size"] = 8000
-PARAMS["NeuronType"] = "selu"
+PARAMS["NeuronType"] = "elu"
 
 # PARAMS["AN1_r_Rc"] = 6.
 # PARAMS["AN1_a_Rc"] = 4.
@@ -201,7 +201,7 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
 	manager=TFManage("",tset,False,"fc_sqdiff")
-	manager.TrainElement(6)
+	manager.TrainElement(7)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -471,7 +471,7 @@ def Brute_LJParams():
 # TestIpecac()
 # TestBP()
 # TestANI1()
-TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=2)
+TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=None)
 # TestForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()

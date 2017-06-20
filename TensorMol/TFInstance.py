@@ -10,7 +10,7 @@ from TensorMol.TensorData import *
 import numpy as np
 import cPickle as pickle
 import math
-import time, os, sys
+import time, os, sys, numbers
 import os.path
 if (HAS_TF):
 	import tensorflow as tf
@@ -306,42 +306,6 @@ class Instance:
 			alpha = 1.6732632423543772848170429916717
 			scale = 1.0507009873554804934193349852946
 			return scale*tf.where(x>=0.0, x, alpha*tf.nn.elu(x))
-
-	def dropout_selu(x, rate, alpha= -1.7580993408473766, fixedPointMean=0.0, fixedPointVar=1.0, noise_shape=None, seed=None, name=None, training=False):
-		"""Dropout to a value with rescaling."""
-		def dropout_selu_impl(x, rate, alpha, noise_shape, seed, name):
-			keep_prob = 1.0 - rate
-			x = tf.convert_to_tensor(x, name="x")
-			if isinstance(keep_prob, numbers.Real) and not 0 < keep_prob <= 1:
-				raise ValueError("keep_prob must be a scalar tensor or a float in the "
-								"range (0, 1], got %g" % keep_prob)
-			keep_prob = tf.convert_to_tensor(keep_prob, dtype=x.dtype, name="keep_prob")
-			keep_prob.get_shape().assert_is_compatible_with(tensor_shape.scalar())
-
-			alpha = tf.convert_to_tensor(alpha, dtype=x.dtype, name="alpha")
-			keep_prob.get_shape().assert_is_compatible_with(tensor_shape.scalar())
-
-			if tf.contrib.util.constant_value(keep_prob) == 1:
-				return x
-
-			noise_shape = noise_shape if noise_shape is not None else tf.shape(x)
-			random_tensor = keep_prob
-			random_tensor += tf.random_uniform(noise_shape, seed=seed, dtype=x.dtype)
-			binary_tensor = tf.floor(random_tensor)
-			ret = x * binary_tensor + alpha * (1-binary_tensor)
-
-			a = tf.sqrt(fixedPointVar / (keep_prob *((1-keep_prob) * tf.pow(alpha-fixedPointMean,2) + fixedPointVar)))
-
-			b = fixedPointMean - a * (keep_prob * fixedPointMean + (1 - keep_prob) * alpha)
-			ret = a * ret + b
-			ret.set_shape(x.get_shape())
-			return ret
-
-		with tf.name_scope(name, "dropout", [x]) as name:
-			return utils.smart_cond(training,
-				lambda: dropout_selu_impl(x, rate, alpha, noise_shape, seed, name),
-				lambda: array_ops.identity(x))
-
 
 	def placeholder_inputs(self, batch_size):
 		raise("Populate placeholder_inputs")
@@ -1234,6 +1198,42 @@ class Instance_fc_sqdiff_selu(Instance_fc_sqdiff):
 				pass
 			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			return
+
+	def dropout_selu(self, x, rate, alpha= -1.7580993408473766, fixedPointMean=0.0, fixedPointVar=1.0, noise_shape=None, seed=None, name=None, training=False):
+		"""Dropout to a value with rescaling."""
+		def dropout_selu_impl(x, rate, alpha, noise_shape, seed, name):
+			keep_prob = 1.0 - rate
+			x = tf.convert_to_tensor(x, name="x")
+			if isinstance(keep_prob, numbers.Real) and not 0 < keep_prob <= 1:
+				raise ValueError("keep_prob must be a scalar tensor or a float in the "
+								"range (0, 1], got %g" % keep_prob)
+			keep_prob = tf.convert_to_tensor(keep_prob, dtype=x.dtype, name="keep_prob")
+			keep_prob.get_shape().assert_is_compatible_with([])
+
+			alpha = tf.convert_to_tensor(alpha, dtype=x.dtype, name="alpha")
+			keep_prob.get_shape().assert_is_compatible_with([])
+
+			if tf.contrib.util.constant_value(keep_prob) == 1:
+				return x
+
+			noise_shape = noise_shape if noise_shape is not None else tf.shape(x)
+			random_tensor = keep_prob
+			random_tensor += tf.random_uniform(noise_shape, seed=seed, dtype=x.dtype)
+			binary_tensor = tf.floor(random_tensor)
+			ret = x * binary_tensor + alpha * (1-binary_tensor)
+
+			a = tf.sqrt(fixedPointVar / (keep_prob *((1-keep_prob) * tf.pow(alpha-fixedPointMean,2) + fixedPointVar)))
+
+			b = fixedPointMean - a * (keep_prob * fixedPointMean + (1 - keep_prob) * alpha)
+			ret = a * ret + b
+			ret.set_shape(x.get_shape())
+			return ret
+
+		with tf.name_scope(name, "dropout", [x]) as name:
+			# return dropout_selu_impl(x, rate, alpha, noise_shape, seed, name) if training else array_ops.identity(x)
+			return tf.cond(training,
+				lambda: dropout_selu_impl(x, rate, alpha, noise_shape, seed, name),
+				lambda: tf.identity(x))
 
 	def inference(self, inputs, dropoutRate, is_training):
 		"""Builds the network architecture. Number of hidden layers and nodes in each layer defined in TMParams "HiddenLayers".
