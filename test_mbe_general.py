@@ -39,15 +39,19 @@ if (1):
        	 	#a.mols[0].WriteXYZfile("./results/", "h2o_dimer_opt")
 
 
-	if (1):
-		#a=MSet("H2O_udp")
-		#a.ReadXYZ("H2O_udp")
-		a=MSet("H2O_udp_squeeze")
-                a.ReadXYZ("H2O_udp_squeeze")
-		#manager = TFMolManage("Mol_H2O_augmented_more_cutoff5_float64_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
+	if (0):
+		a=MSet("H2O_udp_test")
+		a.ReadXYZ("H2O_udp_test")
+		#a=MSet("H2O_udp_float64")
+                #a.ReadXYZ("H2O_udp_float64")
+		#a=MSet("H2O_dimer_flip")
+                #a.ReadXYZ("H2O_dimer_flip")
+		PARAMS["tf_prec"] = "tf.float64"
+		manager = TFMolManage("Mol_H2O_augmented_more_cutoff5_float64_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
 		#manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
-		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
-		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+		#manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
+		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_float64_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+		#dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
                 def EnAndForce(x_):
                         a.mols[0].coords = x_
 			energy, force = manager.Eval_BPForceSet(a)
@@ -62,11 +66,12 @@ if (1):
                         dipole, charge = dipole_manager.Eval_BPDipole_2(a.mols[0])
                         return np.asarray(charge[0])
 
-		energy, force =  manager.Eval_BPForceSet(a)
-		print energy, 
-		for i in range (0, len(force)):
-			print -force[i]/JOULEPERHARTREE
-		print "Dipole:", dipole_manager.Eval_BPDipole_2(a.mols[0])
+		#print dipole_manager.Eval_BPDipoleGrad_2(a)
+		#energy, force =  manager.Eval_BPForceSet(a)
+		#print energy, 
+		#for i in range (0, len(force)):
+		#	print -force[i]/JOULEPERHARTREE
+		#print "Dipole:", dipole_manager.Eval_BPDipole_2(a.mols[0])
 
 		#PARAMS["MDThermostat"] = "Nose"
                 #PARAMS["MDTemp"] = 200.0
@@ -104,20 +109,20 @@ if (1):
 		#PARAMS["MDFieldFreq"] = 0.8
 		#PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
 	       	#PARAMS["MDThermostat"] = "Nose"
-                #PARAMS["MDTemp"] = 30
+                #PARAMS["MDTemp"] = 120
                 #PARAMS["MDdt"] = 0.1
 		#PARAMS["RemoveInvariant"]=True
 		#PARAMS["MDV0"] = None
-		#PARAMS["MDMaxStep"] = 10000
+		#PARAMS["MDMaxStep"] = 1000
 		#warm = VelocityVerlet(ForceField, a.mols[0],"warm",EnergyForceField)
 		#warm.Prop()
 		#a.mols[0].coords = warm.x.copy()
 		#PARAMS["MDMaxStep"] = 40000
-		#md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_udp_squeeze_IR_30K",warm.v.copy())
+		#md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_udp_float64_IR_120K",warm.v.copy())
                 #md.Prop()
-		#WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_squeeze_IR_30K.txt")
+		#WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_float64_IR_120K.txt")
 
-	if (0):
+	if (1):
 		a=FragableMSetBF("H2O_cluster_b3lyp_opt")
 		a.ReadXYZ("H2O_cluster_b3lyp_opt")
 		#a=FragableMSetBF("H2O_dimer")
@@ -126,20 +131,23 @@ if (1):
 		print "Generate_All_MBE_term_General: "
 		a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
 		print "End of Generate_All_MBE_term_General"	
-
+		
+		PARAMS["tf_prec"] = "tf.float64"
 		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_float64_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
 		#manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
-		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
+		#manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
+		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_float64_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+		#dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
 		mbe = NN_MBE_BF(manager, dipole_manager)
 
 		Opt = MBE_Optimizer(mbe)
 		for mol in a.mols:
-			Opt.MBE_Opt(mol)
+			#Opt.MBE_Opt(mol)
 			#mbe.NN_Energy_Force(mol)
 			#mbe.NN_Energy(mol, False)
-			#mbe.NN_Dipole(mol)
-			#mbe.NN_Charge(mol, True)
-			#mbe.NN_Energy_Force(mol, True)
+			#mbe.NN_Dipole(mol, True)
+			mbe.NN_Charge(mol, True)
+			mbe.NN_Energy_Force(mol, True)
 
 
 	if (0):
@@ -159,9 +167,13 @@ if (0):
                 print "Generate_All_MBE_term_General: "
                 a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
                 print "End of Generate_All_MBE_term_General"
-		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_fc_sqdiff_BP_1",None,False)
+
+		PARAMS["tf_prec"] = "tf.float64"
+                manager = TFMolManage("Mol_H2O_augmented_more_cutoff5_float64_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
+                dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_float64_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+		#manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_fc_sqdiff_BP_1",None,False)
                 #manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
-                dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
+                #dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
                 mbe = NN_MBE_BF(manager, dipole_manager)
                 def EnAndForce(x_):
 			a.mols[0].coords = x_
@@ -181,8 +193,8 @@ if (0):
 		#optimizer = Optimizer(manager)
 		#optimizer.OptANI1(a.mols[0])
 
-		Opt = MBE_Optimizer(mbe)
-		Opt.MBE_Opt(a.mols[0])
+		#Opt = MBE_Optimizer(mbe)
+		#Opt.MBE_Opt(a.mols[0])
 	
 		#PARAMS["MDThermostat"] = None
 		#PARAMS["MDTemp"] = 0.0
@@ -202,24 +214,24 @@ if (0):
 		#a.mols[0].coords = annealH2O.Minx.copy()
                 #a.mols[0].WriteXYZfile("./results/", "h2o_cluster_anneal_opt")
 
-		#PARAMS["MDFieldAmp"] = 0.0 #0.00000001
-                #PARAMS["MDFieldTau"] = 0.4
-                #PARAMS["MDFieldFreq"] = 0.8
-                #PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-                #PARAMS["MDThermostat"] = "Nose"
-		#PARAMS["MDTemp"] = 30
-                ##PARAMS["MDTemp"] = 30
-                #PARAMS["MDdt"] = 0.1
-                #PARAMS["RemoveInvariant"]=True
-                #PARAMS["MDV0"] = None
-                #PARAMS["MDMaxStep"] = 10000
-                #warm = VelocityVerlet(ForceField, a.mols[0],"warm",EnergyForceField)
-                #warm.Prop()
-                #a.mols[0].coords = warm.x.copy()
-                #PARAMS["MDMaxStep"] = 40000
-                #md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_cluster_b3lyp_opt_MBE_30K_IR",warm.v.copy())
-                #md.Prop()
-                #WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_cluster_b3lyp_opt_MBE_30K_IR.txt")
+		PARAMS["MDFieldAmp"] = 0.0 #0.00000001
+                PARAMS["MDFieldTau"] = 0.4
+                PARAMS["MDFieldFreq"] = 0.8
+                PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+                PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDTemp"] = 30
+                #PARAMS["MDTemp"] = 30
+                PARAMS["MDdt"] = 0.1
+                PARAMS["RemoveInvariant"]=True
+                PARAMS["MDV0"] = None
+                PARAMS["MDMaxStep"] = 10000
+                warm = VelocityVerlet(ForceField, a.mols[0],"warm",EnergyForceField)
+                warm.Prop()
+                a.mols[0].coords = warm.x.copy()
+                PARAMS["MDMaxStep"] = 40000
+                md = IRTrajectory(EnergyForceField, ChargeField, a.mols[0],"H2O_cluster_b3lyp_opt_MBE_float64_30K_IR",warm.v.copy())
+                md.Prop()
+                WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_cluster_b3lyp_opt_MBE_30K_float64_IR.txt")
 
 
 if (0):

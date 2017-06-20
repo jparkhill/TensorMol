@@ -779,9 +779,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		#self.learning_rate = 0.1
-		self.learning_rate = 0.0001
-		#self.learning_rate = 0.00001
+		#self.learning_rate = 0.0001
 		self.momentum = 0.95
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
@@ -811,9 +809,9 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		# self.batch_size is still the number of inputs in a batch.
 		self.batch_size = 10000
 		self.batch_size_output = 0
-		self.hidden1 = 500
-		self.hidden2 = 500
-		self.hidden3 = 500
+		#self.hidden1 = 500
+		#self.hidden2 = 500
+		#self.hidden3 = 500
 		self.summary_op =None
 		self.summary_writer=None
 
