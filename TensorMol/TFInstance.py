@@ -334,29 +334,29 @@ class Instance:
 		return feed_dict
 
 	def inference(self, inputs):
-		"""Build the MNIST model up to where it may be used for inference.
+		"""Builds the network architecture. Number of hidden layers and nodes in each layer defined in TMParams "HiddenLayers".
 		Args:
-		images: Images placeholder, from inputs().
-		hidden1_units: Size of the first hidden layer.
-		hidden2_units: Size of the second hidden layer.
+			inputs: input placeholder for training data from Digester.
 		Returns:
-		softmax_linear: Output tensor with the computed logits.
+			output: scalar or vector of OType from Digester.
 		"""
 		hiddens = []
-		for i in xrange(len(self.HiddenLayers)):
+		for i in range(len(self.HiddenLayers)):
 			if i == 0:
 				with tf.name_scope('hidden1'):
-					weights = self.selu_variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
-					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]]), name='biases')
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 					hiddens.append(self.activation_function(tf.matmul(inputs, weights) + biases))
+					tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
+					tf.histogram_summary(weights.name, weights)
 			else:
 				with tf.name_scope('hidden'+str(i+1)):
-					weights = self.selu_variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
-					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]]),name='biases')
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec),name='biases')
 					hiddens.append(self.activation_function(tf.matmul(hiddens[-1], weights) + biases))
 		with tf.name_scope('regression_linear'):
-			weights = self.selu_variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1]]+ list(self.outshape), var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
 			output = tf.matmul(hiddens[-1], weights) + biases
 		return output
 
