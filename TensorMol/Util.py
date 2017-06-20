@@ -205,14 +205,14 @@ def String_To_Atoms(s=""):
 	return atom_l
 
 def iter_product(args, repeat=1):
-    # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
-    # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
-    pools = [tuple(pool) for pool in args] * repeat
-    result = [[]]
-    for pool in pools:
-        result = [x+[y] for x in result for y in pool]
-    for prod in result:
-        yield list(prod)
+	# product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
+	# product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
+	pools = [tuple(pool) for pool in args] * repeat
+	result = [[]]
+	for pool in pools:
+		result = [x+[y] for x in result for y in pool]
+	for prod in result:
+		yield list(prod)
 
 def Subset(A, B): # check whether B is subset of A
 	checked_index = []
@@ -260,10 +260,10 @@ def Dihed_4Points(x1, x2, x3, x4): # dihedral angle constructed by x1 - x2 - x3 
 	return math.atan2(np.dot(np.cross(c1, c2), b2), np.dot(c1, c2))
 
 def AtomName_From_List(atom_list):
-        name = ""
-        for i in atom_list:
-                name += atoi.keys()[atoi.values().index(i)]
-        return name
+	name = ""
+	for i in atom_list:
+		name += atoi.keys()[atoi.values().index(i)]
+	return name
 
 def AutoCorrelation(traj, step_size): # trajectory shape: Nsteps X NAtoms X 3
 	step = traj.shape[0]
@@ -277,8 +277,6 @@ def AutoCorrelation(traj, step_size): # trajectory shape: Nsteps X NAtoms X 3
 	print ("time to calculation autocorrelation function:", time.time() - t , "second")
 	#np_autocorr = np.correlate(traj, traj, mode = "full")  # not working, only work for 1D, maybe needs scipy
 	return autocorr
-
-
 
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

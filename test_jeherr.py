@@ -24,26 +24,28 @@ S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
 PARAMS["SRBF"] = S_RadOrth
 #PARAMS["InNormRoutine"] = "MinMax"
+PARAMS["InNormRoutine"] = "MeanStd"
 PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
 PARAMS["max_steps"] = 5000
 PARAMS["batch_size"] = 8000
+PARAMS["NeuronType"] = "selu"
 
-#PARAMS["AN1_r_Rc"] = 6.
-#PARAMS["AN1_a_Rc"] = 4.
-#PARAMS["AN1_eta"] = 4.0
-#PARAMS["AN1_zeta"] = 8.0
-#PARAMS["AN1_num_r_Rs"] = 16
-#PARAMS["AN1_num_a_Rs"] = 4
-#PARAMS["AN1_num_a_As"] = 8
-#PARAMS["hidden1"] = 64
-#PARAMS["hidden2"] = 128
-#PARAMS["hidden3"] = 64
-#PARAMS["max_steps"] = 1001
-#PARAMS["GradWeight"] = 1.0
-#PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
-#PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
-#PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
+# PARAMS["AN1_r_Rc"] = 6.
+# PARAMS["AN1_a_Rc"] = 4.
+# PARAMS["AN1_eta"] = 4.0
+# PARAMS["AN1_zeta"] = 8.0
+# PARAMS["AN1_num_r_Rs"] = 16
+# PARAMS["AN1_num_a_Rs"] = 4
+# PARAMS["AN1_num_a_As"] = 8
+# PARAMS["hidden1"] = 64
+# PARAMS["hidden2"] = 128
+# PARAMS["hidden3"] = 64
+# PARAMS["max_steps"] = 1001
+# PARAMS["GradWeight"] = 1.0
+# PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
+# PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
+# PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
 
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
@@ -199,7 +201,7 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
 	manager=TFManage("",tset,False,"fc_sqdiff")
-	manager.TrainElement(7)
+	manager.TrainElement(6)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -469,7 +471,7 @@ def Brute_LJParams():
 # TestIpecac()
 # TestBP()
 # TestANI1()
-TrainForces(set_ = "SmallMols_20rot", BuildTrain_=False, numrot_=None)
+TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=2)
 # TestForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()

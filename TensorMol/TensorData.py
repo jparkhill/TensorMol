@@ -143,7 +143,7 @@ class TensorData():
 		ord = len(self.set.mols)
 		mols_done = 0
 		try:
-			for mi in range(ord):
+			for mi in xrange(ord):
 				m = self.set.mols[mi]
 				ins,outs = self.dig.TrainDigestMolwise(m)
 				for i in range(m.NAtoms()):
