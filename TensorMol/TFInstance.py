@@ -43,11 +43,12 @@ class Instance:
 		# The parameters below belong to tensorflow and its graph
 		# all tensorflow variables cannot be pickled they are populated by Prepare
 		self.PreparedFor=0
-		self.HiddenLayers = PARAMS["HiddenLayers"]
+
 		try:
-                        self.tf_prec
-                except:
-                        self.tf_prec = eval(PARAMS["tf_prec"])
+			self.tf_prec
+		except:
+			self.tf_prec = eval(PARAMS["tf_prec"])
+		self.HiddenLayers = PARAMS["HiddenLayers"]
 		self.hidden1 = PARAMS["hidden1"]
 		self.hidden2 = PARAMS["hidden2"]
 		self.hidden3 = PARAMS["hidden3"]
@@ -301,9 +302,46 @@ class Instance:
 		return var
 
 	def selu(self, x):
-		alpha = 1.6732632423543772848170429916717
-		scale = 1.0507009873554804934193349852946
-		return scale*tf.where(x>=0.0, x, alpha*tf.nn.elu(x))
+		with tf.name_scope('elu') as scope:
+			alpha = 1.6732632423543772848170429916717
+			scale = 1.0507009873554804934193349852946
+			return scale*tf.where(x>=0.0, x, alpha*tf.nn.elu(x))
+
+	def dropout_selu(x, rate, alpha= -1.7580993408473766, fixedPointMean=0.0, fixedPointVar=1.0, noise_shape=None, seed=None, name=None, training=False):
+		"""Dropout to a value with rescaling."""
+		def dropout_selu_impl(x, rate, alpha, noise_shape, seed, name):
+			keep_prob = 1.0 - rate
+			x = tf.convert_to_tensor(x, name="x")
+			if isinstance(keep_prob, numbers.Real) and not 0 < keep_prob <= 1:
+				raise ValueError("keep_prob must be a scalar tensor or a float in the "
+								"range (0, 1], got %g" % keep_prob)
+			keep_prob = tf.convert_to_tensor(keep_prob, dtype=x.dtype, name="keep_prob")
+			keep_prob.get_shape().assert_is_compatible_with(tensor_shape.scalar())
+
+			alpha = tf.convert_to_tensor(alpha, dtype=x.dtype, name="alpha")
+			keep_prob.get_shape().assert_is_compatible_with(tensor_shape.scalar())
+
+			if tf.contrib.util.constant_value(keep_prob) == 1:
+				return x
+
+			noise_shape = noise_shape if noise_shape is not None else tf.shape(x)
+			random_tensor = keep_prob
+			random_tensor += tf.random_uniform(noise_shape, seed=seed, dtype=x.dtype)
+			binary_tensor = tf.floor(random_tensor)
+			ret = x * binary_tensor + alpha * (1-binary_tensor)
+
+			a = tf.sqrt(fixedPointVar / (keep_prob *((1-keep_prob) * tf.pow(alpha-fixedPointMean,2) + fixedPointVar)))
+
+			b = fixedPointMean - a * (keep_prob * fixedPointMean + (1 - keep_prob) * alpha)
+			ret = a * ret + b
+			ret.set_shape(x.get_shape())
+			return ret
+
+		with tf.name_scope(name, "dropout", [x]) as name:
+			return utils.smart_cond(training,
+				lambda: dropout_selu_impl(x, rate, alpha, noise_shape, seed, name),
+				lambda: array_ops.identity(x))
+
 
 	def placeholder_inputs(self, batch_size):
 		raise("Populate placeholder_inputs")
@@ -344,18 +382,18 @@ class Instance:
 		for i in range(len(self.HiddenLayers)):
 			if i == 0:
 				with tf.name_scope('hidden1'):
-					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=(self.inshape+[self.HiddenLayers[i]]), var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 					hiddens.append(self.activation_function(tf.matmul(inputs, weights) + biases))
-					tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
-					tf.histogram_summary(weights.name, weights)
+					# tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
+					# tf.histogram_summary(weights.name, weights)
 			else:
 				with tf.name_scope('hidden'+str(i+1)):
 					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec),name='biases')
 					hiddens.append(self.activation_function(tf.matmul(hiddens[-1], weights) + biases))
 		with tf.name_scope('regression_linear'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1]]+self.outshape, var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
 			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
 			output = tf.matmul(hiddens[-1], weights) + biases
 		return output
@@ -712,8 +750,6 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 	def __init__(self, TData_, ele_=1, Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "del_fc_sqdiff"
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
 
 	def inference(self, inputs, bleep, bloop, blop):
 		"""Build the MNIST model up to where it may be used for inference.
@@ -1160,3 +1196,121 @@ class Instance_KRR(Instance):
 	def PrepareData(self, batch_data):
 		raise Exception("NYI")
 		return
+
+class Instance_fc_sqdiff_selu(Instance_fc_sqdiff):
+	def __init__(self, TData_, ele_=1, Name_=None):
+		Instance.__init__(self, TData_, ele_, Name_)
+		self.NetType = "fc_sqdiff_selu"
+
+	def train_prepare(self,  continue_training =False):
+		""" Builds the graphs by calling inference """
+		with tf.Graph().as_default():
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.dropoutRate = tf.placeholder(tf.float32)
+			self.is_training = tf.placeholder(tf.bool)
+			self.output = self.inference(self.embeds_placeholder, self.dropoutRate, self.is_training)
+			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.sess.run(init)
+			try:
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+			except Exception as Ex:
+				LOGGER.error("Restore Failed")
+				pass
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			return
+
+	def inference(self, inputs, dropoutRate, is_training):
+		"""Builds the network architecture. Number of hidden layers and nodes in each layer defined in TMParams "HiddenLayers".
+		Args:
+			inputs: input placeholder for training data from Digester.
+		Returns:
+			output: scalar or vector of OType from Digester.
+		"""
+		hiddens = []
+		for i in range(len(self.HiddenLayers)):
+			if i == 0:
+				with tf.name_scope('hidden1'):
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=(self.inshape+[self.HiddenLayers[i]]), var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+					active = self.activation_function(tf.matmul(inputs, weights) + biases)
+					hiddens.append(self.dropout_selu(active, dropoutRate, training=is_training))
+					# tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
+					# tf.histogram_summary(weights.name, weights)
+			else:
+				with tf.name_scope('hidden'+str(i+1)):
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec),name='biases')
+					active = self.activation_function(tf.matmul(hiddens[-1], weights) + biases)
+					hiddens.append(self.dropout_selu(active, dropoutRate, training=is_training))
+		with tf.name_scope('regression_linear'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1]]+self.outshape, var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
+			output = tf.matmul(hiddens[-1], weights) + biases
+		return output
+
+	def train_step(self,step):
+		Ncase_train = self.TData.NTrainCasesInScratch()
+		start_time = time.time()
+		train_loss =  0.0
+		total_correct = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			batch_data=self.TData.GetTrainBatch(self.element,  self.batch_size) #advances the case pointer in TData...
+			feed_dict = self.fill_feed_dict(batch_data, 0.05, True, self.embeds_placeholder, self.labels_placeholder, self.dropoutRate, self.is_training)
+			_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
+			train_loss = train_loss + loss_value
+		duration = time.time() - start_time
+		#self.print_training(step, train_loss, total_correct, Ncase_train, duration)
+		self.print_training(step, train_loss, Ncase_train, duration)
+		return
+
+	def test(self, step):
+		Ncase_test = self.TData.NTestCasesInScratch()
+		test_loss =  0.0
+		test_start_time = time.time()
+		#for ministep in range (0, int(Ncase_test/self.batch_size)):
+		batch_data=self.TData.GetTestBatch(self.element,  self.batch_size)#, ministep)
+		feed_dict = self.fill_feed_dict(batch_data, 0.0, False, self.embeds_placeholder, self.labels_placeholder, self.dropoutRate, self.is_training)
+		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
+		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
+		test_loss = test_loss + loss_value
+		duration = time.time() - test_start_time
+		print("testing...")
+		self.print_training(step, test_loss,  Ncase_test, duration)
+		return test_loss, feed_dict
+
+	def fill_feed_dict(self, batch_data, dropoutRate, is_training, embeds_pl, labels_pl, dropout_pl, training_pl):
+		"""Fills the feed_dict for training the given step.
+		A feed_dict takes the form of:
+		feed_dict = {
+		<placeholder>: <tensor of values to be passed for placeholder>,
+		....
+		}
+		Args:
+		data_set: The set of images and labels, from input_data.read_data_sets()
+		embeds_pl: The images placeholder, from placeholder_inputs().
+		labels_pl: The labels placeholder, from placeholder_inputs().
+		Returns:
+		feed_dict: The feed dictionary mapping from placeholders to values.
+		"""
+		# Don't eat shit.
+		if (not np.all(np.isfinite(batch_data[0]))):
+			LOGGER.error("I was fed shit")
+			raise Exception("DontEatShit")
+		if (not np.all(np.isfinite(batch_data[1]))):
+			LOGGER.error("I was fed shit")
+			raise Exception("DontEatShit")
+		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1], dropout_pl: dropoutRate, training_pl: is_training}
+		return feed_dict
