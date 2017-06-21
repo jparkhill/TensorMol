@@ -717,6 +717,8 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 	def __init__(self, TData_, ele_=1, Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "del_fc_sqdiff"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
 
 	def inference(self, inputs, bleep, bloop, blop):
 		"""Build the MNIST model up to where it may be used for inference.
@@ -1168,6 +1170,8 @@ class Instance_fc_sqdiff_selu(Instance_fc_sqdiff):
 	def __init__(self, TData_, ele_=1, Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "fc_sqdiff_selu"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
 
 	def train_prepare(self,  continue_training =False):
 		""" Builds the graphs by calling inference """
@@ -1246,8 +1250,8 @@ class Instance_fc_sqdiff_selu(Instance_fc_sqdiff):
 		for i in range(len(self.HiddenLayers)):
 			if i == 0:
 				with tf.name_scope('hidden1'):
-					weights = self._variable_with_weight_decay(var_name='weights', var_shape=(self.inshape+[self.HiddenLayers[i]]),
-																var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+					weights = self.selu_variable_with_weight_decay(var_name='weights', var_shape=(self.inshape+[self.HiddenLayers[i]]),
+																var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd=None)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 					active = self.activation_function(tf.matmul(inputs, weights) + biases)
 					hiddens.append(self.dropout_selu(active, dropoutRate, training=is_training))
@@ -1255,14 +1259,14 @@ class Instance_fc_sqdiff_selu(Instance_fc_sqdiff):
 					# tf.histogram_summary(weights.name, weights)
 			else:
 				with tf.name_scope('hidden'+str(i+1)):
-					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]],
-																var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
+					weights = self.selu_variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]],
+																var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd=None)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec),name='biases')
 					active = self.activation_function(tf.matmul(hiddens[-1], weights) + biases)
 					hiddens.append(self.dropout_selu(active, dropoutRate, training=is_training))
 		with tf.name_scope('regression_linear'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1]]+self.outshape,
-														var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
+			weights = self.selu_variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1]]+self.outshape,
+														var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd=None)
 			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
 			output = tf.matmul(hiddens[-1], weights) + biases
 		return output

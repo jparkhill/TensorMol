@@ -200,8 +200,8 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 		tset.BuildTrainMolwise_tmp(set_,TreatedAtoms)
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,False,"fc_sqdiff")
-	manager.TrainElement(7)
+	manager=TFManage("",tset,False,"fc_sqdiff_selu")
+	manager.TrainElement(6)
 
 def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
