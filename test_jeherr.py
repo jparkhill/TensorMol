@@ -203,17 +203,14 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 	manager=TFManage("",tset,False,"fc_sqdiff_selu")
 	manager.TrainElement(6)
 
-def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
+def OptTFForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
 	a.ReadXYZ()
 	tmol=copy.deepcopy(a.mols[mol])
 	# tmol.Distort(0.1)
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+"fc_sqdiff", None, False)
 	opt=Optimizer(manager)
-	t1=time.time()
 	opt.OptTFRealForce(tmol)
-	#TestForces(set_ = "tmp", mol=0)
-	#print time.time()-t1
 
 def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
@@ -462,8 +459,31 @@ def Brute_LJParams():
 	print resbrute[1]
 	# print ins.LJFrc(p)
 
+def QueueReadertmp():
+	a=MSet("SmallMols")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	tset = TensorData_TFRecords(a,d)
+	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
+
+def TestForces():
+	a=MSet("chemspid")
+	a.Load()
+	manager=TFManage("SmallMols_20rot_GauSH_fc_sqdiff", None, False)
+	err = 0.0
+	for mol in a.mols:
+		for i, atom in enumerate(mol.atoms):
+			if atom == 7:
+				pforce = manager.evaluate(mol, atom)
+				print pforce
+				print mol.properties["forces"][i] - pforce
+
+
+
+
 # InterpoleGeometries()
-# ReadSmallMols(set_="ammonia", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/amines_2/ammonia2/", energy=True, forces=True)
+# ReadSmallMols(set_="chemspid", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -472,7 +492,7 @@ def Brute_LJParams():
 # TestBP()
 # TestANI1()
 # TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=None)
-# TestForces(set_ = "peptide", mol=0)
+# OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()
 # TestNebGLBFGS()
@@ -480,6 +500,8 @@ def Brute_LJParams():
 # TestAnneal()
 # TestMorphIR()
 # Brute_LJParams()
+# QueueReadertmp()
+TestForces()
 
 
 # a=MSet("pentane_eq_align")
@@ -540,10 +562,3 @@ def Brute_LJParams():
 # 	f.write("sym_ignore        true\n")
 # 	f.write("$end\n\n@@@\n\n")
 # f.close()
-
-a=MSet("SmallMols")
-a.Load()
-TreatedAtoms = a.AtomTypes()
-d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-tset = TensorData_TFRecords(a,d)
-tset.BuildTrainMolwise("SmallMols",TreatedAtoms)

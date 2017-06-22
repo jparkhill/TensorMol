@@ -19,7 +19,7 @@ class Instance:
 	"""
 	Manages a persistent training network instance
 	"""
-	def __init__(self, TData_, ele_ = 1 , Name_=None):
+	def __init__(self, TData_, ele_ = 1 , Name_=None, NetType_=None):
 		"""
 		Args:
 			TData_: a TensorData
@@ -80,7 +80,7 @@ class Instance:
 		LOGGER.info("self.max_steps: "+str(self.max_steps))
 
 		self.NetType = "None"
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.name = None
 		self.train_dir = './networks/'+self.name
 		if (self.element != 0):
 			self.TData.LoadElementToScratch(self.element, self.tformer)
@@ -195,11 +195,11 @@ class Instance:
 		self.PreparedFor = 0
 		self.summary_op = None
 		self.activation_function = None
+		self.TData = None
 		return
 
 	def SaveAndClose(self):
 		print("Saving TFInstance...")
-		self.save_chk(99999)
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
@@ -614,6 +614,8 @@ class Instance_fc_classify(Instance):
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
+		if (self.name !=  None):
+			return
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
@@ -698,7 +700,7 @@ class Instance_fc_sqdiff(Instance):
 		test_loss = test_loss + loss_value
 		duration = time.time() - test_start_time
 		print("testing...")
-		self.print_training(step, test_loss,  Ncase_test, duration)
+		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
 		return test_loss, feed_dict
 
 	def PrepareData(self, batch_data):
