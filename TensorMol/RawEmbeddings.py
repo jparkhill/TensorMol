@@ -58,7 +58,6 @@ def AllTriples(rng):
 	v6 = tf.concat([v4,v5], axis = 3) # All triples in the range.
 	return v6
 
-
 def AllTriplesSet(rng):
 	"""Returns all possible triples of integers between zero and natom.
 
@@ -79,7 +78,6 @@ def AllTriplesSet(rng):
 	v7 = tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1])
 	v8 = tf.concat([v7,v6], axis = -1)
 	return v8
-
 
 def Zouter(Z):
 	"""
@@ -123,15 +121,86 @@ def TFSymR(R, Zs, elems, RSFPs, R_cut):
 	Args:
 	    R: a maxnatom X 3 tensor of coordinates.
 	    Zs : maxnatom X 1 tensor of atomic numbers.
-	    elems_: a tensor of elements present in the data.
+	    elems_: a 1-tensor of elements present in the data.
 	    RSFPs: A symmetry function parameter tensor 2 X neta X nRs.
 	    For example, RSFPs[0,0,0] is the first eta parameter. RSFPs[1,1] is the second R parameter.
 	    R_cut: Radial Cutoff
 
 	Returns:
-	    Digested Mol. In the shape maxnatom X nelem X nEta X nRs
+	    Digested Mol. In the shape maxnatom X nele X nEta X nRs
 	"""
+	inp_shp = tf.shape(R)
+	natom = inp_shp[0]
+	natom2 = natom*natom
+	nele = tf.shape(elems)[0]
+	pshape = tf.shape(RSFPs)
+	neta = pshape[1]
+	nr = pshape[2]
 
+	# atom pairs.
+	ats = Zouter(tf.range(natom))
+	Z1Z2 = Zouter(Zs)
+	Ri_inds = tf.slice(ats,[0,0,0],[natom,natom,1])
+	Rj_inds = tf.slice(ats,[0,0,1],[natom,natom,1])
+	Rij_inds = tf.reshape(tf.concat([Ri_inds,Rj_inds],axis=2),[natom2,2])
+	Dij = TFDistance(R)
+	# Pull out the appropriate pairs of distances from Dij
+	ToExp = tf.gather_nd(Dij,Rij_inds) # natom2 X 1
+	# Create broadcastable arrays for eta, R and finish.
+	etatmp = tf.reshape(RSFPs[0],[1,neta,nr])
+	Rstmp = tf.reshape(RSFPs[1],[1,neta,nr])
+	Exps = tf.exp(-1.0*etatmp*(tf.reshape(ToExp,[natom2,1,1]) - Rstmp))
+	# Finally pull out element contributions and reduce sum.
+	DijRik = tf.einsum("ij,ij->i",A,B)
+	RijRij = tf.sqrt(tf.einsum("ij,ij->i",A,A)+infinitesimal)
+	RikRik = tf.sqrt(tf.einsum("ij,ij->i",B,B)+infinitesimal)
+	denom = RijRij*RikRik
+	# Mask any troublesome entries.
+	ToACos = RijRik/denom
+	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos),ToACos)
+	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos),ToACos)
+	Thetaijk = tf.acos(ToACos)
+	# Finally construct the thetas for all the triples.
+	zetatmp = tf.reshape(SFPs_[0],[1,nzeta,neta,ntheta,nr])
+	thetatmp = tf.reshape(SFPs_[2],[1,nzeta,neta,ntheta,nr])
+	# Broadcast the thetas and ToCos together
+	tct = tf.reshape(Thetaijk,[natom3,1,1,1,1])
+	Tijk = tf.cos(tct-thetatmp) # shape: natom3 X ...
+	# complete factor 1 for all j,k
+	fac1 = tf.pow(2.0,1.0-zetatmp)*tf.pow((1.0+Tijk),zetatmp)
+	# Construct Rij + Rik/2  for all jk!=i
+	# make the etas,R's broadcastable onto this and vice versa.
+	etmp = tf.reshape(SFPs_[1],[1,nzeta,neta,ntheta,nr]) # ijk X zeta X eta ....
+	rtmp = tf.reshape(SFPs_[3],[1,nzeta,neta,ntheta,nr]) # ijk X zeta X eta ....
+	ToExp = ((RijRij+RikRik)/2.0)
+	tet = tf.reshape(ToExp,[natom3,1,1,1,1]) - rtmp
+	fac2 = tf.exp(-etmp*tet*tet)
+	# And finally the last two factors
+	fac3 = tf.where(tf.greater_equal(RijRij,R_cut),tf.zeros_like(RijRij),0.5*(tf.cos(3.14159265359*RijRij/R_cut)+1.0))
+	fac4 = tf.where(tf.greater_equal(RikRik,R_cut),tf.zeros_like(RikRik),0.5*(tf.cos(3.14159265359*RikRik/R_cut)+1.0))
+	# Zero out the diagonal contributions (i==j or i==k)
+	mask1 = tf.reshape(tf.where(tf.equal(Ri_inds,Rj_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[natom3])
+	mask2 = tf.reshape(tf.where(tf.equal(Ri_inds,Rk_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[natom3])
+	# Also mask out the lower triangle. (j>k)
+	# mask3 = tf.reshape(tf.where(tf.greater(Rj_inds,Rk_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[natom3])
+	# assemble the full symmetry function for all triples.
+	fac34t =  tf.reshape(fac3*fac4*mask1*mask2,[natom3,1,1,1,1])
+	# Use broadcasting to mask these out...
+	Gm = fac1*fac2*fac34t # Gm so far has shape atom3 X nzeta X neta X ntheta X nr
+	# Now, finally Scatter the element contributions and sum over jk.
+	Rjk_inds = tf.reshape(tf.concat([Rj_inds,Rk_inds],axis=3),[natom3,2])
+	Z1Z2 = Zouter(Z)
+	ZPairs = tf.gather_nd(Z1Z2,Rjk_inds) # should have shape natom3 X 2
+	# Create a tensor which selects out components where jk = elep[i]
+	# This is done by broadcasting our natom X natom X natom X zeta... tensor.
+	# onto a tensor which has an added dimension for the element pairs, and reducing over jk.
+	ElemReduceMask = tf.reduce_all(tf.equal(tf.reshape(ZPairs,[natom3,1,2]),tf.reshape(eleps_,[1,nelep,2])),axis=-1)
+	# So this tensor has dim natom3 X nelep we broadcast over it's shape and reduce_sum.
+	GmToMask = tf.tile(tf.reshape(Gm,[natom,natom2,1,nzeta,neta,ntheta,nr]),[1,1,nelep,1,1,1,1])
+	ERMask = tf.tile(tf.reshape(ElemReduceMask,[natom,natom2,nelep,1,1,1,1]),[1,1,1,nzeta,neta,ntheta,nr])
+	ToRS = tf.where(ERMask,GmToMask,tf.zeros_like(GmToMask))
+	GMA = tf.reduce_sum(ToRS,axis=[1])
+	return GMA
 
 def TFSymA(R, Zs, eleps_, SFPs_, R_cut):
 	"""
