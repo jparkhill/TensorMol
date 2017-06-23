@@ -1,4 +1,5 @@
 # Creates inner product of Q Chem and TensorMol vectors
+from TensorMol import *
 import numpy as np 
 nm = PullFreqData()
 a = MSet("david_test.xyz")

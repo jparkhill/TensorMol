@@ -390,7 +390,7 @@ def david_testIR():
 	PARAMS["OptMomentumDecay"] = 0.9
 	PARAMS["OptStepSize"] = 0.02
 	PARAMS["OptMaxCycles"]=200
-	indo = a.mols[6]
+	indo = a.mols[11]
 	print "number of atoms in indo", indo.NAtoms()
 	#optimizer = Optimizer(manager)
 	#optimizer.OptANI1(indo)
@@ -408,52 +408,52 @@ def david_testIR():
 	annealIndo.Prop()
 	indo.coords = annealIndo.Minx.copy()
 	indo.WriteXYZfile("./results/", "davidIR_opt")
-	# Perform a Harmonic analysis 
-	m=indo 
-	print "Harmonic Analysis"
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
-	v = v.real 
-	print np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
-	for i in range(3*m.NAtoms()): 
-		print np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
-		nm = v[:,i].reshape((m.NAtoms(),3))
-		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
-		print nm
-		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
-			mdisp = Mol(m.atoms,m.coords+alpha*nm)
-			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
+	# Perform a Harmonic analysis
+	m=indo
+	# print "Harmonic Analysis"
+	# masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	# w,v = HarmonicSpectra(EnergyField, m.coords, masses)
+	# v = v.real
+	# print np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
+	# for i in range(3*m.NAtoms()):
+	# 	print np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
+	# 	nm = v[:,i].reshape((m.NAtoms(),3))
+	# 	nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
+	# 	print nm
+	# 	for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
+	# 		mdisp = Mol(m.atoms,m.coords+alpha*nm)
+	# 		mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
 
-		PARAMS["MDFieldAmp"] = 0.0 #0.00000001
-		PARAMS["MDFieldTau"] = 0.4
-		PARAMS["MDFieldFreq"] = 0.8
-		PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-		PARAMS["MDThermostat"] = "Nose"
-		PARAMS["MDTemp"] = 30
-		PARAMS["MDdt"] = 0.1
-		PARAMS["RemoveInvariant"]=True
-		PARAMS["MDV0"] = None
+	# PARAMS["MDFieldAmp"] = 0.0 #0.00000001
+	# PARAMS["MDFieldTau"] = 0.4
+	# PARAMS["MDFieldFreq"] = 0.8
+	# PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	# PARAMS["MDThermostat"] = "Nose"
+	# PARAMS["MDTemp"] = 30
+	# PARAMS["MDdt"] = 0.1
+	# PARAMS["RemoveInvariant"]=True
+	# PARAMS["MDV0"] = None
 
-		PARAMS["MDMaxStep"] = 10000
-		warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
-		warm.Prop()
-		indo.coords = warm.x.copy()
+	# PARAMS["MDMaxStep"] = 10000
+	# warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
+	# warm.Prop()
+	# indo.coords = warm.x.copy()
 
-		PARAMS["MDMaxStep"] = 40000
-		md = IRTrajectory(ForceField, ChargeField, indo,"david_IR_30K",warm.v.copy(),)
-		md.Prop()
-		WriteDerDipoleCorrelationFunction(md.mu_his,"david_IR_30K.txt")
+	# PARAMS["MDMaxStep"] = 40000
+	# md = IRTrajectory(ForceField, ChargeField, indo,"david_IR_30K",warm.v.copy(),)
+	# md.Prop()
+	# WriteDerDipoleCorrelationFunction(md.mu_his,"david_IR_30K.txt")
 
 
-        #PARAMS["MDTemp"]= 0.0
-        #PARAMS["MDThermostat"] = None
-        #PARAMS["MDFieldAmp"] = 20.0 #0.00000001
-        #PARAMS["MDFieldTau"] = 0.4
-        #PARAMS["MDFieldFreq"] = 0.8
-        #PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-        #md0 = IRTrajectory(ForceField, ChargeField, indo, "indo")
-        #md0.Prop()
-        #WriteDerDipoleCorrelationFunction(md0.mu_his,"indo.txt")
+	#PARAMS["MDTemp"]= 0.0
+	#PARAMS["MDThermostat"] = None
+	#PARAMS["MDFieldAmp"] = 20.0 #0.00000001
+	#PARAMS["MDFieldTau"] = 0.4
+	#PARAMS["MDFieldFreq"] = 0.8
+	#PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	#md0 = IRTrajectory(ForceField, ChargeField, indo, "indo")
+	#md0.Prop()
+	#WriteDerDipoleCorrelationFunction(md0.mu_his,"indo.txt")
 	return
 
 def david_HarmonicAnalysis():
@@ -465,7 +465,7 @@ def david_HarmonicAnalysis():
 	# PARAMS["OptMomentumDecay"] = 0.9
 	# PARAMS["OptStepSize"] = 0.02
 	# PARAMS["OptMaxCycles"]=200
-	indo = a.mols[6]
+	indo = a.mols[8]
 	# print "number of atoms in indo", indo.NAtoms()
 	# #optimizer = Optimizer(manager)
 	# #optimizer.OptANI1(indo)
@@ -483,14 +483,14 @@ def david_HarmonicAnalysis():
 	# annealIndo.Prop()
 	# indo.coords = annealIndo.Minx.copy()
 	# indo.WriteXYZfile("./results/", "davidIR_opt")
-	# # Perform a Harmonic analysis 
-	m=indo 
+	# # Perform a Harmonic analysis
+	m=indo
 	print "Harmonic Analysis"
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
-	v = v.real 
+	v = v.real
 	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
-	for i in range(3*m.NAtoms()): 
+	for i in range(3*m.NAtoms()):
 		np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
 		nm = v[:,i].reshape((m.NAtoms(),3))
 		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
@@ -499,6 +499,46 @@ def david_HarmonicAnalysis():
 			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
 	return nm
 
+def david_AnnealHarmonic(set_ = "david_test", Anneal = True, WriteNM_ = False):
+	"""
+	Optionally anneals a molecule and then runs it through a finite difference normal mode analysis
+
+	Args:
+		set_: dataset from which a molecule comes
+		Anneal: whether or not to perform an annealing routine before the analysis
+		WriteNM_: whether or not to write normal modes to a readable file
+	Returns:
+		Frequencies (wavenumbers)
+		Normal modes (cartesian)
+	"""
+
+	a = MSet(set_)
+	a.ReadXYZ(set_)
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	x_ = a.mols[6] #Choose index of molecule in a given dataset
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	EnergyField = lambda x: manager.Eval_BPForceSingle(Mol(x_.atoms,x),True)[0]
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(x_.atoms,x),True)
+	DipoleField = lambda x: qmanager.Eval_BPDipole(Mol(x_.atoms,x),False)[1]
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],x_.atoms))
+	m_ = masses
+	eps_ = 0.04 #finite difference step
+	if Anneal == True:
+		PARAMS["OptMomentum"] = 0.0
+		PARAMS["OptMomentumDecay"] = 0.9
+		PARAMS["OptStepSize"] = 0.02
+		PARAMS["OptMaxCycles"]=200
+		PARAMS["MDdt"] = 0.2
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDMaxStep"] = 100
+		PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDV0"] = None
+		PARAMS["MDTemp"]= 1.0
+		annealx_ = Annealer(ForceField, None, x_, "Anneal")
+		annealx_.Prop()
+		x_.coords = annealx_.Minx.copy()
+		x_.WriteXYZfile("./results/", "davidIR_opt")
+	HarmonicSpectra(EnergyField, x_.coords, masses, x_.atoms, WriteNM_ = True, Mu_ = DipoleField)
 def TestIR():
 	"""
 	Runs a ton of Infrared Spectra.
@@ -1016,7 +1056,8 @@ def TestEE():
 #TestIR()
 # TestIndoIR()
 # david_testIR()
-david_HarmonicAnalysis()
+# david_HarmonicAnalysis()
+david_AnnealHarmonic()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
