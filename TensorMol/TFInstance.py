@@ -80,7 +80,7 @@ class Instance:
 		LOGGER.info("self.max_steps: "+str(self.max_steps))
 
 		self.NetType = "None"
-		self.name = None
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
 		if (self.element != 0):
 			self.TData.LoadElementToScratch(self.element, self.tformer)
@@ -196,7 +196,6 @@ class Instance:
 		self.PreparedFor = 0
 		self.summary_op = None
 		self.activation_function = None
-		self.TData = None
 		return
 
 	def SaveAndClose(self):
@@ -619,8 +618,6 @@ class Instance_fc_classify(Instance):
 class Instance_fc_sqdiff(Instance):
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		Instance.__init__(self, TData_, ele_, Name_)
-		if (self.name !=  None):
-			return
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
