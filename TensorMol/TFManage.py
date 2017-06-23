@@ -111,7 +111,7 @@ class TFManage:
 	def Prepare(self):
 		self.Load()
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData
-		for i  in range (0, len(self.TrainedAtoms)):
+		for i in range (0, len(self.TrainedAtoms)):
 			if (self.NetType == "fc_classify"):
 				self.Instances[self.TrainedAtoms[i]] = Instance_fc_classify(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			elif (self.NetType == "fc_sqdiff"):

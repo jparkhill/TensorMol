@@ -39,7 +39,6 @@ from TensorMol.EmbOpt import *
 from TensorMol.Basis import *
 from TensorMol.DIIS import *
 from TensorMol.BFGS import *
-from TensorMol.Neb import *
 from TensorMol.SimpleMD import *
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.Electrostatics import *
