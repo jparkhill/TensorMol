@@ -1,5 +1,9 @@
+# DAVID:
+# Move this to an Ipython notebook in /notebooks or clean, independent routines
+# in QuasiNewtonTools or LinearOperations. 
+
 # Creates inner product of Q Chem and TensorMol vectors
-import numpy as np 
+import numpy as np
 nm = PullFreqData()
 a = MSet("david_test.xyz")
 a.ReadXYZ("david_test")
@@ -8,7 +12,7 @@ m = a.mols[6]
 EnergyField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),True)[0]
 masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 w,v = HarmonicSpectra(EnergyField, m.coords, masses)
-v = v.real 
+v = v.real
 print v.shape
 IP = np.zeros(v.shape)
 for i in range(v.shape[0]):
