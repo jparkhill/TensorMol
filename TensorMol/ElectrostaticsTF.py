@@ -29,7 +29,7 @@ def TFDistance(A):
 	r = tf.reshape(r, [-1, 1]) # For the later broadcast.
 	# Tensorflow can only reverse mode grad the sqrt if all these elements
 	# are nonzero
-	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r) + 0.000000000000000000000000001
+	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r) + 1e-26
 	return tf.sqrt(D)
 
 def TFDistances(r_):
@@ -47,7 +47,7 @@ def TFDistances(r_):
 	rmtt = tf.transpose(rmt,perm=[0,2,1])
 	# Tensorflow can only reverse mode grad of sqrt if all these elements
 	# are nonzero
-	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 0.000000000000000000000000001
+	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 1e-26
 	return tf.sqrt(D)
 
 def MorseKernel(D,Z,Ae,De,Re):
@@ -149,6 +149,8 @@ def LJEnergy_Numpy(XYZ,Z,Ee,Re):
 	for i in range(n):
 		D[i,i] = 1.0
 		for j in range(n):
+			if i == j:
+				continue
 			D[i,j] = np.linalg.norm(XYZ[i]-XYZ[j])
 	R = 1.0/D
 	K = 0.01*(np.power(R,12.0)-2.0*np.power(R,6.0))
@@ -160,6 +162,24 @@ def LJEnergy_Numpy(XYZ,Z,Ee,Re):
 			else:
 				En += K[i,j]
 	return En
+
+def LJEnergy(XYZs_,Zs_,Ee_, Re_):
+	"""
+	Returns LJ Energy of single molecule.
+	Input can be padded with zeros. That will be
+	removed by LJKernels.
+
+	Args:
+		XYZs_: maxatom X 3 coordinate tensor.
+		Zs_: maxatom X 1 atomic number tensor.
+		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Epsilon parameter matrix.
+		Re_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
+	"""
+	Ds = TFDistance(XYZs_)
+	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
+	Ks = LJKernel(Ds,Zs_,Ee_,Re_)
+	Ens = tf.reduce_sum(Ks)
+	return Ens
 
 def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""
@@ -175,7 +195,9 @@ def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""
 	Ds = TFDistances(XYZs_)
 	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
-	Ks = LJKernels(Ds,Zs_,Ee_,Re_)
+	LJe = Ee_*tf.ones([8,8])
+	LJr = Re_*tf.ones([8,8])
+	Ks = LJKernels(Ds,Zs_,LJe,LJr)
 	Ens = tf.reduce_sum(Ks,[1,2])
 	return Ens
 

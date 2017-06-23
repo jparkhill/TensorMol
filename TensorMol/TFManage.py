@@ -87,6 +87,8 @@ class TFManage:
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "del_fc_sqdiff"):
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
+		elif (self.NetType == "fc_sqdiff_selu"):
+			self.Instances[ele] = Instance_fc_sqdiff_selu(self.TData, ele, None)
 		elif (self.NetType == "3conv_sqdiff"):
 			self.Instances[ele] = Instance_3dconv_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "KRR_sqdiff"):

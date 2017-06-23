@@ -34,9 +34,6 @@ class Transformer:
 		LOGGER.info("-------------------- ")
 		LOGGER.info("Transformer Information ")
 		LOGGER.info("self.innorm: "+str(self.innorm))
-		if (self.innorm == "MeanStd"):
-			LOGGER.info("self.inmean: "+str(self.inmean))
-			LOGGER.info("self.instd: "+str(self.instd))
 		LOGGER.info("self.outnorm: "+str(self.outnorm))
 		if (self.outnorm == "MeanStd"):
 			LOGGER.info("self.outmean: "+str(self.outmean))
@@ -48,10 +45,14 @@ class Transformer:
 			return self.NormInFrobenius(ins)
 		elif (self.innorm == "MeanStd"):
 			if (train):
-				self.AssignInMeanStd(outs)
+				self.AssignInMeanStd(ins)
 			return self.NormInMeanStd(ins)
 		elif (self.innorm == "DeltaMeanStd"):
 			return self.NormInDeltaMeanStd(ins)
+		elif (self.innorm == "MinMax"):
+			if (train):
+				self.AssignInMinMax(ins)
+			return self.NormInMinMax(ins)
 
 	def NormalizeOuts(self, outs, train=True):
 		if (self.outnorm == "MeanStd"):
@@ -78,6 +79,13 @@ class Transformer:
 	def NormInDeltaMeanStd(self, ins):
 		ins[:,-3:] = (ins[:,-3:] - self.outmean)/self.outstd
 		return ins
+
+	def AssignInMinMax(self, ins):
+		self.inmin = np.amin(ins)
+		self.inmax = np.amax(ins)
+
+	def NormInMinMax(self, ins):
+		return (ins - self.inmin)/(self.inmax-self.inmin)
 
 	def AssignOutMeanStd(self, outs):
 		self.outmean = np.mean(outs)

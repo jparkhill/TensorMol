@@ -3,31 +3,49 @@ import time
 
 #jeherr tests
 
-#PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
+# PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
 # 			[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219], [1.0, 0.3],
-# 			[1.25332807, 0.304625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
+# PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
 # PARAMS["RBFS"] = np.array([[0.1, 0.2], [0.2, 0.3], [0.5, 0.35], [0.9, 0.3], [1.1, 0.3], [1.3, 0.3], [1.6, 0.4], [1.9, 0.5],
 # 				[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-#PARAMS["RBFS"] = np.array([[0.25273295, 0.1703841], [0.39848207, 0.48457397], [0.47375485, 0.56780088], [1.1050287, 0.54182982], [1.18810507, 0.31560173],
-#							[1.39287101, 0.2795489], [1.66655481, 0.52065303], [1.98189062, 0.49321721]])
 # PARAMS["ANES"] = np.array([2.20, 1., 1., 1., 1., 2.55, 3.04, 3.98])
 # PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
 #   							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
 # 							[2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
-  							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
-							[2.35, 1.2], [2.8, 1.2], [3.25, 1.2], [3.7, 1.2], [4.15, 1.2], [4.6, 1.2], [5.05, 1.2], [5.5, 1.2], [5.95, 1.2],
-							[6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+ 							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
+							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
+							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 PARAMS["ANES"] = np.array([[1.02539286, 1., 1., 1., 1., 2.18925953, 2.71734044, 3.03417733]])
-PARAMS["SH_NRAD"] = 17
+PARAMS["SH_NRAD"] = 12
 PARAMS["SH_LMAX"] = 4
+PARAMS["RandomizeData"] = True
 S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
 PARAMS["SRBF"] = S_RadOrth
+#PARAMS["InNormRoutine"] = "MinMax"
+PARAMS["InNormRoutine"] = "MeanStd"
 PARAMS["OutNormRoutine"] = "MeanStd"
-PARAMS["TestRatio"] = 0.5
+PARAMS["TestRatio"] = 0.2
+PARAMS["max_steps"] = 5000
+PARAMS["batch_size"] = 8000
+PARAMS["NeuronType"] = "elu"
+
+# PARAMS["AN1_r_Rc"] = 6.
+# PARAMS["AN1_a_Rc"] = 4.
+# PARAMS["AN1_eta"] = 4.0
+# PARAMS["AN1_zeta"] = 8.0
+# PARAMS["AN1_num_r_Rs"] = 16
+# PARAMS["AN1_num_a_Rs"] = 4
+# PARAMS["AN1_num_a_As"] = 8
+# PARAMS["hidden1"] = 64
+# PARAMS["hidden2"] = 128
+# PARAMS["hidden3"] = 64
+# PARAMS["max_steps"] = 1001
+# PARAMS["GradWeight"] = 1.0
+# PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
+# PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
+# PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
 
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
@@ -54,13 +72,13 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 		a.ReadXYZUnpacked(dir, has_force=forces, has_energy=energy, has_mmff94=mmff94)
 	print len(a.mols)
 	a.Save()
-	a.WriteXYZ()
 
-def TrainKRR(set_ = "SmallMols", dig_ = "GauSH"):
+
+def TrainKRR(set_ = "SmallMols", dig_ = "GauSH", OType_ ="Force"):
 	a=MSet("SmallMols_rand")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH",OType_ ="Force")
+	d = Digester(TreatedAtoms, name_=dig_,OType_ =OType_)
 	tset = TensorData(a,d)
 	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
 	manager=TFManage("",tset,True,"KRR_sqdiff")
@@ -92,17 +110,10 @@ def BasisOpt_Ipecac(method_, set_, dig_):
 	""" Optimizes a basis based on Ipecac """
 	a=MSet(set_)
 	a.Load()
-	b=MSet("SmallMolsRand")
-	mols = random.sample(range(len(a.mols)), 10)
-	#Remove half of a
-	for i in mols:
-		b.mols.append(a.mols[i])
-	# for i in range(len(c.mols)):
-	# 	b.mols.append(c.mols[i])
-	print "Number of mols: ", len(b.mols)
-	TreatedAtoms = b.AtomTypes()
-	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
-	eopt = EmbeddingOptimizer(b,dig)
+	print "Number of mols: ", len(a.mols)
+	TreatedAtoms = a.AtomTypes()
+	dig = MolDigester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+	eopt = EmbeddingOptimizer("Ipecac", a, dig, "radial")
 	eopt.PerformOptimization()
 	return
 
@@ -110,20 +121,24 @@ def TestIpecac(dig_ = "GauSH"):
 	""" Tests reversal of an embedding type """
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
-	m = a.mols[5]
+	m = a.mols[1]
 	print m.atoms
-	m.WriteXYZfile("./results/", "Before")
+	# m.WriteXYZfile("./results/", "Before")
 	goodcrds = m.coords.copy()
 	m.BuildDistanceMatrix()
 	gooddmat = m.DistMatrix
 	print "Good Coordinates", goodcrds
 	TreatedAtoms = m.AtomTypes()
-	dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
-	emb = dig.TrainDigestMolwise(m,MakeOutputs_=False)
+	dig = MolDigester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
+	emb = dig.Emb(m, MakeOutputs=False)
 	m.Distort()
-	m.WriteXYZfile("./results/", "Distorted")
-	bestfit = ReverseAtomwiseEmbedding(dig, emb, atoms_=m.atoms, guess_=m.coords,GdDistMatrix=gooddmat)
-	bestfit.WriteXYZfile("./results/", "BestFit")
+	ip = Ipecac.Ipecac(a, dig, eles_=[1,6,7,8])
+	# m.WriteXYZfile("./results/", "Distorted")
+	bestfit = ip.ReverseAtomwiseEmbedding(emb, atoms_=m.atoms, guess_=m.coords,GdDistMatrix=gooddmat)
+	# bestfit = ReverseAtomwiseEmbedding(dig, emb, atoms_=m.atoms, guess_=None,GdDistMatrix=gooddmat)
+	# print bestfit.atoms
+	print m.atoms
+	# bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 
 def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
@@ -185,19 +200,17 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 		tset.BuildTrainMolwise_tmp(set_,TreatedAtoms)
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,False,"fc_sqdiff")
-	manager.TrainElement(8)
+	manager=TFManage("",tset,False,"fc_sqdiff_selu")
+	manager.TrainElement(6)
 
-def TestForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
+def OptTFForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
 	a.ReadXYZ()
 	tmol=copy.deepcopy(a.mols[mol])
-	# tmol.Distort(0.2)
+	# tmol.Distort(0.1)
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+"fc_sqdiff", None, False)
 	opt=Optimizer(manager)
-	t1=time.time()
 	opt.OptTFRealForce(tmol)
-	print time.time()-t1
 
 def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
@@ -431,22 +444,65 @@ def Test_LJMD():
 	md.Prop()
 	return
 
+def Brute_LJParams():
+	a=MSet("SmallMols_rand")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
+	tset = TensorMolData(a,d)
+	ins = MolInstance_DirectForce_tmp(tset,None,False,"Harm")
+	ins.train_prepare()
+	import scipy.optimize
+	rranges = (slice(-1000, 1000, 10), slice(0.5, 6, 0.25))
+	resbrute = scipy.optimize.brute(ins.LJFrc, rranges, full_output=True, finish=scipy.optimize.fmin)
+	print resbrute[0]
+	print resbrute[1]
+	# print ins.LJFrc(p)
+
+def QueueReadertmp():
+	a=MSet("SmallMols")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	tset = TensorData_TFRecords(a,d)
+	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
+
+def TestForces():
+	a=MSet("chemspid")
+	a.Load()
+	manager=TFManage("SmallMols_20rot_GauSH_fc_sqdiff", None, False)
+	err = 0.0
+	for mol in a.mols:
+		for i, atom in enumerate(mol.atoms):
+			if atom == 7:
+				pforce = manager.evaluate(mol, atom)
+				print pforce
+				print mol.properties["forces"][i] - pforce
+
+
+
+
 # InterpoleGeometries()
-# ReadSmallMols()
-# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH")
-# RandomSmallSet("SmallMols", 100000)
+# ReadSmallMols(set_="chemspid", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider_data/*/", energy=True, forces=True)
+# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
+# RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
+# BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
 # TestBP()
 # TestANI1()
-TrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=3)
-# TestForces(set_ = "peptide", mol=0)
+# TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=None)
+# OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()
 # TestNebGLBFGS()
 # TestMD()
 # TestAnneal()
 # TestMorphIR()
+# Brute_LJParams()
+# QueueReadertmp()
+TestForces()
+
 
 # a=MSet("pentane_eq_align")
 # a.ReadXYZ()

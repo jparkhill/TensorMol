@@ -93,7 +93,7 @@ class NoseThermostat(Thermostat):
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		return
 
-	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None):
+	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_ = True):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
@@ -115,7 +115,10 @@ class NoseThermostat(Thermostat):
 		kedto2 = (1./2.)*np.dot(np.einsum("ia,ia->i",vdto2,vdto2),m_)
 		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2 - (((3.*self.N+1)/2.))*self.kT)
 		v = (vdto2 + (dt_/2.)*a)/(1 + (dt_/2.)*self.eta)
-		return x,v,a,e,f_x_
+		if frc_:
+			return x,v,a,e,f_x_
+		else:
+			return x,v,a,e
 
 class NosePerParticleThermostat(Thermostat):
 	def __init__(self,m_,v_):
@@ -336,13 +339,14 @@ class VelocityVerlet:
 		step = 0
 		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
 		while(step < self.maxstep):
+			t = time.time()
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
-				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 
 			self.md_log[step,0] = self.t
 			self.md_log[step,4] = self.KE
@@ -356,6 +360,7 @@ class VelocityVerlet:
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+			print ("per step cost:", time.time() -t )
 		return
 
 class IRTrajectory(VelocityVerlet):
@@ -465,7 +470,7 @@ class IRTrajectory(VelocityVerlet):
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = VelocityVerletstep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 			else:
-				self.x , self.v, self.a, self.EPot = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
+				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 
 			if (PARAMS["MDIrForceMin"] and self.EPot < self.MinE and abs(self.EPot - self.MinE)>0.00005):
 				self.MinE = self.EPot
@@ -523,7 +528,7 @@ class Annealer(IRTrajectory):
 			# avoid the thermostat blowing up.
 			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
 			# First 50 steps without any thermostat.
-			self.x , self.v, self.a, self.EPot = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+			self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 
 			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh):
 				self.MinE = self.EPot
@@ -573,7 +578,7 @@ class NoEnergyAnnealer(VelocityVerlet):
 			# avoid the thermostat blowing up.
 			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
 			# First 50 steps without any thermostat.
-			self.x , self.v, self.a, self.EPot, self.frc = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+			self.x , self.v, self.a, self.EPot, self.frc = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce, True)
 
 			if (RmsForce(self.frc) < self.MinF and abs(RmsForce(self.frc) - self.MinF)>self.AnnealThresh):
 				self.MinF = RmsForce(self.frc)
