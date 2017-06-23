@@ -58,7 +58,6 @@ def AllTriples(rng):
 	v6 = tf.concat([v4,v5], axis = 3) # All triples in the range.
 	return v6
 
-
 def AllTriplesSet(rng):
 	"""Returns all possible triples of integers between zero and natom.
 
@@ -241,7 +240,6 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut):
 	ToRS = tf.where(ERMask,GmToMask,tf.zeros_like(GmToMask))
 	GMA = tf.reduce_sum(ToRS,axis=[2])
 	return GMA
-
 
 
 def TFSymRSet(R, Zs, eles_, SFPs_, R_cut):
