@@ -43,9 +43,9 @@ def AllTriples(rng):
 	"""Returns all possible triples of an input list.
 
 	Args:
-	    rng: a 1-D tensor.
+		rng: a 1-D tensor.
 	Returns:
-	    A natom X natom X natom X 3 tensor of all triples of entries from rng.
+		A natom X natom X natom X 3 tensor of all triples of entries from rng.
 	"""
 	rshp = tf.shape(rng)
 	natom = rshp[0]
@@ -63,9 +63,9 @@ def AllTriplesSet(rng):
 	"""Returns all possible triples of integers between zero and natom.
 
 	Args:
-	    natom: max integer
+		natom: max integer
 	Returns:
-	    A Nmol X natom X natom X natom X 4 tensor of all triples.
+		A Nmol X natom X natom X natom X 4 tensor of all triples.
 	"""
 	natom = tf.shape(rng)[1]
 	nmol = tf.shape(rng)[0]
@@ -86,9 +86,9 @@ def Zouter(Z):
 	Returns the outer product of atomic numbers for one molecule.
 
 	Args:
-	    Z: MaxNAtom X 1 Z tensor
+		Z: MaxNAtom X 1 Z tensor
 	Returns
-	    Z1Z2: MaxNAtom X MaxNAtom X 2 Z1Z2 tensor.
+		Z1Z2: MaxNAtom X MaxNAtom X 2 Z1Z2 tensor.
 	"""
 	zshp = tf.shape(Z)
 	Zs = tf.reshape(Z,[zshp[0],1])
@@ -101,9 +101,9 @@ def ZouterSet(Z):
 	Returns the outer product of atomic numbers for one molecule.
 
 	Args:
-	    Z: MaxNAtom X 1 Z tensor
+		Z: MaxNAtom X 1 Z tensor
 	Returns
-	    Z1Z2: MaxNAtom X MaxNAtom X 2 Z1Z2 tensor.
+		Z1Z2: MaxNAtom X MaxNAtom X 2 Z1Z2 tensor.
 	"""
 	zshp = tf.shape(Z)
 	Zs = tf.reshape(Z,[zshp[0],zshp[1],1])
@@ -121,15 +121,15 @@ def TFSymR(R, Zs, elems, RSFPs, R_cut):
 	A tensorflow implementation of the radial AN1 symmetry function for a single input molecule.
 
 	Args:
-	    R: a maxnatom X 3 tensor of coordinates.
-	    Zs : maxnatom X 1 tensor of atomic numbers.
-	    elems_: a tensor of elements present in the data.
-	    RSFPs: A symmetry function parameter tensor 2 X neta X nRs.
-	    For example, RSFPs[0,0,0] is the first eta parameter. RSFPs[1,1] is the second R parameter.
-	    R_cut: Radial Cutoff
+		R: a maxnatom X 3 tensor of coordinates.
+		Zs : maxnatom X 1 tensor of atomic numbers.
+		elems_: a tensor of elements present in the data.
+		RSFPs: A symmetry function parameter tensor 2 X neta X nRs.
+		For example, RSFPs[0,0,0] is the first eta parameter. RSFPs[1,1] is the second R parameter.
+		R_cut: Radial Cutoff
 
 	Returns:
-	    Digested Mol. In the shape maxnatom X nelem X nEta X nRs
+		Digested Mol. In the shape maxnatom X nelem X nEta X nRs
 	"""
 
 
@@ -142,16 +142,16 @@ def TFSymA(R, Zs, eleps_, SFPs_, R_cut):
 	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
 
 	Args:
-	    R: a maxnatom X 3 tensor of coordinates.
-	    Zs : maxnatom X 1 tensor of atomic numbers.
-	    eleps_: a nelepairs X 2 tensor of element pairs present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
-	    is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
-	    R_cut: Radial Cutoff
+		R: a maxnatom X 3 tensor of coordinates.
+		Zs : maxnatom X 1 tensor of atomic numbers.
+		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
+		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
+		R_cut: Radial Cutoff
 
 	Returns:
-	    Digested Mol. In the shape maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	natom = inp_shp[0]
