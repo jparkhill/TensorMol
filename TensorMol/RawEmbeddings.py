@@ -190,8 +190,8 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut):
 	denom = RijRij*RikRik
 	# Mask any troublesome entries. 
 	ToACos = RijRik/denom
-	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos),ToACos)
-	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos),ToACos) 
+	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=tf.float64),ToACos)
+	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=tf.float64),ToACos) 
 	Thetaijk = tf.acos(ToACos)
 	# Finally construct the thetas for all the triples. 
 	zetatmp = tf.reshape(SFPs_[0],[1,nzeta,neta,ntheta,nr])
@@ -200,7 +200,7 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut):
 	tct = tf.reshape(Thetaijk,[nmol,natom3,1,1,1,1])
 	Tijk = tf.cos(tct-thetatmp) # shape: natom3 X ... 
 	# complete factor 1 for all j,k
-	fac1 = tf.pow(2.0,1.0-zetatmp)*tf.pow((1.0+Tijk),zetatmp)
+	fac1 = tf.pow(tf.cast(2.0, tf.float64),1.0-zetatmp)*tf.pow((1.0+Tijk),zetatmp)
 	# Construct Rij + Rik/2  for all jk!=i 
 	# make the etas,R's broadcastable onto this and vice versa. 
 	etmp = tf.reshape(SFPs_[1],[1,nzeta,neta,ntheta,nr]) # ijk X zeta X eta .... 
@@ -209,11 +209,11 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut):
 	tet = tf.reshape(ToExp,[nmol,natom3,1,1,1,1]) - rtmp
 	fac2 = tf.exp(-etmp*tet*tet)
 	# And finally the last two factors
-	fac3 = tf.where(tf.greater_equal(RijRij,R_cut),tf.zeros_like(RijRij),0.5*(tf.cos(3.14159265359*RijRij/R_cut)+1.0))
-	fac4 = tf.where(tf.greater_equal(RikRik,R_cut),tf.zeros_like(RikRik),0.5*(tf.cos(3.14159265359*RikRik/R_cut)+1.0))
+	fac3 = tf.where(tf.greater_equal(RijRij,R_cut),tf.zeros_like(RijRij, dtype=tf.float64),0.5*(tf.cos(3.14159265359*RijRij/R_cut)+1.0))
+	fac4 = tf.where(tf.greater_equal(RikRik,R_cut),tf.zeros_like(RikRik, dtype=tf.float64),0.5*(tf.cos(3.14159265359*RikRik/R_cut)+1.0))
 	# Zero out the diagonal contributions (i==j or i==k)
-	mask1 = tf.reshape(tf.where(tf.equal(Ri_inds,Rj_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[nmol,natom3])
-	mask2 = tf.reshape(tf.where(tf.equal(Ri_inds,Rk_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[nmol,natom3])
+	mask1 = tf.reshape(tf.where(tf.equal(Ri_inds,Rj_inds),tf.zeros_like(Ri_inds, dtype=tf.float64),tf.ones_like(Ri_inds, dtype=tf.float64)),[nmol,natom3])
+	mask2 = tf.reshape(tf.where(tf.equal(Ri_inds,Rk_inds),tf.zeros_like(Ri_inds, dtype=tf.float64),tf.ones_like(Ri_inds, dtype=tf.float64)),[nmol,natom3])
 	# Also mask out the lower triangle. (j>k)
 	# mask3 = tf.reshape(tf.where(tf.greater(Rj_inds,Rk_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[natom3])    
 	# assemble the full symmetry function for all triples. 
@@ -237,7 +237,7 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut):
 	ERMasktmp = tf.tile(ElemReduceMasktmp,[1,nzeta,neta,ntheta,nr])
 	ERMask = tf.reshape(ERMasktmp,[nmol,natom,natom2,nelep,nzeta,neta,ntheta,nr])
 	#ERMask = tf.tile(tf.reshape(ElemReduceMask,[nmol,natom,natom2,nelep,1,1,1,1]),[1,1,1,1,nzeta,neta,ntheta,nr])
-	ToRS = tf.where(ERMask,GmToMask,tf.zeros_like(GmToMask))
+	ToRS = tf.where(ERMask,GmToMask,tf.zeros_like(GmToMask, dtype=tf.float64))
 	GMA = tf.reduce_sum(ToRS,axis=[2])
 	return GMA
 
@@ -291,11 +291,11 @@ def TFSymRSet(R, Zs, eles_, SFPs_, R_cut):
 	tet = tf.reshape(RijRij,[nmol,natom2,1,1]) - rtmp
 	fac1 = tf.exp(-etmp*tet*tet)
 	# And finally the last two factors
-	fac2 = tf.where(tf.greater_equal(RijRij,R_cut),tf.zeros_like(RijRij),0.5*(tf.cos(3.14159265359*RijRij/R_cut)+1.0))
+	fac2 = tf.where(tf.greater_equal(RijRij,R_cut),tf.zeros_like(RijRij, dtype=tf.float64),0.5*(tf.cos(3.14159265359*RijRij/R_cut)+1.0))
 	# Zero out the diagonal contributions (i==j or i==k)
-	mask1 = tf.reshape(tf.where(tf.equal(Ri_inds,Rj_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[nmol,natom2])
+	mask1 = tf.reshape(tf.where(tf.equal(Ri_inds,Rj_inds),tf.zeros_like(Ri_inds, dtype=tf.float64),tf.ones_like(Ri_inds, dtype=tf.float64)),[nmol,natom2])
 	# Also mask out the lower triangle. (j>k)
-	# mask3 = tf.reshape(tf.where(tf.greater(Rj_inds,Rk_inds),tf.zeros_like(Ri_inds,dtype=tf.float32),tf.ones_like(Ri_inds,dtype=tf.float32)),[natom3])    
+	# mask3 = tf.reshape(tf.where(tf.greater(Rj_inds,Rk_inds),tf.zeros_like(Ri_inds,dtype=tf.float64),tf.ones_like(Ri_inds,dtype=tf.float64)),[natom3])    
 	# assemble the full symmetry function for all triples. 
 	fac2t =  tf.reshape(fac2*mask1,[nmol,natom2,1,1])
 	Gm =  fac1*fac2t
@@ -315,7 +315,7 @@ def TFSymRSet(R, Zs, eles_, SFPs_, R_cut):
 	ElemReduceMasktmp = tf.reshape(ElemReduceMask,[nmol*natom*natom*nele,1,1])
 	ERMasktmp = tf.tile(ElemReduceMasktmp,[1,neta,nr])
 	ERMask = tf.reshape(ERMasktmp,[nmol,natom,natom,nele,neta,nr])
-	ToRS = tf.where(ERMask,GmToMask,tf.zeros_like(GmToMask))
+	ToRS = tf.where(ERMask,GmToMask,tf.zeros_like(GmToMask, dtype=tf.float64))
 	GMR = tf.reduce_sum(ToRS,axis=[2])
 	return GMR
 
@@ -344,3 +344,56 @@ def TFSymSet(R, Zs, eles_, SFPsR_, Rr_cut, eleps_, SFPsA_, Ra_cut):
 	GM = tf.concat([GMR, GMA], axis=2)
 	return GM
 
+
+def ANISYM_Prepare(self):
+        """
+        Get placeholders, graph and losses in order to begin training.
+        Also assigns the desired padding.
+
+        Args:
+                continue_training: should read the graph variables from a saved checkpoint.
+        """
+	MaxAtoms = 3
+	MolPerBatch = 1000
+        LOGGER.info("Assigned batch input size: %i",self.batch_size)
+        LOGGER.info("Assigned batch output size: %i",self.batch_size_output) #Number of molecules.
+        with tf.Graph().as_default():
+                xyz_pl=tf.placeholder(tf.float64, shape=tuple([MolPerBatch, MaxAtoms,3]))
+                Z_pl=tf.placeholder(tf.float64, shape=tuple([MolPerBatch, MaxAtoms]))
+		Ele = tf.Variable([[1,8]])
+		Elep = tf.Variable([[1,1],[1,8],[8,8]])
+		zetas = tf.Variable([[8.0]])
+		etas = tf.Variable([[4.0]])
+
+		AN1_num_a_As = 8
+		thetas = tf.Variable([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)])
+		AN1_num_r_Rs = 8
+		AN1_a_Rc = 3.1
+		rs = tf.Variable([ AN1_a_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)])
+		Ra_cut = AN1_a_Rc
+		# Create a parameter tensor. 4 x nzeta X neta X ntheta X nr 
+		p1 = tf.tile(tf.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
+		p2 = tf.tile(tf.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
+		p3 = tf.tile(tf.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_r_Rs,1])
+		p4 = tf.tile(tf.reshape(rs,[1,1,1,AN1_num_r_Rs,1]),[1,1,AN1_num_a_As,1,1])
+		SFPa = tf.concat([p1,p2,p3,p4],axis=4)
+		SFPa = tf.transpose(SFPa, perm=[4,0,1,2,3])
+
+		eles = tf.Variable([[1],[7],[8]])
+		etas_R = tf.Variable([[4.0]])
+		AN1_num_r_Rs = 32
+		AN1_r_Rc = 4.6
+		rs_R = tf.Variable([ AN1_r_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)])
+		Rr_cut = AN1_r_Rc
+		# Create a parameter tensor. 2 x  neta X nr 
+		p1_R = tf.tile(tf.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
+		p2_R = tf.tile(tf.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
+		SFPr = tf.concat([p1_R,p2_R],axis=2)
+		SFPr = tf.transpose(SFPr, perm=[2,0,1])
+
+		SymOutput = TFSymSet(xyz_pl, Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)	
+
+                init = tf.global_variables_initializer()
+                self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+                self.sess.run(init)
+        return
