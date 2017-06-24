@@ -345,55 +345,117 @@ def TFSymSet(R, Zs, eles_, SFPsR_, Rr_cut, eleps_, SFPsA_, Ra_cut):
 	return GM
 
 
-def ANISYM_Prepare(self):
-        """
-        Get placeholders, graph and losses in order to begin training.
-        Also assigns the desired padding.
+class ANISym:
+	def __init__(self, mset_):
+		self.set = mset_
+		self.MaxAtoms = self.set.MaxNAtoms()
+		self.nmol = len(self.set.mols)
+		self.MolPerBatch = 1000	
+		self.SymOutput = None
+		self.xyz_pl= None
+		self.Z_pl = None
+		self.SFPa = None
+		self.SFPr = None
 
-        Args:
-                continue_training: should read the graph variables from a saved checkpoint.
-        """
-	MaxAtoms = 3
-	MolPerBatch = 1000
-        LOGGER.info("Assigned batch input size: %i",self.batch_size)
-        LOGGER.info("Assigned batch output size: %i",self.batch_size_output) #Number of molecules.
-        with tf.Graph().as_default():
-                xyz_pl=tf.placeholder(tf.float64, shape=tuple([MolPerBatch, MaxAtoms,3]))
-                Z_pl=tf.placeholder(tf.float64, shape=tuple([MolPerBatch, MaxAtoms]))
-		Ele = tf.Variable([[1,8]])
-		Elep = tf.Variable([[1,1],[1,8],[8,8]])
-		zetas = tf.Variable([[8.0]])
-		etas = tf.Variable([[4.0]])
-
+	def SetANI1Param(self):
+		zetas = np.array([[8.0]], dtype = np.float64)
+                etas = np.array([[4.0]], dtype = np.float64)
 		AN1_num_a_As = 8
-		thetas = tf.Variable([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)])
+		thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = np.float64)
 		AN1_num_r_Rs = 8
 		AN1_a_Rc = 3.1
-		rs = tf.Variable([ AN1_a_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)])
+		rs =  np.array([ AN1_a_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
 		Ra_cut = AN1_a_Rc
 		# Create a parameter tensor. 4 x nzeta X neta X ntheta X nr 
-		p1 = tf.tile(tf.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
-		p2 = tf.tile(tf.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
-		p3 = tf.tile(tf.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_r_Rs,1])
-		p4 = tf.tile(tf.reshape(rs,[1,1,1,AN1_num_r_Rs,1]),[1,1,AN1_num_a_As,1,1])
-		SFPa = tf.concat([p1,p2,p3,p4],axis=4)
-		SFPa = tf.transpose(SFPa, perm=[4,0,1,2,3])
-
-		eles = tf.Variable([[1],[7],[8]])
-		etas_R = tf.Variable([[4.0]])
+		p1 = np.tile(np.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
+		p2 = np.tile(np.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
+		p3 = np.tile(np.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_r_Rs,1])
+		p4 = np.tile(np.reshape(rs,[1,1,1,AN1_num_r_Rs,1]),[1,1,AN1_num_a_As,1,1])
+		SFPa = np.concatenate([p1,p2,p3,p4],axis=4)
+		self.SFPa = np.transpose(SFPa, [4,0,1,2,3])
+		
+		etas_R = np.array([[4.0]], dtype = np.float64)
 		AN1_num_r_Rs = 32
 		AN1_r_Rc = 4.6
-		rs_R = tf.Variable([ AN1_r_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)])
+		rs_R =  np.array([ AN1_r_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
 		Rr_cut = AN1_r_Rc
 		# Create a parameter tensor. 2 x  neta X nr 
-		p1_R = tf.tile(tf.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
-		p2_R = tf.tile(tf.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
-		SFPr = tf.concat([p1_R,p2_R],axis=2)
-		SFPr = tf.transpose(SFPr, perm=[2,0,1])
+		p1_R = np.tile(np.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
+		p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
+		SFPr = np.concatenate([p1_R,p2_R],axis=2)
+		self.SFPr = np.transpose(SFPr, [2,0,1])
 
-		SymOutput = TFSymSet(xyz_pl, Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)	
 
-                init = tf.global_variables_initializer()
-                self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-                self.sess.run(init)
-        return
+
+
+	def Prepare(self):
+	        """
+	        Get placeholders, graph and losses in order to begin training.
+	        Also assigns the desired padding.
+	
+	        Args:
+	                continue_training: should read the graph variables from a saved checkpoint.
+	        """
+	        with tf.Graph().as_default():
+	                self.xyz_pl=tf.placeholder(tf.float64, shape=tuple([self.MolPerBatch, self.MaxAtoms,3]))
+	                self.Z_pl=tf.placeholder(tf.int32, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
+			Ele = tf.Variable([[1],[8]], dtype = tf.int32)
+			Elep = tf.Variable([[1,1],[1,8],[8,8]], dtype = tf.int32)
+			#zetas = tf.Variable([[8.0]], dtype = tf.float64)
+			#etas = tf.Variable([[4.0]], dtype = tf.float64)
+
+			SFPa = tf.Variable(self.SFPa, tf.float64)
+			SFPr = tf.Variable(self.SFPr, tf.float64)
+			Ra_cut = 3.1
+			Rr_cut = 4.6 	
+			#AN1_num_a_As = 8
+			#thetas = tf.Variable([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = tf.float64)
+			#AN1_num_r_Rs = 8
+			#AN1_a_Rc = 3.1
+			#rs = tf.Variable([ AN1_a_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = tf.float64)
+			#Ra_cut = AN1_a_Rc
+			## Create a parameter tensor. 4 x nzeta X neta X ntheta X nr 
+			#p1 = tf.tile(tf.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
+			#p2 = tf.tile(tf.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_r_Rs,1])
+			#p3 = tf.tile(tf.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_r_Rs,1])
+			#p4 = tf.tile(tf.reshape(rs,[1,1,1,AN1_num_r_Rs,1]),[1,1,AN1_num_a_As,1,1])
+			#SFPa = tf.concat([p1,p2,p3,p4],axis=4)
+			#SFPa = tf.transpose(SFPa, perm=[4,0,1,2,3])
+	
+			#etas_R = tf.Variable([[4.0]], dtype = tf.float64)
+			#AN1_num_r_Rs = 32
+			#AN1_r_Rc = 4.6
+			#rs_R = tf.Variable([ AN1_r_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = tf.float64)
+			#Rr_cut = AN1_r_Rc
+			## Create a parameter tensor. 2 x  neta X nr 
+			#p1_R = tf.tile(tf.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
+			#p2_R = tf.tile(tf.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
+			#SFPr = tf.concat([p1_R,p2_R],axis=2)
+			#SFPr = tf.transpose(SFPr, perm=[2,0,1])
+	
+			#self.SymOutput_R = TFSymRSet(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut)
+			self.SymOutput = TFSymSet(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)	
+	
+	                init = tf.global_variables_initializer()
+	                self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+	                self.sess.run(init)
+	        return 
+	
+	def fill_feed_dict(self, batch_data, coord_pl, atom_pl):
+		return {coord_pl: batch_data[0], atom_pl: batch_data[1]}
+	
+	def Generate_ANISYM(self):
+		xyzs = np.zeros((self.nmol, self.MaxAtoms, 3),dtype=np.float64)	
+		Zs = np.zeros((self.nmol, self.MaxAtoms), dtype=np.int32)
+		for i, mol in enumerate(self.set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+		self.SetANI1Param()
+		self.Prepare()
+		for i in range (0, int(self.nmol/self.MolPerBatch-1)):
+			t = time.time()
+			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch]]
+			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl)
+			t1 = time.time()
+			sym_output = self.sess.run([self.SymOutput], feed_dict = feed_dict)
+			print ("i: ", i,  "lenght of sym_output:", sym_output[0].shape, " time:", time.time() - t, " second", "gpu time:", time.time()-t1)

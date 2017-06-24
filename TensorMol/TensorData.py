@@ -757,21 +757,20 @@ class TensorData_TFRecords(TensorData):
 		filename = os.path.join(FLAGS.train_dir,
 					TRAIN_FILE if train else VALIDATION_FILE)
 
-		with tf.name_scope('input'):
-		filename_queue = tf.train.string_input_producer(
-						[filename], num_epochs=num_epochs)
-
-		# Even when reading in multiple threads, share the filename
-		# queue.
-		image, label = read_and_decode(filename_queue)
-
-		# Shuffle the examples and collect them into batch_size batches.
-		# (Internally uses a RandomShuffleQueue.)
-		# We run this in two threads to avoid being a bottleneck.
-		images, sparse_labels = tf.train.shuffle_batch(
-			[image, label], batch_size=batch_size, num_threads=2,
-			capacity=1000 + 3 * batch_size,
-			# Ensures a minimum amount of shuffling of examples.
-			min_after_dequeue=1000)
-
+		with tf.name_scope('input'):   # be careful about the following indenting
+			filename_queue = tf.train.string_input_producer([filename], num_epochs=num_epochs)
+	
+			# Even when reading in multiple threads, share the filename
+			# queue.
+			image, label = read_and_decode(filename_queue)
+	
+			# Shuffle the examples and collect them into batch_size batches.
+			# (Internally uses a RandomShuffleQueue.)
+			# We run this in two threads to avoid being a bottleneck.
+			images, sparse_labels = tf.train.shuffle_batch(
+				[image, label], batch_size=batch_size, num_threads=2,
+				capacity=1000 + 3 * batch_size,
+				# Ensures a minimum amount of shuffling of examples.
+				min_after_dequeue=1000)
+	
 		return images, sparse_labels
