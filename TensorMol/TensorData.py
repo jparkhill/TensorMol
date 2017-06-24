@@ -201,99 +201,6 @@ class TensorData():
 		self.Save() #write a convenience pickle.
 		return
 
-	def BuildTrainElewise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
-		"""
-		Generates inputs for all training data using the chosen digester.
-		This version builds all the elements at the same time.
-		The other version builds each element separately
-		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
-		"""
-		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH" and self.dig.name !="ANI1_Sym")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere"
- 								and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" and self.dig.OType !="ForceMag")):
-			raise Exception("Molwise Embedding not supported")
-		if (self.set == None):
-			try:
-				self.ReloadSet()
-			except Exception as Ex:
-				print "TData doesn't have a set.", Ex
-		self.CheckShapes()
-		self.name=name_
-		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
-		if (len(atypes)==0):
-			atypes = self.set.AtomTypes()
-		LOGGER.debug("Will train atoms: "+str(atypes))
-		# Determine the size of the training set that will be made.
-		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
-		for element in atypes:
-			for m in self.set.mols:
-				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
-		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
-		t0 = time.time()
-		ord = len(self.set.mols)
-		mols_done = 0
-		try:
-			for element in atypes:
-				cases_list = np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float64)
-				labels_list = np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float64)
-				casep_count = 0
-				for mi in xrange(ord):
-					m = self.set.mols[mi]
-					ins,outs = self.dig.TrainDigestMolwise(m)
-					for i in range(m.NAtoms()):
-						# Route all the inputs and outputs to the appropriate place...
-						ai = atypes.tolist().index(m.atoms[i])
-						cases_list[casep_list[ai]] = ins[i]
-						labels_list[casep_list[ai]] = outs[i]
-						casep_list[ai] = casep_list[ai]+1
-					if (mols_done%10000==0 and mols_done>0):
-						print mols_done
-					if (mols_done==400):
-						print "Seconds to process 400 molecules: ", time.time()-t0
-					mols_done = mols_done + 1
-		except Exception as Ex:
-				print "Likely you need to re-install MolEmb.", Ex
-		for element in atypes:
-			# Write the numpy arrays for this element.
-			ai = atypes.tolist().index(element)
-			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
-			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
-			alreadyexists = (os.path.isfile(insname) and os.path.isfile(outsname))
-			if (append and alreadyexists):
-				ti=None
-				to=None
-				inf = open(insname,"rb")
-				ouf = open(outsname,"rb")
-				ti = np.load(inf)
-				to = np.load(ouf)
-				inf.close()
-				ouf.close()
-				try:
-					cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
-					labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
-				except Exception as Ex:
-					print "Size mismatch with old training data, clear out trainsets"
-				inf = open(insname,"wb")
-				ouf = open(outsname,"wb")
-				np.save(inf,cases)
-				np.save(ouf,labels)
-				inf.close()
-				ouf.close()
-				self.AvailableDataFiles.append([insname,outsname])
-				self.AvailableElements.append(element)
-				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
-			else:
-				inf = open(insname,"wb")
-				ouf = open(outsname,"wb")
-				np.save(inf,cases_list[ai][:casep_list[ai]])
-				np.save(ouf,labels_list[ai][:casep_list[ai]])
-				inf.close()
-				ouf.close()
-				self.AvailableDataFiles.append([insname,outsname])
-				self.AvailableElements.append(element)
-				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
-		self.Save() #write a convenience pickle.
-		return
-
 	def BuildTrain(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""
 		Generates probability inputs for all training data using the chosen digester.
@@ -728,18 +635,19 @@ class TensorData_TFRecords(TensorData):
 	def _bytes_feature(self, value):
 		return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-	def ConvertToTFRec(self, inputs, outputs, name):
+	def _floats_feature(self, value):
+		return tf.train.Feature(floats_list=tf.train.FloatsList(value=[value]))
+
+	def ConvertToTFRec(self, inputs, labels, name):
 		"""Converts a dataset to tfrecords."""
-		images = inputs
-		labels = outputs
 		num_examples = labels.shape[0]
-		if images.shape[0] != num_examples:
-			raise ValueError('Images size %d does not match label size %d.', images.shape[0], num_examples)
+		if inputs.shape[0] != num_examples:
+			raise ValueError('Input size %d does not match label size %d.', inputs.shape[0], num_examples)
 		filename = name
 		print('Writing', filename)
 		writer = tf.python_io.TFRecordWriter(filename)
 		for index in range(num_examples):
-			image_raw = images[index].tostring()
+			input_raw = inputs[index].tostring()
 			label_raw = labels[index].tostring()
 			example = tf.train.Example(features=tf.train.Features(feature={
 				'input_raw': self._bytes_feature(image_raw),
@@ -809,61 +717,61 @@ class TensorData_TFRecords(TensorData):
 		self.Save() #write a convenience pickle.
 		return
 
-	# def read_and_decode(self, filename_queue):
-	# 	reader = tf.TFRecordReader()
-	# 	_, serialized_example = reader.read(filename_queue)
-	# 	features = tf.parse_single_example(
-	# 		serialized_example,
-	# 		# Defaults are not specified since both keys are required.
-	# 		features={
-	# 			'input_raw': tf.FixedLenFeature([], tf.string),
-	# 			'label': tf.FixedLenFeature([], tf.string),
-	# 		})
-	#
-	# 	# Convert from a string to the desired datatype
-	# 	inputs = tf.decode_raw(features['input_raw'], tf.float32)
-	# 	label = tf.cast(features['label'], tf.float32)
-	# 	# OPTIONAL: Could reshape into a 28x28 image and apply distortions
-	# 	# here.  Since we are not applying any distortions in this
-	# 	# example, and the next step expects the image to be flattened
-	# 	# into a vector, we don't bother.
-	# 	return inputs, label
-	#
-	#
-	# def inputs(train, batch_size, num_epochs):
-	# 	"""Reads input data num_epochs times.
-	# 	Args:
-	# 		train: Selects between the training (True) and validation (False) data.
-	# 		batch_size: Number of examples per returned batch.
-	# 		num_epochs: Number of times to read the input data, or 0/None to train forever.
-	# 	Returns:
-	# 		A tuple (images, labels), where:
-	# 			* images is a float tensor with shape [batch_size, mnist.IMAGE_PIXELS]
-	# 				in the range [-0.5, 0.5].
-	# 			* labels is an int32 tensor with shape [batch_size] with the true label,
-	# 				a number in the range [0, mnist.NUM_CLASSES).
-	# 	Note that an tf.train.QueueRunner is added to the graph, which
-	# 	must be run using e.g. tf.train.start_queue_runners().
-	# 	"""
-	# 	if not num_epochs: num_epochs = None
-	# 	filename = os.path.join(FLAGS.train_dir,
-	# 				TRAIN_FILE if train else VALIDATION_FILE)
-	#
-	# 	with tf.name_scope('input'):
-	# 	filename_queue = tf.train.string_input_producer(
-	# 					[filename], num_epochs=num_epochs)
-	#
-	# 	# Even when reading in multiple threads, share the filename
-	# 	# queue.
-	# 	image, label = read_and_decode(filename_queue)
-	#
-	# 	# Shuffle the examples and collect them into batch_size batches.
-	# 	# (Internally uses a RandomShuffleQueue.)
-	# 	# We run this in two threads to avoid being a bottleneck.
-	# 	images, sparse_labels = tf.train.shuffle_batch(
-	# 		[image, label], batch_size=batch_size, num_threads=2,
-	# 		capacity=1000 + 3 * batch_size,
-	# 		# Ensures a minimum amount of shuffling of examples.
-	# 		min_after_dequeue=1000)
-	#
-	# 	return images, sparse_labels
+	def read_and_decode(self, filename_queue):
+		reader = tf.TFRecordReader()
+		_, serialized_example = reader.read(filename_queue)
+		features = tf.parse_single_example(
+			serialized_example,
+			# Defaults are not specified since both keys are required.
+			features={
+				'input_raw': tf.FixedLenFeature([], tf.string),
+				'label': tf.FixedLenFeature([], tf.string),
+			})
+
+		# Convert from a string to the desired datatype
+		inputs = tf.decode_raw(features['input_raw'], tf.float32)
+		label = tf.cast(features['label'], tf.float32)
+		# OPTIONAL: Could reshape into a 28x28 image and apply distortions
+		# here.  Since we are not applying any distortions in this
+		# example, and the next step expects the image to be flattened
+		# into a vector, we don't bother.
+		return inputs, label
+
+
+	def inputs(train, batch_size, num_epochs):
+		"""Reads input data num_epochs times.
+		Args:
+			train: Selects between the training (True) and validation (False) data.
+			batch_size: Number of examples per returned batch.
+			num_epochs: Number of times to read the input data, or 0/None to train forever.
+		Returns:
+			A tuple (images, labels), where:
+				* images is a float tensor with shape [batch_size, mnist.IMAGE_PIXELS]
+					in the range [-0.5, 0.5].
+				* labels is an int32 tensor with shape [batch_size] with the true label,
+					a number in the range [0, mnist.NUM_CLASSES).
+		Note that an tf.train.QueueRunner is added to the graph, which
+		must be run using e.g. tf.train.start_queue_runners().
+		"""
+		if not num_epochs: num_epochs = None
+		filename = os.path.join(FLAGS.train_dir,
+					TRAIN_FILE if train else VALIDATION_FILE)
+
+		with tf.name_scope('input'):
+		filename_queue = tf.train.string_input_producer(
+						[filename], num_epochs=num_epochs)
+
+		# Even when reading in multiple threads, share the filename
+		# queue.
+		image, label = read_and_decode(filename_queue)
+
+		# Shuffle the examples and collect them into batch_size batches.
+		# (Internally uses a RandomShuffleQueue.)
+		# We run this in two threads to avoid being a bottleneck.
+		images, sparse_labels = tf.train.shuffle_batch(
+			[image, label], batch_size=batch_size, num_threads=2,
+			capacity=1000 + 3 * batch_size,
+			# Ensures a minimum amount of shuffling of examples.
+			min_after_dequeue=1000)
+
+		return images, sparse_labels
