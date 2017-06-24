@@ -35,7 +35,9 @@ def DifferenceVectorsSet(r_):
 	"""
 	natom = tf.shape(r_)[1]
 	nmol = tf.shape(r_)[0]
-	ri = tf.tile(tf.reshape(r_,[nmol,1,natom,3]),[1,natom,1,1])
+	#ri = tf.tile(tf.reshape(r_,[nmol,1,natom,3]),[1,natom,1,1])
+	ri = tf.tile(tf.reshape(r_,[nmol,1,natom*3]),[1,natom,1])
+	ri = tf.reshape(ri, [nmol, natom, natom, 3])
 	rj = tf.transpose(ri,perm=(0,2,1,3))
 	return (ri-rj)
 
@@ -238,6 +240,7 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut):
 	ERMask = tf.reshape(ERMasktmp,[nmol,natom,natom2,nelep,nzeta,neta,ntheta,nr])
 	#ERMask = tf.tile(tf.reshape(ElemReduceMask,[nmol,natom,natom2,nelep,1,1,1,1]),[1,1,1,1,nzeta,neta,ntheta,nr])
 	ToRS = tf.where(ERMask,GmToMask,tf.zeros_like(GmToMask, dtype=tf.float64))
+	ToRS = tf.reshape(ToRS, [nmol,natom, natom2, -1])
 	GMA = tf.reduce_sum(ToRS,axis=[2])
 	return GMA
 
@@ -342,7 +345,8 @@ def TFSymSet(R, Zs, eles_, SFPsR_, Rr_cut, eleps_, SFPsA_, Ra_cut):
 	GMR = tf.reshape(TFSymRSet(R, Zs, eles_, SFPsR_, Rr_cut),[nmol, natom, -1])
 	GMA = tf.reshape(TFSymASet(R, Zs, eleps_, SFPsA_, Ra_cut),[nmol, natom, -1])
 	GM = tf.concat([GMR, GMA], axis=2)
-	return GM
+	GM_grads  = tf.gradients(GM, R)
+	return GM, GM_grads
 
 
 class ANISym:
@@ -356,6 +360,7 @@ class ANISym:
 		self.Z_pl = None
 		self.SFPa = None
 		self.SFPr = None
+		self.SymGrads = None
 
 	def SetANI1Param(self):
 		zetas = np.array([[8.0]], dtype = np.float64)
@@ -434,7 +439,7 @@ class ANISym:
 			#SFPr = tf.transpose(SFPr, perm=[2,0,1])
 	
 			#self.SymOutput_R = TFSymRSet(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut)
-			self.SymOutput = TFSymSet(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)	
+			self.SymOutput, self.SymGrads = TFSymSet(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)	
 	
 	                init = tf.global_variables_initializer()
 	                self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -457,5 +462,5 @@ class ANISym:
 			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch]]
 			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl)
 			t1 = time.time()
-			sym_output = self.sess.run([self.SymOutput], feed_dict = feed_dict)
-			print ("i: ", i,  "lenght of sym_output:", sym_output[0].shape, " time:", time.time() - t, " second", "gpu time:", time.time()-t1)
+			sym_output, grad = self.sess.run([self.SymOutput, self.SymGrads], feed_dict = feed_dict)
+			print ("i: ", i,  "sym_output: ", sym_output," time:", time.time() - t, " second", "gpu time:", time.time()-t1)

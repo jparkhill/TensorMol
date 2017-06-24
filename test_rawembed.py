@@ -4,7 +4,7 @@ from TensorMol.MBE_Opt import *
 from TensorMol.RawEmbeddings import *
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="-1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 if (0):
 	import numpy as np
@@ -49,8 +49,8 @@ if (0):
 	init = tf.global_variables_initializer()
 	with tf.Session() as session:
 	        session.run(init)
-	        GM = session.run(TFSymSet(xyz, Z, eles, SFPr, Rr_cut, eleps, SFPa, Ra_cut))
-	        print (GM, GM.shape)
+	        GM = session.run(tf.gradients(TFSymSet(xyz, Z, eles, SFPr, Rr_cut, eleps, SFPa, Ra_cut), xyz))
+	        print (GM, GM[0].shape)
 
 if (1):
 	mset = MSet("H2O_augmented_more_cutoff5")
