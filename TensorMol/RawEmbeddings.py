@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from TensorMol.TensorData import *
 from TensorMol.ElectrostaticsTF import *
+from tensorflow.python.client import timeline
 import numpy as np
 import cPickle as pickle
 import math, time, os, sys, os.path
@@ -444,6 +445,8 @@ class ANISym:
 	                init = tf.global_variables_initializer()
 	                self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 	                self.sess.run(init)
+			self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+               		self.run_metadata = tf.RunMetadata()
 	        return 
 	
 	def fill_feed_dict(self, batch_data, coord_pl, atom_pl):
@@ -462,5 +465,10 @@ class ANISym:
 			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch]]
 			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl)
 			t1 = time.time()
-			sym_output, grad = self.sess.run([self.SymOutput, self.SymGrads], feed_dict = feed_dict)
+			#sym_output, grad = self.sess.run([self.SymOutput, self.SymGrads], feed_dict = feed_dict)
+			sym_output, grad = self.sess.run([self.SymOutput, self.SymGrads], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			print ("i: ", i,  "sym_output: ", sym_output," time:", time.time() - t, " second", "gpu time:", time.time()-t1)
+			fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+            		chrome_trace = fetched_timeline.generate_chrome_trace_format()
+            		with open('timeline_step_%d.json' % i, 'w') as f:
+                		f.write(chrome_trace)
