@@ -366,11 +366,14 @@ class TensorMolData_BP(TensorMolData):
 		# Generate the set in a random order.
 		ord=np.random.permutation(len(self.set.mols))
 		mols_done = 0
+		t = time.time()
 		for mi in ord:
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
 			if (mols_done%1000==0):
+				print "time cost:", time.time() -t, " second"
 				LOGGER.info("Mol:"+str(mols_done))
+				t = time.time()
 			if (WithGrad_):
 				ins, grads, outs = self.dig.TrainDigest(self.set.mols[mi])
 			else:
