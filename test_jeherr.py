@@ -24,8 +24,8 @@ S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
 PARAMS["SRBF"] = S_RadOrth
 PARAMS["RandomizeData"] = True
-PARAMS["InNormRoutine"] = "MeanStd"
-PARAMS["OutNormRoutine"] = "MeanStd"
+# PARAMS["InNormRoutine"] = "MeanStd"
+# PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
 PARAMS["max_steps"] = 5000
 PARAMS["batch_size"] = 8000
@@ -460,18 +460,35 @@ def Brute_LJParams():
 	# print ins.LJFrc(p)
 
 def QueueReadertmp():
-	a=MSet("SmallMols")
+	a=MSet("ammonia_5rot")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorData_TFRecords(a,d)
 	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
 
+def QueueTrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
+	if (BuildTrain_):
+		a=MSet(set_)
+		a.Load()
+		if numrot_ != None:
+			a = a.RotatedClone(numrot_)
+			a.Save(a.name+"_"+str(numrot_)+"rot")
+		TreatedAtoms = a.AtomTypes()
+		print "Number of Mols: ", len(a.mols)
+		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
+		tset = TensorData_TFRecords(a,d)
+		tset.BuildTrainMolwise(set_,TreatedAtoms)
+	else:
+		tset = TensorData(None,None,set_+"_"+dig_)
+	# manager=TFManage("",tset,False,"fc_sqdiff_queue")
+	# manager.TrainElement(1)
+
 def TestForces():
-	#a=MSet("chemspid")
-	a=MSet("SmallMols")
+	a=MSet("chemspid")
+	# a=MSet("SmallMols")
 	a.Load()
-	manager=TFManage("SmallMols_20rot_GauSH_fc_sqdiff", None, False)
+	manager=TFManage("SmallMols_GauSH_fc_sqdiff", None, False)
 	err = np.zeros((32000,3))
 	ntest = 0
 	for mol in a.mols:
@@ -493,15 +510,15 @@ def TestForces():
 
 
 # InterpoleGeometries()
-# ReadSmallMols(set_="chemspid", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider_data/*/", energy=True, forces=True)
+# ReadSmallMols(set_="chemspid1", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider1_data/*/", forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
-TestIpecac()
+# TestIpecac()
 # TestBP()
 # TestANI1()
-# TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=None)
+# TrainForces(set_ = "ammonia_5rot", BuildTrain_=True, numrot_=None)
 # OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()
@@ -511,6 +528,7 @@ TestIpecac()
 # TestMorphIR()
 # Brute_LJParams()
 # QueueReadertmp()
+QueueTrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=1)
 # TestForces()
 
 
