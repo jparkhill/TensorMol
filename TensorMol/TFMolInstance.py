@@ -1008,8 +1008,8 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 				#dAtomdRy = tf.Print(dAtomdRy, [tf.to_float(tf.shape(dAtomdRy))], message="Element "+str(e)+"dAtomdRy shape ",first_n=10000000,summarize=100000000)
 				dMoldRy = tf.tensordot(dAtomdRy,mats,axes=[[0],[0]]) #  => Grad X Mols
 				#dMoldRy = tf.Print(dMoldRy, [tf.to_float(tf.shape(tmp))], message="Element "+str(e)+"dE_atom/dRy ",first_n=10000000,summarize=100000000)
-				tmp = tf.transpose(tmp) # we want to sum over atoms and end up with (mol X cart)
-				grads = tf.add(grads,tmp) # Sum over element types.
+				dtmp = tf.transpose(dMoldRy) # we want to sum over atoms and end up with (mol X cart)
+				grads = tf.add(grads,dtmp) # Sum over element types.
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return output, atom_outputs, grads
