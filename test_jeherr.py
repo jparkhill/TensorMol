@@ -197,11 +197,11 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 		print "Number of Mols: ", len(a.mols)
 		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
 		tset = TensorData(a,d)
-		tset.BuildTrainMolwise_tmp(set_,TreatedAtoms)
+		tset.BuildTrainMolwise(set_,TreatedAtoms)
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,False,"fc_sqdiff_selu")
-	manager.TrainElement(6)
+	manager=TFManage("",tset,False,"fc_sqdiff")
+	manager.TrainElement(1)
 
 def OptTFForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
@@ -459,14 +459,6 @@ def Brute_LJParams():
 	print resbrute[1]
 	# print ins.LJFrc(p)
 
-def QueueReadertmp():
-	a=MSet("ammonia_5rot")
-	a.Load()
-	TreatedAtoms = a.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-	tset = TensorData_TFRecords(a,d)
-	tset.BuildTrainMolwise("SmallMols",TreatedAtoms)
-
 def QueueTrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
 	if (BuildTrain_):
 		a=MSet(set_)
@@ -481,8 +473,8 @@ def QueueTrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numro
 		tset.BuildTrainMolwise(set_,TreatedAtoms)
 	else:
 		tset = TensorData(None,None,set_+"_"+dig_)
-	# manager=TFManage("",tset,False,"fc_sqdiff_queue")
-	# manager.TrainElement(1)
+	manager=TFManage("",tset,False,"fc_sqdiff_queue")
+	manager.TrainElement(1)
 
 def TestForces():
 	a=MSet("chemspid")
@@ -505,6 +497,11 @@ def TestForces():
 	print "MAE:", np.mean(np.abs(err)), " Std:", np.std(np.abs(err))
 	# print err
 
+def MakeTestSet():
+	a=MSet("SmallMols")
+	a.Load()
+	b, c = a.SplitTest()
+
 
 
 
@@ -518,7 +515,7 @@ def TestForces():
 # TestIpecac()
 # TestBP()
 # TestANI1()
-# TrainForces(set_ = "ammonia_5rot", BuildTrain_=True, numrot_=None)
+# TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=1)
 # OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # TestNeb()
@@ -527,9 +524,9 @@ def TestForces():
 # TestAnneal()
 # TestMorphIR()
 # Brute_LJParams()
-# QueueReadertmp()
-QueueTrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=1)
+# QueueTrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=1)
 # TestForces()
+MakeTestSet()
 
 
 # a=MSet("pentane_eq_align")

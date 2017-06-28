@@ -626,8 +626,9 @@ class TensorData():
 		return
 
 class TensorData_TFRecords(TensorData):
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, type_="atom"):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, test_=False, type_="atom"):
 		TensorData.__init__(self, MSet_, Dig_, Name_, type_)
+		self.test = test_
 
 	def _int64_feature(self, value):
 		return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))

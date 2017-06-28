@@ -1641,8 +1641,8 @@ class Queue_Instance:
 			# (Internally uses a RandomShuffleQueue.)
 			# We run this in two threads to avoid being a bottleneck.
 			inputs, sparse_labels = tf.train.shuffle_batch(
-				[inputs, label], batch_size=self.batch_size, num_threads=6,
-				capacity=1000 + 3 * self.batch_size,
+				[inputs, label], batch_size=self.batch_size, num_threads=8,
+				capacity=10000 + 3 * self.batch_size,
 				# Ensures a minimum amount of shuffling of examples.
-				min_after_dequeue=1000)
+				min_after_dequeue=10000)
 			return inputs, sparse_labels

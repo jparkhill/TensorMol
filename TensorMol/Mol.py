@@ -672,12 +672,7 @@ class Mol:
 			lines = f.readlines()
 			natoms = int(lines[0])
 			forces=np.zeros((natoms,3))
-			try:
-				read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
-			except:
-				self.properties['forces'] = forces
-				pass
-				return
+			read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
 			if read_forces:
 				for j in range(natoms):
 					for k in range(3):
@@ -737,13 +732,6 @@ class Mol:
 	def Set_Qchem_Data_Path(self):
 		self.qchem_data_path="./qchem"+"/"+self.properties["set_name"]+"/"+self.name
 		return
-
-	def Set_EQ_force(self):
-		"""
-		Sets forces to 0 for equilibrium molecules with no force data.
-		"""
-		if not self.properties.get("forces", None):
-			self.properties["forces"]=np.zeros((self.NAtoms(),3))
 
 	def Make_Spherical_Forces(self):
 		self.properties["sphere_forces"] = CartToSphereV(self.properties["forces"])
