@@ -1234,7 +1234,7 @@ class Queue_Instance:
 
 		self.element = ele_
 		self.TData = TData_
-		self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
+		# self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
 		self.chk_file = ''
@@ -1243,13 +1243,13 @@ class Queue_Instance:
 		LOGGER.info("self.batch_size: "+str(self.batch_size))
 		LOGGER.info("self.max_steps: "+str(self.max_steps))
 
-		self.NetType = "None"
+		self.NetType = "fc_sqdiff_queue"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
 		if (self.element != 0):
-			self.TData.LoadElementToScratch(self.element, self.tformer)
-			self.tformer.Print()
-			self.TData.PrintStatus()
+			# self.TData.LoadElementToScratch(self.element, self.tformer)
+			# self.tformer.Print()
+			# self.TData.PrintStatus()
 			self.inshape = self.TData.dig.eshape
 			self.outshape = self.TData.dig.lshape
 		return
@@ -1316,34 +1316,6 @@ class Queue_Instance:
 		self.PreparedFor = Ncase
 		return
 
-	def train_prepare(self,  continue_training =False):
-		""" Builds the graphs by calling inference """
-		with tf.Graph().as_default():
-			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
-			self.output = self.inference(self.embeds_placeholder)
-			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.sess.run(init)
-			try:
-				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
-				if (len(metafiles)>0):
-					most_recent_meta_file=metafiles[0]
-					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
-					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
-					config = tf.ConfigProto(allow_soft_placement=True)
-					self.sess = tf.Session(config=config)
-					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
-					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
-			except Exception as Ex:
-				LOGGER.error("Restore Failed")
-				pass
-			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			return
-
 	def Clean(self):
 		if (self.sess != None):
 			self.sess.close()
@@ -1360,6 +1332,8 @@ class Queue_Instance:
 		self.PreparedFor = 0
 		self.summary_op = None
 		self.activation_function = None
+		self.coord = None
+		self.threads = None
 		return
 
 	def SaveAndClose(self):
@@ -1439,75 +1413,33 @@ class Queue_Instance:
 			tf.add_to_collection('losses', weight_decay)
 		return var
 
-	def dropout_selu(self, x, rate, alpha= -1.7580993408473766, fixedPointMean=0.0, fixedPointVar=1.0, noise_shape=None, seed=None, name=None, training=False):
-		"""Dropout to a value with rescaling."""
-		def dropout_selu_impl(x, rate, alpha, noise_shape, seed, name):
-			keep_prob = 1.0 - rate
-			x = tf.convert_to_tensor(x, name="x")
-			if isinstance(keep_prob, numbers.Real) and not 0 < keep_prob <= 1:
-				raise ValueError("keep_prob must be a scalar tensor or a float in the "
-								"range (0, 1], got %g" % keep_prob)
-			keep_prob = tf.convert_to_tensor(keep_prob, dtype=x.dtype, name="keep_prob")
-			keep_prob.get_shape().assert_is_compatible_with([])
+	# def placeholder_inputs(self, batch_size):
+	# 	raise("Populate placeholder_inputs")
+	# 	return
 
-			alpha = tf.convert_to_tensor(alpha, dtype=x.dtype, name="alpha")
-			keep_prob.get_shape().assert_is_compatible_with([])
-
-			if tf.contrib.util.constant_value(keep_prob) == 1:
-				return x
-
-			noise_shape = noise_shape if noise_shape is not None else tf.shape(x)
-			random_tensor = keep_prob
-			random_tensor += tf.random_uniform(noise_shape, seed=seed, dtype=x.dtype)
-			binary_tensor = tf.floor(random_tensor)
-			ret = x * binary_tensor + alpha * (1-binary_tensor)
-
-			a = tf.sqrt(fixedPointVar / (keep_prob *((1-keep_prob) * tf.pow(alpha-fixedPointMean,2) + fixedPointVar)))
-
-			b = fixedPointMean - a * (keep_prob * fixedPointMean + (1 - keep_prob) * alpha)
-			ret = a * ret + b
-			ret.set_shape(x.get_shape())
-			return ret
-
-		with tf.name_scope(name, "dropout", [x]) as name:
-			# return dropout_selu_impl(x, rate, alpha, noise_shape, seed, name) if training else array_ops.identity(x)
-			return tf.cond(training,
-				lambda: dropout_selu_impl(x, rate, alpha, noise_shape, seed, name),
-				lambda: tf.identity(x))
-
-	def selu(self, x):
-		with tf.name_scope('elu') as scope:
-			alpha = 1.6732632423543772848170429916717
-			scale = 1.0507009873554804934193349852946
-			return scale*tf.where(x>=0.0, x, alpha*tf.nn.elu(x))
-
-	def placeholder_inputs(self, batch_size):
-		raise("Populate placeholder_inputs")
-		return
-
-	def fill_feed_dict(self, batch_data, embeds_pl, labels_pl):
-		"""Fills the feed_dict for training the given step.
-		A feed_dict takes the form of:
-		feed_dict = {
-		<placeholder>: <tensor of values to be passed for placeholder>,
-		....
-		}
-		Args:
-		data_set: The set of images and labels, from input_data.read_data_sets()
-		embeds_pl: The images placeholder, from placeholder_inputs().
-		labels_pl: The labels placeholder, from placeholder_inputs().
-		Returns:
-		feed_dict: The feed dictionary mapping from placeholders to values.
-		"""
-		# Don't eat shit.
-		if (not np.all(np.isfinite(batch_data[0]))):
-			LOGGER.error("I was fed shit")
-			raise Exception("DontEatShit")
-		if (not np.all(np.isfinite(batch_data[1]))):
-			LOGGER.error("I was fed shit")
-			raise Exception("DontEatShit")
-		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
-		return feed_dict
+	# def fill_feed_dict(self, batch_data, embeds_pl, labels_pl):
+	# 	"""Fills the feed_dict for training the given step.
+	# 	A feed_dict takes the form of:
+	# 	feed_dict = {
+	# 	<placeholder>: <tensor of values to be passed for placeholder>,
+	# 	....
+	# 	}
+	# 	Args:
+	# 	data_set: The set of images and labels, from input_data.read_data_sets()
+	# 	embeds_pl: The images placeholder, from placeholder_inputs().
+	# 	labels_pl: The labels placeholder, from placeholder_inputs().
+	# 	Returns:
+	# 	feed_dict: The feed dictionary mapping from placeholders to values.
+	# 	"""
+	# 	# Don't eat shit.
+	# 	if (not np.all(np.isfinite(batch_data[0]))):
+	# 		LOGGER.error("I was fed shit")
+	# 		raise Exception("DontEatShit")
+	# 	if (not np.all(np.isfinite(batch_data[1]))):
+	# 		LOGGER.error("I was fed shit")
+	# 		raise Exception("DontEatShit")
+	# 	feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
+	# 	return feed_dict
 
 	def inference(self, inputs):
 		"""Builds the network architecture. Number of hidden layers and nodes in each layer defined in TMParams "HiddenLayers".
@@ -1516,7 +1448,6 @@ class Queue_Instance:
 		Returns:
 			output: scalar or vector of OType from Digester.
 		"""
-
 		hiddens = []
 		for i in range(len(self.HiddenLayers)):
 			if i == 0:
@@ -1544,16 +1475,14 @@ class Queue_Instance:
 		return output
 
 	def loss_op(self, output, labels):
-		"""
-		Calculates the loss from the logits and the labels.
-		Args:
-		logits: Logits tensor, float - [batch_size, NUM_CLASSES].
-		labels: Labels tensor, int32 - [batch_size].
-		Returns:
-		loss: Loss tensor of type float.
-		"""
-		raise Exception("Base Loss.")
-		return
+		try:
+			diff  = tf.subtract(output, labels)
+		except:
+			print("tf.sub() is deprecated in tensorflow 1.0 in favor of tf.subtract(). Please upgrade soon.")
+			diff  = tf.sub(output, labels)
+		loss = tf.nn.l2_loss(diff)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
 	def training(self, loss, learning_rate, momentum):
 		"""Sets up the training Ops.
@@ -1578,30 +1507,51 @@ class Queue_Instance:
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
-		for step in range(1, mxsteps+1):
-			self.train_step(step)
-			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
-				if (test_loss < mini_test_loss):
-					mini_test_loss = test_loss
-					self.save_chk(step,feed_dict)
-		self.SaveAndClose()
+		self.coord = tf.train.Coordinator()
+		self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
+		try:
+			step = 0
+			while not self.coord.should_stop():
+				self.train_step(step)
+				if step%test_freq==0 and step!=0 :
+					test_loss = self.test(step)
+					if (test_loss < mini_test_loss):
+						mini_test_loss = test_loss
+						self.save_chk(step)
+				step += 1
+		except tf.errors.OutOfRangeError:
+			print('Done training -- epoch limit reached')
+		finally:
+			self.coord.request_stop()
+			self.coord.join(self.threads)
+			self.SaveAndClose()
 		return
 
 	def train_step(self,step):
-		raise Exception("Cannot Train base...")
+		Ncase_train = 10000
+		start_time = time.time()
+		train_loss =  0.0
+		total_correct = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			# batch_data=self.TData.GetTrainBatch(self.element,  self.batch_size) #advances the case pointer in TData...
+			# feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+			_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss])
+			train_loss = train_loss + loss_value
+		duration = time.time() - start_time
+		#self.print_training(step, train_loss, total_correct, Ncase_train, duration)
+		self.print_training(step, train_loss, Ncase_train, duration)
 		return
 
 
 	def train_prepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():
-			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.embeds_placeholder, self.labels_placeholder = self.inputs()
 			self.output = self.inference(self.embeds_placeholder)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
+			init = tf.group(tf.global_variables_initializer(),tf.local_variables_initializer())
 			self.saver = tf.train.Saver()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
@@ -1617,14 +1567,25 @@ class Queue_Instance:
 					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
 					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
 			except Exception as Ex:
-				print("Restore Failed 2341325",Ex)
+				print("Restore Failed",Ex)
 				pass
 			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			return
 
-	def test(self,step):
-		raise Exception("Base Test")
-		return
+	def test(self, step):
+		Ncase_test = 10000
+		test_loss =  0.0
+		test_start_time = time.time()
+		#for ministep in range (0, int(Ncase_test/self.batch_size)):
+		# batch_data=self.TData.GetTestBatch(self.element,  self.batch_size)#, ministep)
+		# feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss])
+		# self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
+		test_loss = test_loss + loss_value
+		duration = time.time() - test_start_time
+		print("testing...")
+		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
+		return test_loss
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		denom = max((int(Ncase/self.batch_size)),1)
@@ -1633,3 +1594,55 @@ class Queue_Instance:
 		else:
 			LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
 		return
+
+	def read_and_decode(self, filename_queue):
+		reader = tf.TFRecordReader()
+		_, serialized_example = reader.read(filename_queue)
+		features = tf.parse_single_example(
+			serialized_example,
+			# Defaults are not specified since both keys are required.
+			features={
+				'input_raw': tf.FixedLenFeature([], tf.string),
+				'label_raw': tf.FixedLenFeature([], tf.string),
+			})
+		inputs = tf.decode_raw(features['input_raw'], tf.float32)
+		inputs.set_shape(self.inshape)
+		label = tf.decode_raw(features['label_raw'], tf.float32)
+		label.set_shape(self.outshape)
+		return inputs, label
+
+	def inputs(self):
+		"""Reads input data num_epochs times.
+		Args:
+		train: Selects between the training (True) and validation (False) data.
+		batch_size: Number of examples per returned batch.
+		num_epochs: Number of times to read the input data, or 0/None to
+			train forever.
+		Returns:
+		A tuple (images, labels), where:
+		* images is a float tensor with shape [batch_size, mnist.IMAGE_PIXELS]
+			in the range [-0.5, 0.5].
+		* labels is an int32 tensor with shape [batch_size] with the true label,
+			a number in the range [0, mnist.NUM_CLASSES).
+		Note that an tf.train.QueueRunner is added to the graph, which
+		must be run using e.g. tf.train.start_queue_runners().
+		"""
+		num_epochs = self.max_steps
+		filename = os.path.join(
+					self.TData.path+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.element)+".tfrecords")
+
+		with tf.name_scope('input'):
+			filename_queue = tf.train.string_input_producer(
+							[filename], num_epochs=num_epochs, shuffle=True)
+			# Even when reading in multiple threads, share the filename
+			# queue.
+			inputs, label = self.read_and_decode(filename_queue)
+			# Shuffle the examples and collect them into batch_size batches.
+			# (Internally uses a RandomShuffleQueue.)
+			# We run this in two threads to avoid being a bottleneck.
+			inputs, sparse_labels = tf.train.shuffle_batch(
+				[inputs, label], batch_size=self.batch_size, num_threads=8,
+				capacity=10000 + 3 * self.batch_size,
+				# Ensures a minimum amount of shuffling of examples.
+				min_after_dequeue=10000)
+			return inputs, sparse_labels
