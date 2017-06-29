@@ -264,6 +264,48 @@ class Instance:
 			tf.add_to_collection('losses', weight_decay)
 		return var
 
+	def dropout_selu(self, x, rate, alpha= -1.7580993408473766, fixedPointMean=0.0, fixedPointVar=1.0, noise_shape=None, seed=None, name=None, training=False):
+		"""Dropout to a value with rescaling."""
+		def dropout_selu_impl(x, rate, alpha, noise_shape, seed, name):
+			keep_prob = 1.0 - rate
+			x = tf.convert_to_tensor(x, name="x")
+			if isinstance(keep_prob, numbers.Real) and not 0 < keep_prob <= 1:
+				raise ValueError("keep_prob must be a scalar tensor or a float in the "
+								"range (0, 1], got %g" % keep_prob)
+			keep_prob = tf.convert_to_tensor(keep_prob, dtype=x.dtype, name="keep_prob")
+			keep_prob.get_shape().assert_is_compatible_with([])
+
+			alpha = tf.convert_to_tensor(alpha, dtype=x.dtype, name="alpha")
+			keep_prob.get_shape().assert_is_compatible_with([])
+
+			if tf.contrib.util.constant_value(keep_prob) == 1:
+				return x
+
+			noise_shape = noise_shape if noise_shape is not None else tf.shape(x)
+			random_tensor = keep_prob
+			random_tensor += tf.random_uniform(noise_shape, seed=seed, dtype=x.dtype)
+			binary_tensor = tf.floor(random_tensor)
+			ret = x * binary_tensor + alpha * (1-binary_tensor)
+
+			a = tf.sqrt(fixedPointVar / (keep_prob *((1-keep_prob) * tf.pow(alpha-fixedPointMean,2) + fixedPointVar)))
+
+			b = fixedPointMean - a * (keep_prob * fixedPointMean + (1 - keep_prob) * alpha)
+			ret = a * ret + b
+			ret.set_shape(x.get_shape())
+			return ret
+
+		with tf.name_scope(name, "dropout", [x]) as name:
+			# return dropout_selu_impl(x, rate, alpha, noise_shape, seed, name) if training else array_ops.identity(x)
+			return tf.cond(training,
+				lambda: dropout_selu_impl(x, rate, alpha, noise_shape, seed, name),
+				lambda: tf.identity(x))
+
+	def selu(self, x):
+		with tf.name_scope('elu') as scope:
+			alpha = 1.6732632423543772848170429916717
+			scale = 1.0507009873554804934193349852946
+			return scale*tf.where(x>=0.0, x, alpha*tf.nn.elu(x))
+
 	def placeholder_inputs(self, batch_size):
 		raise("Populate placeholder_inputs")
 		return
@@ -910,7 +952,6 @@ class Instance_conv2d_sqdiff(Instance):
 #			batch_data=[ tmp_input, tmp_output]
 		return batch_data
 
-
 class Instance_3dconv_sqdiff(Instance):
 	''' Let's see if a 3d-convolutional network improves the learning rate on the Gaussian grids. '''
 	def __init__(self, TData_, ele_ = 1 , Name_=None):
@@ -1132,3 +1173,471 @@ class Instance_KRR(Instance):
 	def PrepareData(self, batch_data):
 		raise Exception("NYI")
 		return
+
+class Queue_Instance:
+	"""
+	Manages a persistent training network instance
+	"""
+	def __init__(self, TData_, ele_ = 1 , Name_=None, NetType_=None):
+		"""
+		Args:
+			TData_: a TensorData
+			ele_: an element type for this instance.
+			Name_ : a name for this instance, attempts to load from checkpoint.
+		"""
+		# The tensorflow objects go up here.
+		self.inshape = None
+		self.outshape = None
+		self.sess = None
+		self.loss = None
+		self.output = None
+		self.train_op = None
+		self.total_loss = None
+		self.embeds_placeholder = None
+		self.labels_placeholder = None
+		self.saver = None
+		self.gradient =None
+		self.summary_op =None
+		self.summary_writer=None
+		# The parameters below belong to tensorflow and its graph
+		# all tensorflow variables cannot be pickled they are populated by Prepare
+		self.PreparedFor=0
+
+		try:
+			self.tf_prec
+		except:
+			self.tf_prec = eval(PARAMS["tf_prec"])
+		self.HiddenLayers = PARAMS["HiddenLayers"]
+		self.hidden1 = PARAMS["hidden1"]
+		self.hidden2 = PARAMS["hidden2"]
+		self.hidden3 = PARAMS["hidden3"]
+		self.learning_rate = PARAMS["learning_rate"]
+		self.momentum = PARAMS["momentum"]
+		self.max_steps = PARAMS["max_steps"]
+		self.batch_size = PARAMS["batch_size"]
+		self.activation_function_type = PARAMS["NeuronType"]
+		self.activation_function = None
+		self.AssignActivation()
+
+		self.path='./networks/'
+		if (Name_ !=  None):
+			self.name = Name_
+			#self.QueryAvailable() # Should be a sanity check on the data files.
+			self.Load() # Network still cannot be used until it is prepared.
+			LOGGER.info("raised network: "+self.train_dir)
+			return
+
+		self.element = ele_
+		self.TData = TData_
+		# self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
+		if (not os.path.isdir(self.path)):
+			os.mkdir(self.path)
+		self.chk_file = ''
+
+		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
+		LOGGER.info("self.batch_size: "+str(self.batch_size))
+		LOGGER.info("self.max_steps: "+str(self.max_steps))
+
+		self.NetType = "fc_sqdiff_queue"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
+		if (self.element != 0):
+			# self.TData.LoadElementToScratch(self.element, self.tformer)
+			# self.tformer.Print()
+			# self.TData.PrintStatus()
+			self.inshape = self.TData.dig.eshape
+			self.outshape = self.TData.dig.lshape
+		return
+
+	def __del__(self):
+		if (self.sess != None):
+			self.sess.close()
+		self.Clean()
+
+	def AssignActivation(self):
+		LOGGER.debug("Assigning Activation... %s", PARAMS["NeuronType"])
+		try:
+			if self.activation_function_type == "relu":
+				self.activation_function = tf.nn.relu
+			elif self.activation_function_type == "elu":
+				self.activation_function = tf.nn.elu
+			elif self.activation_function_type == "selu":
+				self.activation_function = self.selu
+			elif self.activation_function_type == "softplus":
+				self.activation_function = tf.nn.softplus
+			elif self.activation_function_type == "tanh":
+				self.activation_function = tf.tanh
+			elif self.activation_function_type == "sigmoid":
+				self.activation_function = tf.sigmoid
+			else:
+				print ("unknown activation function, set to relu")
+				self.activation_function = tf.nn.relu
+		except Exception as Ex:
+			print(Ex)
+			print ("activation function not assigned, set to relu")
+			self.activation_function = tf.nn.relu
+		return
+
+	def evaluate(self, eval_input):
+		# Check sanity of input
+		if (not np.all(np.isfinite(eval_input))):
+			LOGGER.error("WTF, you trying to feed me, garbage?")
+			raise Exception("bad digest.")
+		if (self.PreparedFor < eval_input.shape[0]):
+			self.Prepare(eval_input, eval_input.shape[0])
+		return
+
+	def Prepare(self, eval_input, Ncase=1250):
+		"""
+		Called if only evaluations are being done, by evaluate()
+		"""
+		self.Clean()
+		self.AssignActivation()
+		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
+		eval_labels = np.zeros(Ncase)  # dummy labels
+		with tf.Graph().as_default():
+			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
+			self.output = self.inference(self.embeds_placeholder)
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+			if (len(metafiles)>0):
+				most_recent_meta_file=metafiles[0]
+				LOGGER.debug("Restoring training from Meta file: "+most_recent_meta_file)
+				config = tf.ConfigProto(allow_soft_placement=True)
+				self.sess = tf.Session(config=config)
+				self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+				self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+		self.PreparedFor = Ncase
+		return
+
+	def Clean(self):
+		if (self.sess != None):
+			self.sess.close()
+		self.sess = None
+		self.loss = None
+		self.output = None
+		self.total_loss = None
+		self.train_op = None
+		self.embeds_placeholder = None
+		self.labels_placeholder = None
+		self.saver = None
+		self.gradient =None
+		self.summary_writer = None
+		self.PreparedFor = 0
+		self.summary_op = None
+		self.activation_function = None
+		self.coord = None
+		self.threads = None
+		return
+
+	def SaveAndClose(self):
+		print("Saving TFInstance...")
+		if (self.TData!=None):
+			self.TData.CleanScratch()
+		self.Clean()
+		#print("Going to pickle...\n",[(attr,type(ins)) for attr,ins in self.__dict__.items()])
+		f=open(self.path+self.name+".tfn","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
+
+	def variable_summaries(self, var):
+		"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+		with tf.name_scope('summaries'):
+			mean = tf.reduce_mean(var)
+			tf.summary.scalar('mean', mean)
+		with tf.name_scope('stddev'):
+			stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+			tf.summary.scalar('stddev', stddev)
+			tf.summary.scalar('max', tf.reduce_max(var))
+			tf.summary.scalar('min', tf.reduce_min(var))
+			tf.summary.histogram('histogram', var)
+
+	# one of these two routines need to be removed I think. -JAP
+	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
+		#cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
+		#os.system(cmd)
+		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
+		self.saver.save(self.sess, checkpoint_file_mini)
+		return
+
+	#this isn't really the correct way to load()
+	# only the local class members (not any TF objects should be unpickled.)
+	def Load(self):
+		LOGGER.info("Unpickling TFInstance...")
+		f = open(self.path+self.name+".tfn","rb")
+		import TensorMol.PickleTM
+		tmp = TensorMol.PickleTM.UnPickleTM(f)
+		self.Clean()
+		# All this shit should be deleteable after re-training.
+		self.__dict__.update(tmp)
+		f.close()
+		chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+		if (len(chkfiles)>0):
+			self.chk_file = chkfiles[0]
+		else:
+			LOGGER.error("Network not found... Traindir:"+self.train_dir)
+			LOGGER.error("Traindir contents: "+str(os.listdir(self.train_dir)))
+		return
+
+	def _variable_with_weight_decay(self, var_name, var_shape, var_stddev, var_wd):
+		"""Helper to create an initialized Variable with weight decay.
+
+		Note that the Variable is initialized with a truncated normal distribution.
+		A weight decay is added only if one is specified.
+
+		Args:
+		name: name of the variable
+		shape: list of ints
+		stddev: standard deviation of a truncated Gaussian
+		wd: add L2Loss weight decay multiplied by this float. If None, weight
+		decay is not added for this Variable.
+
+		Returns:
+		Variable Tensor
+		"""
+		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev, dtype=self.tf_prec), name=var_name)
+		if var_wd is not None:
+			try:
+				weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
+			except:
+				print("tf.mul() is deprecated in tensorflow 1.0 in favor of tf.multiply(). Please upgrade soon.")
+				weight_decay = tf.mul(tf.nn.l2_loss(var), var_wd, name='weight_loss')
+			tf.add_to_collection('losses', weight_decay)
+		return var
+
+	# def placeholder_inputs(self, batch_size):
+	# 	raise("Populate placeholder_inputs")
+	# 	return
+
+	# def fill_feed_dict(self, batch_data, embeds_pl, labels_pl):
+	# 	"""Fills the feed_dict for training the given step.
+	# 	A feed_dict takes the form of:
+	# 	feed_dict = {
+	# 	<placeholder>: <tensor of values to be passed for placeholder>,
+	# 	....
+	# 	}
+	# 	Args:
+	# 	data_set: The set of images and labels, from input_data.read_data_sets()
+	# 	embeds_pl: The images placeholder, from placeholder_inputs().
+	# 	labels_pl: The labels placeholder, from placeholder_inputs().
+	# 	Returns:
+	# 	feed_dict: The feed dictionary mapping from placeholders to values.
+	# 	"""
+	# 	# Don't eat shit.
+	# 	if (not np.all(np.isfinite(batch_data[0]))):
+	# 		LOGGER.error("I was fed shit")
+	# 		raise Exception("DontEatShit")
+	# 	if (not np.all(np.isfinite(batch_data[1]))):
+	# 		LOGGER.error("I was fed shit")
+	# 		raise Exception("DontEatShit")
+	# 	feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
+	# 	return feed_dict
+
+	def inference(self, inputs):
+		"""Builds the network architecture. Number of hidden layers and nodes in each layer defined in TMParams "HiddenLayers".
+		Args:
+			inputs: input placeholder for training data from Digester.
+		Returns:
+			output: scalar or vector of OType from Digester.
+		"""
+		hiddens = []
+		for i in range(len(self.HiddenLayers)):
+			if i == 0:
+				with tf.name_scope('hidden1'):
+					weights = self._variable_with_weight_decay(var_name='weights',
+									var_shape=(self.inshape+[self.HiddenLayers[i]]),
+									var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+					hiddens.append(self.activation_function(tf.matmul(inputs, weights) + biases))
+					# tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
+					# tf.histogram_summary(weights.name, weights)
+			else:
+				with tf.name_scope('hidden'+str(i+1)):
+					weights = self._variable_with_weight_decay(var_name='weights',
+									var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]],
+									var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec),name='biases')
+					hiddens.append(self.activation_function(tf.matmul(hiddens[-1], weights) + biases))
+		with tf.name_scope('regression_linear'):
+			weights = self._variable_with_weight_decay(var_name='weights',
+							var_shape=[self.HiddenLayers[-1]]+self.outshape,
+							var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
+			output = tf.matmul(hiddens[-1], weights) + biases
+		return output
+
+	def loss_op(self, output, labels):
+		try:
+			diff  = tf.subtract(output, labels)
+		except:
+			print("tf.sub() is deprecated in tensorflow 1.0 in favor of tf.subtract(). Please upgrade soon.")
+			diff  = tf.sub(output, labels)
+		loss = tf.nn.l2_loss(diff)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
+
+	def training(self, loss, learning_rate, momentum):
+		"""Sets up the training Ops.
+		Creates a summarizer to track the loss over time in TensorBoard.
+		Creates an optimizer and applies the gradients to all trainable variables.
+		The Op returned by this function is what must be passed to the
+		`sess.run()` call to cause the model to train.
+		Args:
+		loss: Loss tensor, from loss().
+		learning_rate: The learning rate to use for gradient descent.
+		Returns:
+		train_op: The Op for training.
+		"""
+		tf.summary.scalar(loss.op.name, loss)
+		optimizer = tf.train.AdamOptimizer(learning_rate)
+		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
+		global_step = tf.Variable(0, name='global_step', trainable=False)
+		train_op = optimizer.minimize(loss, global_step=global_step)
+		return train_op
+
+	def train(self, mxsteps, continue_training= False):
+		self.train_prepare(continue_training)
+		test_freq = PARAMS["test_freq"]
+		mini_test_loss = 100000000 # some big numbers
+		self.coord = tf.train.Coordinator()
+		self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
+		try:
+			step = 0
+			while not self.coord.should_stop():
+				self.train_step(step)
+				if step%test_freq==0 and step!=0 :
+					test_loss = self.test(step)
+					if (test_loss < mini_test_loss):
+						mini_test_loss = test_loss
+						self.save_chk(step)
+				step += 1
+		except tf.errors.OutOfRangeError:
+			print('Done training -- epoch limit reached')
+		finally:
+			self.coord.request_stop()
+			self.coord.join(self.threads)
+			self.SaveAndClose()
+		return
+
+	def train_step(self,step):
+		Ncase_train = 10000
+		start_time = time.time()
+		train_loss =  0.0
+		total_correct = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			# batch_data=self.TData.GetTrainBatch(self.element,  self.batch_size) #advances the case pointer in TData...
+			# feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+			_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss])
+			train_loss = train_loss + loss_value
+		duration = time.time() - start_time
+		#self.print_training(step, train_loss, total_correct, Ncase_train, duration)
+		self.print_training(step, train_loss, Ncase_train, duration)
+		return
+
+
+	def train_prepare(self,  continue_training =False):
+		"""Train for a number of steps."""
+		with tf.Graph().as_default():
+			self.embeds_placeholder, self.labels_placeholder = self.inputs()
+			self.output = self.inference(self.embeds_placeholder)
+			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.group(tf.global_variables_initializer(),tf.local_variables_initializer())
+			self.saver = tf.train.Saver()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.sess.run(init)
+			try: # I think this may be broken
+				chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					print("Restoring training from Metafile: ",most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+			except Exception as Ex:
+				print("Restore Failed",Ex)
+				pass
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			return
+
+	def test(self, step):
+		Ncase_test = 10000
+		test_loss =  0.0
+		test_start_time = time.time()
+		#for ministep in range (0, int(Ncase_test/self.batch_size)):
+		# batch_data=self.TData.GetTestBatch(self.element,  self.batch_size)#, ministep)
+		# feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss])
+		# self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
+		test_loss = test_loss + loss_value
+		duration = time.time() - test_start_time
+		print("testing...")
+		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
+		return test_loss
+
+	def print_training(self, step, loss, Ncase, duration, Train=True):
+		denom = max((int(Ncase/self.batch_size)),1)
+		if Train:
+			LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+		else:
+			LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+		return
+
+	def read_and_decode(self, filename_queue):
+		reader = tf.TFRecordReader()
+		_, serialized_example = reader.read(filename_queue)
+		features = tf.parse_single_example(
+			serialized_example,
+			# Defaults are not specified since both keys are required.
+			features={
+				'input_raw': tf.FixedLenFeature([], tf.string),
+				'label_raw': tf.FixedLenFeature([], tf.string),
+			})
+		inputs = tf.decode_raw(features['input_raw'], tf.float32)
+		inputs.set_shape(self.inshape)
+		label = tf.decode_raw(features['label_raw'], tf.float32)
+		label.set_shape(self.outshape)
+		return inputs, label
+
+	def inputs(self):
+		"""Reads input data num_epochs times.
+		Args:
+		train: Selects between the training (True) and validation (False) data.
+		batch_size: Number of examples per returned batch.
+		num_epochs: Number of times to read the input data, or 0/None to
+			train forever.
+		Returns:
+		A tuple (images, labels), where:
+		* images is a float tensor with shape [batch_size, mnist.IMAGE_PIXELS]
+			in the range [-0.5, 0.5].
+		* labels is an int32 tensor with shape [batch_size] with the true label,
+			a number in the range [0, mnist.NUM_CLASSES).
+		Note that an tf.train.QueueRunner is added to the graph, which
+		must be run using e.g. tf.train.start_queue_runners().
+		"""
+		num_epochs = self.max_steps
+		filename = os.path.join(
+					self.TData.path+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.element)+".tfrecords")
+
+		with tf.name_scope('input'):
+			filename_queue = tf.train.string_input_producer(
+							[filename], num_epochs=num_epochs, shuffle=True)
+			# Even when reading in multiple threads, share the filename
+			# queue.
+			inputs, label = self.read_and_decode(filename_queue)
+			# Shuffle the examples and collect them into batch_size batches.
+			# (Internally uses a RandomShuffleQueue.)
+			# We run this in two threads to avoid being a bottleneck.
+			inputs, sparse_labels = tf.train.shuffle_batch(
+				[inputs, label], batch_size=self.batch_size, num_threads=8,
+				capacity=10000 + 3 * self.batch_size,
+				# Ensures a minimum amount of shuffling of examples.
+				min_after_dequeue=10000)
+			return inputs, sparse_labels

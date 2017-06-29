@@ -91,6 +91,8 @@ class TFManage:
 			self.Instances[ele] = Instance_3dconv_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "KRR_sqdiff"):
 			self.Instances[ele] = Instance_KRR(self.TData, ele, None)
+		elif (self.NetType == "fc_sqdiff_queue"):
+			self.Instances[ele] = Queue_Instance(self.TData, ele, None)
 		else:
 			raise Exception("Unknown Network Type!")
 		self.Instances[ele].train(self.n_train) # Just for the sake of debugging.

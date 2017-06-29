@@ -107,29 +107,6 @@ def TestBP_WithGrad():
 	"""
 	copy glymd.pdb from the google drive...
 	"""
-	a = MSet("glymd")
-	a.Load()
-	a.pop(45000) # help out my puny laptop
-	for mol in a.mols:
-		mol.properties['force'] /= (BOHRPERA*BOHRPERA)
-		mol.CalculateAtomization()
-	PARAMS["AN1_r_Rc"] = 6.
-	PARAMS["AN1_a_Rc"] = 4.
-	PARAMS["AN1_eta"] = 4.0
-	PARAMS["AN1_zeta"] = 8.0
-	PARAMS["AN1_num_r_Rs"] = 8
-	PARAMS["AN1_num_a_Rs"] = 4
-	PARAMS["AN1_num_a_As"] = 4
-	PARAMS["batch_size"] = 1500
-	PARAMS["hidden1"] = 64
-	PARAMS["hidden2"] = 128
-	PARAMS["hidden3"] = 64
-	PARAMS["max_steps"] = 1001
-	PARAMS["GradWeight"] = 1.0
-	PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
-	PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
-	PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
-	TreatedAtoms = a.AtomTypes()
 	if (0):
 		# Train the atomization energy in a normal BP network to test.
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
@@ -1048,7 +1025,7 @@ def TestEE():
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
 #TestANI1()
-# TestBP_WithGrad()
+#TestBP_WithGrad()
 #Test_ULJ()
 #Test_LJMD()
 #TestDipole()
