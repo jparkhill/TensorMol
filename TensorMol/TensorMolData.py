@@ -862,8 +862,8 @@ class TensorMolData_BP_Update(TensorMolData_BP):
 		inputpointer = 0
 		outputpointer = 0
 		#currentmol=self.scratch_meta[self.ScratchPointer,0]
-		sto = np.zeros(len(self.eles),dtype = np.int32)
-		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
+		sto = np.zeros(len(self.eles),dtype = np.int64)
+		offsets = np.zeros(len(self.eles),dtype = np.int64) # output pointers within each element block.
 		destinations = np.zeros(ncases) # The index in the output of each case in the scratch.
 		ignore_first_mol = 0
 		for i in range(self.ScratchPointer,self.ScratchPointer+ncases):
@@ -883,7 +883,7 @@ class TensorMolData_BP_Update(TensorMolData_BP):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
 			if (self.HasGrad):
 				inputgs.append(np.zeros((sto[e],np.prod(self.dig.eshape),self.MaxN3)))
-			atom_mol_index.append(np.zeros((sto[e])))
+			atom_mol_index.append(np.zeros((sto[e]), dtype=np.int64))
 		for i in range(self.ScratchPointer+ignore_first_mol, self.ScratchPointer+ncases):
 			if (self.scratch_meta[i,0] == bmols[-1]):
 				break
@@ -944,8 +944,8 @@ class TensorMolData_BP_Update(TensorMolData_BP):
 		inputpointer = 0
 		outputpointer = 0
 		#currentmol=self.scratch_meta[self.ScratchPointer,0]
-		sto = np.zeros(len(self.eles),dtype = np.int32)
-		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
+		sto = np.zeros(len(self.eles),dtype = np.int64)
+		offsets = np.zeros(len(self.eles),dtype = np.int64) # output pointers within each element block.
 		destinations = np.zeros(ncases) # The index in the output of each case in the scratch.
 		ignore_first_mol = 0
 		for i in range(self.test_ScratchPointer,self.test_ScratchPointer+ncases):
@@ -965,7 +965,7 @@ class TensorMolData_BP_Update(TensorMolData_BP):
 			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
 			if (self.HasGrad):
 				inputgs.append(np.zeros((sto[e],np.prod(self.dig.eshape),self.MaxN3)))
-			atom_mol_index.append(np.zeros((sto[e])))
+			atom_mol_index.append(np.zeros((sto[e]), dtype=np.int64))
 		for i in range(self.test_ScratchPointer+ignore_first_mol, self.test_ScratchPointer+ncases):
 			if (self.scratch_test_meta[i,0] == bmols[-1]):
 				break

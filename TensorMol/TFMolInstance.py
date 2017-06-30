@@ -1117,7 +1117,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
                 self.index_pl=None
                 self.label_pl=None
                 self.batch_size_output = 0
-
+		self.gradient = None
 
 	def Clean(self):
 		Instance.Clean(self)
@@ -1126,6 +1126,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		self.index_pl=None
 		self.label_pl=None
 		self.atom_outputs = None
+		self.gradient = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -1148,10 +1149,9 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.index_pl=[]
 			for e in range(len(self.eles)):
 				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
-				self.index_pl.append(tf.placeholder(tf.int32, shape=tuple([None])))
-			self.preoutput_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
+				self.index_pl.append(tf.placeholder(tf.int64, shape=tuple([None])))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
-			self.output, self.atom_outputs, self.preoutput = self.inference(self.inp_pl, self.index_pl, self.preoutput_pl)
+			self.output, self.atom_outputs = self.inference(self.inp_pl, self.index_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -1172,7 +1172,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
 
-	def inference(self, inp_pl, index_pl, preoutput_pl):
+	def inference(self, inp_pl, index_pl):
 		"""
 		Builds a Behler-Parinello graph
 
@@ -1192,7 +1192,8 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		#output = gen_state_ops._temporary_variable(shape=[self.batch_size_output], dtype=self.tf_prec)
 		#output = state_ops.assign(output, array_ops.zeros_like(index_pl))
 		#output = tf.Variable(output_pl)
-		output = tf.Variable(tf.zeros([self.batch_size_output], dtype=self.tf_prec))
+		#output = tf.Variable(tf.zeros([self.batch_size_output], dtype=self.tf_prec))
+		output = tf.zeros([self.batch_size_output], dtype=self.tf_prec)
 		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
 		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
 		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
@@ -1206,8 +1207,8 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		for e in range(len(self.eles)):
 			branches.append([])
 			inputs = inp_pl[e]
-			index = index_pl[e]
 			shp_in = tf.shape(inputs)
+			index = index_pl[e]
 			if (PARAMS["check_level"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				index_shape = tf.shape(index)
@@ -1238,13 +1239,18 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 				rshp = tf.reshape(cut,[1,shp_out[0]])
 				atom_outputs.append(rshp)
 				rshpflat = tf.reshape(cut,[shp_out[0]])
-				output = tf.scatter_add(output, index, rshpflat)
+				range_index = tf.range(tf.cast(shp_out[0], tf.int64), dtype=tf.int64)
+				sparse_index =tf.stack([index, range_index], axis=1)
+				sp_atomoutputs = tf.SparseTensor(sparse_index, rshpflat, dense_shape=[tf.cast(self.batch_size_output, tf.int64), tf.cast(shp_out[0], tf.int64)])
+				mol_tmp = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+				output = tf.add(output, mol_tmp)
+				#rshpflat = tf.reshape(cut,[shp_out[0]])
+				#output = tf.scatter_add(output, index, rshpflat)
 				#tmp = tf.matmul(rshp,mats)
-				#output_pl = tf.add(output,tmp)
-		diff = tf.subtract(output, preoutput_pl)
+				#output = tf.add(output,tmp)
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
-		return diff, atom_outputs, output
+		return output, atom_outputs
 
 	def fill_feed_dict(self, batch_data):
 		"""
@@ -1265,7 +1271,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit4")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip(self.inp_pl+self.index_pl+[self.label_pl]+[self.preoutput_pl], batch_data[0]+batch_data[1]+[batch_data[2]]+[batch_data[3]])}
+		feed_dict={i: d for i, d in zip(self.inp_pl+self.index_pl+[self.label_pl], batch_data[0]+batch_data[1]+[batch_data[2]])}
 		return feed_dict
 
 	def train_step(self, step):
@@ -1282,12 +1288,13 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		pre_output = np.zeros((self.batch_size_output),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
-			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output) + [pre_output]
+			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
 			actual_mols  = np.count_nonzero(batch_data[2])
 			#print ("index:", batch_data[1][0][:40], batch_data[1][1][:20])
-			dump_, dump_2, total_loss_value, loss_value, mol_output, pre_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output, self.preoutput, self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#np.set_printoptions(threshold=np.nan)
 			#print ("self.atom_outputs", atom_outputs[0][0][:40], "\n", atom_outputs[1][0][:20], atom_outputs[1].shape, "\n  mol_outputs:", mol_output[:20], mol_output.shape)
+			#print ("self.gradient:", gradient)
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
@@ -1439,7 +1446,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.index_pl=[]
 			for e in range(len(self.eles)):
 				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
-				self.index_pl.append(tf.placeholder(tf.int32, shape=tuple([None])))
+				self.index_pl.append(tf.placeholder(tf.int64, shape=tuple([None])))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.index_pl)
 			#self.gradient = tf.gradients(self.atom_outputs, self.inp_pl)
@@ -1464,7 +1471,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.index_pl=[]
 			for e in range(len(self.eles)):
 				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
-				self.index_pl.append(tf.placeholder(tf.int32, shape=tuple([None])))
+				self.index_pl.append(tf.placeholder(tf.int64, shape=tuple([None])))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.index_pl)
 			self.check = tf.add_check_numerics_ops()
