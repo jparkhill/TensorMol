@@ -3,7 +3,7 @@ A Statistical Model of Molecular Structure
 
 ### Authors:
  Kun Yao (kyao@nd.edu), John Herr (John.E.Herr.16@nd.edu),
- David Toth (dtoth1@nd.edu), John Parkhill (john.parkhill@gmail.com)
+ John Parkhill (john.parkhill@gmail.com)
 
 ### Model Chemistries:
  - Behler-Parrinello
@@ -33,8 +33,7 @@ sudo python setup.py install
 ```
 
 ### Usage:
- - ```import TensorMol as tm```
- - Please also refer to IPython notebooks in /notebooks.
+ - Refer to commented examples in test.py
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
@@ -43,6 +42,8 @@ sudo python setup.py install
 - To Train Realistically: 1TB Disk, GTX1070++
 - To Evaluate: Normal CPU and 10GB Mem
 - For volume rendering: CUDA 7.5+ or Mathematica
+- ` cd volumeRender; make `
+- Or open `/densities/PlotDens.nb`
 
 ### Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)

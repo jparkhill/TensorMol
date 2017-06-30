@@ -810,3 +810,184 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 		pickle.dump(self.test_atom_index, f)
 		f.close()
 		return
+
+
+class TensorMolData_BP_Update(TensorMolData_BP):
+	"""
+			A update version of tensordata for molecules and Behler-Parinello.
+			a Case is an input to the NN.
+	"""
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
+		TensorMolData_BP.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_)
+		return
+
+
+	def GetTrainBatch(self,ncases,noutputs):
+		"""
+		Construct the data required for a training batch Returns inputs (sorted by element), and indexing matrices and outputs.
+		Behler parinello batches need to have a typical overall stoichiometry.
+		and a constant number of atoms, and must contain an integer number of molecules.
+		Besides making sure all of that takes place this routine makes the summation matrices
+		which map the cases => molecular energies in the Neural Network output.
+
+		Args:
+			ncases: the size of a training cases.
+			noutputs: the maximum number of molecule energies which can be produced.
+
+		Returns:
+			A an **ordered** list of length self.eles containing
+				a list of (num_of atom type X flattened input shape) matrix of input cases.
+				a list of (num_of atom type X batchsize) array  which linearly combines the elements
+				a list of outputs.
+		"""
+		start_time = time.time()
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTrain):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (self.ScratchPointer+ncases >= self.NTrain):
+			self.ScratchPointer = 0
+		inputs = []#np.zeros((eles,ncases, np.prod(self.dig.eshape)))
+		inputgs = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
+		atom_mol_index = [] # mol index of each atom
+		offsets=[]
+		# Get the number of molecules which would be contained in the desired batch size
+		# and the number of element cases.
+		# metadata contains: molecule index, atom type, mol start, mol stop
+		bmols=np.unique(self.scratch_meta[self.ScratchPointer:self.ScratchPointer+ncases,0])
+		nmols_out=len(bmols[1:-1])
+		if (nmols_out > noutputs):
+			raise Exception("Insufficent Padding. "+str(nmols_out)+" is greater than "+str(noutputs))
+		inputpointer = 0
+		outputpointer = 0
+		#currentmol=self.scratch_meta[self.ScratchPointer,0]
+		sto = np.zeros(len(self.eles),dtype = np.int32)
+		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
+		destinations = np.zeros(ncases) # The index in the output of each case in the scratch.
+		ignore_first_mol = 0
+		for i in range(self.ScratchPointer,self.ScratchPointer+ncases):
+			if (self.scratch_meta[i,0] == bmols[-1]):
+				break
+			elif (self.scratch_meta[i,0] == bmols[0]):
+				ignore_first_mol += 1
+			else:
+				sto[self.eles.index(self.scratch_meta[i,1])]+=1
+		currentmol=self.scratch_meta[self.ScratchPointer+ignore_first_mol,0]
+		outputs = None
+		if (self.HasGrad):
+			outputs = np.zeros((noutputs,self.dig.lshape[0]))
+		else:
+			outputs = np.zeros((noutputs))
+		for e in range(len(self.eles)):
+			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
+			if (self.HasGrad):
+				inputgs.append(np.zeros((sto[e],np.prod(self.dig.eshape),self.MaxN3)))
+			atom_mol_index.append(np.zeros((sto[e])))
+		for i in range(self.ScratchPointer+ignore_first_mol, self.ScratchPointer+ncases):
+			if (self.scratch_meta[i,0] == bmols[-1]):
+				break
+			if (currentmol != self.scratch_meta[i,0]):
+				outputpointer = outputpointer+1
+				currentmol = self.scratch_meta[i,0]
+			# metadata contains: molecule index, atom type, mol start, mol stop
+			e = (self.scratch_meta[i,1])
+			ei = self.eles.index(e)
+			# The offset for this element should be within the bounds or something is wrong...
+			inputs[ei][offsets[ei],:] = self.scratch_inputs[i]
+			if (self.HasGrad):
+				inputgs[ei][offsets[ei],:] = self.scratch_grads[i]
+			atom_mol_index[ei][offsets[ei]] = outputpointer
+			outputs[outputpointer] = self.scratch_outputs[self.scratch_meta[i,0]]
+			offsets[ei] += 1
+		#print "inputs",inputs
+		#print "bounds",bounds
+		#print "matrices",matrices
+		#print "outputs",outputs
+		self.ScratchPointer += ncases
+		if (self.HasGrad):
+			#print "inputs: ", inputs[0].shape, " inputgs:", inputgs[0], inputgs[0].shape, " outputs", outputs.shape, " matrices", matrices.shape
+			return [inputs, inputgs, atom_mol_index, outputs]
+		else:
+			return [inputs, atom_mol_index, outputs]
+
+	def GetTestBatch(self,ncases,noutputs):
+		"""
+		Returns:
+		A an **ordered** list of length self.eles containing
+			a list of (num_of atom type X flattened input shape) matrix of input cases.
+			a list of (num_of atom type X batchsize) matrices which linearly combines the elements
+			a list of outputs.
+			the number of output molecules.
+		"""
+		start_time = time.time()
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTest):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (self.test_ScratchPointer+ncases >= self.NTest):
+			self.test_ScratchPointer = 0
+			self.test_mols_done = True
+		inputs = []#np.zeros((ncases, np.prod(self.dig.eshape)))
+		inputgs = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
+		atom_mol_index = []#np.zeros((len(self.eles), ncases, noutputs))
+		offsets= []
+		# Get the number of molecules which would be contained in the desired batch size
+		# and the number of element cases.
+		# metadata contains: molecule index, atom type, mol start, mol stop
+		bmols=np.unique(self.scratch_test_meta[self.test_ScratchPointer:self.test_ScratchPointer+ncases,0])
+		nmols_out=len(bmols[1:-1])
+		#print "batch contains",nmols_out, "Molecules in ",ncases
+		if (nmols_out > noutputs):
+			raise Exception("Insufficent Padding. "+str(nmols_out)+" is greater than "+str(noutputs))
+		inputpointer = 0
+		outputpointer = 0
+		#currentmol=self.scratch_meta[self.ScratchPointer,0]
+		sto = np.zeros(len(self.eles),dtype = np.int32)
+		offsets = np.zeros(len(self.eles),dtype = np.int32) # output pointers within each element block.
+		destinations = np.zeros(ncases) # The index in the output of each case in the scratch.
+		ignore_first_mol = 0
+		for i in range(self.test_ScratchPointer,self.test_ScratchPointer+ncases):
+			if (self.scratch_test_meta[i,0] == bmols[-1]):
+				break
+			elif (self.scratch_test_meta[i,0] == bmols[0]):
+				ignore_first_mol += 1
+			else:
+				sto[self.eles.index(self.scratch_test_meta[i,1])]+=1
+		currentmol=self.scratch_test_meta[self.test_ScratchPointer+ignore_first_mol,0]
+		outputs = None
+		if (self.HasGrad):
+			outputs = np.zeros((noutputs,self.dig.lshape[0]))
+		else:
+			outputs = np.zeros((noutputs))
+		for e in range(len(self.eles)):
+			inputs.append(np.zeros((sto[e],np.prod(self.dig.eshape))))
+			if (self.HasGrad):
+				inputgs.append(np.zeros((sto[e],np.prod(self.dig.eshape),self.MaxN3)))
+			atom_mol_index.append(np.zeros((sto[e])))
+		for i in range(self.test_ScratchPointer+ignore_first_mol, self.test_ScratchPointer+ncases):
+			if (self.scratch_test_meta[i,0] == bmols[-1]):
+				break
+			if (currentmol != self.scratch_test_meta[i,0]):
+				outputpointer = outputpointer+1
+				currentmol = self.scratch_test_meta[i,0]
+			if not self.test_mols_done and self.test_begin_mol+currentmol not in self.test_mols:
+					self.test_mols.append(self.test_begin_mol+currentmol)
+			# metadata contains: molecule index, atom type, mol start, mol stop
+			e = (self.scratch_test_meta[i,1])
+			ei = self.eles.index(e)
+			# The offset for this element should be within the bounds or something is wrong...
+			inputs[ei][offsets[ei],:] = self.scratch_test_inputs[i]
+			if (self.HasGrad):
+				inputgs[ei][offsets[ei],:] = self.scratch_test_grads[i]
+			atom_mol_index[ei][offsets[ei]] = outputpointer
+			outputs[outputpointer] = self.scratch_test_outputs[self.scratch_test_meta[i,0]]
+			offsets[ei] += 1
+		self.test_ScratchPointer += ncases
+		if (self.HasGrad):
+			return [inputs, inputgs, atom_mol_index, outputs]
+		else:
+			return [inputs, atom_mol_index, outputs]
+
+

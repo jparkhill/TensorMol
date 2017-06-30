@@ -73,7 +73,7 @@ def CoordinateScan(f_, x_, name_="", eps_=0.03, num_=15):
 			x_t[iti.multi_index] += d
 			tore[iti.multi_index][i,0]=d
 			tore[iti.multi_index][i,1]=f_(x_t)
-		np.savetxt("./results/CoordScan"+name_+str(ci)+".txt",tore[iti.multi_index])
+		np.savetxt("./resultscan"+name_+str(ci)+".txt",tore[iti.multi_index])
 		ci += 1
 		iti.iternext()
 
@@ -228,28 +228,30 @@ def InternalCoordinates(x_,m):
 			D[4,i*3+j] = (Pz*X[0,j]-Px*X[2,j])/np.sqrt(m[i])
 			D[5,i*3+j] = (Px*X[1,j]-Py*X[0,j])/np.sqrt(m[i])
 			MWC[i*3+j,i*3+j] = np.sqrt(m[i])
-	S = PairOrthogonalize(D,MWC) # Returns normalized Coords.
+	S = PairOrthogonalize(D,MWC) # Returns normalized.
 	nint = S.shape[0]
-	print "Number of Internal Coordinates: ", nint
+	print "3N, Number of Internal Coordinates: ", n3 , nint
 	return S
 
-def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04, WriteNM_=False):
+def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu_ = None):
 	"""
 	Perform a finite difference normal mode analysis
 	of a molecule. basically implements http://gaussian.com/vib/
-	
-	Args: 
+
+	Args:
 		f_: Energies in Hartree.
 		x_: Coordinates (A)
 		m_: masses (kg/mol)
+		at_: element type of each atom
 		grad_: forces in Hartree/angstrom if available. (unused)
 		eps_: finite difference step
-		WriteNM_: Whether to write the normal modes to readable files 
+		WriteNM_: Whether to write the normal modes to readable files
+		Mu_: A dipole field routine for intensities.
 
-	Returns: 
+	Returns:
 		Frequencies in wavenumbers and Normal modes (cart)
 	"""
-	n = m_.shape[0]
+	n = x_.shape[0]
 	n3 = 3*n
 	Crds = InternalCoordinates(x_,m_) #invbasis X cart
 	#Crds=np.eye(n3).reshape((n3,n,3))
@@ -259,7 +261,7 @@ def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04, WriteNM_=False):
 	# Transform the invariant hessian into cartesian coordinates.
 	cHess = np.dot(Crds.T,np.dot(Hess,Crds))
 	print "Hess (Cart):", cHess
-	# Mass weight the invariant hessian in cartesian coordinates.
+	# Mass weight the invariant hessian in cartesian coordinate
 	for i,mi in enumerate(m_):
 		cHess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
 		for j,mj in enumerate(m_):
@@ -268,22 +270,28 @@ def HarmonicSpectra(f_, x_, m_, grad_=None, eps_ = 0.04, WriteNM_=False):
 	# Get the vibrational spectrum and normal modes.
 	u,s,v = np.linalg.svd(cHess)
 	for l in s:
-		print "Central Energy (cm**-1): ", np.sign(l)*np.sqrt(KCONVERT*abs(l))*CMCONVERT
+		print "Central Energy (cm**-1): ", np.sign(l)*np.sqrt(KCONVERT*abs(l))*CMCONVERT*2
 	print "--"
-	# Get the actual normal modes, for visualization sake. 
+	# Get the actual normal modes, for visualization sake.
 	w,v = np.linalg.eigh(cHess)
-	v = v.real 
-	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
-	nm = v[:,i].reshape((n,3))
-	nm *= np.sqrt(np.array([m_ for i in range(3)])).T
-	nm = nm.reshape(n*3)
-	#if (WriteNM_):
-	#	for i in range(3*m_.NAtoms()): 	
-	#		tmp = nm[i].reshape((m_.NAtoms(),3))
-	#		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
-	#			mdisp = Mol(m_.atoms,m.coords+alpha*tmp)
-	#			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
-	return wave, nm
+	v = v.real
+	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT*2
+	print "N3, shape v",n3,v.shape
+	if (WriteNM_):
+		for i in range(3*n):
+			nm = v[:,i].reshape((n,3))
+			nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1], at_.tolist())])).T
+			tmp = nm.reshape((x_.shape[0],3))
+
+			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
+			step = 0.01
+			dmudq = (Mu_(x_+step*tmp)-Mu_(x_))/step
+			print "|f| (UNITS????) ",np.dot(dmudq,dmudq.T)
+
+			for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
+				mdisp = Mol(at_, x_+alpha*tmp)
+				mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
+	return wave, v
 
 def LineSearch(f_, x0_, p_, thresh = 0.00001):
 	'''

@@ -10,7 +10,7 @@ from TensorMol.TensorData import *
 import numpy as np
 import cPickle as pickle
 import math
-import time, os, sys, numbers
+import time, os, sys
 import os.path
 if (HAS_TF):
 	import tensorflow as tf
@@ -19,7 +19,7 @@ class Instance:
 	"""
 	Manages a persistent training network instance
 	"""
-	def __init__(self, TData_, ele_ = 1 , Name_=None, NetType_=None):
+	def __init__(self, TData_, ele_ = 1 , Name_=None):
 		"""
 		Args:
 			TData_: a TensorData
@@ -43,12 +43,6 @@ class Instance:
 		# The parameters below belong to tensorflow and its graph
 		# all tensorflow variables cannot be pickled they are populated by Prepare
 		self.PreparedFor=0
-
-		try:
-			self.tf_prec
-		except:
-			self.tf_prec = eval(PARAMS["tf_prec"])
-		self.HiddenLayers = PARAMS["HiddenLayers"]
 		self.hidden1 = PARAMS["hidden1"]
 		self.hidden2 = PARAMS["hidden2"]
 		self.hidden3 = PARAMS["hidden3"]
@@ -77,7 +71,6 @@ class Instance:
 
 		LOGGER.info("self.learning_rate: "+str(self.learning_rate))
 		LOGGER.info("self.batch_size: "+str(self.batch_size))
-		LOGGER.info("self.max_steps: "+str(self.max_steps))
 
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
@@ -100,10 +93,6 @@ class Instance:
 		try:
 			if self.activation_function_type == "relu":
 				self.activation_function = tf.nn.relu
-			elif self.activation_function_type == "elu":
-				self.activation_function = tf.nn.elu
-			elif self.activation_function_type == "selu":
-				self.activation_function = self.selu
 			elif self.activation_function_type == "softplus":
 				self.activation_function = tf.nn.softplus
 			elif self.activation_function_type == "tanh":
@@ -133,7 +122,6 @@ class Instance:
 		Called if only evaluations are being done, by evaluate()
 		"""
 		self.Clean()
-		self.AssignActivation()
 		# Always prepare for at least 125,000 cases which is a 50x50x50 grid.
 		eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default():
@@ -200,6 +188,7 @@ class Instance:
 
 	def SaveAndClose(self):
 		print("Saving TFInstance...")
+		self.save_chk(99999)
 		if (self.TData!=None):
 			self.TData.CleanScratch()
 		self.Clean()
@@ -265,7 +254,7 @@ class Instance:
 		Returns:
 		Variable Tensor
 		"""
-		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev, dtype=self.tf_prec), name=var_name)
+		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev), name=var_name)
 		if var_wd is not None:
 			try:
 				weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
@@ -345,38 +334,44 @@ class Instance:
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
 
-	def inference(self, inputs):
-		"""Builds the network architecture. Number of hidden layers and nodes in each layer defined in TMParams "HiddenLayers".
+	def inference(self, images):
+		"""Build the MNIST model up to where it may be used for inference.
 		Args:
-			inputs: input placeholder for training data from Digester.
+		images: Images placeholder, from inputs().
+		hidden1_units: Size of the first hidden layer.
+		hidden2_units: Size of the second hidden layer.
 		Returns:
-			output: scalar or vector of OType from Digester.
+		softmax_linear: Output tensor with the computed logits.
 		"""
+		hidden1_units = PARAMS["hidden1"]
+		hidden2_units = PARAMS["hidden2"]
+		hidden3_units = PARAMS["hidden3"]
+		LOGGER.debug("hidden1_units: "+str(hidden1_units))
+		LOGGER.debug("hidden2_units: "+str(hidden2_units))
+		LOGGER.debug("hidden3_units: "+str(hidden3_units))
+		# Hidden 1
+		with tf.name_scope('hidden1'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
+			hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
+			#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
+			#tf.summary.histogram(weights.name, weights)
+		# Hidden 2
+		with tf.name_scope('hidden2'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden2_units]),name='biases')
+			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
 
-		hiddens = []
-		for i in range(len(self.HiddenLayers)):
-			if i == 0:
-				with tf.name_scope('hidden1'):
-					weights = self._variable_with_weight_decay(var_name='weights',
-									var_shape=(self.inshape+[self.HiddenLayers[i]]),
-									var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
-					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-					hiddens.append(self.activation_function(tf.matmul(inputs, weights) + biases))
-					# tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
-					# tf.histogram_summary(weights.name, weights)
-			else:
-				with tf.name_scope('hidden'+str(i+1)):
-					weights = self._variable_with_weight_decay(var_name='weights',
-									var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]],
-									var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
-					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec),name='biases')
-					hiddens.append(self.activation_function(tf.matmul(hiddens[-1], weights) + biases))
+		# Hidden 3
+		with tf.name_scope('hidden3'):
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
+			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
+		# Linear
 		with tf.name_scope('regression_linear'):
-			weights = self._variable_with_weight_decay(var_name='weights',
-							var_shape=[self.HiddenLayers[-1]]+self.outshape,
-							var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
-			output = tf.matmul(hiddens[-1], weights) + biases
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
+			output = tf.matmul(hidden3, weights) + biases
 		return output
 
 	def loss_op(self, output, labels):
@@ -414,7 +409,7 @@ class Instance:
 		self.train_prepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
-		for step in range(1, mxsteps+1):
+		for step in  range (0, mxsteps):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
 				test_loss, feed_dict = self.test(step)
@@ -556,8 +551,8 @@ class Instance_fc_classify(Instance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
-		outputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size))
+		inputs_pl = tf.placeholder(tf.float32, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
+		outputs_pl = tf.placeholder(tf.float32, shape=(batch_size))
 		return inputs_pl, outputs_pl
 
 	def justpreds(self, output):
@@ -671,8 +666,8 @@ class Instance_fc_sqdiff(Instance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.inshape)))
-		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.outshape)))
+		inputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size]+list(self.inshape)))
+		outputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size]+list(self.outshape)))
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
@@ -712,7 +707,7 @@ class Instance_fc_sqdiff(Instance):
 		test_loss = test_loss + loss_value
 		duration = time.time() - test_start_time
 		print("testing...")
-		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
+		self.print_training(step, test_loss,  Ncase_test, duration)
 		return test_loss, feed_dict
 
 	def PrepareData(self, batch_data):
@@ -752,25 +747,25 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 		# Hidden 1
 		with tf.name_scope('hidden1'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=list(self.inshape)+[hidden1_units], var_stddev= 0.4 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden1_units], dtype=self.tf_prec), name='biases')
+			biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
 			hidden1 = tf.nn.relu(tf.matmul(inputs[:-3], weights) + biases)
 			#tf.summary.scalar('min/' + weights.name, tf.reduce_min(weights))
 			#tf.summary.histogram(weights.name, weights)
 		# Hidden 2
 		with tf.name_scope('hidden2'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 0.4 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden2_units], dtype=self.tf_prec),name='biases')
+			biases = tf.Variable(tf.zeros([hidden2_units]),name='biases')
 			hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
 
 		# Hidden 3
 		with tf.name_scope('hidden3'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev= 0.4 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden3_units], dtype=self.tf_prec),name='biases')
+			biases = tf.Variable(tf.zeros([hidden3_units]),name='biases')
 			hidden3 = tf.nn.relu(tf.matmul(hidden2, weights) + biases)
 		#Delta Layer
 		with tf.name_scope('delta_layer'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units]+ list(2*self.outshape), var_stddev= 0.4 / math.sqrt(float(hidden3_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
+			biases = tf.Variable(tf.zeros(self.outshape), name='biases')
 			delta = tf.matmul(hidden3, weights) + biases
 		# Linear
 		with tf.name_scope('regression_linear'):
@@ -804,15 +799,15 @@ class Instance_conv2d_sqdiff(Instance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size,self.inshape]))
-		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size, self.outshape]))
+		inputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size,self.inshape]))
+		outputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size, self.outshape]))
 		return inputs_pl, outputs_pl
 
 	def _weight_variable(self, name, shape):
-		return tf.get_variable(name, shape, self.tf_prec, tf.truncated_normal_initializer(stddev=0.01))
+		return tf.get_variable(name, shape, tf.float32, tf.truncated_normal_initializer(stddev=0.01))
 
 	def _bias_variable(self, name, shape):
-		return tf.get_variable(name, shape, self.tf_prec, tf.constant_initializer(0.01, dtype=self.tf_prec))
+		return tf.get_variable(name, shape, tf.float32, tf.constant_initializer(0.01, dtype=tf.float32))
 
 	def conv2d(self, x, W, b, strides=1):
 		"""
@@ -981,15 +976,15 @@ class Instance_3dconv_sqdiff(Instance):
 		if (self.inshape[0]!=GRIDS.NGau3):
 			print("Bad inputs... ", self.inshape)
 			raise Exception("Nonsquare")
-		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size,GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1]))
-		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.outshape)))
+		inputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size,GRIDS.NGau,GRIDS.NGau,GRIDS.NGau,1]))
+		outputs_pl = tf.placeholder(tf.float32, shape=tuple([batch_size]+list(self.outshape)))
 		return inputs_pl, outputs_pl
 
 	def _weight_variable(self, name, shape):
-		return tf.get_variable(name, shape, self.tf_prec, tf.truncated_normal_initializer(stddev=0.01))
+		return tf.get_variable(name, shape, tf.float32, tf.truncated_normal_initializer(stddev=0.01))
 
 	def _bias_variable(self, name, shape):
-		return tf.get_variable(name, shape, self.tf_prec, tf.constant_initializer(0.01, dtype=self.tf_prec))
+		return tf.get_variable(name, shape, tf.float32, tf.constant_initializer(0.01, dtype=tf.float32))
 
 	def inference(self, input):
 		FC_SIZE = 512
