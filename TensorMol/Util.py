@@ -8,7 +8,6 @@ import gc, random, os, sys, re, atexit
 import math, time, itertools, warnings
 from math import pi as Pi
 import scipy.special
-from scipy.weave import inline
 #from collections import defaultdict
 #from collections import Counter
 from TensorMol.TMParams import *

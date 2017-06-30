@@ -12,6 +12,28 @@ from TensorMol.TFInstance import *
 from TensorMol.TensorMolData import *
 from TensorMol.TFMolInstance import *
 from TensorMol.ElectrostaticsTF import *
+from TensorMol.RawEmbeddings import *
+
+class BumpHolder:
+	def __init__(self,m):
+		"""
+		This should be the new base-class for TensorFlow Ops.
+		Which does nothing but hold a graph and execute it.
+		"""
+		self.graph = None
+		self.input_shape =
+		self.input_pl = None
+		self.output_shape = None
+		self.output_pl = None
+		self.sess = None
+		return
+
+	def Prepare(self):
+		return
+
+	def Execute(self):
+		return
+
 
 class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 	"""

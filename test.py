@@ -175,26 +175,46 @@ def TestBP_WithGrad():
 
 	if (0):
 		PARAMS["AN1_r_Rc"] = 4.6
-                PARAMS["AN1_a_Rc"] = 3.1
-                PARAMS["AN1_eta"] = 4.0
-                PARAMS["AN1_zeta"] = 8.0
-                PARAMS["AN1_num_r_Rs"] = 16
-                PARAMS["AN1_num_a_Rs"] = 4
-                PARAMS["AN1_num_a_As"] = 4
-                PARAMS["batch_size"] = 1500
-                PARAMS["hidden1"] = 64
-                PARAMS["hidden2"] = 128
-                PARAMS["hidden3"] = 64
-                PARAMS["max_steps"] = 1001
-                PARAMS["GradWeight"] = 1.0
-                PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
-                PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
-                PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
+		PARAMS["AN1_a_Rc"] = 3.1
+		PARAMS["AN1_eta"] = 4.0
+		PARAMS["AN1_zeta"] = 8.0
+		PARAMS["AN1_num_r_Rs"] = 16
+		PARAMS["AN1_num_a_Rs"] = 4
+		PARAMS["AN1_num_a_As"] = 4
+		PARAMS["batch_size"] = 1500
+		PARAMS["hidden1"] = 64
+		PARAMS["hidden2"] = 128
+		PARAMS["hidden3"] = 64
+		PARAMS["max_steps"] = 1001
+		PARAMS["GradWeight"] = 1.0
+		PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
+		PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
+		PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
 
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"glymd_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_WithGrad")
-                manager.Train(maxstep=2000)
+		manager.Train(maxstep=2000)
 	return
+
+def TestMetadynamics():
+	a = MSet("johnsonmols")
+	a.ReadXYZ("johnsonmols")
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	PARAMS["NeuronType"]="softplus"
+	m = a.mols[1]
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),False)
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	print "Masses:", masses
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 8000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDTemp"]= 300.0
+	meta = MetaDynamics(ForceField, m)
+	meta.Prop()
 
 def TestJohnson():
 	"""
@@ -408,14 +428,14 @@ def david_testIR():
 	annealIndo.Prop()
 	indo.coords = annealIndo.Minx.copy()
 	indo.WriteXYZfile("./results/", "davidIR_opt")
-	# Perform a Harmonic analysis 
-	m=indo 
+	# Perform a Harmonic analysis
+	m=indo
 	print "Harmonic Analysis"
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
-	v = v.real 
+	v = v.real
 	print np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
-	for i in range(3*m.NAtoms()): 
+	for i in range(3*m.NAtoms()):
 		print np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
 		nm = v[:,i].reshape((m.NAtoms(),3))
 		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
@@ -483,14 +503,14 @@ def david_HarmonicAnalysis():
 	# annealIndo.Prop()
 	# indo.coords = annealIndo.Minx.copy()
 	# indo.WriteXYZfile("./results/", "davidIR_opt")
-	# # Perform a Harmonic analysis 
-	m=indo 
+	# # Perform a Harmonic analysis
+	m=indo
 	print "Harmonic Analysis"
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
-	v = v.real 
+	v = v.real
 	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
-	for i in range(3*m.NAtoms()): 
+	for i in range(3*m.NAtoms()):
 		np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
 		nm = v[:,i].reshape((m.NAtoms(),3))
 		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
@@ -1016,7 +1036,8 @@ def TestEE():
 #TestIR()
 # TestIndoIR()
 # david_testIR()
-david_HarmonicAnalysis()
+#david_HarmonicAnalysis()
+TestMetadynamics()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
