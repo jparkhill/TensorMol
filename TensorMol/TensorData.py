@@ -704,13 +704,18 @@ class TensorData_TFRecords(TensorData):
 				if (mols_done==400):
 					print "Seconds to process 400 molecules: ", time.time()-t0
 				mols_done = mols_done + 1
+		# self.NCases=casep_list
+		# print self.NCases
 		except Exception as Ex:
 				print "Likely you need to re-install MolEmb.", Ex
 		for element in atypes:
 			# Write the tfrecords file for this element.
 			t1=time.time()
 			ai = atypes.tolist().index(element)
-			data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+".tfrecords"
+			if self.test:
+				data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_test.tfrecords"
+			else:
+				data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_train.tfrecords"
 			self.ConvertToTFRec(cases_list[ai][:casep_list[ai]], labels_list[ai][:casep_list[ai]], data_name)
 			self.AvailableDataFiles.append([data_name])
 			self.AvailableElements.append(element)

@@ -673,13 +673,12 @@ class Mol:
 			natoms = int(lines[0])
 			forces=np.zeros((natoms,3))
 			read_forces = ((lines[1].strip().split(';'))[1]).replace("],[", ",").replace("[","").replace("]","").split(",")
-			if read_forces:
-				for j in range(natoms):
-					for k in range(3):
-						forces[j,k] = float(read_forces[j*3+k])
+			for j in range(natoms):
+				for k in range(3):
+					forces[j,k] = float(read_forces[j*3+k])
 			self.properties['forces'] = forces
 		except Exception as Ex:
-			print "Read Failed.", Ex
+			print "Reading Force Failed.", Ex
 
 	def MMFF94_Force_from_xyz(self, path):
 		"""
@@ -693,19 +692,32 @@ class Mol:
 			lines = f.readlines()
 			natoms = int(lines[0])
 			forces=np.zeros((natoms,3))
-			try:
-				read_forces = ((lines[1].strip().split(';'))[3]).replace("],[", ",").replace("[","").replace("]","").split(",")
-			except:
-				self.properties['mmff94forces'] = forces
-				pass
-				return
-			if read_forces:
-				for j in range(natoms):
-					for k in range(3):
-						forces[j,k] = float(read_forces[j*3+k])
+			read_forces = ((lines[1].strip().split(';'))[3]).replace("],[", ",").replace("[","").replace("]","").split(",")
+			for j in range(natoms):
+				for k in range(3):
+					forces[j,k] = float(read_forces[j*3+k])
 			self.properties['mmff94forces'] = forces
 		except Exception as Ex:
-			print "Read Failed.", Ex
+			print "Reading MMFF94 Force Failed.", Ex
+
+	def Charge_from_xyz(self, path):
+		"""
+		Reads the forces from the comment line in the md_dataset,
+		and if no forces exist sets them to zero. Switched on by
+		has_force=True in the ReadGDB9Unpacked routine
+		"""
+		try:
+			f = open(path, 'r')
+			lines = f.readlines()
+			natoms = int(lines[0])
+			charges=np.zeros((natoms))
+			read_charges = ((lines[1].strip().split(';'))[2]).replace("[","").replace("]","").split(",")
+			for j in range(natoms):
+				charges[j] = float(read_charges[j])
+			self.properties['mulliken'] = charges
+		except Exception as Ex:
+			print "Reading Charges Failed.", Ex
+
 
 	def Energy_from_xyz(self, path):
 		"""
@@ -718,7 +730,7 @@ class Mol:
 			energy = (lines[1].strip().split(';'))[0]
 			self.properties['energy'] = energy
 		except Exception as Ex:
-			print "Read Failed.", Ex
+			print "Reading Energy Failed.", Ex
 
 	def AtomName(self, i):
 		return atoi.keys()[atoi.values().index(self.atoms[i])]
