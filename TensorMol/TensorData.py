@@ -74,7 +74,7 @@ class TensorData():
 		self.scratch_outputs=None
 		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
 		self.scratch_test_outputs=None
-		self.set=None
+		#self.set=None
 		return
 
 	def ReloadSet(self):
@@ -116,8 +116,7 @@ class TensorData():
 		The other version builds each element separately
 		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
 		"""
-		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH" and self.dig.name !="ANI1_Sym")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere"
- 								and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" and self.dig.OType !="ForceMag")):
+		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere" and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" )):
 			raise Exception("Molwise Embedding not supported")
 		if (self.set == None):
 			try:
@@ -136,16 +135,109 @@ class TensorData():
 			for m in self.set.mols:
 				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
 		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
-		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float64) for element in atypes]
-		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float64) for element in atypes]
+		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
 		casep_list = [0 for element in atypes]
 		t0 = time.time()
 		ord = len(self.set.mols)
 		mols_done = 0
 		try:
-			for mi in xrange(ord):
+			for mi in range(ord):
 				m = self.set.mols[mi]
 				ins,outs = self.dig.TrainDigestMolwise(m)
+				for i in range(m.NAtoms()):
+					# Route all the inputs and outputs to the appropriate place...
+					ai = atypes.tolist().index(m.atoms[i])
+					cases_list[ai][casep_list[ai]] = ins[i]
+					labels_list[ai][casep_list[ai]] = outs[i]
+					casep_list[ai] = casep_list[ai]+1
+				if (mols_done%10000==0 and mols_done>0):
+					print mols_done
+				if (mols_done==400):
+					print "Seconds to process 400 molecules: ", time.time()-t0
+				mols_done = mols_done + 1
+		except Exception as Ex:
+				print "Likely you need to re-install MolEmb.", Ex
+		for element in atypes:
+			# Write the numpy arrays for this element.
+			ai = atypes.tolist().index(element)
+			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
+			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
+			alreadyexists = (os.path.isfile(insname) and os.path.isfile(outsname))
+			if (append and alreadyexists):
+				ti=None
+				to=None
+				inf = open(insname,"rb")
+				ouf = open(outsname,"rb")
+				ti = np.load(inf)
+				to = np.load(ouf)
+				inf.close()
+				ouf.close()
+				try:
+					cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
+					labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
+				except Exception as Ex:
+					print "Size mismatch with old training data, clear out trainsets"
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases)
+				np.save(ouf,labels)
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
+			else:
+				inf = open(insname,"wb")
+				ouf = open(outsname,"wb")
+				np.save(inf,cases_list[ai][:casep_list[ai]])
+				np.save(ouf,labels_list[ai][:casep_list[ai]])
+				inf.close()
+				ouf.close()
+				self.AvailableDataFiles.append([insname,outsname])
+				self.AvailableElements.append(element)
+				self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
+		self.Save() #write a convenience pickle.
+		return
+
+	def BuildTrainMolwise_tmp(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
+		"""
+		Generates inputs for all training data using the chosen digester.
+		This version builds all the elements at the same time.
+		The other version builds each element separately
+		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
+		"""
+		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere" and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" )):
+			raise Exception("Molwise Embedding not supported")
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
+		self.CheckShapes()
+		self.name=name_
+		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
+		if (len(atypes)==0):
+			atypes = self.set.AtomTypes()
+		LOGGER.debug("Will train atoms: "+str(atypes))
+		# Determine the size of the training set that will be made.
+		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
+		for element in atypes:
+			for m in self.set.mols:
+				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
+		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
+		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		casep_list = [0 for element in atypes]
+		t0 = time.time()
+		ord = len(self.set.mols)
+		mols_done = 0
+		try:
+			for mi in range(ord):
+				m = self.set.mols[mi]
+				ins,outs = self.dig.TrainDigestMolwise(m)
+				if np.any(np.abs(outs) > 300.):
+					continue
 				for i in range(m.NAtoms()):
 					# Route all the inputs and outputs to the appropriate place...
 					ai = atypes.tolist().index(m.atoms[i])
@@ -235,8 +327,8 @@ class TensorData():
 		for element in atypes:
 			DebugCases=[]
 			print "Digesting atom: ", element
-			cases = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float64)
-			labels = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float64)
+			cases = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32)
+			labels = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32)
 			casep = 0
 			t0 = time.time()
 			for mi in range(len(self.set.mols)):
@@ -379,9 +471,9 @@ class TensorData():
 		if (self.ScratchState != ele):
 			self.LoadElementToScratch(ele,False)
 		if (ncases>self.scratch_test_inputs.shape[0]):
-			print("Test Data is less than the batchsize...:(")
-			tmpinputs=np.zeros(shape=tuple([ncases]+list(self.dig.eshape)), dtype=np.float64)
-			tmpoutputs=np.zeros(shape=tuple([ncases]+list(self.dig.lshape)), dtype=np.float64)
+			print "Test Data is less than the batchsize... :( "
+			tmpinputs=np.zeros(shape=tuple([ncases]+list(self.dig.eshape)), dtype=np.float32)
+			tmpoutputs=np.zeros(shape=tuple([ncases]+list(self.dig.lshape)), dtype=np.float32)
 			tmpinputs[0:self.scratch_test_inputs.shape[0]] += self.scratch_test_inputs
 			tmpoutputs[0:self.scratch_test_outputs.shape[0]] += self.scratch_test_outputs
 			return (tmpinputs[ncases*(ministep):ncases*(ministep+1)], tmpoutputs[ncases*(ministep):ncases*(ministep+1)])
@@ -395,32 +487,30 @@ class TensorData():
 			print "Evaluating, ", len(desired), " predictions... "
 			print desired.shape, predicted.shape
 			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
-				err = predicted-desired
-				ders = np.linalg.norm(err, axis=1)
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
 				for i in range(100):
 					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
-				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired,axis=0)),str(np.average(predicted,axis=0)))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(predicted[:,-3:]-desired[:,-3:])), np.std(np.absolute(predicted[:,-3:]-desired[:,-3:])))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:,-3:],axis=0)),str(np.average(predicted[:,-3:],axis=0)))
 				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
 			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
 				# Convert them back to cartesian
 				desiredc = SphereToCartV(desired)
 				predictedc = SphereToCartV(predicted)
-				err = predictedc-desiredc
-				ders = np.linalg.norm(err, axis=1)
+				ders=np.zeros(len(desired))
+				#comp=np.zeros(len(desired))
+				for i in range(len(desiredc)):
+					ders[i] = np.linalg.norm(predictedc[i,-3:]-desiredc[i,-3:])
 				for i in range(100):
 					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(predicted[:,-3:]-desired[:,-3:])), np.std(np.absolute(predicted[:,-3:]-desired[:,-3:])))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
 				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
-			elif (self.dig.OType == "ForceMag"):
-				err = predicted-desired
-				for i in range(100):
-					print "Desired: ",i,desired[i]," Predicted: ",predicted[i]
-				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
-				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:],axis=0)),str(np.average(predicted[:],axis=0)))
 			elif (self.dig.OType=="SmoothP"):
 				ders=np.zeros(len(desired))
 				iers=np.zeros(len(desired))
@@ -626,8 +716,9 @@ class TensorData():
 		return
 
 class TensorData_TFRecords(TensorData):
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, type_="atom"):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, test_=False, type_="atom"):
 		TensorData.__init__(self, MSet_, Dig_, Name_, type_)
+		self.test = test_
 
 	def _int64_feature(self, value):
 		return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))

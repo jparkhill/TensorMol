@@ -116,13 +116,21 @@ class MSet:
 		for j in ord:
 			self.mols[j].coords -= self.mols[j].Center()
 
-	def EQ_forces(self):
+	def SplitTest(self):
 		"""
-		Sets forces to 0 for every molecule which has no forces
+		Split the set into a train and test set based on PARAMS["test_ratio"].
 		"""
-		ord = range(len(self.mols))
-		for j in ord:
-			self.mols[j].Set_EQ_force()
+		b=MSet(self.name+"_train")
+		c=MSet(self.name+"_test")
+		mols = random.sample(range(len(self.mols)), int(len(self.mols)*PARAMS["TestRatio"]))
+		for i in xrange(len(self.mols)):
+			if i in mols:
+				c.mols.append(self.mols[i])
+			else:
+				b.mols.append(self.mols[i])
+		b.Save()
+		c.Save()
+		return b, c
 
 	def NAtoms(self):
 		nat=0

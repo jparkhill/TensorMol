@@ -54,7 +54,7 @@ def TestANI1():
 		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
 		tset.BuildTrain("H2O_augmented_more_squeeze_cutoff5")
 
-	if (1):
+	if (0):
                 a = MSet("H2O_augmented_more_cutoff5")
                 a.Load()
                 print "Set elements: ", a.AtomTypes()
@@ -80,6 +80,36 @@ def TestANI1():
 		manager.Train(maxstep=2001)
 		#manager= TFMolManage("Mol_H2O_400K_squeeze_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 #manager.Continue_Training(maxsteps=2)
+
+        if (0):
+                a = MSet("H2O_augmented_more_cutoff5")
+                a.Load()
+                print "Set elements: ", a.AtomTypes()
+                TreatedAtoms = a.AtomTypes()
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Update(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+                tset.BuildTrain("H2O_augmented_more_cutoff5_float64")
+
+
+
+        if (1):
+                tset = TensorMolData_BP_Update(MSet(),MolDigester([]),"H2O_augmented_more_cutoff5_float64_ANI1_Sym")
+                #tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_augmented_more_400K_squeeze_cutoff5_ANI1_Sym")
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Update") # Initialzie a manager than manage the training of neural network.
+                PARAMS["hidden1"] = 100
+                PARAMS["hidden2"] = 100
+                PARAMS["hidden3"] = 100
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 2001
+                PARAMS["batch_size"] = 10000
+                PARAMS["test_freq"] = 10
+		PARAMS["tf_prec"] = "tf.float64"
+                manager.Train(maxstep=2001)
+                #manager= TFMolManage("Mol_H2O_400K_squeeze_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+                #manager.Continue_Training(maxsteps=2)
+
+
 
 	if (0):
                 a = MSet("H2O_dimer_opt")

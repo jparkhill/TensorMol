@@ -43,20 +43,6 @@ def Dimer_ChargeCharge(m_):
 			cc_energy += m_.properties['atom_charges'][i]*m_.properties['atom_charges'][j]/(m_.DistMatrix[i][j]*BOHRPERA)
 	return cc_energy
 
-
-def Dimer_Replusive(m_):
-        """calculate the charge-charge interaction between two monomer in a dimer"""
-        replu_energy = 0.0
-	if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
-        seperate_index = m_.properties["natom_each_mono"][0]
-        if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
-        for i in range (0, seperate_index):
-                for j in range (seperate_index, m_.NAtoms()):
-                        replu_energy += 0.1/(m_.DistMatrix[i][j])**12
-        return replu_energy
-
 def Dimer_ChargeCharge_Grad(m_):
 	"""calculate the gradient of charge-charge interaction between two monomer in a dimer"""
 	if type(m_.DistMatrix) is not np.ndarray:
@@ -93,22 +79,6 @@ def Dimer_Cutoff_Grad(m_, dist_, cutoff_, cutoff_width_):
 				cutoff_grad[i][q] = A/dist_*(m_.properties["center"][1][q] - m_.properties["center"][0][q])*mass[i]/mass_sum_2
 	return cutoff_grad
 
-def Dimer_Replusive_Grad(m_):
-        if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
-        replu_energy_grad = np.zeros((m_.NAtoms(), 3))
-        seperate_index = m_.properties["natom_each_mono"][0]
-	for i in range (0, m_.NAtoms()):
-                for j in range (0, seperate_index):
-                        for k in range (seperate_index, m_.NAtoms()):
-                                for q in range (0, 3):
-                                        if j == i:
-                                                replu_energy_grad[i][q] +=  - 0.1*(m_.coords[j][q]-m_.coords[k][q])/(m_.DistMatrix[j][k]**14)
-                                        elif k == i:
-						replu_energy_grad[i][q] +=  - 0.1*(m_.coords[k][q]-m_.coords[j][q])/(m_.DistMatrix[j][k]**14)
-                                        else:  
-						continue 
-        return replu_energy_grad
 
 def ElectricFieldForce(q_,E_):
 	"""

@@ -47,7 +47,7 @@ class MolDigester:
 			Rs.append(i*self.SensRadius/float(self.ngrid))
 		for i in range (0, mol.NAtoms()):
 			sym =  MolEmb.Make_Sym(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), i, self.SensRadius, zeta, eta1, eta2, Rs)
-			sym = np.asarray(sym[0], dtype=np.float64)
+			sym = np.asarray(sym[0], dtype=np.float32)
 			sym = sym.reshape((self.nsym*sym.shape[1] *  sym.shape[2]))
 			#print "sym", sym
 			SYM.append(sym)
@@ -61,7 +61,7 @@ class MolDigester:
 		ngrids = 10
 		for i in range (0, mol.NAtoms()):
 			cm_bp = MolEmb.Make_CM(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, i,  0.0 )
-			cm_bp = np.asarray(cm_bp[0], dtype=np.float64)
+			cm_bp = np.asarray(cm_bp[0], dtype=np.float32)
 			cm_bp.flatten()
 			CM_BP.append(cm_bp)
 		CM_BP = np.array(CM_BP)
@@ -78,7 +78,7 @@ class MolDigester:
 			dist = mol.bonds[i][1]
 			cm_bp_1  = cm_bp_1[0][0].reshape(-1)
 			cm_bp_2  = cm_bp_2[0][0].reshape(-1)
-			cm_bond_bp = np.asarray(list(cm_bp_1)+list(cm_bp_2)+[1.0/dist], dtype=np.float64)
+			cm_bond_bp = np.asarray(list(cm_bp_1)+list(cm_bp_2)+[1.0/dist], dtype=np.float32)
 			cm_bond_bp.flatten()
 			CM_Bond_BP.append(cm_bond_bp)
 		CM_Bond_BP = np.array(CM_Bond_BP)
@@ -106,7 +106,7 @@ class MolDigester:
 			dist = mol.bonds[i][1]
 			ANI1_Ins_1 = ANI1_Ins_1.reshape((-1))
 			ANI1_Ins_2 = ANI1_Ins_2.reshape((-1))
-			ANI1_Ins_bond_bp.append(np.asarray(list(ANI1_Ins_1)+list(ANI1_Ins_2)+[1.0/dist], dtype=np.float64))
+			ANI1_Ins_bond_bp.append(np.asarray(list(ANI1_Ins_1)+list(ANI1_Ins_2)+[1.0/dist], dtype=np.float32))
 		ANI1_Ins_bond_bp = np.asarray(ANI1_Ins_bond_bp)
 		ANI1_Ins_bond_bp_deri = np.zeros((ANI1_Ins_bond_bp.shape[0], ANI1_Ins_bond_bp.shape[1]))
 		return ANI1_Ins_bond_bp, ANI1_Ins_bond_bp_deri
@@ -124,7 +124,7 @@ class MolDigester:
 			ANI1_Ins = MolEmb.Make_ANI1_Sym(PARAMS, tmpcoords, tmpatoms.astype(np.uint8), self.eles.astype(np.uint8), mol.NAtoms()) # -1 means do it for all atoms
 			dist = mol.bonds[i][1]
 			ANI1_Ins = ANI1_Ins.reshape((-1))
-			ANI1_Ins_bond_bp.append(np.asarray(list(ANI1_Ins)+[1.0/dist], dtype=np.float64))
+			ANI1_Ins_bond_bp.append(np.asarray(list(ANI1_Ins)+[1.0/dist], dtype=np.float32))
 		ANI1_Ins_bond_bp = np.asarray(ANI1_Ins_bond_bp)
 		ANI1_Ins_bond_bp_deri = np.zeros((ANI1_Ins_bond_bp.shape[0], ANI1_Ins_bond_bp.shape[1]))
 		return ANI1_Ins_bond_bp, ANI1_Ins_bond_bp_deri
@@ -134,7 +134,7 @@ class MolDigester:
 		ngrids = 10
 		for i in range (0, mol.NAtoms()):
 			cm_bp = MolEmb.Make_CM(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8), self.eles.astype(np.uint8), self.SensRadius, ngrids, i,  0.0 )
-			cm_bp = np.asarray(cm_bp[0], dtype=np.float64)
+			cm_bp = np.asarray(cm_bp[0], dtype=np.float32)
 			cm_bp.flatten()
 			CM_BP.append(cm_bp)
 		CM_BP = np.array(CM_BP)
@@ -167,7 +167,7 @@ class MolDigester:
 			connected_bond2 = [item for sublist in connected_bond2 for item in sublist]
 
 			dist = mol.bonds[i][1]
-			connectedbond_bond_bp = np.asarray(connected_bond1+ connected_bond2 +[1.0/dist], dtype=np.float64)
+			connectedbond_bond_bp = np.asarray(connected_bond1+ connected_bond2 +[1.0/dist], dtype=np.float32)
 			#print "connectedbond_bond_bp", connectedbond_bond_bp
 			ConnectedBond_Bond_BP.append(connectedbond_bond_bp)
 		ConnectedBond_Bond_BP = np.array(ConnectedBond_Bond_BP)
@@ -220,7 +220,7 @@ class MolDigester:
 			connected_bond2 = [item for sublist in connected_bond2 for item in sublist]
 			connected_angle2 = [b[0:self.ngrid] + [0]*(self.ngrid-len(b)) for b in connected_angle2 ]
 			connected_angle2 = [item for sublist in connected_angle2 for item in sublist]
-			connectedbond_angle_bond_bp = np.asarray(connected_bond1 + connected_bond2 + connected_angle1 + connected_angle2 + [1.0/bond_dist], dtype=np.float64)
+			connectedbond_angle_bond_bp = np.asarray(connected_bond1 + connected_bond2 + connected_angle1 + connected_angle2 + [1.0/bond_dist], dtype=np.float32)
 			ConnectedBond_Angle_Bond_BP.append(connectedbond_angle_bond_bp)
 		ConnectedBond_Angle_Bond_BP = np.array(ConnectedBond_Angle_Bond_BP)
 		ConnectedBond_Angle_Bond_BP_deri = np.zeros((ConnectedBond_Angle_Bond_BP.shape[0], ConnectedBond_Angle_Bond_BP.shape[1]))
@@ -232,7 +232,7 @@ class MolDigester:
 		GauInv = []
 		for i in range (0, mol.NAtoms()):
 			gauinv = MolEmb.Make_Inv(mol.coords, (mol.coords[i]).reshape((1,-1)), mol.atoms.astype(np.uint8),self.SensRadius, i)
-			gauinv = np.asarray(gauinv[0], dtype = np.float64 )
+			gauinv = np.asarray(gauinv[0], dtype = np.float32 )
 			gauinv = gauinv.reshape(-1)
 			GauInv.append(gauinv)
 		GauInv = np.asarray(GauInv)
@@ -365,7 +365,7 @@ class MolDigester:
 			elif (self.OType == "AEAndForce"):
 				en = mol_.properties["atomization"]
 				frce = mol_.properties["force"]
-				Outs = np.zeros(3*mol_.NAtoms()+1, dtype = np.float64)
+				Outs = np.zeros(3*mol_.NAtoms()+1, dtype = np.float32)
 				Outs[0] = en
 				Outs[1:] = frce.flatten()
 			elif (self.OType == "Force"):

@@ -10,11 +10,11 @@ from NN_MBE import *
 class MBE_Optimizer:
     def __init__(self,nn_mbe_):
     	self.energy_thresh = 1e-9
-    	self.force_thresh = 0.00001
+    	self.force_thresh = 0.001
     	self.step_size = 0.1
-    	self.momentum = 0.9
+    	self.momentum = 0.0
     	self.momentum_decay = 0.7
-    	self.max_opt_step = 10000
+    	self.max_opt_step = 5000
     	self.nn_mbe = nn_mbe_
     	self.m_max = 7
     	return
@@ -34,7 +34,6 @@ class MBE_Optimizer:
     		if step==0:
     			old_force =force
     		force = (1-self.momentum)*force + self.momentum*old_force
-		print "force:", force
     		old_force =force
     		energy = m.nn_energy
     		energy_his.append(energy)
@@ -42,7 +41,7 @@ class MBE_Optimizer:
     		step += 1
     		m.coords = m.coords - self.step_size*force
     		m.Reset_Frags()
-		#m.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
+		m.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
 		self.nn_mbe.NN_Energy_Force(m)
     		#self.nn_mbe.NN_Energy(m)
     		energy_err = abs(m.nn_energy - energy)
@@ -51,7 +50,7 @@ class MBE_Optimizer:
     		print "step:", step
     		print "old_energy:", energy, "new_energy:", m.nn_energy, "energy_err:", energy_err
     		if (step%10 == 0):
-    			m.WriteXYZfile("./results/", "OptLog")
+    			m.WriteXYZfile("./datasets/", "OptLog")
     	np.savetxt("gd_opt_no_momentum.dat", np.asarray(energy_his))
 	return
 
