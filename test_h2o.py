@@ -92,7 +92,7 @@ def TestANI1():
 
 
 
-        if (1):
+        if (0):
                 tset = TensorMolData_BP_Update(MSet(),MolDigester([]),"H2O_augmented_more_cutoff5_float64_ANI1_Sym")
                 #tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_augmented_more_400K_squeeze_cutoff5_ANI1_Sym")
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Update") # Initialzie a manager than manage the training of neural network.
@@ -110,7 +110,7 @@ def TestANI1():
                 #manager.Continue_Training(maxsteps=2)
 
 
-	if (0):
+	if (1):
 		a = MSet("H2O_augmented_more_cutoff5")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
