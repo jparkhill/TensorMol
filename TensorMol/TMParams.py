@@ -1,13 +1,14 @@
 import logging, time, os
 from math import pi as Pi
 import numpy as np
+import tensorflow as tf
 
 class TMParams(dict):
 	def __init__(self, *args, **kwargs ):
 		myparam = kwargs.pop('myparam', '')
 		dict.__init__(self, *args, **kwargs )
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
-		self["check_level"] = 3 # whether to test the consistency of several things...
+		self["check_level"] = 1 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
 		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
@@ -46,11 +47,13 @@ class TMParams(dict):
 		self["MBE_ORDER"] = 3
 		# Training Parameters
 		self["NeuronType"] = "relu"
+		self["tf_prec"] = "tf.float32"
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001
 		self["batch_size"] = 1000
 		self["test_freq"] = 50
+		self["HiddenLayers"] = [512, 512, 512]
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
