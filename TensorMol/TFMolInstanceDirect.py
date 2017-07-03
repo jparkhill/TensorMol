@@ -21,7 +21,7 @@ class BumpHolder:
 		Which does nothing but hold a graph and execute it.
 		"""
 		self.graph = None
-		self.input_shape =
+		self.input_shape = None
 		self.input_pl = None
 		self.output_shape = None
 		self.output_pl = None

@@ -1183,7 +1183,7 @@ class Queue_Instance:
 	"""
 	Manages a persistent training network instance
 	"""
-	def __init__(self, TData_, ele_ = 1 , Name_=None, NetType_=None):
+	def __init__(self, TData_, TestData_, ele_ = 1 , Name_=None, NetType_=None):
 		"""
 		Args:
 			TData_: a TensorData
@@ -1234,6 +1234,7 @@ class Queue_Instance:
 
 		self.element = ele_
 		self.TData = TData_
+		self.TestData = TestData_
 		# self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
 		if (not os.path.isdir(self.path)):
 			os.mkdir(self.path)
@@ -1611,7 +1612,7 @@ class Queue_Instance:
 		label.set_shape(self.outshape)
 		return inputs, label
 
-	def inputs(self):
+	def inputs(self, test_=False):
 		"""Reads input data num_epochs times.
 		Args:
 		train: Selects between the training (True) and validation (False) data.
@@ -1628,8 +1629,12 @@ class Queue_Instance:
 		must be run using e.g. tf.train.start_queue_runners().
 		"""
 		num_epochs = self.max_steps
-		filename = os.path.join(
-					self.TData.path+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.element)+".tfrecords")
+		if test_:
+			filename = os.path.join(
+				self.TestData.path+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.element)+".tfrecords")
+		else:
+			filename = os.path.join(
+				self.TData.path+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.element)+".tfrecords") 
 
 		with tf.name_scope('input'):
 			filename_queue = tf.train.string_input_producer(

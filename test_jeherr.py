@@ -511,126 +511,6 @@ def MakeTestSet():
 	test_set = TensorData_TFRecords(c,d, test_=True)
 	test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
-import matplotlib.pyplot as plt
-a=MSet("SmallMols_forcecut")
-a.Load()
-ele_count = [0,0,0,0]
-for mol in a.mols:
-	for at in mol.atoms:
-		if at == 1:
-			ele_count[0] += 1
-		if at == 6:
-			ele_count[1] += 1
-		if at == 7:
-			ele_count[2] += 1
-		if at == 8:
-			ele_count[3] += 1
-# # h_charge = np.zeros((ele_count[0]))
-# # c_charge = np.zeros((ele_count[1]))
-# # n_charge = np.zeros((ele_count[2]))
-# # o_charge = np.zeros((ele_count[3]))
-# # hcount,ccount,ncount,ocount = 0,0,0,0
-# # for mol in a.mols:
-# # 	for i, at in enumerate(mol.atoms):
-# # 		if at == 1:
-# # 			h_charge[hcount] = mol.properties["mulliken"][i]
-# # 			hcount+=1
-# # 		if at == 6:
-# # 			c_charge[ccount] = mol.properties["mulliken"][i]
-# # 			ccount+=1
-# # 		if at == 7:
-# # 			n_charge[ncount] = mol.properties["mulliken"][i]
-# # 			ncount+=1
-# # 		if at == 8:
-# # 			o_charge[ocount] = mol.properties["mulliken"][i]
-# # 			ocount+=1
-
-# # hist, bins = np.histogram(h_charge, bins=100)
-# # width = 0.7 * (bins[1] - bins[0])
-# # center = (bins[:-1] + bins[1:]) / 2
-# # plt.bar(center, hist, align='center', width=width)
-# # plt.show()
-# #
-# # hist, bins = np.histogram(c_charge, bins=100)
-# # width = 0.7 * (bins[1] - bins[0])
-# # center = (bins[:-1] + bins[1:]) / 2
-# # plt.bar(center, hist, align='center', width=width)
-# # plt.show()
-# #
-# # hist, bins = np.histogram(n_charge, bins=100)
-# # width = 0.7 * (bins[1] - bins[0])
-# # center = (bins[:-1] + bins[1:]) / 2
-# # plt.bar(center, hist, align='center', width=width)
-# # plt.show()
-# #
-# # hist, bins = np.histogram(o_charge, bins=100)
-# # width = 0.7 * (bins[1] - bins[0])
-# # center = (bins[:-1] + bins[1:]) / 2
-# # plt.bar(center, hist, align='center', width=width)
-# # plt.show()
-#
-h_force = np.zeros((ele_count[0],2,3))
-c_force = np.zeros((ele_count[1],2,3))
-n_force = np.zeros((ele_count[2],2,3))
-o_force = np.zeros((ele_count[3],2,3))
-hcount,ccount,ncount,ocount = 0,0,0,0
-for mol in a.mols:
-	for i, at in enumerate(mol.atoms):
-		if at == 1:
-			h_force[hcount] = mol.properties["forces"][i]
-			hcount+=1
-		if at == 6:
-			c_force[ccount] = mol.properties["forces"][i]
-			ccount+=1
-		if at == 7:
-			n_force[ncount] = mol.properties["forces"][i]
-			ncount+=1
-		if at == 8:
-			o_force[ocount] = mol.properties["forces"][i]
-			ocount+=1
-
-hist, bins = np.histogram(h_force, bins=100)
-width = 0.7 * (bins[1] - bins[0])
-center = (bins[:-1] + bins[1:]) / 2
-plt.bar(center, hist, align='center', width=width)
-plt.show()
-
-hist, bins = np.histogram(c_force, bins=100)
-width = 0.7 * (bins[1] - bins[0])
-center = (bins[:-1] + bins[1:]) / 2
-plt.bar(center, hist, align='center', width=width)
-plt.show()
-
-hist, bins = np.histogram(n_force, bins=100)
-width = 0.7 * (bins[1] - bins[0])
-center = (bins[:-1] + bins[1:]) / 2
-plt.bar(center, hist, align='center', width=width)
-plt.show()
-
-hist, bins = np.histogram(o_force, bins=100)
-width = 0.7 * (bins[1] - bins[0])
-center = (bins[:-1] + bins[1:]) / 2
-plt.bar(center, hist, align='center', width=width)
-plt.show()
-
-
-
-
-
-# a=MSet("SmallMols")
-# a.Load()
-# rmlist = []
-# for i, mol in enumerate(a.mols):
-# 	if np.any(np.abs(mol.properties["forces"]) > 300.0):
-# 		rmlist.append(i)
-# b=MSet("SmallMols_forcecut")
-# print len(rmlist)
-# for i, mol in enumerate(a.mols):
-# 	if i not in rmlist:
-# 		b.mols.append(mol)
-# b.Save()
-# print len(b.mols)
-
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)
@@ -652,7 +532,7 @@ plt.show()
 # Brute_LJParams()
 # QueueTrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=1)
 # TestForces()
-# MakeTestSet()
+MakeTestSet()
 
 
 # a=MSet("pentane_eq_align")
