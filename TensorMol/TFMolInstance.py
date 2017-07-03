@@ -1244,10 +1244,6 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 				sp_atomoutputs = tf.SparseTensor(sparse_index, rshpflat, dense_shape=[tf.cast(self.batch_size_output, tf.int64), tf.cast(shp_out[0], tf.int64)])
 				mol_tmp = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
 				output = tf.add(output, mol_tmp)
-				#rshpflat = tf.reshape(cut,[shp_out[0]])
-				#output = tf.scatter_add(output, index, rshpflat)
-				#tmp = tf.matmul(rshp,mats)
-				#output = tf.add(output,tmp)
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return output, atom_outputs

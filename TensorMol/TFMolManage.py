@@ -50,8 +50,8 @@ class TFMolManage(TFManage):
 		Args:
 			maxstep: The number of training steps.
 		"""
-		if (self.TData.dig.eshape==None):
-			raise Exception("Must Have Digester Shape.")
+		#if (self.TData.dig.eshape==None):
+		#	raise Exception("Must Have Digester Shape.")
 		# It's up the TensorData to provide the batches and input output shapes.
 		if (self.NetType == "fc_classify"):
 			self.Instances = MolInstance_fc_classify(self.TData, None)

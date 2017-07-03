@@ -110,6 +110,23 @@ def TestANI1():
                 #manager.Continue_Training(maxsteps=2)
 
 
+	if (0):
+		a = MSet("H2O_augmented_more_cutoff5")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct") # Initialzie a manager than manage the training of neural network.
+		PARAMS["hidden1"] = 100
+                PARAMS["hidden2"] = 100
+                PARAMS["hidden3"] = 100
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 2001
+                PARAMS["batch_size"] = 1000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+                manager.Train(maxstep=2001)
 
 	if (0):
                 a = MSet("H2O_dimer_opt")

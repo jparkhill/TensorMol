@@ -1026,10 +1026,10 @@ class TensorMolData_BP_Direct(TensorMolData):
 
 
 	def LoadData(self):
-		self.set.mols = random.shuffle(self.set.mols)
+		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
-		if (self.dig == "AtomizationEnergy"):
+		if (self.dig.OType == "AtomizationEnergy"):
 			labels = np.zeros((self.Nmols), dtype = np.float64)
 		else:
 			raise Exception("Output Type is not implemented yet")
@@ -1038,7 +1038,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 		for i, mol in enumerate(self.set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
-			if (self.dig == "AtomizationEnergy"):
+			if (self.dig.OType  == "AtomizationEnergy"):
 				labels[i] = mol.properties["atomization"]
 			else:
                         	raise Exception("Output Type is not implemented yet")
@@ -1075,9 +1075,9 @@ class TensorMolData_BP_Direct(TensorMolData):
 			self.xyzs, self.Zs, self.labels  = self.LoadData()
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
-		self.NTrain = LastTrainCase
-                self.NTest = self.NTestMol
-		self.test_ScratchPointer = LastTrainCase
+		self.NTrain = self.LastTrainMol
+                self.NTest = self.NTestMols
+		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
 		self.ScratchState = 1 
 		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
@@ -1108,7 +1108,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 		if (ncases > self.NTest):
 			raise Exception("Insufficent training data to fill a batch"+str(self.NTest)+" vs "+str(ncases))
 		if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
-			self.test_ScratchPointer = LastTrainCase
+			self.test_ScratchPointer = self.LastTrainMol
 		self.test_ScratchPointer += ncases
                 xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
                 Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
