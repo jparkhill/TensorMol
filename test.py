@@ -509,13 +509,13 @@ def TestDipole():
 		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
 		tset.BuildTrain("chemspider9_multipole")
 
-	if (0):
+	if (1):
 		a = MSet("chemspider9")
 		a.Load()
 		TreatedAtoms = a.AtomTypes()
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole2")
 		tset = TensorMolData_BP_Multipole_2(a,d, order_=1, num_indis_=1, type_="mol")
-		tset.BuildTrain("chemspider9_multipole3")
+		tset.BuildTrain("chemspider9_multipole3_float64")
 
 	if (0):
 		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
@@ -523,7 +523,16 @@ def TestDipole():
 		manager.Train()
 
 	if (1):
-		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
+		PARAMS["hidden1"] = 100
+                PARAMS["hidden2"] = 100
+                PARAMS["hidden3"] = 100
+                PARAMS["learning_rate"] = 0.0001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 501
+                PARAMS["batch_size"] = 10000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_float64_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"Dipole_BP_2")
 		manager.Train()
 
@@ -994,11 +1003,11 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-TestANI1()
+#TestANI1()
 #TestBP_WithGrad()
 #Test_ULJ()
 #Test_LJMD()
-#TestDipole()
+TestDipole()
 #TestJohnson()
 #TestIR()
 # TestIndoIR()
