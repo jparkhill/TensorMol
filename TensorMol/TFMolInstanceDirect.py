@@ -455,6 +455,26 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
 		print ("self.inshape:", self.inshape)
 
+
+        def Clean(self):
+                Instance.Clean(self)
+                self.xyzs_pl=None
+                self.check = None
+                self.Zs_pl=None
+                self.label_pl=None
+                self.atom_outputs = None
+		self.Scatter_Sym = None
+		self.Sym_Index = None
+		self.options = None
+		self.run_metadata = None
+		self.tformer = None
+		#self.TData = None
+		#self.tf_prec = None
+		#for key in self.__dict__:
+		#	print ("key:", key, type(self.__dict__[key]), "\n")
+                return
+
+
 	def train_prepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
@@ -473,12 +493,15 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
+			#self.gradients  = tf.gradients(self.Scatter_Sym, self.xyzs_pl)
 			self.check = tf.add_check_numerics_ops()
                         self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
                         self.summary_op = tf.summary.merge_all()
                         init = tf.global_variables_initializer()
                         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver = tf.train.Saver()
+                        self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
                         self.sess.run(init)
                         self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                         self.run_metadata = tf.RunMetadata()
@@ -604,10 +627,12 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
                 for ministep in range (0, int(Ncase_train/self.batch_size)):
                         batch_data = self.TData.GetTrainBatch(self.batch_size)
                         actual_mols  = self.batch_size
-                        dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+                        #dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradients  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradients], feed_dict=self.fill_feed_dict(batch_data))
                         train_loss = train_loss + loss_value
                         duration = time.time() - start_time
                         num_of_mols += actual_mols
+			#print ("gradients:", gradients)
                 self.print_training(step, train_loss, num_of_mols, duration)
                 return
 

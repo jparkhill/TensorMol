@@ -1018,10 +1018,12 @@ class TensorMolData_BP_Direct(TensorMolData):
 
 	def CleanScratch(self):
 		TensorData.CleanScratch(self)
+		self.raw_it = None
 		self.xyzs = None
 		self.Zs = None
 		self.labels = None
 		self.grads = None
+		self.dig = None
 		return
 
 

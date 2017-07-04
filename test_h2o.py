@@ -124,9 +124,10 @@ def TestANI1():
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 2001
                 PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 10
+                PARAMS["test_freq"] = 1
                 PARAMS["tf_prec"] = "tf.float64"
-                manager.Train(maxstep=2001)
+		PARAMS["max_steps"] = 2
+                manager.Train(maxstep=2)
 
 	if (0):
                 a = MSet("H2O_dimer_opt")

@@ -494,7 +494,8 @@ class ANISym:
 			#self.SymOutput_R = TFSymRSet(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut)
 			#self.SymOutput  = TFSymSet(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index = NNInterface(self.xyz_pl, self.Z_pl, Ele, self.SymOutput)
-			self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)	
+			self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
+			self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)	
 	                init = tf.global_variables_initializer()
 	                self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 	                self.sess.run(init)
@@ -508,6 +509,7 @@ class ANISym:
 	def Generate_ANISYM(self):
 		xyzs = np.zeros((self.nmol, self.MaxAtoms, 3),dtype=np.float64)	
 		Zs = np.zeros((self.nmol, self.MaxAtoms), dtype=np.int32)
+		random.shuffle(self.set.mols)
 		for i, mol in enumerate(self.set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
@@ -520,8 +522,9 @@ class ANISym:
 			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl)
 			t1 = time.time()
 			#sym_output, grad = self.sess.run([self.SymOutput, self.SymGrads], feed_dict = feed_dict)
-			sym_output, sym_index = self.sess.run([self.Scatter_Sym, self.Sym_Index], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			sym_output, sym_index, gradient = self.sess.run([self.Scatter_Sym, self.Sym_Index, self.gradient], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			print ("i: ", i,  "sym_ouotput: ", len(sym_output)," time:", time.time() - t, " second", "gpu time:", time.time()-t1, sym_index)
+			print ("gradient:", gradient[0].shape)
 			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
             		#chrome_trace = fetched_timeline.generate_chrome_trace_format()
             		#with open('timeline_step_%d_new.json' % i, 'w') as f:
