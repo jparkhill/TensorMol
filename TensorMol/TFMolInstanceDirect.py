@@ -15,25 +15,43 @@ from TensorMol.ElectrostaticsTF import *
 from TensorMol.RawEmbeddings import *
 
 class BumpHolder:
-	def __init__(self,m):
+	def __init__(self,natom_,maxbump_):
 		"""
-		This should be the new base-class for TensorFlow Ops.
-		Which does nothing but hold a graph and execute it.
+		Holds a bump-function graph to allow for rapid
+		metadynamics.
+
+		Args:
+			m: a molecule.
 		"""
-		self.graph = None
-		self.input_shape = None
-		self.input_pl = None
-		self.output_shape = None
-		self.output_pl = None
+		self.natom = natom_
+		self.maxbump = maxbump_
 		self.sess = None
+		self.Prepare()
+		self.xyzs_pl = None
+		self.x_pl = None
+		self.nb_pl = None
+		self.h = None
+		self.w = None
+		self.Prepare()
 		return
-
 	def Prepare(self):
+		with tf.Graph().as_default():
+			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
+			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.natom,3]))
+			self.nb_pl=tf.placeholder(tf.int32)
+			self.h = tf.Variable(0.6,dtype = tf.float64)
+			self.w = tf.Variable(1.0,dtype = tf.float64)
+			init = tf.global_variables_initializer()
+			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
+			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
 		return
-
-	def Execute(self):
-		return
-
+	def Bump(self, BumpCoords, x_, NBump_):
+		"""Returns the Bump force.
+		"""
+		return self.sess.run([self.BE,self.BF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
 
 class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 	"""
