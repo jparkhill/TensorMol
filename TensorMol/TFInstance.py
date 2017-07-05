@@ -1476,11 +1476,7 @@ class Queue_Instance:
 		return output
 
 	def loss_op(self, output, labels):
-		try:
-			diff  = tf.subtract(output, labels)
-		except:
-			print("tf.sub() is deprecated in tensorflow 1.0 in favor of tf.subtract(). Please upgrade soon.")
-			diff  = tf.sub(output, labels)
+		diff  = tf.subtract(output, labels)
 		loss = tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
@@ -1529,7 +1525,7 @@ class Queue_Instance:
 		return
 
 	def train_step(self,step):
-		Ncase_train = 10000
+		Ncase_train = self.TData.SamplesPerElement[self.element]
 		start_time = time.time()
 		train_loss =  0.0
 		total_correct = 0
@@ -1574,7 +1570,7 @@ class Queue_Instance:
 			return
 
 	def test(self, step):
-		Ncase_test = 10000
+		Ncase_test = self.TestData.SamplesPerElement[self.element]
 		test_loss =  0.0
 		test_start_time = time.time()
 		#for ministep in range (0, int(Ncase_test/self.batch_size)):
@@ -1631,10 +1627,10 @@ class Queue_Instance:
 		num_epochs = self.max_steps
 		if test_:
 			filename = os.path.join(
-				self.TestData.path+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.element)+".tfrecords")
+				self.TestData.AvailableDataFiles[self.element])
 		else:
 			filename = os.path.join(
-				self.TData.path+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.element)+".tfrecords") 
+				self.TData.AvailableDataFiles[self.element])
 
 		with tf.name_scope('input'):
 			filename_queue = tf.train.string_input_producer(
@@ -1645,9 +1641,9 @@ class Queue_Instance:
 			# Shuffle the examples and collect them into batch_size batches.
 			# (Internally uses a RandomShuffleQueue.)
 			# We run this in two threads to avoid being a bottleneck.
-			inputs, sparse_labels = tf.train.shuffle_batch(
+			input_batch, label_batch = tf.train.shuffle_batch(
 				[inputs, label], batch_size=self.batch_size, num_threads=8,
-				capacity=10000 + 3 * self.batch_size,
+				capacity = 5*self.batch_size,
 				# Ensures a minimum amount of shuffling of examples.
-				min_after_dequeue=10000)
-			return inputs, sparse_labels
+				min_after_dequeue = 2*self.batch_size)
+			return input_batch, label_batch

@@ -459,10 +459,12 @@ def Brute_LJParams():
 	print resbrute[1]
 	# print ins.LJFrc(p)
 
-def QueueTrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
+def QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
 	if (BuildTrain_):
-		a=MSet(set_)
+		a=MSet(trainset_)
 		a.Load()
+		b=MSet(testset_)
+		b.Load()
 		if numrot_ != None:
 			a = a.RotatedClone(numrot_)
 			a.Save(a.name+"_"+str(numrot_)+"rot")
@@ -472,8 +474,9 @@ def QueueTrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numro
 		tset = TensorData_TFRecords(a,d)
 		tset.BuildTrainMolwise(set_,TreatedAtoms)
 	else:
-		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,False,"fc_sqdiff_queue")
+		trainset = TensorData_TFRecords(None,None,trainset_+"_"+dig_)
+		testset = TensorData_TFRecords(None, None,testset_+"_"+dig_)
+	manager=TFManage_Queue("",trainset, testset, False,"fc_sqdiff_queue")
 	manager.TrainElement(1)
 
 def TestForces():
@@ -500,16 +503,16 @@ def TestForces():
 def MakeTestSet():
 	b=MSet("SmallMols_train")
 	b.Load()
-	c=MSet("SmallMols_test")
-	c.Load()
+	# c=MSet("SmallMols_test")
+	# c.Load()
 	TreatedAtoms = b.AtomTypes()
 	print "Number of train Mols: ", len(b.mols)
-	print "Number of test Mols: ", len(c.mols)
+	# print "Number of test Mols: ", len(c.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	train_set = TensorData_TFRecords(b,d)
 	train_set.BuildTrainMolwise("SmallMols_train",TreatedAtoms)
-	test_set = TensorData_TFRecords(c,d, test_=True)
-	test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
+	# test_set = TensorData_TFRecords(c,d, test_=True)
+	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
 
 # InterpoleGeometries()
@@ -530,9 +533,10 @@ def MakeTestSet():
 # TestAnneal()
 # TestMorphIR()
 # Brute_LJParams()
-# QueueTrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=1)
+# QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
-MakeTestSet()
+# MakeTestSet()
+
 
 
 # a=MSet("pentane_eq_align")

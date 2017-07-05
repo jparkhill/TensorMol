@@ -277,7 +277,5 @@ def AutoCorrelation(traj, step_size): # trajectory shape: Nsteps X NAtoms X 3
 	#np_autocorr = np.correlate(traj, traj, mode = "full")  # not working, only work for 1D, maybe needs scipy
 	return autocorr
 
-
-
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)
