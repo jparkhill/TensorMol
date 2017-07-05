@@ -393,11 +393,13 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		"""
 		self.NetType = "RawBP_noGrad"
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
+		#if (Name_ != None):
+		#	return
 		self.SFPa = None
                 self.SFPr = None
 		self.Ra_cut = None
                 self.Rr_cut = None
-		self.MaxNAtoms = TData_.MaxNAtoms
+		self.MaxNAtoms = self.TData.MaxNAtoms
                 self.eles = self.TData.eles
                 self.n_eles = len(self.eles)
                 self.eles_np = np.asarray(self.eles).reshape((self.n_eles,1))
@@ -467,11 +469,6 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.Sym_Index = None
 		self.options = None
 		self.run_metadata = None
-		self.tformer = None
-		#self.TData = None
-		#self.tf_prec = None
-		#for key in self.__dict__:
-		#	print ("key:", key, type(self.__dict__[key]), "\n")
                 return
 
 
@@ -493,7 +490,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
-			#self.gradients  = tf.gradients(self.Scatter_Sym, self.xyzs_pl)
+			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.check = tf.add_check_numerics_ops()
                         self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
                         self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -627,12 +624,13 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
                 for ministep in range (0, int(Ncase_train/self.batch_size)):
                         batch_data = self.TData.GetTrainBatch(self.batch_size)
                         actual_mols  = self.batch_size
-			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradient], feed_dict=self.fill_feed_dict(batch_data))
                         #dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradients  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradients], feed_dict=self.fill_feed_dict(batch_data))
                         train_loss = train_loss + loss_value
                         duration = time.time() - start_time
                         num_of_mols += actual_mols
 			#print ("gradients:", gradients)
+		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
                 self.print_training(step, train_loss, num_of_mols, duration)
                 return
 
@@ -665,5 +663,76 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
                         LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f", step, duration, (float(loss)/(Ncase)))
                 else:
                         LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f", step, duration, (float(loss)/(Ncase)))
+                return
+
+
+        def evaluate(self, batch_data, IfGrad=True):   #this need to be modified
+                # Check sanity of input
+                nmol = batch_data[2].shape[0]
+                LOGGER.debug("nmol: %i", batch_data[2].shape[0])
+                self.batch_size = nmol
+                if not self.sess:
+                        print ("loading the session..")
+                        self.Eval_Prepare()
+                feed_dict=self.fill_feed_dict(batch_data)
+
+                #mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+                #for i in range (0, batch_data[0][-1][-1].shape[0]):
+                #        print("i:", i)
+                #        import copy
+                #        new_batch_data=copy.deepcopy(batch_data)
+                #        #new_batch_data = list(batch_data)
+                #        new_batch_data[0][-1][-1][i] += 0.01
+                #        feed_dict=self.fill_feed_dict(new_batch_data)
+                #       new_mol_output, total_loss_value, loss_value, new_atom_outputs, new_gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+                #        print ("new_charge_gradient: ", gradient[-1][-1][i],  new_gradient[-1][-1][i], " numerical: ", (new_atom_outputs[-1][-1][-1]- atom_outputs[-1][-1][-1])/0.01)
+
+                if (IfGrad):
+                        mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+                        #print ("atom_outputs:", atom_outputs)
+                        return mol_output, atom_outputs, gradient
+                else:
+                        mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
+                        return mol_output, atom_outputs
+
+        def Eval_Prepare(self):
+                #eval_labels = np.zeros(Ncase)  # dummy labels
+                with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
+                        self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
+                        self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+                        Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
+                        Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+                        SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
+                        SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
+                        self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
+                        self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
+                        self.gradient  = tf.gradients(self.output, self.xyzs_pl)
+                        self.check = tf.add_check_numerics_ops()
+                        self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+                        self.summary_op = tf.summary.merge_all()
+                        init = tf.global_variables_initializer()
+                        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+                        self.saver = tf.train.Saver()
+			self.saver.restore(self.sess, self.chk_file)
+                        self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+                        self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                        self.run_metadata = tf.RunMetadata()
+                return
+
+        def continue_training(self, mxsteps):
+                self.Eval_Prepare()
+                test_loss , feed_dict = self.test(-1)
+                test_freq = 1
+                mini_test_loss = test_loss
+                for step in  range (0, mxsteps+1):
+                        self.train_step(step)
+                        if step%test_freq==0 and step!=0 :
+                                test_loss, feed_dict = self.test(step)
+                                if test_loss < mini_test_loss:
+                                        mini_test_loss = test_loss
+                                        self.save_chk(step, feed_dict)
+                self.SaveAndClose()
                 return
 

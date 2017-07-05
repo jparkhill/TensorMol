@@ -23,7 +23,8 @@ class MolInstance(Instance):
 	def __init__(self, TData_,  Name_=None, Trainable_=True):
 		Instance.__init__(self, TData_, 0, Name_)
 		self.AssignActivation()
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		#self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+		self.name = "Mol_"+self.TData.name+"_ANI1_Sym_Direct_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.Trainable = Trainable_
 		if (self.Trainable):

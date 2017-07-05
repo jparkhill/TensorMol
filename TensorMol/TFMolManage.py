@@ -1058,6 +1058,18 @@ class TFMolManage(TFManage):
 		mol.Set_Frag_Force_with_Order(cases_deri, nn_deri, self.TData.order)
 		return nn.sum()
 
+        def Eval_BPEnergy_Direct(self, mol_set):
+                nmols = len(mol_set.mols)
+                dummy_outputs = np.zeros((nmols))
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+                Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+                        xyzs[i][:mol.NAtoms()] = mol.coords
+                        Zs[i][:mol.NAtoms()] = mol.atoms
+		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs], True)
+                return mol_out, atom_out, gradient
+
+
 	def Prepare(self):
 		self.Load()
 		self.Instances= None # In order of the elements in TData
@@ -1069,6 +1081,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Update"):
                         self.Instances = MolInstance_fc_sqdiff_BP_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct"):
+			self.Instances = MolInstance_DirectBP_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):

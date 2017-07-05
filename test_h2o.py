@@ -110,7 +110,7 @@ def TestANI1():
                 #manager.Continue_Training(maxsteps=2)
 
 
-	if (1):
+	if (0):
 		a = MSet("H2O_augmented_more_cutoff5")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
@@ -122,12 +122,18 @@ def TestANI1():
                 PARAMS["hidden3"] = 100
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 2001
+                PARAMS["max_steps"] = 51
                 PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 1
+                PARAMS["test_freq"] = 10
                 PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["max_steps"] = 2
-                manager.Train(maxstep=2)
+                manager.Train(maxstep=51)
+
+	if (1):
+		a = MSet("H2O_dimer_opt")
+                a.ReadXYZ("H2O_dimer_opt")
+		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_1", Trainable_ = False)
+		manager.Continue_Training(50)
+		#print manager.Eval_BPEnergy_Direct(a)
 
 	if (0):
                 a = MSet("H2O_dimer_opt")

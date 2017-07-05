@@ -1012,6 +1012,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 		self.test_begin_mol  = None
 		self.test_mols = []
 		self.MaxN3 = None # The most coordinates in the set.
+		self.name = self.set.name
 		print "TensorMolData_BP.eles", self.eles
 		print "self.HasGrad:", self.HasGrad
 		return
@@ -1023,11 +1024,11 @@ class TensorMolData_BP_Direct(TensorMolData):
 		self.Zs = None
 		self.labels = None
 		self.grads = None
-		self.dig = None
 		return
 
 
 	def LoadData(self):
+		self.ReloadSet()
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
