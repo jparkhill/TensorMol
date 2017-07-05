@@ -19,8 +19,24 @@ import math, time, os, sys, os.path
 if (HAS_TF):
 	import tensorflow as tf
 
-# In[139]:
+def AllTriples(rng):
+	"""Returns all possible triples of an input list.
 
+	Args:
+		rng: a 1D integer tensor to be triply outer product'd
+	Returns:
+		A natom X natom X natom X 3 tensor of all triples of entries from rng.
+	"""
+	rshp = tf.shape(rng)
+	natom = rshp[0]
+	v1 = tf.tile(tf.reshape(rng,[natom,1]),[1,natom])
+	v2 = tf.tile(tf.reshape(rng,[1,natom]),[natom,1])
+	v3 = tf.transpose(tf.stack([v1,v2],0),perm=[1,2,0])
+	# V3 is now all pairs (nat x nat x 2). now do the same with another to make nat X 3
+	v4 = tf.tile(tf.reshape(v3,[natom,natom,1,2]),[1,1,natom,1])
+	v5 = tf.tile(tf.reshape(rng,[1,1,natom,1]),[natom,natom,1,1])
+	v6 = tf.concat([v4,v5], axis = 3) # All triples in the range.
+	return v6
 
 def AllTriplesSet(rng):
 	"""Returns all possible triples of integers between zero and natom.

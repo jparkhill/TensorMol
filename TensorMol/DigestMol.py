@@ -282,6 +282,7 @@ class MolDigester:
 		}
 
 		"""
+		from scipy.weave import inline
 		res = inline(code, ['CM','natoms','xyz','ele', 'deri_CM'],headers=['<math.h>','<iostream>'], compiler='gcc')
 		return CM, deri_CM
 

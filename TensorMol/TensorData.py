@@ -710,7 +710,10 @@ class TensorData_TFRecords(TensorData):
 			# Write the tfrecords file for this element.
 			t1=time.time()
 			ai = atypes.tolist().index(element)
-			data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+".tfrecords"
+			if self.test:
+				data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_test.tfrecords"
+			else:
+				data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_train.tfrecords"
 			self.ConvertToTFRec(cases_list[ai][:casep_list[ai]], labels_list[ai][:casep_list[ai]], data_name)
 			self.AvailableDataFiles.append([data_name])
 			self.AvailableElements.append(element)

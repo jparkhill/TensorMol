@@ -65,11 +65,11 @@ def InterpolateGeometries():
 	mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
 	# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
-def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_del/*/*/", energy=False, forces=False, mmff94=False):
+def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_del/*/*/", energy=False, forces=False, charges=False, mmff94=False):
 	import glob
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
-		a.ReadXYZUnpacked(dir, has_force=forces, has_energy=energy, has_mmff94=mmff94)
+		a.ReadXYZUnpacked(dir, has_force=forces, has_energy=energy, has_charge=charges, has_mmff94=mmff94)
 	print len(a.mols)
 	a.Save()
 
@@ -498,16 +498,22 @@ def TestForces():
 	# print err
 
 def MakeTestSet():
-	a=MSet("SmallMols")
-	a.Load()
-	b, c = a.SplitTest()
-
-
-
+	b=MSet("SmallMols_train")
+	b.Load()
+	c=MSet("SmallMols_test")
+	c.Load()
+	TreatedAtoms = b.AtomTypes()
+	print "Number of train Mols: ", len(b.mols)
+	print "Number of test Mols: ", len(c.mols)
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	train_set = TensorData_TFRecords(b,d)
+	train_set.BuildTrainMolwise("SmallMols_train",TreatedAtoms)
+	test_set = TensorData_TFRecords(c,d, test_=True)
+	test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
 
 # InterpoleGeometries()
-# ReadSmallMols(set_="chemspid1", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider1_data/*/", forces=True)
+# ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -524,7 +530,7 @@ def MakeTestSet():
 # TestAnneal()
 # TestMorphIR()
 # Brute_LJParams()
-# QueueTrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=1)
+# QueueTrainForces(set_ = "SmallMols", BuildTrain_=True, numrot_=1)
 # TestForces()
 MakeTestSet()
 

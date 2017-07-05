@@ -37,11 +37,13 @@ from TensorMol.TFMolManage import *
 from TensorMol.Ipecac import *
 from TensorMol.EmbOpt import *
 from TensorMol.Basis import *
+from TensorMol.AbInitio import *
 from TensorMol.DIIS import *
 from TensorMol.BFGS import *
-from TensorMol.SimpleMD import *
-from TensorMol.ElectrostaticsTF import *
 from TensorMol.Electrostatics import *
+from TensorMol.ElectrostaticsTF import *
+from TensorMol.SimpleMD import *
+from TensorMol.MetaDynamics import *
 from TensorMol.LinearOperations import *
 from TensorMol.AbInitio import *
 from TensorMol.Mol import *

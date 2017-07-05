@@ -1,3 +1,7 @@
+#
+# Optimization algorithms
+#
+
 from Sets import *
 from TFMolManage import *
 from Mol import *

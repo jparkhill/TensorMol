@@ -8,10 +8,10 @@ Position units are Bohr, and energy units are Hartree
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from TensorMol.TensorData import *
 import numpy as np
-import cPickle as pickle
 import math, time, os, sys, os.path
+from TensorMol.Util import *
+
 if (HAS_TF):
 	import tensorflow as tf
 
@@ -49,6 +49,33 @@ def TFDistances(r_):
 	# are nonzero
 	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 1e-26
 	return tf.sqrt(D)
+
+def BumpEnergy(h,w,xyz,x,nbump):
+	"""
+	A potential energy which is just the sum of gaussians
+	with height h and width w at positions xyz sampled at x.
+	This uses distance matrices to maintain rotational invariance.
+
+	Args:
+		h: bump height
+		w: bump width
+		xyz: a nbump X N X 3 tensor of bump centers.
+		x: (n X 3) tensor representing the point at which the energy is sampled.
+		nbump: a nbump X N X 3 tensor of non-zero centers.
+	"""
+	#bshp = tf.shape(xyz)
+	#nbump = bshp[0]
+	xshp = tf.shape(x)
+	nx = xshp[0]
+	Nzxyz = tf.slice(xyz,[0,0,0],[nbump,nx,3])
+	Ds = TFDistances(Nzxyz) # nbump X MaxNAtom X MaxNAtom Distance tensor.
+	Dx = TFDistance(x) # MaxNAtom X MaxNAtom Distance tensor.
+	sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
+	w2 = w*w
+	# here I should tf.assert bshp[1] == nx but fuggit.
+	rij = Ds - tf.tile(tf.reshape(Dx,[1,nx,nx]),[nbump,1,1])
+	ToExp = tf.einsum('ijk,ijk',rij,rij)
+	return -1.0*h*tf.exp(-0.5*ToExp/w2)
 
 def MorseKernel(D,Z,Ae,De,Re):
 	"""
