@@ -5,6 +5,7 @@
 from TFManage import *
 from TensorMolData import *
 from TFMolInstance import *
+from TFMolInstanceDirect import *
 from TFMolInstanceEE import *
 from TFMolInstanceDirect import *
 from QuasiNewtonTools import *
@@ -49,8 +50,8 @@ class TFMolManage(TFManage):
 		Args:
 			maxstep: The number of training steps.
 		"""
-		if (self.TData.dig.eshape==None):
-			raise Exception("Must Have Digester Shape.")
+		#if (self.TData.dig.eshape==None):
+		#	raise Exception("Must Have Digester Shape.")
 		# It's up the TensorData to provide the batches and input output shapes.
 		if (self.NetType == "fc_classify"):
 			self.Instances = MolInstance_fc_classify(self.TData, None)
@@ -62,6 +63,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP_WithGrad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Update"):
                         self.Instances = MolInstance_fc_sqdiff_BP_Update(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct"):
+                        self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -70,6 +73,7 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_LJForce(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
+		self.n_train = PARAMS["max_steps"]
 		self.Instances.train(self.n_train) # Just for the sake of debugging.
 		nm = self.Instances.name
 		# Here we should print some summary of the pupil's progress as well, maybe.
@@ -80,10 +84,11 @@ class TFMolManage(TFManage):
 		return
 
 	def Continue_Training(self, maxsteps):   # test a pretrained network
+		self.n_train = PARAMS["max_steps"]
 		self.Instances.TData = self.TData
 		self.Instances.TData.LoadDataToScratch(self.Instances.tformer)
 		self.Instances.Prepare()
-		self.Instances.continue_training(maxsteps)
+		self.Instances.continue_training(self.n_train)
 		self.Save()
 		return
 
@@ -1053,6 +1058,18 @@ class TFMolManage(TFManage):
 		mol.Set_Frag_Force_with_Order(cases_deri, nn_deri, self.TData.order)
 		return nn.sum()
 
+        def Eval_BPEnergy_Direct(self, mol_set):
+                nmols = len(mol_set.mols)
+                dummy_outputs = np.zeros((nmols))
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+                Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+                        xyzs[i][:mol.NAtoms()] = mol.coords
+                        Zs[i][:mol.NAtoms()] = mol.atoms
+		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs], True)
+                return mol_out, atom_out, gradient
+
+
 	def Prepare(self):
 		self.Load()
 		self.Instances= None # In order of the elements in TData
@@ -1064,6 +1081,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Update"):
                         self.Instances = MolInstance_fc_sqdiff_BP_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct"):
+			self.Instances = MolInstance_DirectBP_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):

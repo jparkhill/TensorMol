@@ -38,37 +38,31 @@ class MolInstance(Instance):
 		self.summary_writer=None
 		return
 
-	def inference(self, images, hidden1_units, hidden2_units, hidden3_units):
-		"""
-		A generic inference routine.
-
+	def inference(self, inputs):
+		"""Builds the network architecture. Number of hidden layers and nodes in each layer defined in TMParams "HiddenLayers".
 		Args:
-			images: inputs placeholder.
-			hidden1_units: Size of the first hidden layer.
-			hidden2_units: Size of the second hidden layer.
+			inputs: input placeholder for training data from Digester.
 		Returns:
-			softmax_linear: Output tensor.
+			output: scalar or vector of OType from Digester.
 		"""
-		# Hidden 1
-		with tf.name_scope('hidden1'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev= 1 / math.sqrt(float(self.inshape)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden1_units]),
-			name='biases')
-			hidden1 = self.activation_function(tf.matmul(images, weights) + biases)
-			tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
-			tf.histogram_summary(weights.name, weights)
-		# Hidden 2
-		with tf.name_scope('hidden2'):
-			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev= 1 / math.sqrt(float(hidden1_units)), var_wd= 0.00)
-			biases = tf.Variable(tf.zeros([hidden2_units]),
-			name='biases')
-			hidden2 = self.activation_function(tf.matmul(hidden1, weights) + biases)
-		# Linear
+		hiddens = []
+		for i in range(len(self.HiddenLayers)):
+			if i == 0:
+				with tf.name_scope('hidden1'):
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.inshape[0])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+					hiddens.append(self.activation_function(tf.matmul(inputs, weights) + biases))
+					tf.scalar_summary('min/' + weights.name, tf.reduce_min(weights))
+					tf.histogram_summary(weights.name, weights)
+			else:
+				with tf.name_scope('hidden'+str(i+1)):
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd= 0.00)
+					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec),name='biases')
+					hiddens.append(self.activation_function(tf.matmul(hiddens[-1], weights) + biases))
 		with tf.name_scope('regression_linear'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, self.outshape], var_stddev= 1 / math.sqrt(float(hidden2_units)), var_wd= 0.00)
-				biases = tf.Variable(tf.zeros([self.outshape]),
-				name='biases')
-				output = tf.matmul(hidden2, weights) + biases
+			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape], var_stddev= 1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd= 0.00)
+			biases = tf.Variable(tf.zeros(self.outshape, dtype=self.tf_prec), name='biases')
+			output = tf.matmul(hiddens[-1], weights) + biases
 		return output
 
 	def train(self, mxsteps, continue_training= False):
@@ -220,8 +214,8 @@ class MolInstance_fc_classify(MolInstance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(tf.float32, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
-		outputs_pl = tf.placeholder(tf.float32, shape=(batch_size))
+		inputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
+		outputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size))
 		return inputs_pl, outputs_pl
 
 	def justpreds(self, output):
@@ -380,8 +374,8 @@ class MolInstance_fc_sqdiff(MolInstance):
 		# Note that the shapes of the placeholders match the shapes of the full
 		# image and label tensors, except the first dimension is now batch_size
 		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(tf.float32, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
-		outputs_pl = tf.placeholder(tf.float32, shape=(batch_size, self.outshape))
+		inputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size,self.inshape)) # JAP : Careful about the shapes... should be flat for now.
+		outputs_pl = tf.placeholder(self.tf_prec, shape=(batch_size, self.outshape))
 		return inputs_pl, outputs_pl
 
 	def loss_op(self, output, labels):
@@ -522,9 +516,9 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.inp_pl=[]
 			self.mats_pl=[]
 			for e in range(len(self.eles)):
-				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
-			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
+				self.mats_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.batch_size_output])))
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
@@ -574,7 +568,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		hidden1_units=self.hidden1
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
-		output = tf.zeros([self.batch_size_output])
+		output = tf.zeros([self.batch_size_output], dtype=self.tf_prec)
 		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
 		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
 		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
@@ -598,21 +592,21 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
-				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
+				biases = tf.Variable(tf.zeros([hidden1_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
-				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
+				biases = tf.Variable(tf.zeros([hidden2_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
-				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
+				biases = tf.Variable(tf.zeros([hidden3_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units, 1], var_stddev=nrm4, var_wd=None)
-				biases = tf.Variable(tf.zeros([1]), name='biases')
+				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
 				shp_out = tf.shape(branches[-1][-1])
 				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
@@ -816,9 +810,9 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.inp_pl=[]
 			self.mats_pl=[]
 			for e in range(len(self.eles)):
-				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None, self.batch_size_output])))
-			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
+				self.mats_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None, self.batch_size_output])))
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
 			#self.gradient = tf.gradients(self.atom_outputs, self.inp_pl)
 			self.gradient = tf.gradients(self.output, self.inp_pl)
@@ -841,9 +835,9 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.inp_pl=[]
 			self.mats_pl=[]
 			for e in range(len(self.eles)):
-				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
-			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output]))
+				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
+				self.mats_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.batch_size_output])))
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.mats_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
@@ -928,10 +922,10 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 			self.grad_pl=[]
 			self.mats_pl=[]
 			for e in range(self.n_eles):
-				self.inp_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape])))
-				self.grad_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.inshape,self.MaxN3])))
-				self.mats_pl.append(tf.placeholder(tf.float32, shape=tuple([None,self.batch_size_output])))
-			self.label_pl = tf.placeholder(tf.float32, shape=tuple([self.batch_size_output,self.MaxN3+1]))
+				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
+				self.grad_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape,self.MaxN3])))
+				self.mats_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.batch_size_output])))
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output,self.MaxN3+1]))
 			self.output, self.atom_outputs, self.grads = self.inference()
 			#self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.grads, self.label_pl)
@@ -969,12 +963,12 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		hidden1_units=self.hidden1
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
-		output = tf.zeros([self.batch_size_output])
+		output = tf.zeros([self.batch_size_output], dtype=self.tf_prec)
 		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
 		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
 		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
 		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
-		grads = tf.zeros([self.batch_size_output, self.MaxN3])
+		grads = tf.zeros([self.batch_size_output, self.MaxN3], dtype=self.tf_prec)
 		for e in range(len(self.eles)):
 			branches.append([])
 			inputs = self.inp_pl[e]
@@ -982,21 +976,21 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 			shp_in = tf.shape(inputs)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
-				biases = tf.Variable(tf.zeros([hidden1_units]), name='biases')
+				biases = tf.Variable(tf.zeros([hidden1_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_2'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
-				biases = tf.Variable(tf.zeros([hidden2_units]), name='biases')
+				biases = tf.Variable(tf.zeros([hidden2_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_hidden_3'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
-				biases = tf.Variable(tf.zeros([hidden3_units]), name='biases')
+				biases = tf.Variable(tf.zeros([hidden3_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden3_units, 1], var_stddev=nrm4, var_wd=None)
-				biases = tf.Variable(tf.zeros([1]), name='biases')
+				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
 				shp_out = tf.shape(branches[-1][-1])
 				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
@@ -1123,7 +1117,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
                 self.index_pl=None
                 self.label_pl=None
                 self.batch_size_output = 0
-
+		self.gradient = None
 
 	def Clean(self):
 		Instance.Clean(self)
@@ -1132,6 +1126,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		self.index_pl=None
 		self.label_pl=None
 		self.atom_outputs = None
+		self.gradient = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -1154,10 +1149,9 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.index_pl=[]
 			for e in range(len(self.eles)):
 				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
-				self.index_pl.append(tf.placeholder(tf.int32, shape=tuple([None])))
-			self.preoutput_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
+				self.index_pl.append(tf.placeholder(tf.int64, shape=tuple([None])))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
-			self.output, self.atom_outputs, self.preoutput = self.inference(self.inp_pl, self.index_pl, self.preoutput_pl)
+			self.output, self.atom_outputs = self.inference(self.inp_pl, self.index_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -1178,7 +1172,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
 
-	def inference(self, inp_pl, index_pl, preoutput_pl):
+	def inference(self, inp_pl, index_pl):
 		"""
 		Builds a Behler-Parinello graph
 
@@ -1198,7 +1192,8 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		#output = gen_state_ops._temporary_variable(shape=[self.batch_size_output], dtype=self.tf_prec)
 		#output = state_ops.assign(output, array_ops.zeros_like(index_pl))
 		#output = tf.Variable(output_pl)
-		output = tf.Variable(tf.zeros([self.batch_size_output], dtype=self.tf_prec))
+		#output = tf.Variable(tf.zeros([self.batch_size_output], dtype=self.tf_prec))
+		output = tf.zeros([self.batch_size_output], dtype=self.tf_prec)
 		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
 		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
 		nrm3=1.0/(10+math.sqrt(float(hidden2_units)))
@@ -1212,8 +1207,8 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		for e in range(len(self.eles)):
 			branches.append([])
 			inputs = inp_pl[e]
-			index = index_pl[e]
 			shp_in = tf.shape(inputs)
+			index = index_pl[e]
 			if (PARAMS["check_level"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				index_shape = tf.shape(index)
@@ -1244,13 +1239,14 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 				rshp = tf.reshape(cut,[1,shp_out[0]])
 				atom_outputs.append(rshp)
 				rshpflat = tf.reshape(cut,[shp_out[0]])
-				output = tf.scatter_add(output, index, rshpflat)
-				#tmp = tf.matmul(rshp,mats)
-				#output_pl = tf.add(output,tmp)
-		diff = tf.subtract(output, preoutput_pl)
+				range_index = tf.range(tf.cast(shp_out[0], tf.int64), dtype=tf.int64)
+				sparse_index =tf.stack([index, range_index], axis=1)
+				sp_atomoutputs = tf.SparseTensor(sparse_index, rshpflat, dense_shape=[tf.cast(self.batch_size_output, tf.int64), tf.cast(shp_out[0], tf.int64)])
+				mol_tmp = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+				output = tf.add(output, mol_tmp)
 		tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
-		return diff, atom_outputs, output
+		return output, atom_outputs
 
 	def fill_feed_dict(self, batch_data):
 		"""
@@ -1271,7 +1267,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit4")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip(self.inp_pl+self.index_pl+[self.label_pl]+[self.preoutput_pl], batch_data[0]+batch_data[1]+[batch_data[2]]+[batch_data[3]])}
+		feed_dict={i: d for i, d in zip(self.inp_pl+self.index_pl+[self.label_pl], batch_data[0]+batch_data[1]+[batch_data[2]])}
 		return feed_dict
 
 	def train_step(self, step):
@@ -1288,12 +1284,13 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		pre_output = np.zeros((self.batch_size_output),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep: ", ministep, " Ncase_train:", Ncase_train, " self.batch_size", self.batch_size)
-			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output) + [pre_output]
+			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
 			actual_mols  = np.count_nonzero(batch_data[2])
 			#print ("index:", batch_data[1][0][:40], batch_data[1][1][:20])
-			dump_, dump_2, total_loss_value, loss_value, mol_output, pre_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output, self.preoutput, self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#np.set_printoptions(threshold=np.nan)
 			#print ("self.atom_outputs", atom_outputs[0][0][:40], "\n", atom_outputs[1][0][:20], atom_outputs[1].shape, "\n  mol_outputs:", mol_output[:20], mol_output.shape)
+			#print ("self.gradient:", gradient)
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
@@ -1445,7 +1442,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.index_pl=[]
 			for e in range(len(self.eles)):
 				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
-				self.index_pl.append(tf.placeholder(tf.int32, shape=tuple([None])))
+				self.index_pl.append(tf.placeholder(tf.int64, shape=tuple([None])))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.index_pl)
 			#self.gradient = tf.gradients(self.atom_outputs, self.inp_pl)
@@ -1470,7 +1467,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.index_pl=[]
 			for e in range(len(self.eles)):
 				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
-				self.index_pl.append(tf.placeholder(tf.int32, shape=tuple([None])))
+				self.index_pl.append(tf.placeholder(tf.int64, shape=tuple([None])))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output]))
 			self.output, self.atom_outputs = self.inference(self.inp_pl, self.index_pl)
 			self.check = tf.add_check_numerics_ops()

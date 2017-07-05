@@ -73,7 +73,7 @@ def CoordinateScan(f_, x_, name_="", eps_=0.03, num_=15):
 			x_t[iti.multi_index] += d
 			tore[iti.multi_index][i,0]=d
 			tore[iti.multi_index][i,1]=f_(x_t)
-		np.savetxt("./resultscan"+name_+str(ci)+".txt",tore[iti.multi_index])
+		np.savetxt("./results/CoordScan"+name_+str(ci)+".txt",tore[iti.multi_index])
 		ci += 1
 		iti.iternext()
 
@@ -228,7 +228,7 @@ def InternalCoordinates(x_,m):
 			D[4,i*3+j] = (Pz*X[0,j]-Px*X[2,j])/np.sqrt(m[i])
 			D[5,i*3+j] = (Px*X[1,j]-Py*X[0,j])/np.sqrt(m[i])
 			MWC[i*3+j,i*3+j] = np.sqrt(m[i])
-	S = PairOrthogonalize(D,MWC) # Returns normalized.
+	S = PairOrthogonalize(D,MWC) # Returns normalized Coords.
 	nint = S.shape[0]
 	print "3N, Number of Internal Coordinates: ", n3 , nint
 	return S

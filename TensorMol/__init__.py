@@ -45,4 +45,5 @@ from TensorMol.ElectrostaticsTF import *
 from TensorMol.SimpleMD import *
 from TensorMol.MetaDynamics import *
 from TensorMol.LinearOperations import *
+from TensorMol.AbInitio import *
 from TensorMol.Mol import *
