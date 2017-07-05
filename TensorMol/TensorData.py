@@ -683,8 +683,15 @@ class TensorData_TFRecords(TensorData):
 			for m in self.set.mols:
 				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
 		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
-		cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
-		labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
+		self.SamplesPerElement = [None for i in range(10)]
+		self.AvailableDataFiles = [None for i in range(10)]
+		if self.test:
+			data_names = [self.path+name_+"_"+self.dig.name+"_"+str(element)+"_test.tfrecords" for element in atypes]
+		else:
+			data_names = [self.path+name_+"_"+self.dig.name+"_"+str(element)+"_train.tfrecords" for element in atypes]
+		self.writers = [tf.python_io.TFRecordWriter(filename) for filename in data_names]
+		# cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
+		# labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
 		casep_list = [0 for element in atypes]
 		t0 = time.time()
 		ord = len(self.set.mols)
@@ -692,32 +699,71 @@ class TensorData_TFRecords(TensorData):
 		try:
 			for mi in xrange(ord):
 				m = self.set.mols[mi]
-				ins,outs = self.dig.TrainDigestMolwise(m)
+				ins,labels = self.dig.TrainDigestMolwise(m)
+				ins = ins.astype(np.float32)
+				labels = labels.astype(np.float32)
 				for i in range(m.NAtoms()):
 					# Route all the inputs and outputs to the appropriate place...
 					ai = atypes.tolist().index(m.atoms[i])
-					cases_list[ai][casep_list[ai]] = ins[i]
-					labels_list[ai][casep_list[ai]] = outs[i]
+					input_raw = ins[i].tostring()
+					label_raw = labels[i].tostring()
+					example = tf.train.Example(features=tf.train.Features(feature={
+						'input_raw': self._bytes_feature(input_raw),
+						'label_raw': self._bytes_feature(label_raw),}))
+					self.writers[ai].write(example.SerializeToString())
+					# cases_list[ai][casep_list[ai]] = ins[i]
+					# labels_list[ai][casep_list[ai]] = outs[i]
 					casep_list[ai] = casep_list[ai]+1
 				if (mols_done%10000==0 and mols_done>0):
 					print mols_done
 				if (mols_done==400):
 					print "Seconds to process 400 molecules: ", time.time()-t0
 				mols_done = mols_done + 1
+			for writer in self.writers:
+				writer.close()
 		except Exception as Ex:
 				print "Likely you need to re-install MolEmb.", Ex
 		for element in atypes:
 			# Write the tfrecords file for this element.
-			t1=time.time()
 			ai = atypes.tolist().index(element)
-			if self.test:
-				data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_test.tfrecords"
-			else:
-				data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_train.tfrecords"
-			self.ConvertToTFRec(cases_list[ai][:casep_list[ai]], labels_list[ai][:casep_list[ai]], data_name)
-			self.AvailableDataFiles.append([data_name])
+			# if self.test:
+			# 	data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_test.tfrecords"
+			# else:
+			# 	data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_train.tfrecords"
+			# self.ConvertToTFRec(cases_list[ai][:casep_list[ai]], labels_list[ai][:casep_list[ai]], data_name)
+			# self.AvailableDataFiles.append([data_name])
 			self.AvailableElements.append(element)
-			self.SamplesPerElement.append(casep_list[ai]*self.dig.NTrainSamples)
-			print "Time to save:", time.time()-t1
+			self.AvailableDataFiles[element] = data_names[ai]
+			self.SamplesPerElement[element] = casep_list[ai]*self.dig.NTrainSamples
+		print self.AvailableElements
+		print self.AvailableDataFiles
+		print self.SamplesPerElement
 		self.Save() #write a convenience pickle.
 		return
+
+	def CleanScratch(self):
+		self.ScratchState=None
+		self.ScratchPointer=0 # for non random batch iteration.
+		self.scratch_inputs=None
+		self.scratch_outputs=None
+		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
+		self.scratch_test_outputs=None
+		self.set=None
+		self.writers=None
+		return
+
+	def Load(self):
+		print "Unpickling Tensordata"
+		f = open(self.path+self.name+".tdt","rb")
+		tmp=pickle.load(f)
+		self.__dict__.update(tmp)
+		f.close()
+		self.CheckShapes()
+		print "Training data manager loaded."
+		if (self.set != None):
+			print "Based on ", len(self.set.mols), " molecules "
+		print "Based on files: ",self.AvailableDataFiles
+		self.PrintSampleInformation()
+		self.dig.Print()
+		return
+

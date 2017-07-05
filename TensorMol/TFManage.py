@@ -345,9 +345,9 @@ class TFManage:
 		return logP
 
 class TFManage_Queue(TFManage):
-	def __init__(self, Name_="", TData_=None, test_data_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True, Trainable_ = True):
-		TFManage.__init__(self, Name_, TData_, Train_, NetType_, RandomTData_, Trainable_)
-		self.TestData = test_data_
+	def __init__(self, Name_="", TrainData_=None, TestData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True, Trainable_ = True):
+		TFManage.__init__(self, Name_, TrainData_, Train_, NetType_, RandomTData_, Trainable_)
+		self.TestData = TestData_
 
 	def TrainElement(self, ele):
 		print "Training Element:", ele
@@ -367,7 +367,7 @@ class TFManage_Queue(TFManage):
 		elif (self.NetType == "KRR_sqdiff"):
 			self.Instances[ele] = Instance_KRR(self.TData, ele, None)
 		elif (self.NetType == "fc_sqdiff_queue"):
-			self.Instances[ele] = Queue_Instance(self.TData, ele, None)
+			self.Instances[ele] = Queue_Instance(self.TData, self.TestData, ele, None)
 		else:
 			raise Exception("Unknown Network Type!")
 		self.Instances[ele].train(self.n_train) # Just for the sake of debugging.
