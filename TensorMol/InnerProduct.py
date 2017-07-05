@@ -1,6 +1,6 @@
 # DAVID:
 # Move this to an Ipython notebook in /notebooks or clean, independent routines
-# in QuasiNewtonTools or LinearOperations.
+# in QuasiNewtonTools or LinearOperations. 
 
 # Creates inner product of Q Chem and TensorMol vectors
 from TensorMol import *

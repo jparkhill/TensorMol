@@ -44,10 +44,20 @@ def TestANI1():
 		#TreatedAtoms = a.AtomTypes()
 		#d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
 		#tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
-		#tset.BuildTrain("uneq_chemspider")
-		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_ANI1_Sym")
+		#tset.BuildTrain("uneq_chemspider_float64")
+
+		PARAMS["hidden1"] = 200
+                PARAMS["hidden2"] = 200
+                PARAMS["hidden3"] = 200
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 1001
+                PARAMS["batch_size"] = 10000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_float64_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
-		manager.Train(maxstep=2000)
+		manager.Train(maxstep=1500)
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 #manager.Continue_Training(maxsteps=2)
 	if (0):
@@ -559,13 +569,13 @@ def TestDipole():
 		tset = TensorMolData_BP_Multipole(a,d, order_=1, num_indis_=1, type_="mol")
 		tset.BuildTrain("chemspider9_multipole")
 
-	if (0):
+	if (1):
 		a = MSet("chemspider9")
 		a.Load()
 		TreatedAtoms = a.AtomTypes()
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="Multipole2")
 		tset = TensorMolData_BP_Multipole_2(a,d, order_=1, num_indis_=1, type_="mol")
-		tset.BuildTrain("chemspider9_multipole3")
+		tset.BuildTrain("chemspider9_multipole3_float64")
 
 	if (0):
 		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
@@ -573,7 +583,16 @@ def TestDipole():
 		manager.Train()
 
 	if (1):
-		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_ANI1_Sym")
+		PARAMS["hidden1"] = 100
+                PARAMS["hidden2"] = 100
+                PARAMS["hidden3"] = 100
+                PARAMS["learning_rate"] = 0.0001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 501
+                PARAMS["batch_size"] = 10000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_float64_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"Dipole_BP_2")
 		manager.Train()
 
@@ -1048,7 +1067,7 @@ def TestEE():
 #TestBP_WithGrad()
 #Test_ULJ()
 #Test_LJMD()
-#TestDipole()
+TestDipole()
 #TestJohnson()
 #TestIR()
 # TestIndoIR()

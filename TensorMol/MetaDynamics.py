@@ -4,6 +4,7 @@ We could even use poorly trained networks for this.
 """
 from SimpleMD import *
 import ElectrostaticsTF
+import TFMolInstanceDirect
 
 class MetaDynamics(VelocityVerlet):
 	def __init__(self,f_,g0_,name_="MetaMD",EandF_=None):
@@ -14,26 +15,28 @@ class MetaDynamics(VelocityVerlet):
 		based on a poissionian process.... Requires a thermostat.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
-		self.BumpHeight = 0.001 # Hartree.
-		self.BumpWidth = 0.005 # Angstrom
-		self.BumpTime = 15.0 # Fs
-		self.MaxBumps = 600
+		self.BumpTime = 7.0 # Fs
+		self.MaxBumps = 1000
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
 		self.NBump = 0
 		self.Tstat = NoseThermostat(self.m,self.v)
+		self.Bumper = TFMolInstanceDirect.BumpHolder(self.natoms, self.MaxBumps)
 
 	def BumpForce(self,x_):
-		BF = ElectrostaticsTF.TFBumpForce(self.BumpHeight,self.BumpWidth,self.BumpCoords[:self.NBump],x_)
+		BE = 0.0
+		BF = np.zeros(x_.shape)
+		if (self.NBump > 0):
+			BE, BF = self.Bumper.Bump(self.BumpCoords, x_, self.NBump)
 		PF = self.ForceFunction(x_)
-		print BF
-		print PF
-		tmp = PF+JOULEPERHARTREE*BF
+		tmp = PF+JOULEPERHARTREE*BF[0]
 		return tmp
 
 	def Bump(self):
+		if (self.NBump == self.MaxBumps):
+			return
 		self.BumpCoords[self.NBump] = self.x
 		self.NBump += 1
-		LOGGER.info("Bump!")
+		LOGGER.info("Bump added!")
 		return
 
 	def Prop(self):
