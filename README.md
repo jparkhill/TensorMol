@@ -1,4 +1,4 @@
-# &#9658;TensorMol 0.0
+# &#9658;TensorMol 0.1
 A Statistical Model of Molecular Structure
 
 ### Authors:
@@ -15,7 +15,8 @@ A Statistical Model of Molecular Structure
  - Optimizations
  - Nudged Elastic Band
  - Molecular Dynamics (NVE,NVT Nose-Hoover)
- - Isotropic Infared spectra
+ - Meta-Dynamics
+ - Infrared spectra
 
 ### License: GPLv3
 By using this software you agree to the terms in COPYING
@@ -42,7 +43,6 @@ sudo python setup.py install
 - To Train Minimally: ~100GB Disk 20GB memory
 - To Train Realistically: 1TB Disk, GTX1070++
 - To Evaluate: Normal CPU and 10GB Mem
-- For volume rendering: CUDA 7.5+ or Mathematica
 
 ### Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)
