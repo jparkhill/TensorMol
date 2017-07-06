@@ -28,11 +28,7 @@ By using this software you agree to the terms in COPYING
  - Chan Group (for PySCF)
 
 ### Sample Results
-<<<<<<< HEAD
-[![IR Spectrum](adenine.png)] "Adenine IR spectrum generated from test.py > david_testIR()"
-=======
-![IR Spectrum](TensorMol/notebooks/adenine.PNG) "Adenine IR spectrum generated from test.py > david_testIR()"
->>>>>>> d2b4be476e560b36841cac99946efe5d3faa7bca
+![IR Spectrum](adenine.PNG) "Adenine IR spectrum generated from test.py > david_testIR()"
 
 ### Installation:
 ```
