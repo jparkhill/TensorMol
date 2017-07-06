@@ -27,9 +27,6 @@ By using this software you agree to the terms in COPYING
  - Vol Lillenfeld Group (for GBD9)
  - Chan Group (for PySCF)
 
-### Sample Results
-![](water.png) "Water IR spectrum generated from test.py, david_testIR()"
-
 ### Installation:
 ```
 git clone https://github.com/jparkhill/TensorMol.git
@@ -41,6 +38,10 @@ python test.py
 ### Usage:
  - ```import TensorMol as tm```
  - Please also refer to IPython notebooks in /notebooks.
+
+### Sample Results
+![](water.png)
+"Water IR spectrum generated from test.py, david_testIR()"
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
