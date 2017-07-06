@@ -28,14 +28,14 @@ By using this software you agree to the terms in COPYING
  - Chan Group (for PySCF)
 
 ### Sample Results
-![IR Spectrum](adenine.PNG) "Adenine IR spectrum generated from test.py > david_testIR()"
+![](adenine.PNG=320x240) "Adenine IR spectrum generated from test.py > david_testIR()"
 
 ### Installation:
 ```
 git clone https://github.com/jparkhill/TensorMol.git
 cd TensorMol
 pip install -e .
-python test.py 
+python test.py
 ```
 
 ### Usage:
