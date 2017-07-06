@@ -19,7 +19,6 @@
 Violators are subject to having their code and reproductive fitness mocked publically in comments.
 """
 
-print "Hey... "
 from TensorMol.Util import *
 from TensorMol.PhysicalData import *
 from TensorMol.Sets import *
