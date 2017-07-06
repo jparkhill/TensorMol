@@ -11,8 +11,8 @@ import scipy.special
 #from collections import defaultdict
 #from collections import Counter
 from TensorMol.TMParams import *
+TMBanner()
 from TensorMol.PhysicalData import *
-
 warnings.simplefilter(action = "ignore", category = FutureWarning)
 #
 # GLOBALS
@@ -36,7 +36,6 @@ Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES
 # -- begin Environment set up.
 #
 
-TMBanner()
 LOGGER.info("Searching for Installed Optional Packages...")
 try:
 	from pyscf import scf

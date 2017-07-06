@@ -72,8 +72,9 @@ def BumpEnergy(h,w,xyz,x,nbump):
 	#sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
 	w2 = w*w
 	rij = Ds - tf.tile(tf.reshape(Dx,[1,nx,nx]),[nbump,1,1])
-	ToExp = tf.einsum('ijk,ijk',rij,rij)
-	return -1.0*h*tf.exp(-0.5*ToExp/w2)
+	ToExp = tf.einsum('ijk,ijk->i',rij,rij)
+	ToSum = -1.0*h*tf.exp(-0.5*ToExp/w2)
+	return tf.reduce_sum(ToSum,axis=0)
 
 def MorseKernel(D,Z,Ae,De,Re):
 	"""

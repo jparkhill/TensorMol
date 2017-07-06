@@ -30,7 +30,9 @@ By using this software you agree to the terms in COPYING
 ### Installation:
 ```
 git clone https://github.com/jparkhill/TensorMol.git
+cd TensorMol
 pip install -e .
+python test.py 
 ```
 
 ### Usage:

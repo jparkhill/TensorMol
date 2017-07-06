@@ -124,11 +124,11 @@ class TMParams(dict):
 
 def TMBanner():
 	print("--------------------------")
-	print("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.0")
+	print("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.1")
 	print("--------------------------")
 	print("By using this software you accept the terms of the GNU public license in ")
 	print("COPYING, and agree to attribute the use of this software in publications as: \n")
-	print("K.Yao, J. E. Herr, J. Parkhill. TensorMol 0.0 (2016)")
+	print("K.Yao, J. E. Herr, D. Toth, J. Parkhill. TensorMol 0.1 (2016)")
 	print("--------------------------")
 
 def TMLogger(path_):
@@ -150,4 +150,5 @@ def TMLogger(path_):
 	ch.setFormatter(pformatter)
 	tore.addHandler(fh)
 	tore.addHandler(ch)
+	print("Built Logger...")
 	return tore

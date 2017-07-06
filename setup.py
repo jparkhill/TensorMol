@@ -1,5 +1,5 @@
-# To make tensormol available. 
-# sudo python setup.py install
+# To make TensorMol available.
+# pip install -e .
 
 from distutils.core import setup, Extension
 import numpy
@@ -34,4 +34,3 @@ setup(name='TensorMol',
       zip_safe=False,
       include_package_data=True,
       ext_modules=[MolEmb])
-
