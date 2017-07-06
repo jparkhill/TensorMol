@@ -41,7 +41,7 @@ python test.py
 
 ### Sample Results
 ![](water.png)
-"Water IR spectrum generated from test.py, david_testIR()"
+Water IR spectrum generated from test.py, david_testIR()
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
