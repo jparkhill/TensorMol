@@ -29,8 +29,8 @@ By using this software you agree to the terms in COPYING
 
 ### Installation:
 ```
-cd C_API/
-sudo python setup.py install
+git clone https://github.com/jparkhill/TensorMol.git
+pip install -e .
 ```
 
 ### Usage:

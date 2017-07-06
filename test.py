@@ -1067,7 +1067,7 @@ def TestEE():
 #TestBP_WithGrad()
 #Test_ULJ()
 #Test_LJMD()
-TestDipole()
+#TestDipole()
 #TestJohnson()
 #TestIR()
 # TestIndoIR()
