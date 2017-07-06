@@ -28,7 +28,7 @@ By using this software you agree to the terms in COPYING
  - Chan Group (for PySCF)
 
 ### Sample Results
-![](adenine.PNG){:height="50%" width="50%"} "Adenine IR spectrum generated from test.py, david_testIR()"
+![](adenine.PNG=250x250) "Adenine IR spectrum generated from test.py, david_testIR()"
 
 ### Installation:
 ```
