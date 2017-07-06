@@ -27,6 +27,9 @@ By using this software you agree to the terms in COPYING
  - Vol Lillenfeld Group (for GBD9)
  - Chan Group (for PySCF)
 
+### Sample Results
+![IR Spectrum](adenine.PNG) "Adenine IR spectrum generated from test.py > david_testIR()"
+
 ### Installation:
 ```
 git clone https://github.com/jparkhill/TensorMol.git
