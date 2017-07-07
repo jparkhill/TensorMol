@@ -8,7 +8,7 @@ class TMParams(dict):
 		myparam = kwargs.pop('myparam', '')
 		dict.__init__(self, *args, **kwargs )
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
-		self["check_level"] = 1 # whether to test the consistency of several things...
+		self["CheckLevel"] = 1 # whether to test the consistency of several things...
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
 		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
@@ -124,11 +124,11 @@ class TMParams(dict):
 
 def TMBanner():
 	print("--------------------------")
-	print("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.0")
+	print("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.1")
 	print("--------------------------")
 	print("By using this software you accept the terms of the GNU public license in ")
 	print("COPYING, and agree to attribute the use of this software in publications as: \n")
-	print("K.Yao, J. E. Herr, J. Parkhill. TensorMol 0.0 (2016)")
+	print("K.Yao, J. E. Herr, D. Toth, J. Parkhill. TensorMol 0.1 (2016)")
 	print("--------------------------")
 
 def TMLogger(path_):
@@ -150,4 +150,5 @@ def TMLogger(path_):
 	ch.setFormatter(pformatter)
 	tore.addHandler(fh)
 	tore.addHandler(ch)
+	print("Built Logger...")
 	return tore

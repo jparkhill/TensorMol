@@ -18,8 +18,9 @@
 
 Violators are subject to having their code and reproductive fitness mocked publically in comments.
 """
-from TensorMol.PhysicalData import *
+
 from TensorMol.Util import *
+from TensorMol.PhysicalData import *
 from TensorMol.Sets import *
 from TensorMol.MolFrag import *
 from TensorMol.Opt import *

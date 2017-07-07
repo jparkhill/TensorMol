@@ -4,6 +4,40 @@ import random, math
 from Mol import *
 from PhysicalData import *
 
+def AtomName_From_List(atom_list):
+	name = ""
+	for i in atom_list:
+		name += atoi.keys()[atoi.values().index(i)]
+	return name
+
+def Subset(A, B): # check whether B is subset of A
+	checked_index = []
+	found = 0
+	for value in B:
+		for i in range (0, len(A)):
+			if value==A[i] and i not in checked_index:
+				checked_index.append(i)
+				found += 1
+				break
+	if found == len(B):
+		return True
+	else:
+		return False
+
+def Setdiff(A, B): # return the element of A that not included in B
+	diff = []
+	checked_index = []
+	for value in A:
+		found = 0
+		for i in range (0, len(B)):
+			if value == B[i] and i not in checked_index:
+				found = 1
+				checked_index.append(i)
+				break
+		if found == 0:
+			diff.append(value)
+	return diff
+
 class MolGraph:
 	def __init__(self, mol_, bond_length_thresh_ =  None):
 		""" graph of a molecule """
@@ -21,7 +55,7 @@ class MolGraph:
 		self.nx_mol_graph = None
 		self.shortest_path = None
 		if not bond_length_thresh_:
-			self.bond_length_thresh = bond_length_thresh 
+			self.bond_length_thresh = bond_length_thresh
 		self.Make_Mol_Graph(mol_)
 		return
 

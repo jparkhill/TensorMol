@@ -52,30 +52,29 @@ def TFDistances(r_):
 
 def BumpEnergy(h,w,xyz,x,nbump):
 	"""
-	A potential energy which is just the sum of gaussians
+	A -1*potential energy which is just the sum of gaussians
 	with height h and width w at positions xyz sampled at x.
 	This uses distance matrices to maintain rotational invariance.
+	The factor of negative 1 is because we only desire the force...
 
 	Args:
 		h: bump height
 		w: bump width
 		xyz: a nbump X N X 3 tensor of bump centers.
 		x: (n X 3) tensor representing the point at which the energy is sampled.
-		nbump: a nbump X N X 3 tensor of non-zero centers.
+		nbump: an integer determining the number of nonzero bumps.
 	"""
-	#bshp = tf.shape(xyz)
-	#nbump = bshp[0]
 	xshp = tf.shape(x)
 	nx = xshp[0]
 	Nzxyz = tf.slice(xyz,[0,0,0],[nbump,nx,3])
 	Ds = TFDistances(Nzxyz) # nbump X MaxNAtom X MaxNAtom Distance tensor.
 	Dx = TFDistance(x) # MaxNAtom X MaxNAtom Distance tensor.
-	sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
+	#sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
 	w2 = w*w
-	# here I should tf.assert bshp[1] == nx but fuggit.
 	rij = Ds - tf.tile(tf.reshape(Dx,[1,nx,nx]),[nbump,1,1])
-	ToExp = tf.einsum('ijk,ijk',rij,rij)
-	return -1.0*h*tf.exp(-0.5*ToExp/w2)
+	ToExp = tf.einsum('ijk,ijk->i',rij,rij)
+	ToSum = -1.0*h*tf.exp(-0.5*ToExp/w2)
+	return tf.reduce_sum(ToSum,axis=0)
 
 def MorseKernel(D,Z,Ae,De,Re):
 	"""

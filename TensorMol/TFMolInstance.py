@@ -585,11 +585,11 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			inputs = inp_pl[e]
 			mats = mats_pl[e]
 			shp_in = tf.shape(inputs)
-			if (PARAMS["check_level"]>2):
+			if (PARAMS["CheckLevel"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				mats_shape = tf.shape(mats)
 				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
+			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
@@ -1210,11 +1210,11 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			inputs = inp_pl[e]
 			shp_in = tf.shape(inputs)
 			index = index_pl[e]
-			if (PARAMS["check_level"]>2):
+			if (PARAMS["CheckLevel"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				index_shape = tf.shape(index)
 				tf.Print(tf.to_float(index_shape), [tf.to_float(index_shape)], message="Element "+str(e)+"index shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
+			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
