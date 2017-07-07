@@ -1,5 +1,5 @@
 # &#9658;TensorMol 0.1
-A Statistical Model of Molecular Structure
+![](title.png)
 
 ### Authors:
  Kun Yao (kyao@nd.edu), John Herr (John.E.Herr.16@nd.edu),
@@ -10,6 +10,7 @@ A Statistical Model of Molecular Structure
  - Many Body Expansion
  - Bonds in Molecules NN
  - Atomwise Forces
+ - Inductive Charges
 
 ### Simulation Types:
  - Optimizations
@@ -22,21 +23,23 @@ A Statistical Model of Molecular Structure
 By using this software you agree to the terms in COPYING
 
 ### Installation:
+ - Works on OSX, Ubuntu, and Windows subsystem for Linux.
 ```
 git clone https://github.com/jparkhill/TensorMol.git
 cd TensorMol
-pip install -e .
+sudo pip install -e .
 python test.py
 ```
 
 ### Usage:
  - ```import TensorMol as tm```
+ - TensorMol assumes a directory structure executing path which mirrors the git.
  - Please also refer to IPython notebooks in /notebooks.
 
 ### Sample Results
 ![](water.png)
 
-- Water IR spectrum generated from test.py, david_testIR().
+- Water Trimer IR spectrum generated with david_testIR() in test.py
 - The red lines are MP2(qchem) solid line is TensorMol's IR propagation.
 
 ### Requirements:
@@ -51,6 +54,7 @@ python test.py
  - NVidia Corp. (hardware)
  - Vol Lillenfeld Group (for GBD9)
  - Chan Group (for PySCF)
+ - Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
 ### Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)
