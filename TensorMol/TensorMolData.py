@@ -38,7 +38,7 @@ class TensorMolData(TensorData):
 			LOGGER.info("TensorMolData.type: %s",self.type)
 			LOGGER.info("TensorMolData.dig.name: %s",self.dig.name)
 			LOGGER.info("NMols in TensorMolData.set: %i", len(self.set.mols))
-			self.raw_it = iter(self.set.mols) 
+			self.raw_it = iter(self.set.mols)
 		except:
 			print " do not include MSet"
 		self.MaxNAtoms = None
@@ -454,7 +454,7 @@ class TensorMolData_BP(TensorMolData):
 			Also determines mean stoichiometry
 		"""
 		try:
-			self.HasGrad 
+			self.HasGrad
 		except:
 			self.HasGrad = False
 		if (self.ScratchState == 1):
@@ -539,10 +539,10 @@ class TensorMolData_BP(TensorMolData):
 			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
 		if (self.ScratchPointer+ncases >= self.NTrain):
 			self.ScratchPointer = 0
-		inputs = []#np.zeros((eles,ncases, np.prod(self.dig.eshape)))
-		inputgs = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
-		matrices = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
-		offsets=[]
+		inputs = []
+		inputgs = []
+		matrices = []
+		offsets = []
 		# Get the number of molecules which would be contained in the desired batch size
 		# and the number of element cases.
 		# metadata contains: molecule index, atom type, mol start, mol stop
@@ -620,9 +620,9 @@ class TensorMolData_BP(TensorMolData):
 		if (self.test_ScratchPointer+ncases >= self.NTest):
 			self.test_ScratchPointer = 0
 			self.test_mols_done = True
-		inputs = []#np.zeros((ncases, np.prod(self.dig.eshape)))
-		inputgs = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
-		matrices = []#np.zeros((len(self.eles), ncases, noutputs))
+		inputs = []
+		inputgs = []
+		matrices = []
 		offsets= []
 		# Get the number of molecules which would be contained in the desired batch size
 		# and the number of element cases.
@@ -848,8 +848,8 @@ class TensorMolData_BP_Update(TensorMolData_BP):
 			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
 		if (self.ScratchPointer+ncases >= self.NTrain):
 			self.ScratchPointer = 0
-		inputs = []#np.zeros((eles,ncases, np.prod(self.dig.eshape)))
-		inputgs = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
+		inputs = []
+		inputgs = []
 		atom_mol_index = [] # mol index of each atom
 		offsets=[]
 		# Get the number of molecules which would be contained in the desired batch size
@@ -929,8 +929,8 @@ class TensorMolData_BP_Update(TensorMolData_BP):
 		if (self.test_ScratchPointer+ncases >= self.NTest):
 			self.test_ScratchPointer = 0
 			self.test_mols_done = True
-		inputs = []#np.zeros((ncases, np.prod(self.dig.eshape)))
-		inputgs = []#np.zeros((eles, ncases, (np.prod(self.dig.egshape),max(n3)))
+		inputs = []
+		inputgs = []
 		atom_mol_index = []#np.zeros((len(self.eles), ncases, noutputs))
 		offsets= []
 		# Get the number of molecules which would be contained in the desired batch size
@@ -1050,7 +1050,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 		if (self.HasGrad):
 			return xyzs, Zs, labels, grads
 		else:
-			return xyzs, Zs, labels	
+			return xyzs, Zs, labels
 
 	def LoadDataToScratch(self, tformer):
 		"""
@@ -1067,7 +1067,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 			Also determines mean stoichiometry
 		"""
 		try:
-			self.HasGrad 
+			self.HasGrad
 		except:
 			self.HasGrad = False
 		if (self.ScratchState == 1):
@@ -1082,7 +1082,7 @@ class TensorMolData_BP_Direct(TensorMolData):
                 self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
-		self.ScratchState = 1 
+		self.ScratchState = 1
 		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
 		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
 		return
@@ -1134,4 +1134,3 @@ class TensorMolData_BP_Direct(TensorMolData):
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
-
