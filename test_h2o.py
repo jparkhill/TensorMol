@@ -31,6 +31,31 @@ def PrepareTrain():
                 a.Save()
 
 	if (0):
+		a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+		dic_list = pickle.load(open("./datasets/H2O_augmented_more_cutoff5_b3lyp_force.dat", "rb"))
+		for dic in dic_list:
+			atoms = []
+			for atom in dic['atoms']:
+                                atoms.append(AtomicNumber(atom))
+                        atoms = np.asarray(atoms, dtype=np.uint8)
+                        mol = Mol(atoms, dic['xyz'])
+                        mol.properties['charges'] = dic['charges']
+                        mol.properties['dipole'] = dic['dipole']
+                        mol.properties['quadropole'] = dic['quad']
+                        mol.properties['energy'] = dic['scf_energy']
+			mol.properties['gradients'] = dic['gradients']
+                        mol.CalculateAtomization()
+                        a.mols.append(mol)
+                a.Save()
+	
+	if (1):
+		a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+		a.Load()
+		a.mols[50000].WriteXYZfile(fname="water_example")
+		print a.mols[50000].properties
+
+
+	if (0):
 		a = MSet("H2O_400K_squeeze")
 		a.Load()
 		b = MSet("H2O_augmented_more_cutoff5")
@@ -111,9 +136,29 @@ def TestANI1():
                 #manager.Continue_Training(maxsteps=2)
 
 
-	if (1):
-		a = MSet("uneq_chemspider")
+	if (0):
+		a = MSet("H2O_augmented_more_cutoff5")
+                a.Load()
+		random.shuffle(a.mols)
+		nmols =len(a.mols)
+		ncore = 31
+		f = []
+		for i in range (0, ncore+1):
+			f.append(open("H2O_augmented_more_cutoff5_b3lyp_"+str(i)+".in", "w+"))	
+		for i, mol in enumerate(a.mols):
+			file_index = int(i/(nmols/ncore))
+			f[file_index].write("$molecule\n0 1\n")
+			for j in range (0, mol.NAtoms()):
+				atom_name =  atoi.keys()[atoi.values().index(mol.atoms[j])]
+                                f[file_index].write(atom_name+"   "+str(mol.coords[j][0])+ "  "+str(mol.coords[j][1])+ "  "+str(mol.coords[j][2])+"\n")
+			f[file_index].write("$end\n")
+			f[file_index].write("$rem\njobtype force\nSYM_IGNORE True\nexchange b3lyp\nbasis 6-31g*\n$end\n\n\n@@@\n\n")
+			
+
+	if (0):
+		#a = MSet("uneq_chemspider")
 		#a = MSet("H2O_augmented_more_cutoff5")
+		a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
 		PARAMS["hidden1"] = 100
@@ -122,7 +167,7 @@ def TestANI1():
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 51
-                PARAMS["batch_size"] = 75
+                PARAMS["batch_size"] = 1000
                 PARAMS["test_freq"] = 10
                 PARAMS["tf_prec"] = "tf.float64"
                 #PARAMS["AN1_num_r_Rs"] = 16
@@ -136,9 +181,32 @@ def TestANI1():
 	if (0):
 		a = MSet("H2O_dimer_opt")
                 a.ReadXYZ("H2O_dimer_opt")
-		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_1", Trainable_ = False)
-		manager.Continue_Training(50)
-		#print manager.Eval_BPEnergy_Direct(a)
+		manager = TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_1", Trainable_ = False)
+		#manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_1", Trainable_ = False)
+		#manager.Continue_Training(50)
+		print manager.Eval_BPEnergy_Direct(a)
+
+
+        if (1):
+                a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                PARAMS["hidden1"] = 100
+                PARAMS["hidden2"] = 100
+                PARAMS["hidden3"] = 100
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 51
+                PARAMS["batch_size"] = 1000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+                #PARAMS["AN1_num_r_Rs"] = 16
+                #PARAMS["AN1_num_a_Rs"] = 4
+                #PARAMS["AN1_num_a_As"] = 4
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
+                manager.Train(maxstep=51)
 
 	if (0):
                 a = MSet("H2O_dimer_opt")

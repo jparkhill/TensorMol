@@ -1288,6 +1288,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			batch_data = self.TData.GetTrainBatch(self.batch_size,self.batch_size_output)
 			actual_mols  = np.count_nonzero(batch_data[2])
 			#print ("index:", batch_data[1][0][:40], batch_data[1][1][:20])
+			#total_loss_value, loss_value, mol_output, atom_outputs  = self.sess.run([self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#np.set_printoptions(threshold=np.nan)
 			#print ("self.atom_outputs", atom_outputs[0][0][:40], "\n", atom_outputs[1][0][:20], atom_outputs[1].shape, "\n  mol_outputs:", mol_output[:20], mol_output.shape)

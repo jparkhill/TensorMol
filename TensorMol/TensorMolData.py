@@ -1047,7 +1047,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 			else:
                         	raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
-				grads[i][:mol.NAtoms()] = -mol.properties["force"]
+				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
 			return xyzs, Zs, labels, grads
 		else:
@@ -1135,4 +1135,5 @@ class TensorMolData_BP_Direct(TensorMolData):
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
+
 

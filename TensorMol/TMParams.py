@@ -46,7 +46,8 @@ class TMParams(dict):
 		self["Embedded_Charge_Order"] = 2
 		self["MBE_ORDER"] = 3
 		# Training Parameters
-		self["NeuronType"] = "relu"
+		self["NeuronType"] = "tanh"
+		#self["NeuronType"] = "relu"
 		self["tf_prec"] = "tf.float32"
 		self["learning_rate"] = 0.001
 		self["momentum"] = 0.9
