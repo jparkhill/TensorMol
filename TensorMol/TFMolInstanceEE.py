@@ -155,11 +155,11 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 			inputs = inp_pl[e]
 			mats = mats_pl[e]
 			shp_in = tf.shape(inputs)
-			if (PARAMS["check_level"]>2):
+			if (PARAMS["CheckLevel"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				mats_shape = tf.shape(mats)
 				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
+			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
@@ -551,12 +551,12 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 			coords = coords_pl[e]
 			shp_in = tf.shape(inputs)
 			shp_coords = tf.shape(coords)
-			if (PARAMS["check_level"]>2):
+			if (PARAMS["CheckLevel"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				mats_shape = tf.shape(mats)
 				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
 				tf.Print(tf.to_float(shp_coords), [tf.to_float(shp_coords)], message="Element "+str(e)+"coords shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
+			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
@@ -931,12 +931,12 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			coords = coords_pl[e]
 			shp_in = tf.shape(inputs)
 			shp_coords = tf.shape(coords)
-			if (PARAMS["check_level"]>2):
+			if (PARAMS["CheckLevel"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				mats_shape = tf.shape(mats)
 				tf.Print(tf.to_float(mats_shape), [tf.to_float(mats_shape)], message="Element "+str(e)+"mats shape ",first_n=10000000,summarize=100000000)
 				tf.Print(tf.to_float(shp_coords), [tf.to_float(shp_coords)], message="Element "+str(e)+"coords shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
+			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)

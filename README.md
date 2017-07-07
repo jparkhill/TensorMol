@@ -41,7 +41,8 @@ python test.py
 
 ### Sample Results
 ![](water.png)
-Water IR spectrum generated from test.py, david_testIR()
+
+- Water IR spectrum generated from test.py, david_testIR()
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
@@ -53,11 +54,8 @@ Water IR spectrum generated from test.py, david_testIR()
 ### Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)
 - Also crashes when reviving networks from disk.
-- if you have these issues try:
+- if you have these issues try re-installing or:
 
 ```
-cd C_API/
-sudo python setup.py install
-cd ..
 sh clean.sh
 ```
