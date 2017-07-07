@@ -21,12 +21,6 @@ A Statistical Model of Molecular Structure
 ### License: GPLv3
 By using this software you agree to the terms in COPYING
 
-### Acknowledgements:
- - Google Inc. (for TensorFlow)
- - NVidia Corp. (hardware)
- - Vol Lillenfeld Group (for GBD9)
- - Chan Group (for PySCF)
-
 ### Installation:
 ```
 git clone https://github.com/jparkhill/TensorMol.git
@@ -42,7 +36,8 @@ python test.py
 ### Sample Results
 ![](water.png)
 
-- Water IR spectrum generated from test.py, david_testIR()
+- Water IR spectrum generated from test.py, david_testIR().
+- The red lines are MP2(qchem) solid line is TensorMol's IR propagation.
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
@@ -50,6 +45,12 @@ python test.py
 - To Train Minimally: ~100GB Disk 20GB memory
 - To Train Realistically: 1TB Disk, GTX1070++
 - To Evaluate: Normal CPU and 10GB Mem
+
+### Acknowledgements:
+ - Google Inc. (for TensorFlow)
+ - NVidia Corp. (hardware)
+ - Vol Lillenfeld Group (for GBD9)
+ - Chan Group (for PySCF)
 
 ### Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)

@@ -4,6 +4,44 @@ import random, math
 from Mol import *
 from Electrostatics import *
 
+def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase = str(0), maxcase = str(1000), name = "MBE", ncore = str(4), queue="long"):
+	lines = "#!/bin/csh\n"+"# Submit a job for 8  processors\n"+"#$ -N "+name+"\n#$ -t "+mincase+"-"+maxcase+":1\n"+"#$ -pe smp "+ncore+"\n"+"#$ -r n\n"+"#$ -q "+queue+"\n\n\n"
+	lines += "module load gcc/5.2.0\nsetenv  QC /afs/crc.nd.edu/group/parkhill/qchem85\nsetenv  QCAUX /afs/crc.nd.edu/group/parkhill/QCAUX_1022\nsetenv  QCPLATFORM LINUX_Ix86\n\n\n"
+	lines += "/afs/crc.nd.edu/group/parkhill/qchem85/bin/qchem  -nt "+ncore+"   "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".in  "+str(order)+"/"+"${SGE_TASK_ID}/"+sub_order+"/"+index+".out\n\nrm MBE*.o*"
+	return lines
+
+def String_To_Atoms(s=""):
+	l = list(s)
+	atom_l = []
+	tmp = ""
+	for i, c in enumerate(l):
+		if  ord('A') <= ord(c) <= ord('Z'):
+			tmp=c
+		else:
+			tmp += c
+		if i==len(l)-1:
+			atom_l.append(tmp)
+		elif ord('A') <= ord(l[i+1]) <= ord('Z'):
+			atom_l.append(tmp)
+		else:
+			continue
+	return atom_l
+
+def Binominal_Combination(indis=[0,1,2], group=3):
+	if (group==1):
+		index=list(itertools.permutations(indis))
+		new_index =[]
+		for i in range (0, len(index)):
+			new_index.append(list(index[i]))
+		return new_index
+	else:
+		index=list(itertools.permutations(indis))
+		new_index=[]
+		for sub_list in Binominal_Combination(indis, group-1):
+			for sub_index in index:
+				new_index.append(list(sub_list)+list(sub_index))
+		return new_index
+
 class FragableCluster(Mol):
 	""" Provides a cluster which can be fragmented into molecules"""
 	def __init__(self, atoms_ =  None, coords_ = None):
@@ -683,9 +721,6 @@ class Frag(Mol):
 				frag_deri[i][2] += nn_dcm * cm_dz
 		return frag_deri
 
-
-
-
 class FragableClusterBF(Mol):
 	""" All the monomers can pair with each other, no cutoff"""
 	def __init__(self, atoms_ =  None, coords_ = None, center_= "COM", cutoff_ = 4.6, width_ = 0.4):
@@ -708,7 +743,7 @@ class FragableClusterBF(Mol):
 		self.mbe_force =dict()
 		self.nn_force = None
 		self.frag_force_sum = dict()
-		self.frag_dipole_sum = dict() 
+		self.frag_dipole_sum = dict()
 		self.mbe_dipole=dict()
 		self.nn_dipole = 0
 		self.nn_energy = 0.0
@@ -723,7 +758,7 @@ class FragableClusterBF(Mol):
 		self.mbe_frags_energy=dict()  # MBE energy of each order N, dic['N'= E_N]
 		self.energy=None
 		self.mbe_energy=dict()   # sum of MBE energy up to order N, dic['N'=E_sum]
-		self.frag_energy_sum = dict() 
+		self.frag_energy_sum = dict()
 		self.mbe_deri =None
 		self.nn_energy=None
 		for order in range (1, self.mbe_order+1):
@@ -749,45 +784,45 @@ class FragableClusterBF(Mol):
 			self.mbe_frags[order] = []
 			masked=[]
 			frag_index = 0
-                        for i, dic in enumerate(self.frag_list):
-                                self.type_of_frags_dict[i] = []
-                                frag_atoms = String_To_Atoms(dic["atom"])
-                                frag_atoms = [atoi[atom] for atom in frag_atoms]
-                                num_frag_atoms = len(frag_atoms)
-                                j = 0
-                                while (j < self.NAtoms()):
-                                        if j in masked:
-                                                j += 1
-                                        else:
-                                                tmp_list = list(self.atoms[j:j+num_frag_atoms])
-                                                if tmp_list == frag_atoms:
-                                                        self.atoms_of_frags.append([])
-                                                        masked += range (j, j+num_frag_atoms)
-                                                        self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
-                                                        self.type_of_frags.append(i)
-                                                        self.type_of_frags_dict[i].append(frag_index)
-                                                        tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
-                                                        tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
-                                                        mbe_terms = [frag_index]
-                                                        tmp_mol = Mol(tmp_atom, tmp_coord)
-							tmp_mol.properties["mbe_atom_index"] = range(j, j+num_frag_atoms)
-							if self.center == "Heaviest": # take the first heaviest one
-								tmp_mol.properties["center_atom"] = np.where(tmp_mol.atoms == max(tmp_mol.atoms))[0][0]
-								tmp_mol.properties["center"] = tmp_mol.coords[np.where(tmp_mol.atoms == max(tmp_mol.atoms))[0][0]]
-							elif self.center == "COM":
-								tmp_mol.properties["center"] = tmp_mol.Center("Mass")
-							elif self.center == "COP":
-								tmp_mol.properties["center"] = tmp_mol.Center("Atom")
-							else:
-								print "This type of center is not implemented yet, set to COM as center"
-								tmp_mol.properties["center"] = tmp_mol.Center("Mass")
-                                                        self.mbe_frags[order].append(tmp_mol)
-                                                        j += num_frag_atoms
-                                                        frag_index += 1
-                                                        #print self.atoms_of_frags, tmp_list, self.type_of_frags
-                                                        #print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords
+			for i, dic in enumerate(self.frag_list):
+				self.type_of_frags_dict[i] = []
+				frag_atoms = String_To_Atoms(dic["atom"])
+				frag_atoms = [atoi[atom] for atom in frag_atoms]
+				num_frag_atoms = len(frag_atoms)
+				j = 0
+				while (j < self.NAtoms()):
+					if j in masked:
+						j += 1
+					else:
+						tmp_list = list(self.atoms[j:j+num_frag_atoms])
+					if tmp_list == frag_atoms:
+						self.atoms_of_frags.append([])
+						masked += range (j, j+num_frag_atoms)
+						self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
+						self.type_of_frags.append(i)
+						self.type_of_frags_dict[i].append(frag_index)
+						tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
+						tmp_atom  = self.atoms[j:j+num_frag_atoms].copy()
+						mbe_terms = [frag_index]
+						tmp_mol = Mol(tmp_atom, tmp_coord)
+						tmp_mol.properties["mbe_atom_index"] = range(j, j+num_frag_atoms)
+						if self.center == "Heaviest": # take the first heaviest one
+							tmp_mol.properties["center_atom"] = np.where(tmp_mol.atoms == max(tmp_mol.atoms))[0][0]
+							tmp_mol.properties["center"] = tmp_mol.coords[np.where(tmp_mol.atoms == max(tmp_mol.atoms))[0][0]]
+						elif self.center == "COM":
+							tmp_mol.properties["center"] = tmp_mol.Center("Mass")
+						elif self.center == "COP":
+							tmp_mol.properties["center"] = tmp_mol.Center("Atom")
 						else:
-							j += 1
+							print "This type of center is not implemented yet, set to COM as center"
+							tmp_mol.properties["center"] = tmp_mol.Center("Mass")
+						self.mbe_frags[order].append(tmp_mol)
+						j += num_frag_atoms
+						frag_index += 1
+						#print self.atoms_of_frags, tmp_list, self.type_of_frags
+						#print self.mbe_frags[order][-1].atoms, self.mbe_frags[order][-1].coords
+					else:
+						j += 1
 		else:
 			self.mbe_frags[order] = []
 			mbe_terms=[]
@@ -830,7 +865,6 @@ class FragableClusterBF(Mol):
 			del sub_combinations
 		return
 
-
 	def MBE_Energy(self):
 		mono_num = len(self.mbe_frags[1])
 		self.nn_energy = 0.0
@@ -838,25 +872,24 @@ class FragableClusterBF(Mol):
 			self.mbe_energy[order] = self.frag_energy_sum[order]
 			if order == 1:
 				self.nn_energy += self.mbe_energy[order]
-				continue 
+				continue
 			for sub_order in range (1, order):
 				self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
 			print "order: ", order, self.mbe_energy[order]
-			self.nn_energy += self.mbe_energy[order]	
+			self.nn_energy += self.mbe_energy[order]
 		print self.mbe_energy, self.nn_energy
-		return 
-					
+		return
 
-        def MBE_Energy_Embed(self):
+	def MBE_Energy_Embed(self):
 		self.properties["mbe_energy_embed"] = dict()
-                mono_num = len(self.mbe_frags[1])
-                self.nn_energy = 0.0
-                for order in range (1, self.mbe_order+1):
-                        self.mbe_energy[order] = self.frag_energy_sum[order]
+		mono_num = len(self.mbe_frags[1])
+		self.nn_energy = 0.0
+		for order in range (1, self.mbe_order+1):
+			self.mbe_energy[order] = self.frag_energy_sum[order]
 			self.properties["mbe_energy_embed"][order] = self.mbe_energy[order]
-                        if order == 1:
-                                self.nn_energy += self.properties["mbe_energy_embed"][order]
-                                continue
+			if order == 1:
+				self.nn_energy += self.properties["mbe_energy_embed"][order]
+				continue
 			if order == 2:
 				t = time.time()
 				self.properties["mbe_energy_embed"][order] = 0.0
@@ -872,10 +905,10 @@ class FragableClusterBF(Mol):
 					cc_2b = Dimer_ChargeCharge(mol_frag)
 					#replu_2b = Dimer_Replusive(mol_frag)
 					avg_2b = (1.0-math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"]))/2.0*nn_2b + (1.0+math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"]))/2.0*cc_2b
-					#avg_2b = (1.0-math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"]))/2.0*nn_2b + (1.0+math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"]))/2.0*cc_2b + replu_2b 
+					#avg_2b = (1.0-math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"]))/2.0*nn_2b + (1.0+math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"]))/2.0*cc_2b + replu_2b
 					self.mbe_energy[order] += nn_2b
 					mol_frag.properties["nn_2b"] = nn_2b
-					mol_frag.properties["cc_2b"] = cc_2b 
+					mol_frag.properties["cc_2b"] = cc_2b
 					self.properties["mbe_energy_embed"][order] += avg_2b
 					cc_2b_sum += cc_2b
 					nn_2b_sum += nn_2b
@@ -884,56 +917,52 @@ class FragableClusterBF(Mol):
 				self.nn_energy += self.properties["mbe_energy_embed"][order]
 				#print "order 2 energy cost:", time.time() -t
 				continue
-                        for sub_order in range (1, order):
-                                self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
-				self.properties["mbe_energy_embed"][order]  = self.mbe_energy[order]
-                        self.nn_energy += self.properties["mbe_energy_embed"][order]
-                print self.properties["mbe_energy_embed"], self.nn_energy
-                return
+			for sub_order in range (1, order):
+				self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
+			self.properties["mbe_energy_embed"][order]  = self.mbe_energy[order]
+			self.nn_energy += self.properties["mbe_energy_embed"][order]
+		print self.properties["mbe_energy_embed"], self.nn_energy
+		return
 
-
-
-        def MBE_Dipole(self):
-                mono_num = len(self.mbe_frags[1])
-                self.nn_dipole = 0.0
-                for order in range (1, self.mbe_order+1):
-                        self.mbe_dipole[order] = self.frag_dipole_sum[order]
-                        if order == 1:
-                                self.nn_dipole += self.mbe_dipole[order]
-                                continue
-                        for sub_order in range (1, order):
-                                self.mbe_dipole[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_dipole[sub_order]
-                        self.nn_dipole += self.mbe_dipole[order]
-                print self.mbe_dipole, self.nn_dipole
-                return
-
+	def MBE_Dipole(self):
+		mono_num = len(self.mbe_frags[1])
+		self.nn_dipole = 0.0
+		for order in range (1, self.mbe_order+1):
+			self.mbe_dipole[order] = self.frag_dipole_sum[order]
+			if order == 1:
+				self.nn_dipole += self.mbe_dipole[order]
+				continue
+			for sub_order in range (1, order):
+				self.mbe_dipole[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_dipole[sub_order]
+			self.nn_dipole += self.mbe_dipole[order]
+		print self.mbe_dipole, self.nn_dipole
+		return
 
 	def MBE_Force(self):
-                mono_num = len(self.mbe_frags[1])
-                self.nn_force = np.zeros((self.NAtoms(), 3))
-                for order in range (1, self.mbe_order+1):
-                        self.mbe_force[order] = self.frag_force_sum[order]
-                        if order == 1:
-                                self.nn_force += self.mbe_force[order]
-                                continue
-                        for sub_order in range (1, order):
-                                self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
-                        self.nn_force += self.mbe_force[order]
+		mono_num = len(self.mbe_frags[1])
+		self.nn_force = np.zeros((self.NAtoms(), 3))
+		for order in range (1, self.mbe_order+1):
+			self.mbe_force[order] = self.frag_force_sum[order]
+			if order == 1:
+				self.nn_force += self.mbe_force[order]
+				continue
+			for sub_order in range (1, order):
+				self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
+			self.nn_force += self.mbe_force[order]
 		self.properties["mbe_deri"] = -self.nn_force/JOULEPERHARTREE
-                #print self.mbe_force, self.nn_force
-                return
-
+		#print self.mbe_force, self.nn_force
+		return
 
 	def MBE_Force_Embed(self):
 		self.properties["mbe_energy_embed_force"] = dict()
 		mono_num = len(self.mbe_frags[1])
-                self.nn_force = np.zeros((self.NAtoms(), 3))
-                for order in range (1, self.mbe_order+1):
-                        self.mbe_force[order] = self.frag_force_sum[order]
-                        if order == 1:
+		self.nn_force = np.zeros((self.NAtoms(), 3))
+		for order in range (1, self.mbe_order+1):
+			self.mbe_force[order] = self.frag_force_sum[order]
+			if order == 1:
 				self.properties["mbe_energy_embed_force"][order] = self.mbe_force[order]
 				self.nn_force += self.properties["mbe_energy_embed_force"][order]
-                                continue
+				continue
 			if order == 2:
 				t = time.time()
 				cc_2b_grad_sum = np.zeros((self.NAtoms(), 3))
@@ -941,12 +970,12 @@ class FragableClusterBF(Mol):
 				avg_2b_grad_sum = np.zeros((self.NAtoms(), 3))
 				#replu_2b_grad_sum = np.zeros((self.NAtoms(), 3))
 				for mol_frag in self.mbe_frags[order]:
-                                        dist =  (sum(np.square(mol_frag.properties["center"][0] - mol_frag.properties["center"][1])))**0.5
-					A = math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"])/2.0 
+					dist =  (sum(np.square(mol_frag.properties["center"][0] - mol_frag.properties["center"][1])))**0.5
+					A = math.tanh((dist - self.properties["cutoff"])/self.properties["cutoff_width"])/2.0
 					cc_2b_grad = np.zeros((self.NAtoms(), 3))
 					nn_2b_grad = np.zeros((self.NAtoms(), 3))
 					avg_2b_grad = np.zeros((self.NAtoms(), 3))
-					cutoff_2b_grad = np.zeros((self.NAtoms(), 3))	
+					cutoff_2b_grad = np.zeros((self.NAtoms(), 3))
 					#replu_2b_grad = np.zeros((self.NAtoms(), 3))
 					cutoff_2b_grad[mol_frag.properties["mbe_atom_index"]] = Dimer_Cutoff_Grad(mol_frag, dist, self.properties["cutoff"], self.properties["cutoff_width"])
 					#replu_2b_grad[mol_frag.properties["mbe_atom_index"]] = Dimer_Replusive_Grad(mol_frag)
@@ -955,7 +984,7 @@ class FragableClusterBF(Mol):
 					mono_2_grads = self.mbe_frags[1][mol_frag.properties["mono_index"][1]].properties["nn_energy_grads"]
 					nn_2b_grad[mol_frag.properties["mbe_atom_index"]] = -(mol_frag.properties["nn_energy_grads"] - np.lib.pad(mono_1_grads,((0, mol_frag.properties["natom_each_mono"][1]),(0,0)),'constant', constant_values = (0)) - np.lib.pad(mono_2_grads,((mol_frag.properties["natom_each_mono"][0], 0),(0,0)),'constant', constant_values = (0)))/JOULEPERHARTREE
 					avg_2b_grad = (0.5 - A)*nn_2b_grad - cutoff_2b_grad*mol_frag.properties["nn_2b"] + (0.5 + A)*cc_2b_grad + cutoff_2b_grad*mol_frag.properties["cc_2b"]
-					#avg_2b_grad = (0.5 - A)*nn_2b_grad - cutoff_2b_grad*mol_frag.properties["nn_2b"] + (0.5 + A)*cc_2b_grad + cutoff_2b_grad*mol_frag.properties["cc_2b"]+replu_2b_grad	
+					#avg_2b_grad = (0.5 - A)*nn_2b_grad - cutoff_2b_grad*mol_frag.properties["nn_2b"] + (0.5 + A)*cc_2b_grad + cutoff_2b_grad*mol_frag.properties["cc_2b"]+replu_2b_grad
 					nn_2b_grad_sum += nn_2b_grad
 					cc_2b_grad_sum += cc_2b_grad
 					avg_2b_grad_sum += avg_2b_grad
@@ -963,17 +992,17 @@ class FragableClusterBF(Mol):
 				self.mbe_force[order] = -nn_2b_grad_sum * JOULEPERHARTREE
 				self.properties["mbe_energy_embed_force"][order] = -avg_2b_grad_sum*JOULEPERHARTREE
 				self.nn_force +=  self.properties["mbe_energy_embed_force"][order]
-				continue 
-                        for sub_order in range (1, order):
-                                self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
-				self.properties["mbe_energy_embed_force"][order] = self.mbe_force[order]
-                        self.nn_force += self.properties["mbe_energy_embed_force"][order]
-                self.properties["mbe_deri"] = -self.nn_force/JOULEPERHARTREE
+				continue
+			for sub_order in range (1, order):
+				self.mbe_force[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_force[sub_order]
+			self.properties["mbe_energy_embed_force"][order] = self.mbe_force[order]
+			self.nn_force += self.properties["mbe_energy_embed_force"][order]
+			self.properties["mbe_deri"] = -self.nn_force/JOULEPERHARTREE
 		return
 
 	def MBE_Charge(self):
 		mono_num = len(self.mbe_frags[1])
-                self.nn_charge = np.zeros(self.NAtoms())
+		self.nn_charge = np.zeros(self.NAtoms())
 		for order in range (1, self.mbe_order+1):
 			self.mbe_charge[order] = self.frag_charge_sum[order]
 			if order == 1:
