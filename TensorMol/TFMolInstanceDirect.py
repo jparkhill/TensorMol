@@ -13,6 +13,7 @@ from TensorMol.TensorMolData import *
 from TensorMol.TFMolInstance import *
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.RawEmbeddings import *
+from tensorflow.python.client import timeline
 
 class BumpHolder:
 	def __init__(self,natom_,maxbump_):
@@ -546,13 +547,12 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
                                 self.eles_pairs.append([self.eles[i], self.eles[j]])
                 self.eles_pairs_np = np.asarray(self.eles_pairs)
 		self.SetANI1Param()
-		self.batch_size = 1000
+		self.batch_size = PARAMS["batch_size"] 
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
 		if (self.Trainable):
                         self.TData.LoadDataToScratch(self.tformer)
-		self.batch_size = 1000
 		self.xyzs_pl = None
 		self.Zs_pl = None
 		self.label_pl = None
@@ -589,6 +589,16 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		SFPr = np.concatenate([p1_R,p2_R],axis=2)
 		self.SFPr = np.transpose(SFPr, [2,0,1])
 		self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
+
+		p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
+                p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
+                SFPa2 = np.concatenate([p1,p2],axis=2)
+                self.SFPa2 = np.transpose(SFPa2, [2,0,1])
+		p1_new = np.reshape(rs_R,[AN1_num_r_Rs,1])
+                self.SFPr2 = np.transpose(p1_new, [1,0])
+		self.zeta = PARAMS["AN1_zeta"]
+		self.eta = PARAMS["AN1_eta"]
+
 		print ("self.inshape:", self.inshape)
 
 	def Clean(self):
@@ -621,22 +631,27 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
 			SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
-			tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2, self.Rr_cut, Elep, self.SFPa2,self.zeta, self.eta, self.Ra_cut)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
+			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+                        #self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+                        #self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
+			#tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
+			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
 			self.check = tf.add_check_numerics_ops()
+			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
-			self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			self.run_metadata = tf.RunMetadata()
+			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+			#self.run_metadata = tf.RunMetadata()
 		return
 
 	def loss_op(self, output, labels):
@@ -751,13 +766,26 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		num_of_mols = 0
 		pre_output = np.zeros((self.batch_size),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep:", ministep)
 			batch_data = self.TData.GetTrainBatch(self.batch_size)
 			actual_mols  = self.batch_size
+			t = time.time()
+			print ("batch_size:", self.batch_size)
 			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradient], feed_dict=self.fill_feed_dict(batch_data))
-			#dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradients  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradients], feed_dict=self.fill_feed_dict(batch_data))
+			#dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradient], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
+			print ("time:", time.time() - t)
+			#print ("gradient:", gradient[0][:4])
+			
+			#print ("gradient:", np.sum(gradient[0]))
+			#print ("gradient:", np.sum(np.isinf(gradient[0])))
+			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
+			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+                        #chrome_trace = fetched_timeline.generate_chrome_trace_format()
+                        #with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+                        #       f.write(chrome_trace)
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.print_training(step, train_loss, num_of_mols, duration)
@@ -830,12 +858,16 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
 			SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
-			tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
+			elf.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
+			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			#self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
+			#tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
+			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
-			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.check = tf.add_check_numerics_ops()
+			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -844,8 +876,8 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.saver = tf.train.Saver()
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			self.run_metadata = tf.RunMetadata()
+			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+			#self.run_metadata = tf.RunMetadata()
 		return
 
 	def continue_training(self, mxsteps):

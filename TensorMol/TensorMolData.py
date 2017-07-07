@@ -1005,6 +1005,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 			self.eles = list(MSet_.AtomTypes())
 			self.eles.sort()
 			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
+			print "self.MaxNAtoms:", self.MaxNAtoms
 			self.Nmols = len(self.set.mols)
 		self.MeanStoich=None
 		self.MeanNAtoms=None

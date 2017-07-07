@@ -35,16 +35,16 @@ def TestANI1():
 	copy uneq_chemspider from kyao@zerg.chem.nd.edu:/home/kyao/TensorMol/datasets/uneq_chemspider.xyz
 	"""
 	if (1):
-		#a = MSet("uneq_chemspider")
-		#a.ReadXYZ("uneq_chemspider")
-		#a.Save()
-		#a = MSet("uneq_chemspider")
-		#a.Load()
-		#print "Set elements: ", a.AtomTypes()
-		#TreatedAtoms = a.AtomTypes()
-		#d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-		#tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
-		#tset.BuildTrain("uneq_chemspider_float64")
+		a = MSet("uneq_chemspider")
+		a.ReadXYZ("uneq_chemspider")
+		a.Save()
+		a = MSet("uneq_chemspider")
+		a.Load()
+		print "Set elements: ", a.AtomTypes()
+		TreatedAtoms = a.AtomTypes()
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+		tset.BuildTrain("uneq_chemspider_float64")
 
 		PARAMS["hidden1"] = 200
                 PARAMS["hidden2"] = 200
@@ -58,6 +58,7 @@ def TestANI1():
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_float64_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=1500)
+		#manager= TFMolManage("Mol_uneq_chemspider_float64_ANI1_Sym_fc_sqdiff_BP_1", None, False)
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
                 #manager.Continue_Training(maxsteps=2)
 	if (0):
@@ -1063,17 +1064,17 @@ def TestEE():
 #
 
 #TestBP(set_="gdb9", dig_="GauSH", BuildTrain_= True)
-#TestANI1()
+TestANI1()
 #TestBP_WithGrad()
 #Test_ULJ()
 #Test_LJMD()
-TestDipole()
+#TestDipole()
 #TestJohnson()
 #TestIR()
 # TestIndoIR()
 # david_testIR()
 #david_HarmonicAnalysis()
-TestMetadynamics()
+#TestMetadynamics()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

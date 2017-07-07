@@ -277,5 +277,70 @@ def AutoCorrelation(traj, step_size): # trajectory shape: Nsteps X NAtoms X 3
 	#np_autocorr = np.correlate(traj, traj, mode = "full")  # not working, only work for 1D, maybe needs scipy
 	return autocorr
 
+def Tile_P5(nzeta, neta, ntheta, nr):
+	p1_2 = np.tile(np.reshape(np.multiply(np.arange(nzeta), neta*ntheta*nr),[nzeta,1]),[1,neta])
+	p2_2 = np.tile(np.reshape(np.concatenate([p1_2,np.tile(np.reshape(np.multiply(np.arange(neta),ntheta*nr),[1,neta]),[nzeta,1])],axis=-1),[nzeta,neta,1,2]),[1,1,ntheta,1])
+	p3_2 = np.tile(np.reshape(np.concatenate([p2_2,np.tile(np.reshape(np.multiply(np.arange(ntheta),nr),[1,1,ntheta,1]),[nzeta,neta,1,1])],axis=-1),[nzeta,neta,ntheta,1,3]),[1,1,1,nr,1])
+	p4_2 = np.reshape(np.concatenate([p3_2,np.tile(np.reshape(np.arange(nr),[1,1,1,nr,1]),[nzeta,neta,ntheta,1,1])],axis=-1),[1,nzeta,neta,ntheta,nr,4])
+	p5_2 = np.reshape(np.sum(p4_2,axis=-1),[1, nzeta*neta*ntheta*nr, 1]) # scatter_nd only supports upto rank 5... so gotta smush this... 
+	return p5_2.astype("int32")
+
+def Tile_P3(neta, nr):
+	p1_2 = np.tile(np.reshape(np.multiply(np.arange(neta), nr),[neta,1,1]),[1,nr,1])
+	p2_2 = np.reshape(np.concatenate([p1_2, np.tile(np.reshape(np.arange(nr),[1,nr,1]),[neta,1,1])],axis=-1),[1,neta,nr,2])
+	p3_2 = np.reshape(np.sum(p2_2,axis=-1),[1,neta*nr,1])
+	return p3_2.astype("int32")
+
+def AllTriplesSet_Np(nmol, natom):
+	"""Returns all possible triples of integers between zero and natom.
+
+	Args:
+		rng: a 1D integer tensor to be triply outer product'd
+	Returns:
+		A Nmol X natom X natom X natom X 4 tensor of all triples.
+	"""
+	rng = np.tile(np.reshape(np.arange(natom),[1,natom]),[nmol,1])
+	v1 = np.tile(np.reshape(rng,[nmol,natom,1]),[1,1,natom])
+	v2 = np.tile(np.reshape(rng,[nmol,1,natom]),[1,natom,1])
+	v3 = np.transpose(np.stack([v1,v2],1),[0,2,3,1])
+	# V3 is now all pairs (nat x nat x 2). now do the same with another to make nat X 3
+	v4 = np.tile(np.reshape(v3,[nmol,natom,natom,1,2]),[1,1,1,natom,1])
+	v5 = np.tile(np.reshape(rng,[nmol,1,1,natom,1]),[1,natom,natom,1,1])
+	v6 = np.concatenate([v4,v5], axis = 4) # All triples in the range.
+	v7 = np.tile(np.reshape(np.arange(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1])
+	v8 = np.concatenate([v7,v6], axis = -1)
+	return v8.astype("int32")
+
+def AllDoublesSet_Np(nmol, natom):
+	"""Returns all possible doubles of integers between zero and natom. 
+    
+	Args: 
+		natom: max integer
+	Returns: 
+		A nmol X natom X natom X 3 tensor of all doubles. 
+	"""
+	rng = np.tile(np.reshape(np.arange(natom),[1,natom]),[nmol,1])
+	v1 = np.tile(np.reshape(rng,[nmol,natom,1]),[1,1,natom])
+	v2 = np.tile(np.reshape(rng,[nmol,1,natom]),[1,natom,1])
+	v3 = np.transpose(np.stack([v1,v2],1),[0,2,3,1])
+	v4 = np.tile(np.reshape(np.arange(nmol),[nmol,1,1,1]),[1,natom,natom,1])
+	v5 = np.concatenate([v4,v3], axis = -1)
+	return v5.astype("int32")
+
+def AllSinglesSet_Np(nmol, natom):
+	"""Returns all possible singles of integers between zero and natom. 
+    
+	Args: 
+		natom: max integer
+	Returns: 
+		A nmol X natom X 2 tensor of all doubles. 
+	"""
+	rng = np.tile(np.reshape(np.arange(natom),[1,natom]),[nmol,1])
+	v1 = np.reshape(rng,[nmol,natom,1])
+	v2 = np.tile(np.reshape(np.arange(nmol),[nmol,1,1]),[1,natom,1])
+	v3 = np.concatenate([v2,v1], axis = -1)
+	return v3.astype("int32")
+
+
 signstep = np.vectorize(SignStep)
 samplingfunc_v2 = np.vectorize(SamplingFunc_v2)

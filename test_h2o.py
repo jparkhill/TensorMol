@@ -5,6 +5,7 @@ Many of these tests take a pretty significant amount of time and memory to compl
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
+#os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 def PrepareTrain():
         if (0):
@@ -110,25 +111,29 @@ def TestANI1():
                 #manager.Continue_Training(maxsteps=2)
 
 
-	if (0):
-		a = MSet("H2O_augmented_more_cutoff5")
+	if (1):
+		a = MSet("uneq_chemspider")
+		#a = MSet("H2O_augmented_more_cutoff5")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
-		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
-		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct") # Initialzie a manager than manage the training of neural network.
 		PARAMS["hidden1"] = 100
                 PARAMS["hidden2"] = 100
                 PARAMS["hidden3"] = 100
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 51
-                PARAMS["batch_size"] = 1000
+                PARAMS["batch_size"] = 75
                 PARAMS["test_freq"] = 10
                 PARAMS["tf_prec"] = "tf.float64"
+                #PARAMS["AN1_num_r_Rs"] = 16
+                #PARAMS["AN1_num_a_Rs"] = 4
+                #PARAMS["AN1_num_a_As"] = 4
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol") # Initialize TensorMolData that contain the training data fo
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=51)
 
-	if (1):
+	if (0):
 		a = MSet("H2O_dimer_opt")
                 a.ReadXYZ("H2O_dimer_opt")
 		manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_1", Trainable_ = False)
