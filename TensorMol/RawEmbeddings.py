@@ -579,6 +579,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	nr = pshape[2]
 	nsym = ntheta*nr
 	infinitesimal = 0.000000000000000000000000001
+	onescalar = 1.0 - 0.0000000000000001
 
 	# atom triples.
 	ats = AllTriplesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
@@ -629,10 +630,10 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	RikRik2 = tf.sqrt(tf.reduce_sum(B2*B2,axis=1)+infinitesimal)
     
 	denom = RijRij2*RikRik2
-	# Mask any troublesome entries.
+	#Mask any troublesome entries.
 	ToACos = RijRik2/denom
-	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec),ToACos)
-	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec),ToACos)
+	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
+	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
 	Thetaijk = tf.acos(ToACos)
 	thetatmp = tf.cast(tf.tile(tf.reshape(SFPs_[0],[1,ntheta,nr]),[nnz2,1,1]),prec)
 	# Broadcast the thetas and ToCos together
@@ -650,6 +651,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	fac4 = 0.5*(tf.cos(3.14159265359*RikRik2/R_cut)+1.0)
 	# assemble the full symmetry function for all triples.
 	fac34t =  tf.tile(tf.reshape(fac3*fac4,[nnz2,1,1]),[1,ntheta,nr])
+	#Gm = tf.reshape(fac2*fac34t,[nnz2*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	Gm = tf.reshape(fac1*fac2*fac34t,[nnz2*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	# Finally scatter out the symmetry functions where they belong. 
 	jk2 = tf.add(tf.multiply(tf.slice(GoodInds2,[0,2],[nnz2,1]), natom), tf.slice(GoodInds2,[0,3],[nnz2, 1]))
@@ -898,7 +900,8 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
                 IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
         return SymList, IndexList
 
-def TFSymSet_Scattered_Debug(R, Zs, eles_, SFPsR_, Rr_cut, eta):
+
+def TFSymSet_Scattered_Debug(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
         """
         A tensorflow implementation of the AN1 symmetry function for a set of molecule. 
         Args:
@@ -918,7 +921,10 @@ def TFSymSet_Scattered_Debug(R, Zs, eles_, SFPsR_, Rr_cut, eta):
         nmol = inp_shp[0]
         natom = inp_shp[1]
         nele = tf.shape(eles_)[0]
-        GM = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
+        nelep = tf.shape(eleps_)[0]
+        GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
+        GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+        GM = tf.concat([GMR, GMA], axis=2)
         num_ele, num_dim = eles_.get_shape().as_list()
         MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
         ToMask = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))

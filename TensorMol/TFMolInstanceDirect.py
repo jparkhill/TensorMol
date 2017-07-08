@@ -970,8 +970,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
 		SFPr = np.concatenate([p1_R,p2_R],axis=2)
 		self.SFPr = np.transpose(SFPr, [2,0,1])
-		#self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
-		self.inshape = int(len(self.eles)*AN1_num_r_Rs)	
+		self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
+		#self.inshape = int(len(self.eles)*AN1_num_r_Rs)	
 
 		p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
                 p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
@@ -1022,7 +1022,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
 			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
                         eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Debug(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, eta)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Debug(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
@@ -1053,8 +1053,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		energy_loss = tf.nn.l2_loss(energy_diff)
 		grads_diff = tf.subtract(nn_grads, grads)
 		grads_loss = tf.nn.l2_loss(grads_diff)
-		#loss = tf.add(energy_loss, grads_loss)
-		loss = tf.identity(energy_loss)
+		loss = tf.add(energy_loss, grads_loss)
+		#loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
 
