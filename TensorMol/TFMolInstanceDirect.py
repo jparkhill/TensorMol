@@ -970,7 +970,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
 		SFPr = np.concatenate([p1_R,p2_R],axis=2)
 		self.SFPr = np.transpose(SFPr, [2,0,1])
-		self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
+		#self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
+		self.inshape = int(len(self.eles)*AN1_num_r_Rs)	
 
 		p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
                 p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
@@ -1017,7 +1018,12 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			SFPa2 = tf.Variable(self.SFPa2, trainable=False, dtype = self.tf_prec)
                         SFPr2 = tf.Variable(self.SFPr2, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, self.Rr_cut, Elep, SFPa2, self.zeta, self.eta, self.Ra_cut)
+			Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+                        eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Debug(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, eta)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
@@ -1047,7 +1053,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		energy_loss = tf.nn.l2_loss(energy_diff)
 		grads_diff = tf.subtract(nn_grads, grads)
 		grads_loss = tf.nn.l2_loss(grads_diff)
-		loss = tf.add(energy_loss, grads_loss)
+		#loss = tf.add(energy_loss, grads_loss)
+		loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
 
@@ -1136,9 +1143,6 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.grads_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]] + [batch_data[3]])}
 		return feed_dict
 
-	def print_training(self, step, loss, energy_loss, grads_loss, Ncase, duration, Train=True):
-		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)), "  train energy loss: ", "%.10f"%(float(energy_loss)/(Ncase)), "  train grads loss: ", "%.10f"%(float(grads_loss)/(Ncase)))
-		return
 
 	def Prepare(self):
 		self.train_prepare()
@@ -1164,15 +1168,16 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			actual_mols  = self.batch_size
 			t = time.time()
 			#total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs  = self.sess.run([self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			total_loss_value, loss_value, energy_loss, grads_loss, loss_gradient,  mol_output, atom_outputs  = self.sess.run([self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.loss_gradient, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			#dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			#total_loss_value, loss_value, energy_loss, grads_loss, loss_gradient,  mol_output, atom_outputs  = self.sess.run([self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.loss_gradient, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradient], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
 			#print ("gradient:", gradient[0][:4])
 			
 			#print ("gradient:", np.sum(gradient[0]))
 			#print ("gradient:", np.sum(np.isinf(gradient[0])))
 			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
-			print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "self.loss_gradient:", loss_gradient)
+			print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
+			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "self.loss_gradient:", loss_gr)
 			train_loss = train_loss + loss_value
 			train_energy_loss += energy_loss
 			train_grads_loss += grads_loss
@@ -1184,7 +1189,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
                         #       f.write(chrome_trace)
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
-		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)
+		self.print_training(step, train_loss,  num_of_mols, duration)
 		return
 
 	def test(self, step):

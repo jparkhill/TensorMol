@@ -898,6 +898,39 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
                 IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
         return SymList, IndexList
 
+def TFSymSet_Scattered_Debug(R, Zs, eles_, SFPsR_, Rr_cut, eta):
+        """
+        A tensorflow implementation of the AN1 symmetry function for a set of molecule. 
+        Args:
+                R: a nmol X maxnatom X 3 tensor of coordinates. 
+                Zs : nmol X maxnatom X 1 tensor of atomic numbers.  
+                eles_: a neles X 1 tensor of elements present in the data. 
+                SFPsR_: A symmetry function parameter of radius part
+                Rr_cut: Radial Cutoff of radius part
+                eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+                SFPsA_: A symmetry function parameter of angular part
+                RA_cut: Radial Cutoff of angular part
+
+        Returns:
+                Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+        """
+        inp_shp = tf.shape(R)
+        nmol = inp_shp[0]
+        natom = inp_shp[1]
+        nele = tf.shape(eles_)[0]
+        GM = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
+        num_ele, num_dim = eles_.get_shape().as_list()
+        MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
+        ToMask = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+        IndexList = []
+        SymList=[]
+        GatherList = []
+        for e in range(num_ele):
+                GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
+                SymList.append(tf.gather_nd(GM, GatherList[-1]))
+                NAtomOfEle=tf.shape(GatherList[-1])[0]
+                IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
+        return SymList, IndexList
 
 
 def NNInterface(R, Zs, eles_, GM):
