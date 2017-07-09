@@ -1025,7 +1025,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
 			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
                         eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
