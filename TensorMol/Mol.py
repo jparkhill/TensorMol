@@ -31,6 +31,9 @@ class Mol:
 	def AtomTypes(self):
 		return np.unique(self.atoms)
 
+	def BondTypes(self):
+		return np.unique(self.bonds[:,0]).astype(int)
+
 	def Num_of_Heavy_Atom(self):
 		return len([1 for i in self.atoms if i!=1])
 

@@ -514,6 +514,15 @@ def MakeTestSet():
 	# test_set = TensorData_TFRecords(c,d, test_=True)
 	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
+def BIMNN_NEq():
+	a=MSet("gdb9")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of train Mols: ", len(a.mols)
+	d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_Bond_BP", OType_="Energy")
+	tset = TensorMolData_Bone_BP(a,d)
+	tset.BuildTrain("gdb9")
+
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)

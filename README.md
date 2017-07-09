@@ -52,7 +52,7 @@ python test.py
 ### Acknowledgements:
  - Google Inc. (for TensorFlow)
  - NVidia Corp. (hardware)
- - Vol Lillenfeld Group (for GBD9)
+ - von Lilienfeld Group (for GBD9)
  - Chan Group (for PySCF)
  - Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
