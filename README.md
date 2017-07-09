@@ -1,5 +1,6 @@
 # &#9658;TensorMol 0.1
 ![](title.png)
+-Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
 ### Authors:
  Kun Yao (kyao@nd.edu), John Herr (John.E.Herr.16@nd.edu),
@@ -54,7 +55,6 @@ python test.py
  - NVidia Corp. (hardware)
  - von Lilienfeld Group (for GBD9)
  - Chan Group (for PySCF)
- - Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
 ### Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)
