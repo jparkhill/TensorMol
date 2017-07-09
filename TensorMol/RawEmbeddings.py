@@ -159,6 +159,7 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut, prec=tf.float64):
 	nr = pshape[4]
 	nsym = nzeta*neta*ntheta*nr
 	infinitesimal = 0.000000000000000000000000001
+	onescalar = 1.0 - 0.0000000000000001
 
 	# atom triples.
 	ats = AllTriplesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
@@ -197,8 +198,8 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut, prec=tf.float64):
 	denom = RijRij*RikRik+infinitesimal
 	# Mask any troublesome entries.
 	ToACos = RijRik/denom
-	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec),ToACos)
-	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec),ToACos)
+	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar,ToACos)
+	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar,ToACos)
 	Thetaijk = tf.acos(ToACos)
 	zetatmp = tf.cast(tf.reshape(SFPs_[0],[1,nzeta,neta,ntheta,nr]),prec)
 	thetatmp = tf.cast(tf.tile(tf.reshape(SFPs_[2],[1,nzeta,neta,ntheta,nr]),[nnz,1,1,1,1]),prec)
@@ -274,6 +275,7 @@ def TFSymASet_Update(R, Zs, eleps_, SFPs_, R_cut, prec=tf.float64):
 	nr = pshape[4]
 	nsym = nzeta*neta*ntheta*nr
 	infinitesimal = 0.000000000000000000000000001
+	onescalar = 1.0 - 0.0000000000000001
 
 	# atom triples.
 	ats = AllTriplesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
@@ -326,8 +328,8 @@ def TFSymASet_Update(R, Zs, eleps_, SFPs_, R_cut, prec=tf.float64):
 	denom = RijRij2*RikRik2
 	# Mask any troublesome entries.
 	ToACos = RijRik2/denom
-	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec),ToACos)
-	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec),ToACos)
+	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar,ToACos)
+	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar,ToACos)
 	Thetaijk = tf.acos(ToACos)
 	zetatmp = tf.cast(tf.reshape(SFPs_[0],[1,nzeta,neta,ntheta,nr]),prec)
 	thetatmp = tf.cast(tf.tile(tf.reshape(SFPs_[2],[1,nzeta,neta,ntheta,nr]),[nnz2,1,1,1,1]),prec)
@@ -900,43 +902,6 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
                 IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
         return SymList, IndexList
 
-
-def TFSymSet_Scattered_Debug(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
-        """
-        A tensorflow implementation of the AN1 symmetry function for a set of molecule. 
-        Args:
-                R: a nmol X maxnatom X 3 tensor of coordinates. 
-                Zs : nmol X maxnatom X 1 tensor of atomic numbers.  
-                eles_: a neles X 1 tensor of elements present in the data. 
-                SFPsR_: A symmetry function parameter of radius part
-                Rr_cut: Radial Cutoff of radius part
-                eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
-                SFPsA_: A symmetry function parameter of angular part
-                RA_cut: Radial Cutoff of angular part
-
-        Returns:
-                Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
-        """
-        inp_shp = tf.shape(R)
-        nmol = inp_shp[0]
-        natom = inp_shp[1]
-        nele = tf.shape(eles_)[0]
-        nelep = tf.shape(eleps_)[0]
-        GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
-        GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
-        GM = tf.concat([GMR, GMA], axis=2)
-        num_ele, num_dim = eles_.get_shape().as_list()
-        MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
-        ToMask = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
-        IndexList = []
-        SymList=[]
-        GatherList = []
-        for e in range(num_ele):
-                GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
-                SymList.append(tf.gather_nd(GM, GatherList[-1]))
-                NAtomOfEle=tf.shape(GatherList[-1])[0]
-                IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
-        return SymList, IndexList
 
 
 def NNInterface(R, Zs, eles_, GM):

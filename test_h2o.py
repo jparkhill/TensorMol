@@ -208,6 +208,13 @@ def TestANI1():
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=51)
 
+        if (0):
+                a = MSet("H2O_dimer_opt")
+                a.ReadXYZ("H2O_dimer_opt")
+                manager = TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_1", Trainable_ = False)
+                #manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_1", Trainable_ = False)
+                #manager.Continue_Training(50)
+                print manager.Eval_BPEnergy_Direct_Grad(a)
 	if (0):
                 a = MSet("H2O_dimer_opt")
                 a.ReadXYZ("H2O_dimer_opt")

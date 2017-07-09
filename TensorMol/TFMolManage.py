@@ -1071,6 +1071,17 @@ class TFMolManage(TFManage):
 		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs], True)
                 return mol_out, atom_out, gradient
 
+        def Eval_BPEnergy_Direct_Grad(self, mol_set):
+                nmols = len(mol_set.mols)
+                dummy_outputs = np.zeros((nmols))
+                xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+                Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+                for i, mol in enumerate(mol_set.mols):
+                        xyzs[i][:mol.NAtoms()] = mol.coords
+                        Zs[i][:mol.NAtoms()] = mol.atoms
+                mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
+                return mol_out, atom_out, gradient
 
 	def Prepare(self):
 		self.Load()

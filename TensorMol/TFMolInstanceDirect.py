@@ -992,6 +992,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		self.label_pl=None
 		self.grads_pl = None
 		self.atom_outputs = None
+		self.energy_loss = None
+		self.grads_loss = None
 		self.Scatter_Sym = None
 		self.Sym_Index = None
 		self.options = None
@@ -1018,12 +1020,13 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			SFPa2 = tf.Variable(self.SFPa2, trainable=False, dtype = self.tf_prec)
                         SFPr2 = tf.Variable(self.SFPr2, trainable=False, dtype = self.tf_prec)
+			#self.SFPr2_vary = tf.Variable(self.SFPr2, trainable= True, dtype = self.tf_prec)
 			Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
 			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
 			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
                         eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Debug(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
@@ -1035,8 +1038,6 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss = self.loss_op(self.output, self.gradient, self.label_pl, self.grads_pl)
-			self.loss_gradient = tf.gradients(self.total_loss, self.xyzs_pl) 
-			#self.loss_gradient = tf.gradients(self.energy_loss, self.xyzs_pl) 
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -1167,17 +1168,10 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			batch_data = self.TData.GetTrainBatch(self.batch_size)
 			actual_mols  = self.batch_size
 			t = time.time()
-			#total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs  = self.sess.run([self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			#total_loss_value, loss_value, energy_loss, grads_loss, loss_gradient,  mol_output, atom_outputs  = self.sess.run([self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.loss_gradient, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs  = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			#dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradient], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
-			#print ("gradient:", gradient[0][:4])
-			
-			#print ("gradient:", np.sum(gradient[0]))
-			#print ("gradient:", np.sum(np.isinf(gradient[0])))
-			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs   = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			#dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs, SFPr2_vary   = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs, self.SFPr2_vary], feed_dict=self.fill_feed_dict(batch_data))
+			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "\n self.SFPr2_vary :", SFPr2_vary )
 			print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
-			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "self.loss_gradient:", loss_gr)
 			train_loss = train_loss + loss_value
 			train_energy_loss += energy_loss
 			train_grads_loss += grads_loss
@@ -1232,47 +1226,40 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			print ("loading the session..")
 			self.Eval_Prepare()
 		feed_dict=self.fill_feed_dict(batch_data)
-		#mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-		#for i in range (0, batch_data[0][-1][-1].shape[0]):
-		#        print("i:", i)
-		#        import copy
-		#        new_batch_data=copy.deepcopy(batch_data)
-		#        #new_batch_data = list(batch_data)
-		#        new_batch_data[0][-1][-1][i] += 0.01
-		#        feed_dict=self.fill_feed_dict(new_batch_data)
-		#       new_mol_output, total_loss_value, loss_value, new_atom_outputs, new_gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-		#        print ("new_charge_gradient: ", gradient[-1][-1][i],  new_gradient[-1][-1][i], " numerical: ", (new_atom_outputs[-1][-1][-1]- atom_outputs[-1][-1][-1])/0.01)
-		if (IfGrad):
-			mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-			#print ("atom_outputs:", atom_outputs)
-			return mol_output, atom_outputs, gradient
-		else:
-			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
-			return mol_output, atom_outputs
+		mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+		return mol_output, atom_outputs, gradient
 
 	def Eval_Prepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
-			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
-			SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
-			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2, self.Rr_cut, Elep, self.SFPa2,self.zeta, self.eta, self.Ra_cut)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
-			#self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
-			#tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
-			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
-			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
-			self.check = tf.add_check_numerics_ops()
-			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
-			#self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
-			#self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+		with tf.Graph().as_default():
+                        self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
+                        self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
+                        self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+                        self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
+                        Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
+                        Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+                        SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
+                        SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
+                        SFPa2 = tf.Variable(self.SFPa2, trainable=False, dtype = self.tf_prec)
+                        SFPr2 = tf.Variable(self.SFPr2, trainable=False, dtype = self.tf_prec)
+                        Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+                        Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+                        zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+                        eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+                        self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
+                        #self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
+                        #self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
+                        #self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+                        #self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+                        #self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
+                        #tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
+                        #tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
+                        self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
+                        self.check = tf.add_check_numerics_ops()
+                        self.gradient  = tf.gradients(self.output, self.xyzs_pl)
+                        self.total_loss, self.loss, self.energy_loss, self.grads_loss = self.loss_op(self.output, self.gradient, self.label_pl, self.grads_pl)
+                        self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
