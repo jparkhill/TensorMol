@@ -150,5 +150,4 @@ def TMLogger(path_):
 	ch.setFormatter(pformatter)
 	tore.addHandler(fh)
 	tore.addHandler(ch)
-	print("Built Logger...")
 	return tore

@@ -28,7 +28,6 @@ class MetaDynamics(VelocityVerlet):
 		if (self.NBump > 0):
 			BE, BF = self.Bumper.Bump(self.BumpCoords, x_, self.NBump)
 		PF = self.ForceFunction(x_)
-		print JOULEPERHARTREE*BF[0]
 		tmp = PF+JOULEPERHARTREE*BF[0]
 		return tmp
 
