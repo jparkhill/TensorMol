@@ -187,7 +187,7 @@ def TestANI1():
 		print manager.Eval_BPEnergy_Direct(a)
 
 
-        if (1):
+        if (0):
                 a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
@@ -215,6 +215,29 @@ def TestANI1():
                 #manager= TFMolManage("Mol_H2O_augmented_more_cutoff5_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_1", Trainable_ = False)
                 #manager.Continue_Training(50)
                 print manager.Eval_BPEnergy_Direct_Grad(a)
+
+        if (1):
+                a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                PARAMS["hidden1"] = 100
+                PARAMS["hidden2"] = 100
+                PARAMS["hidden3"] = 100
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 1001
+                PARAMS["batch_size"] = 1000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+                #PARAMS["AN1_num_r_Rs"] = 16
+                #PARAMS["AN1_num_a_Rs"] = 4
+                #PARAMS["AN1_num_a_As"] = 4
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad_noGradTrain") # Initialzie a manager than manage the training of neural network.
+                manager.Train(maxstep=1001)
+
+
 	if (0):
                 a = MSet("H2O_dimer_opt")
                 a.ReadXYZ("H2O_dimer_opt")
