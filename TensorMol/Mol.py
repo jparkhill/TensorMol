@@ -12,11 +12,11 @@ class Mol:
 			atoms_: np.array(dtype=uint8) of atomic numbers.
 			coords_: np.array(dtype=uint8) of coordinates.
 		"""
-		if (atoms_!=None):
+		if type(atoms_) is np.ndarray:
 			self.atoms = atoms_.copy().astype(np.uint8)
 		else:
 			self.atoms = np.zeros(1,dtype=np.uint8)
-		if (coords_!=None):
+		if type(coords_) is np.ndarray:
 			self.coords = coords_.copy()
 		else:
 			self.coords=np.zeros(shape=(1,1),dtype=np.float)
@@ -30,6 +30,9 @@ class Mol:
 
 	def AtomTypes(self):
 		return np.unique(self.atoms)
+
+	def BondTypes(self):
+		return np.unique(self.bonds[:,0]).astype(int)
 
 	def Num_of_Heavy_Atom(self):
 		return len([1 for i in self.atoms if i!=1])

@@ -1090,34 +1090,34 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		An instance of A updated version of fully connected Behler-Parinello network.
 		Which requires a TensorMolData to train/execute.
 	"""
-        def __init__(self, TData_, Name_=None, Trainable_=True):
-                """
-                Raise a Behler-Parinello TensorFlow instance.
+		def __init__(self, TData_, Name_=None, Trainable_=True):
+			"""
+			Raise a Behler-Parinello TensorFlow instance.
 
-                Args:
-                        TData_: A TensorMolData instance.
-                        Name_: A name for this instance.
-                """
-                self.NetType = "fc_sqdiff_BP_Update"
-                MolInstance.__init__(self, TData_,  Name_, Trainable_)
-                self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
-                LOGGER.debug("Raised Instance: "+self.name)
-                self.train_dir = './networks/'+self.name
-                if (self.Trainable):
-                        self.TData.LoadDataToScratch(self.tformer)
-                # Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
-                self.inshape = np.prod(self.TData.dig.eshape)
-                LOGGER.info("MolInstance_fc_sqdiff_BP_Update.inshape: %s",str(self.inshape))
-                self.eles = self.TData.eles
-                self.n_eles = len(self.eles)
-                LOGGER.info("MolInstance_fc_sqdiff_BP_Update.eles: %s",str(self.eles))
-                LOGGER.info("MolInstance_fc_sqdiff_BP_Update.inshape.n_eles: %i",self.n_eles)
-                self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
-                self.MeanNumAtoms = np.sum(self.MeanStoich)
-                self.inp_pl=None
-                self.index_pl=None
-                self.label_pl=None
-                self.batch_size_output = 0
+			Args:
+				TData_: A TensorMolData instance.
+				Name_: A name for this instance.
+			"""
+			self.NetType = "fc_sqdiff_BP_Update"
+			MolInstance.__init__(self, TData_,  Name_, Trainable_)
+			self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
+			LOGGER.debug("Raised Instance: "+self.name)
+			self.train_dir = './networks/'+self.name
+			if (self.Trainable):
+				self.TData.LoadDataToScratch(self.tformer)
+			# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
+			self.inshape = np.prod(self.TData.dig.eshape)
+			LOGGER.info("MolInstance_fc_sqdiff_BP_Update.inshape: %s",str(self.inshape))
+			self.eles = self.TData.eles
+			self.n_eles = len(self.eles)
+			LOGGER.info("MolInstance_fc_sqdiff_BP_Update.eles: %s",str(self.eles))
+			LOGGER.info("MolInstance_fc_sqdiff_BP_Update.inshape.n_eles: %i",self.n_eles)
+			self.MeanStoich = self.TData.MeanStoich # Average stoichiometry of a molecule.
+			self.MeanNumAtoms = np.sum(self.MeanStoich)
+			self.inp_pl=None
+			self.index_pl=None
+			self.label_pl=None
+			self.batch_size_output = 0
 		self.gradient = None
 
 	def Clean(self):
@@ -1189,7 +1189,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		hidden1_units=self.hidden1
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
-		
+
 		#output = gen_state_ops._temporary_variable(shape=[self.batch_size_output], dtype=self.tf_prec)
 		#output = state_ops.assign(output, array_ops.zeros_like(index_pl))
 		#output = tf.Variable(output_pl)
