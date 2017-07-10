@@ -10,8 +10,10 @@ def TestBPDirect():
 	"""
 	Test Behler-Parrinello with gradient learning and direct descriptor.
 	"""
-	a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
-	a.Load()
+	a=MSet("H2O_force_test")
+        a.ReadXYZ("H2O_force_test")
+	#a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+	#a.Load()
 	TreatedAtoms = a.AtomTypes()
 	PARAMS["hidden1"] = 100
 	PARAMS["hidden2"] = 100
@@ -28,17 +30,19 @@ def TestBPDirect():
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=10)
 	# Test out some MD with the trained network.
-	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_RawBP_Grad_1",tset,False,"fc_sqdiff_BP_Direct_Grad",False,False) # Initialzie a manager than manage the training of neural network.
+	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_1",tset,False,"fc_sqdiff_BP_Direct_Grad",False,False) # Initialzie a manager than manage the training of neural network.
 	m = a.mols[0]
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-	EnergyForceField = lambda x: manager.EvalBPDirectSingleEnergyWGrad(Mol(m.atoms,x))
-	PARAMS["MDdt"] = 0.2
-	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 8000
-	PARAMS["MDThermostat"] = "Nose"
-	PARAMS["MDTemp"]= 300.0
-	traj = VelocityVerlet(None,m,"DirectMD", EnergyForceField)
-	traj.Prop()
+	print manager.Eval_BPEnergy_Direct_Grad(m)
+	print manager.EvalBPDirectSingleEnergyWGrad(m)
+	#masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	#EnergyForceField = lambda x: manager.EvalBPDirectSingleEnergyWGrad(Mol(m.atoms,x))
+	#PARAMS["MDdt"] = 0.2
+	#PARAMS["RemoveInvariant"]=True
+	#PARAMS["MDMaxStep"] = 8000
+	#PARAMS["MDThermostat"] = "Nose"
+	#PARAMS["MDTemp"]= 300.0
+	#traj = VelocityVerlet(None,m,"DirectMD", EnergyForceField)
+	#traj.Prop()
 	return
 
 # John's tests

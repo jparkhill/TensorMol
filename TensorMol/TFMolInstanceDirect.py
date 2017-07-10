@@ -1250,13 +1250,12 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
+			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
-			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			self.sess.run(init)
 		print("Prepared for Evaluation...")
 		return
 
