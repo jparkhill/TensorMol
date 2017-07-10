@@ -24,14 +24,14 @@ def TestBPDirect():
 	PARAMS["tf_prec"] = "tf.float64"
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
 	tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	if (1):
+	if (0):
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=10)
 	# Test out some MD with the trained network.
-	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_RawBP_Grad",tset,False,"fc_sqdiff_BP_Direct_Grad",False,False) # Initialzie a manager than manage the training of neural network.
+	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_RawBP_Grad_1",tset,False,"fc_sqdiff_BP_Direct_Grad",False,False) # Initialzie a manager than manage the training of neural network.
 	m = a.mols[0]
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-	EnergyForceField = lambda x: manager.EvalBPDirectSingleEnergyWGrad(Mol(m.atoms,x),False)
+	EnergyForceField = lambda x: manager.EvalBPDirectSingleEnergyWGrad(Mol(m.atoms,x))
 	PARAMS["MDdt"] = 0.2
 	PARAMS["RemoveInvariant"]=True
 	PARAMS["MDMaxStep"] = 8000

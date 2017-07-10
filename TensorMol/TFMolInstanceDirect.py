@@ -1174,7 +1174,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			print ("loading the session..")
 			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data)
-		mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
+		mol_output, atom_outputs, gradient = self.sess.run([self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
 		return mol_output, atom_outputs, gradient
 
 	def Prepare(self):
@@ -1256,6 +1256,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			self.saver = tf.train.Saver()
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
+		print("Prepared for Evaluation...")
 		return
 
 	def continue_training(self, mxsteps):
