@@ -1,5 +1,5 @@
 # &#9658;TensorMol 0.1
-![](newtitle.PNG)
+![](newtitle.png)
 -Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
 ### Authors:
