@@ -1095,6 +1095,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 			self.eles = list(MSet_.AtomTypes())
 			self.eles.sort()
 			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
+			print "self.MaxNAtoms:", self.MaxNAtoms
 			self.Nmols = len(self.set.mols)
 		self.MeanStoich=None
 		self.MeanNAtoms=None
@@ -1136,7 +1137,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 			else:
 				raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
-				grads[i][:mol.NAtoms()] = -mol.properties["force"]
+				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
 			return xyzs, Zs, labels, grads
 		else:
