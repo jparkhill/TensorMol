@@ -47,7 +47,7 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -335,12 +335,12 @@ class MolInstance_EE(MolInstance_fc_sqdiff_BP):
 		nmol = batch_data[2].shape[0]
 		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
 		self.batch_size_output = nmol
-		self.Eval_Prepare()
+		self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		preds, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
 		return mol_output, atom_outputs, gradient
 
-	def Eval_Prepare(self):
+	def EvalPrepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 			self.inp_pl=[]
@@ -440,7 +440,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.dipole_output = None
 		return
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -703,12 +703,12 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		self.batch_size_output = nmol
 		if not self.sess:
 			LOGGER.info("loading the session..")
-			self.Eval_Prepare()
+			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 		netcharge, dipole, total_loss_value, loss_value,  atom_outputs = self.sess.run([self.netcharge_output, self.dipole_output, self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
 		return netcharge, dipole/AUPERDEBYE, atom_outputs
 
-	def Eval_Prepare(self):
+	def EvalPrepare(self):
 		if (isinstance(self.inshape,tuple)):
 			if (len(self.inshape)>1):
 				raise Exception("My input should be flat")
@@ -825,7 +825,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		self.output_list = None
 		return
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -1110,7 +1110,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		self.batch_size_output = nmol
 		if not self.sess:
 			LOGGER.info("loading the session..")
-			self.Eval_Prepare()
+			self.EvalPrepare()
 
 		#feed_dict=self.fill_feed_dict(batch_data)
 		#output_list, charge_gradient = self.sess.run([  self.output_list, self.charge_gradient],  feed_dict=feed_dict)
@@ -1136,7 +1136,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
                         #print ("scaled_atom_outputs:", output_list[1], "unscaled_atom_outputs:", output_list[2], " charge_gradient:", charge_gradient, "length of charge_gradient:", len(charge_gradient))
                         return   output_list[0]/AUPERDEBYE, output_list[1], charge_gradient
 
-	def Eval_Prepare(self):
+	def EvalPrepare(self):
 		if (isinstance(self.inshape,tuple)):
 			if (len(self.inshape)>1):
 				raise Exception("My input should be flat")

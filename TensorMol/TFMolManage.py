@@ -64,9 +64,9 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "fc_sqdiff_BP_Update"):
 			self.Instances = MolInstance_fc_sqdiff_BP_Update(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
-                        self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
+			self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
-                        self.Instances = MolInstance_DirectBP_Grad(self.TData)
+			self.Instances = MolInstance_DirectBP_Grad(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -270,8 +270,7 @@ class TFMolManage(TFManage):
 		t = time.time()
 		pointers = [0 for ele in self.TData.eles]
 		mol_out, atom_out, nn_gradient = self.Instances.evaluate([inputs, matrices, dummy_outputs],IfGrad=True)
-		print ("acutuall evaluation cost:", time.time() -t)
-
+		print ("actual evaluation cost:", time.time() -t)
 		t = time.time()
 		total_gradient_list = []
 		total_energy_list = []
@@ -1080,6 +1079,23 @@ class TFMolManage(TFManage):
 			Zs[i][:mol.NAtoms()] = mol.atoms
 		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
 		return mol_out, atom_out, gradient
+
+	def EvalBPDirectSingleEnergyWGrad(self, mol):
+		"""
+		The energy and force routine for Kun's new direct BPs.
+		"""
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_outputs = np.zeros((nmols))
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
+		return mol_out[0], gradient[0]
 
 	def Prepare(self):
 		self.Load()

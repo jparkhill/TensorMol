@@ -18,17 +18,27 @@ def TestBPDirect():
 	PARAMS["hidden3"] = 100
 	PARAMS["learning_rate"] = 0.00001
 	PARAMS["momentum"] = 0.95
-	PARAMS["max_steps"] = 1001
+	PARAMS["max_steps"] = 10
 	PARAMS["batch_size"] = 1000
-	PARAMS["test_freq"] = 10
+	PARAMS["test_freq"] = 5
 	PARAMS["tf_prec"] = "tf.float64"
-	#PARAMS["AN1_num_r_Rs"] = 16
-	#PARAMS["AN1_num_a_Rs"] = 4
-	#PARAMS["AN1_num_a_As"] = 4
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-	tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-	manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
-	manager.Train(maxstep=1001)
+	tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	if (1):
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
+		manager.Train(maxstep=10)
+	# Test out some MD with the trained network.
+	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_RawBP_Grad",tset,False,"fc_sqdiff_BP_Direct_Grad",False,False) # Initialzie a manager than manage the training of neural network.
+	m = a.mols[0]
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	EnergyForceField = lambda x: manager.EvalBPDirectSingleEnergyWGrad(Mol(m.atoms,x),False)
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 8000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDTemp"]= 300.0
+	traj = VelocityVerlet(None,m,"DirectMD", EnergyForceField)
+	traj.Prop()
 	return
 
 # John's tests
@@ -72,14 +82,14 @@ def TestANI1():
 		#tset.BuildTrain("uneq_chemspider_float64")
 
 		PARAMS["hidden1"] = 200
-                PARAMS["hidden2"] = 200
-                PARAMS["hidden3"] = 200
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 1001
-                PARAMS["batch_size"] = 10000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["hidden2"] = 200
+		PARAMS["hidden3"] = 200
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 1001
+		PARAMS["batch_size"] = 10000
+		PARAMS["test_freq"] = 10
+		PARAMS["tf_prec"] = "tf.float64"
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_float64_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=1500)
@@ -875,7 +885,7 @@ def Test_LJMD():
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
 	tset = TensorMolData(a,d)
 	ins = MolInstance_DirectForce(tset,None,False,"Harm")
-	ins.train_prepare()
+	ins.TrainPrepare()
 	# Convert from hartree/ang to joules/mol ang.
 	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[0][0]
 	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
