@@ -26,7 +26,7 @@ def TestBPDirect():
 	PARAMS["tf_prec"] = "tf.float64"
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
 	tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	if (0):
+	if (1):
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=10)
 	# Test out some MD with the trained network.

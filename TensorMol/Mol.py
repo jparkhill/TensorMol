@@ -12,8 +12,6 @@ class Mol:
 			atoms_: np.array(dtype=uint8) of atomic numbers.
 			coords_: np.array(dtype=uint8) of coordinates.
 		"""
-		self.atoms = atoms_.copy()
-		self.coords = coords_.copy()
 		self.properties = {}
 		self.name=None
 		#things below here are sometimes populated if it is useful.
