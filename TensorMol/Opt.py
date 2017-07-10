@@ -335,6 +335,48 @@ class Optimizer:
 		print "Final Energy:", Energy(prev_m.coords)
 		return prev_m
 
+
+        def OptANI1Direct(self,m, filename="OptLog",Debug=False):
+		"""
+		Optimize using force output of an atomwise network.
+		now also averages over rotations...
+		
+		Args:
+		        m: A distorted molecule to optimize
+		"""
+		# Sweeps one at a time
+		rmsdisp = 10.0
+		maxdisp = 10.0
+		rmsgrad = 10.0
+		maxgrad = 10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		diis = DIIS()
+		print "Orig Coords", m.coords
+		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
+		Energy =  lambda x_: self.tfm.Eval_BPEnergy_Direct_Grad(Mol(m.atoms, x_), False)
+		EnergyAndForce =  lambda x_: self.tfm.Eval_BPEnergy_Direct_Grad(Mol(m.atoms, x_))
+		#EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
+		while( step < self.max_opt_step and rmsgrad > 0.001):
+			prev_m = Mol(m.atoms, m.coords)
+			energy, frc = EnergyAndForce(m.coords)
+			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
+			frc /= JOULEPERKCAL
+			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
+			m.coords = LineSearch(Energy, m.coords, frc)
+			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
+			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./results/", filename)
+			step+=1
+		# Checks stability in each cartesian direction.
+		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
+		print "Final Energy:", Energy(prev_m.coords)
+		return prev_m
+
 	def OptTFRealForceLBFGS(self,m, filename="OptLog",Debug=False):
 		"""
 		Optimize using force output of an atomwise network.
