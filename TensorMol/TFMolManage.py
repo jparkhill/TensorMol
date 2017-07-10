@@ -67,6 +67,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
+                        self.Instances = MolInstance_DirectBP_Grad_noGradTrain(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1102,7 +1104,7 @@ class TFMolManage(TFManage):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
 		mol_out, atom_out, gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
-		return mol_out[0], -JOULEPERHARTREE*gradient[0][0]
+		return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
 
 	def Prepare(self):
 		self.Load()
@@ -1119,6 +1121,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
+                        self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):
