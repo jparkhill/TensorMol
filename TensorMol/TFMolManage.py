@@ -1094,8 +1094,8 @@ class TFMolManage(TFManage):
 		for i, mol in enumerate(mol_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
-		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
-		return mol_out[0], gradient[0]
+		mol_out, atom_out, gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
+		return mol_out[0], gradient[0][0]
 
 	def Prepare(self):
 		self.Load()
