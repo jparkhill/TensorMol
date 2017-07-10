@@ -1080,12 +1080,9 @@ class TensorMolData_Bond_BP_Update(TensorMolData_BP_Update):
 		f.close()
 		return
 
-
-
 class TensorMolData_BP_Direct(TensorMolData):
 	"""
-			A tensordata for molecules and Behler-Parinello.
-			a Case is an input to the NN.
+	This tensordata serves up batches digested within TensorMol.
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
 		self.HasGrad = WithGrad_ # whether to pass around the gradient.
@@ -1116,7 +1113,6 @@ class TensorMolData_BP_Direct(TensorMolData):
 		self.labels = None
 		self.grads = None
 		return
-
 
 	def LoadData(self):
 		self.ReloadSet()

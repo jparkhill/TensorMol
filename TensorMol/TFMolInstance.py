@@ -1315,7 +1315,6 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
 
-
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			#print ("ministep:", ministep)
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
