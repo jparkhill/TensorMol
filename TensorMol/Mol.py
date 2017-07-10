@@ -6,20 +6,12 @@ from LinearOperations import *
 
 class Mol:
 	""" Provides a general purpose molecule"""
-	def __init__(self, atoms_ =  None, coords_ = None):
+	def __init__(self, atoms_ =  np.zeros(1,dtype=np.uint8), coords_ = np.zeros(shape=(1,1),dtype=np.float)):
 		"""
 		Args:
 			atoms_: np.array(dtype=uint8) of atomic numbers.
 			coords_: np.array(dtype=uint8) of coordinates.
 		"""
-		if type(atoms_) is np.ndarray:
-			self.atoms = atoms_.copy().astype(np.uint8)
-		else:
-			self.atoms = np.zeros(1,dtype=np.uint8)
-		if type(coords_) is np.ndarray:
-			self.coords = coords_.copy()
-		else:
-			self.coords=np.zeros(shape=(1,1),dtype=np.float)
 		self.properties = {}
 		self.name=None
 		#things below here are sometimes populated if it is useful.

@@ -64,7 +64,9 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "fc_sqdiff_BP_Update"):
 			self.Instances = MolInstance_fc_sqdiff_BP_Update(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
-			self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
+                        self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
+                        self.Instances = MolInstance_DirectBP_Grad(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -363,7 +365,7 @@ class TFMolManage(TFManage):
 			#return total,total_gradient.reshape((-1,3))
 			return  total, (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
 		else:
-			#return total_gradient.reshape((-1,3)) 
+			#return total_gradient.reshape((-1,3))
 			return  (-JOULEPERHARTREE*total_gradient.reshape((-1,3)))
 
 	def Eval_BPForceHalfNumerical(self, mol, total_energy = False):
@@ -873,7 +875,7 @@ class TFMolManage(TFManage):
 				for i in range (0, len(charge_gradients)):
 					total_scaled_gradient_list.append(total_scaled_gradient[ele_pointer:ele_pointer+charge_gradients[i].shape[0]])
 					ele_pointer += charge_gradients[i].shape[0]
-	
+
 		elif (mol_set, MSet):
                         nmols = len(mol_set.mols)
                         natoms = mol_set.NAtoms()
@@ -969,7 +971,7 @@ class TFMolManage(TFManage):
 				atom_type = mol.atoms[j]
 				atom_index = eles.index(atom_type)
 				tmp_atomcharge[j] = atomcharge[atom_index][0][pointers[atom_index]]/BOHRPERA  #hacky way to do
-				tmp_atomcharge_gradient[j] = total_scaled_gradient_list[atom_index][pointers[atom_index]].reshape((-1,3)) 
+				tmp_atomcharge_gradient[j] = total_scaled_gradient_list[atom_index][pointers[atom_index]].reshape((-1,3))
 				pointers[atom_index] +=1
 			molatomcharge.append(tmp_atomcharge)
 			molatomcharge_gradient.append(tmp_atomcharge_gradient)
@@ -1058,28 +1060,28 @@ class TFMolManage(TFManage):
 		mol.Set_Frag_Force_with_Order(cases_deri, nn_deri, self.TData.order)
 		return nn.sum()
 
-        def Eval_BPEnergy_Direct(self, mol_set):
-                nmols = len(mol_set.mols)
-                dummy_outputs = np.zeros((nmols))
+	def Eval_BPEnergy_Direct(self, mol_set):
+		nmols = len(mol_set.mols)
+		dummy_outputs = np.zeros((nmols))
 		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-                Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
 		for i, mol in enumerate(mol_set.mols):
-                        xyzs[i][:mol.NAtoms()] = mol.coords
-                        Zs[i][:mol.NAtoms()] = mol.atoms
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
 		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs], True)
-                return mol_out, atom_out, gradient
+		return mol_out, atom_out, gradient
 
-        def Eval_BPEnergy_Direct_Grad(self, mol_set):
-                nmols = len(mol_set.mols)
-                dummy_outputs = np.zeros((nmols))
-                xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+	def Eval_BPEnergy_Direct_Grad(self, mol_set):
+		nmols = len(mol_set.mols)
+		dummy_outputs = np.zeros((nmols))
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
 		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-                Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
-                for i, mol in enumerate(mol_set.mols):
-                        xyzs[i][:mol.NAtoms()] = mol.coords
-                        Zs[i][:mol.NAtoms()] = mol.atoms
-                mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
-                return mol_out, atom_out, gradient
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
+		return mol_out, atom_out, gradient
 
 	def Prepare(self):
 		self.Load()
@@ -1094,6 +1096,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
 			self.Instances = MolInstance_DirectBP_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
+			self.Instances = MolInstance_DirectBP_Grad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):

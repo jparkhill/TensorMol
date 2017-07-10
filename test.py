@@ -6,6 +6,31 @@ from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
+def TestBPDirect():
+	"""
+	Test Behler-Parrinello with gradient learning and direct descriptor.
+	"""
+	a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	PARAMS["hidden1"] = 100
+	PARAMS["hidden2"] = 100
+	PARAMS["hidden3"] = 100
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 1001
+	PARAMS["batch_size"] = 1000
+	PARAMS["test_freq"] = 10
+	PARAMS["tf_prec"] = "tf.float64"
+	#PARAMS["AN1_num_r_Rs"] = 16
+	#PARAMS["AN1_num_a_Rs"] = 4
+	#PARAMS["AN1_num_a_As"] = 4
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+	tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
+	manager.Train(maxstep=1001)
+	return
+
 # John's tests
 def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	"""
@@ -1073,7 +1098,8 @@ def TestEE():
 # TestIndoIR()
 # david_testIR()
 #david_HarmonicAnalysis()
-TestMetadynamics()
+#TestMetadynamics()
+TestBPDirect()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

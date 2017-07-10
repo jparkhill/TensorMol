@@ -548,7 +548,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
                 self.eles_pairs_np = np.asarray(self.eles_pairs)
 		self.SetANI1Param()
 		self.batch_size = PARAMS["batch_size"]
-		self.NetType = "RawBP_noGrad" 
+		self.NetType = "RawBP_noGrad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
@@ -690,11 +690,11 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			inputs = inp[e]
 			shp_in = tf.shape(inputs)
 			index = tf.cast(indexs[e], tf.int64)
-			if (PARAMS["check_level"]>2):
+			if (PARAMS["CheckLevel"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				index_shape = tf.shape(index)
 				tf.Print(tf.to_float(index_shape), [tf.to_float(index_shape)], message="Element "+str(e)+"index shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
+			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
@@ -774,7 +774,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradient], feed_dict=self.fill_feed_dict(batch_data))
 			#dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, gradient = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.gradient], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
 			#print ("gradient:", gradient[0][:4])
-			
+
 			#print ("gradient:", np.sum(gradient[0]))
 			#print ("gradient:", np.sum(np.isinf(gradient[0])))
 			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
@@ -971,7 +971,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		SFPr = np.concatenate([p1_R,p2_R],axis=2)
 		self.SFPr = np.transpose(SFPr, [2,0,1])
 		self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
-		#self.inshape = int(len(self.eles)*AN1_num_r_Rs)	
+		#self.inshape = int(len(self.eles)*AN1_num_r_Rs)
 
 		p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
                 p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
@@ -1088,11 +1088,11 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			inputs = inp[e]
 			shp_in = tf.shape(inputs)
 			index = tf.cast(indexs[e], tf.int64)
-			if (PARAMS["check_level"]>2):
+			if (PARAMS["CheckLevel"]>2):
 				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
 				index_shape = tf.shape(index)
 				tf.Print(tf.to_float(index_shape), [tf.to_float(index_shape)], message="Element "+str(e)+"index shape ",first_n=10000000,summarize=100000000)
-			if (PARAMS["check_level"]>3):
+			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
 			with tf.name_scope(str(self.eles[e])+'_hidden_1'):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
@@ -1284,4 +1284,3 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 					self.save_chk(step, feed_dict)
 		self.SaveAndClose()
 		return
-
