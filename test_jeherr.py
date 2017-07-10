@@ -515,13 +515,17 @@ def MakeTestSet():
 	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
 def BIMNN_NEq():
-	a=MSet("gdb9")
-	a.Load()
+	a=GraphSet("gdb9_1_6_7_8_cleaned")
+	a.ReadXYZ()
+	a.MakeGraphs()
+	a.Save()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of train Mols: ", len(a.mols)
 	d = MolDigester(TreatedAtoms, name_="ConnectedBond_Angle_Bond_BP", OType_="Energy")
-	tset = TensorMolData_Bone_BP(a,d)
+	tset = TensorMolData_Bond_BP(a,d)
 	tset.BuildTrain("gdb9")
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
+	manager.Train(maxstep=500)
 
 
 # InterpoleGeometries()
@@ -545,6 +549,7 @@ def BIMNN_NEq():
 # QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
+BIMNN_NEq()
 
 
 

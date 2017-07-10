@@ -195,7 +195,7 @@ class MSet:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
 				self.mols[-1].name = str(txts[line0+1])
-                                self.mols[-1].properties["set_name"] = self.name
+				self.mols[-1].properties["set_name"] = self.name
 		if (self.center):
 			self.CenterSet()
 		if (eqforce):
@@ -276,10 +276,6 @@ class MSet:
 		print "Energy Histogram", np.histogram(ens, 100)
 		print "RMSD Histogram", np.histogram(rmsd, 100)
 		return
-
-	def Make_Graphs(self):
-		graphs = map(MolGraph, self.mols)
-		return graphs
 
 	def Clean_GDB9(self):
 		s = MSet(self.name+"_cleaned")
@@ -439,8 +435,9 @@ class FragableMSetBF(FragableMSet):
 
 
 
-class GraphSet:
-	def __init__(self, name_ ="gdb9", path_="./datasets/"):
+class GraphSet(MSet):
+	def __init__(self, name_ ="gdb9", path_="./datasets/", center_=True):
+		MSet.__init__(self, name_, path_, center_)
 		self.graphs=[]
 		self.path=path_
 		self.name=name_
@@ -457,6 +454,36 @@ class GraphSet:
 		for m in self.mols:
 			nbonds += m.NBonds()
 		return nbonds
+
+	def MakeGraphs(self):
+		graphs = map(MolGraph, self.mols)
+		return graphs
+
+	def ReadXYZ(self,filename = None, xyz_type = 'mol', eqforce=False):
+		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
+		if filename == None:
+			filename = self.name
+		f = open(self.path+filename+".xyz","r")
+		txts = f.readlines()
+		for line in range(len(txts)):
+			if (txts[line].count('Comment:')>0):
+				line0=line-1
+				nlines=int(txts[line0])
+				if xyz_type == 'mol':
+					self.mols.append(MolGraph())
+				elif xyz_type == 'frag_of_mol':
+					self.mols.append(Frag_of_Mol())
+				else:
+					raise Exception("Unknown Type!")
+				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+				self.mols[-1].name = str(txts[line0+1])
+				self.mols[-1].properties["set_name"] = self.name
+		if (self.center):
+			self.CenterSet()
+		if (eqforce):
+			self.EQ_forces()
+		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
+		return
 
 	def Save(self):
 		print "Saving set to: ", self.path+self.name+self.suffix
