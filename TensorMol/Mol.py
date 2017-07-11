@@ -277,7 +277,6 @@ class Mol:
 		else:
 			return np.average(self.coords,axis=0)
 
-
 	def rms(self, m):
 		""" Cartesian coordinate difference. """
 		err  = 0.0
@@ -741,32 +740,6 @@ class Mol:
 
 	def Make_Spherical_Forces(self):
 		self.properties["sphere_forces"] = CartToSphereV(self.properties["forces"])
-
-	def PySCF_Energy(self, basis_='cc-pvqz'):
-		mol = gto.Mole()
-		pyscfatomstring=""
-		for j in range(len(self.atoms)):
-			s = self.coords[j]
-			pyscfatomstring=pyscfatomstring+str(self.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(self.atoms)-1 else "")
-		mol.atom = pyscfatomstring
-		mol.basis = basis_
-		mol.verbose = 0
-		try:
-			mol.build()
-			mf=scf.RHF(mol)
-			hf_en = mf.kernel()
-			mp2 = mp.MP2(mf)
-			mp2_en = mp2.kernel()
-			en = hf_en + mp2_en[0]
-			self.energy = en
-			return en
-		except Exception as Ex:
-			print "PYSCF Calculation error... :",Ex
-			print "Mol.atom:", mol.atom
-			print "Pyscf string:", pyscfatomstring
-			return 0.0
-			#raise Ex
-		return
 
 	def MultipoleInputs(self):
 		"""

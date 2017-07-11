@@ -49,35 +49,59 @@ def QchemDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
 	return np.array([0.0])[0]
 
 def PullFreqData():
-	a = open("/media/sdb1/dtoth/qchem_jobs/new/phenol.out", "r+") #Change file name 
+	a = open("/media/sdb1/dtoth/qchem_jobs/new/phenol.out", "r+") #Change file name
 	# each time to read correct output file
-	f=open("phenol_freq.dat", "w") #Change file name to whatever you want -- 
-	# make sure it's different each time 
+	f=open("phenol_freq.dat", "w") #Change file name to whatever you want --
+	# make sure it's different each time
 	lines = a.readlines()
 	data = []
 	ip = 0
 	for i, line in enumerate(lines):
-	    if line.count("NAtoms") > 0:
-	        atoms = int(lines[i+1].split()[0])
-	        break 
+		if line.count("NAtoms") > 0:
+			atoms = int(lines[i+1].split()[0])
+			break
 	nm = np.zeros((3*atoms-6, atoms, 3))
 	for i, line in enumerate(lines):
-	    if "Frequency:" in line:
-	        freq = [line.split()[1], line.split()[2],line.split()[3]]
-	        intens = [lines[i+4].split()[2], lines[i+4].split()[3],lines[i+4].split()[4]]
-	        f.write(freq[0] + "   " + intens[0] + "\n")
-	        f.write(freq[1] + "   " + intens[1] + "\n")
-	        f.write(freq[2] + "   " + intens[2] + "\n")
-	    if "Raman Active" in line:
-	        for j in range(atoms):
-	            it = 0
-	            for k in range(3):
-	                for l in range(3):
-	                    nm[it+ip,j,l] = float(lines[i+j+2].split()[k*3+l+1])
-	                it += 1
-	        ip += 3
-	        # f.write(nm[0] + "  " + nm)
+		if "Frequency:" in line:
+			freq = [line.split()[1], line.split()[2],line.split()[3]]
+			intens = [lines[i+4].split()[2], lines[i+4].split()[3],lines[i+4].split()[4]]
+			f.write(freq[0] + "   " + intens[0] + "\n")
+			f.write(freq[1] + "   " + intens[1] + "\n")
+			f.write(freq[2] + "   " + intens[2] + "\n")
+		if "Raman Active" in line:
+			for j in range(atoms):
+				it = 0
+				for k in range(3):
+					for l in range(3):
+						nm[it+ip,j,l] = float(lines[i+j+2].split()[k*3+l+1])
+					it += 1
+			ip += 3
+			# f.write(nm[0] + "  " + nm)
 	np.save("morphine_nm.npy", nm)
-	
-	f.close()   
+	f.close()
 
+	def PySCFMP2Energy(m, basis_='cc-pvqz'):
+		mol = gto.Mole()
+		pyscfatomstring=""
+		for j in range(len(m.atoms)):
+			s = m.coords[j]
+			pyscfatomstring=pyscfatomstring+str(m.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(m.atoms)-1 else "")
+		mol.atom = pyscfatomstring
+		mol.basis = basis_
+		mol.verbose = 0
+		try:
+			mol.build()
+			mf=scf.RHF(mol)
+			hf_en = mf.kernel()
+			mp2 = mp.MP2(mf)
+			mp2_en = mp2.kernel()
+			en = hf_en + mp2_en[0]
+			m.properties["energy"] = en
+			return en
+		except Exception as Ex:
+			print "PYSCF Calculation error... :",Ex
+			print "Mol.atom:", mol.atom
+			print "Pyscf string:", pyscfatomstring
+			return 0.0
+			#raise Ex
+		return
