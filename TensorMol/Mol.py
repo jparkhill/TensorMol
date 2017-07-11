@@ -6,20 +6,14 @@ from LinearOperations import *
 
 class Mol:
 	""" Provides a general purpose molecule"""
-	def __init__(self, atoms_ =  None, coords_ = None):
+	def __init__(self, atoms_ =  np.zeros(1,dtype=np.uint8), coords_ = np.zeros(shape=(1,1),dtype=np.float)):
 		"""
 		Args:
 			atoms_: np.array(dtype=uint8) of atomic numbers.
 			coords_: np.array(dtype=uint8) of coordinates.
 		"""
-		if type(atoms_) is np.ndarray:
-			self.atoms = atoms_.copy().astype(np.uint8)
-		else:
-			self.atoms = np.zeros(1,dtype=np.uint8)
-		if type(coords_) is np.ndarray:
-			self.coords = coords_.copy()
-		else:
-			self.coords=np.zeros(shape=(1,1),dtype=np.float)
+		self.atoms = atoms_.copy()
+		self.coords = coords_.copy()
 		self.properties = {}
 		self.name=None
 		#things below here are sometimes populated if it is useful.
@@ -285,7 +279,6 @@ class Mol:
 			return np.einsum("ax,a->x",self.coords,m)/np.sum(m)
 		else:
 			return np.average(self.coords,axis=0)
-
 
 	def rms(self, m):
 		""" Cartesian coordinate difference. """
@@ -768,32 +761,6 @@ class Mol:
 
 	def Make_Spherical_Forces(self):
 		self.properties["sphere_forces"] = CartToSphereV(self.properties["forces"])
-
-	def PySCF_Energy(self, basis_='cc-pvqz'):
-		mol = gto.Mole()
-		pyscfatomstring=""
-		for j in range(len(self.atoms)):
-			s = self.coords[j]
-			pyscfatomstring=pyscfatomstring+str(self.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(self.atoms)-1 else "")
-		mol.atom = pyscfatomstring
-		mol.basis = basis_
-		mol.verbose = 0
-		try:
-			mol.build()
-			mf=scf.RHF(mol)
-			hf_en = mf.kernel()
-			mp2 = mp.MP2(mf)
-			mp2_en = mp2.kernel()
-			en = hf_en + mp2_en[0]
-			self.energy = en
-			return en
-		except Exception as Ex:
-			print "PYSCF Calculation error... :",Ex
-			print "Mol.atom:", mol.atom
-			print "Pyscf string:", pyscfatomstring
-			return 0.0
-			#raise Ex
-		return
 
 	def MultipoleInputs(self):
 		"""

@@ -68,7 +68,7 @@ class MolInstance(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		LOGGER.info("running the TFMolInstance.train()")
-		self.train_prepare(continue_training)
+		self.TrainPrepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = float('inf') # some big numbers
 		for step in  range (0, mxsteps):
@@ -126,7 +126,6 @@ class MolInstance(Instance):
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
-
 
 class MolInstance_fc_classify(MolInstance):
 	def __init__(self, TData_,  Name_=None, Trainable_=True):
@@ -256,7 +255,7 @@ class MolInstance_fc_classify(MolInstance):
 		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/denom),"accu:  %.5f"%(float(total_correct)/(denom*self.batch_size)))
 		return
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
@@ -401,7 +400,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		self.print_training(step, test_loss,  Ncase_test, duration)
 		return test_loss, feed_dict
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
@@ -498,7 +497,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.atom_outputs = None
 		return
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -762,7 +761,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		return
 
 	def continue_training(self, mxsteps):
-		self.Eval_Prepare()
+		self.EvalPrepare()
 		test_loss , feed_dict = self.test(-1)
 		test_freq = 1
 		mini_test_loss = test_loss
@@ -783,7 +782,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		self.batch_size_output = nmol
 		if not self.sess:
 			print ("loading the session..")
-			self.Eval_Prepare()
+			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 
 		#mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
@@ -805,7 +804,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
 			return mol_output, atom_outputs
 
-	def Eval_Prepare(self):
+	def EvalPrepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 			self.inp_pl=[]
@@ -900,7 +899,7 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		self.grad_pl=None
 		return
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -1081,13 +1080,14 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
 		return test_loss, feeddict
 
-	def Eval_Prepare(self):
+	def EvalPrepare(self):
 		raise Exception("NYI")
 
 
 class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 	"""
 		An instance of A updated version of fully connected Behler-Parinello network.
+		What Kun means is that this version doesn't need an index matrix just an index list.
 		Which requires a TensorMolData to train/execute.
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True):
@@ -1130,7 +1130,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		self.gradient = None
 		return
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -1172,7 +1172,6 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
-
 	def inference(self, inp_pl, index_pl):
 		"""
 		Builds a Behler-Parinello graph
@@ -1189,11 +1188,6 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		hidden1_units=self.hidden1
 		hidden2_units=self.hidden2
 		hidden3_units=self.hidden3
-
-		#output = gen_state_ops._temporary_variable(shape=[self.batch_size_output], dtype=self.tf_prec)
-		#output = state_ops.assign(output, array_ops.zeros_like(index_pl))
-		#output = tf.Variable(output_pl)
-		#output = tf.Variable(tf.zeros([self.batch_size_output], dtype=self.tf_prec))
 		output = tf.zeros([self.batch_size_output], dtype=self.tf_prec)
 		nrm1=1.0/(10+math.sqrt(float(self.inshape)))
 		nrm2=1.0/(10+math.sqrt(float(hidden1_units)))
@@ -1201,10 +1195,6 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
 		print("Norms:", nrm1,nrm2,nrm3)
 		LOGGER.info("Layer initial Norms: %f %f %f", nrm1,nrm2,nrm3)
-		#print(inp_pl)
-		#tf.Print(inp_pl, [inp_pl], message="This is input: ",first_n=10000000,summarize=100000000)
-		#tf.Print(bnds_pl, [bnds_pl], message="bnds_pl: ",first_n=10000000,summarize=100000000)
-		#tf.Print(mats_pl, [mats_pl], message="mats_pl: ",first_n=10000000,summarize=100000000)
 		for e in range(len(self.eles)):
 			branches.append([])
 			inputs = inp_pl[e]
@@ -1315,7 +1305,6 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
 
-
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			#print ("ministep:", ministep)
 			batch_data=self.TData.GetTestBatch(self.batch_size,self.batch_size_output)
@@ -1393,7 +1382,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		return
 
 	def continue_training(self, mxsteps):
-		self.Eval_Prepare()
+		self.EvalPrepare()
 		test_loss , feed_dict = self.test(-1)
 		test_freq = 1
 		mini_test_loss = test_loss
@@ -1414,7 +1403,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		self.batch_size_output = nmol
 		if not self.sess:
 			print ("loading the session..")
-			self.Eval_Prepare()
+			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data)
 
 		#mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
@@ -1436,7 +1425,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
 			return mol_output, atom_outputs
 
-	def Eval_Prepare(self):
+	def EvalPrepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 			self.inp_pl=[]

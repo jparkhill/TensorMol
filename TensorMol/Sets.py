@@ -358,7 +358,7 @@ class FragableMSet(MSet):
 
 	def PySCF_Energy(self):
 		for mol in self.mols:
-			mol.PySCF_Energy()
+			mol.properties["energy"] = PySCFMP2Energy(mol)
 		return
 
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):

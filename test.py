@@ -6,6 +6,86 @@ from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
+def TestBPDirect():
+	"""
+	Test Behler-Parrinello with gradient learning and direct descriptor.
+	"""
+	a=MSet("H2O_force_test")
+        a.ReadXYZ("H2O_force_test")
+	#a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+	#a.Load()
+	TreatedAtoms = a.AtomTypes()
+	PARAMS["hidden1"] = 100
+	PARAMS["hidden2"] = 100
+	PARAMS["hidden3"] = 100
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 10
+	PARAMS["batch_size"] = 1000
+	PARAMS["test_freq"] = 5
+	PARAMS["tf_prec"] = "tf.float64"
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
+	tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	if (0):
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
+		manager.Train(maxstep=10)
+	# Test out some MD with the trained network.
+
+	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_1",tset,False,"fc_sqdiff_BP_Direct_Grad",False,False) # Initialzie a manager than manage the training of neural network.
+	dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
+
+	m = a.mols[0]
+	#print manager.Eval_BPEnergy_Direct_Grad(m)
+	#print manager.EvalBPDirectSingleEnergyWGrad(m)
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad(Mol(m.atoms,x))
+	EnergyField = lambda x: manager.Eval_BPEnergy_Direct_Grad(Mol(m.atoms,x), Grad=False)
+	def ChargeField(x_):
+		m.coords = x_
+		dipole, charge = dipole_manager.Eval_BPDipole_2(m)
+		return np.asarray(charge[0])
+
+
+	#PARAMS["MDdt"] = 0.2
+	#PARAMS["RemoveInvariant"]=True
+	#PARAMS["MDMaxStep"] = 10000
+	#PARAMS["MDThermostat"] = "Nose"
+	#PARAMS["MDTemp"]= 600.0
+	##traj = VelocityVerlet(None,m,"DirectMD", EnergyForceField)
+	##traj.Prop()
+
+	#PARAMS["MDdt"] = 0.2
+        #PARAMS["RemoveInvariant"]=True
+        #PARAMS["MDMaxStep"] = 10000
+        #PARAMS["MDThermostat"] = "Nose"
+        #PARAMS["MDV0"] = None
+        #PARAMS["MDTemp"]= 1.0
+	#PARAMS["MDAnnealSteps"] = 2000
+	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
+        #anneal.Prop()
+	#m.coords = anneal.Minx.copy()
+	#m = GeomOptimizer(EnergyForceField).Opt(m)
+	#m.WriteXYZfile("./results/", "H2O_trimer_opt")
+
+	PARAMS["MDFieldAmp"] = 0.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDTemp"] = 30
+	PARAMS["MDdt"] = 0.1
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDV0"] = None
+	PARAMS["MDMaxStep"] = 10000
+	warm = VelocityVerlet(None, m,"warm",EnergyForceField)
+	warm.Prop()
+	m.coords = warm.x.copy()
+	PARAMS["MDMaxStep"] = 40000
+	md = IRTrajectory(EnergyForceField, ChargeField, m,"H2O_udp_grad_IR",warm.v.copy())
+	md.Prop()
+	WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_grad_IR.txt")
+	return
+
 # John's tests
 def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 	"""
@@ -47,14 +127,14 @@ def TestANI1():
 		#tset.BuildTrain("uneq_chemspider_float64")
 
 		PARAMS["hidden1"] = 200
-                PARAMS["hidden2"] = 200
-                PARAMS["hidden3"] = 200
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 1001
-                PARAMS["batch_size"] = 10000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["hidden2"] = 200
+		PARAMS["hidden3"] = 200
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 1001
+		PARAMS["batch_size"] = 10000
+		PARAMS["test_freq"] = 10
+		PARAMS["tf_prec"] = "tf.float64"
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"uneq_chemspider_float64_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=1500)
@@ -850,7 +930,7 @@ def Test_LJMD():
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
 	tset = TensorMolData(a,d)
 	ins = MolInstance_DirectForce(tset,None,False,"Harm")
-	ins.train_prepare()
+	ins.TrainPrepare()
 	# Convert from hartree/ang to joules/mol ang.
 	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[0][0]
 	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
@@ -1073,7 +1153,8 @@ def TestEE():
 # TestIndoIR()
 # david_testIR()
 #david_HarmonicAnalysis()
-TestMetadynamics()
+#TestMetadynamics()
+TestBPDirect()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
