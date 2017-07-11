@@ -8,7 +8,7 @@ from TFManage import *
 from Electrostatics import *
 from QuasiNewtonTools import *
 
-def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
+def VelocityVerletStep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	"""
 	A Velocity Verlet Step
 
@@ -18,6 +18,11 @@ def VelocityVerletstep(f_, a_, x_, v_, m_, dt_, fande_=None):
 		x_: Current coordinates (A)
 		v_: Velocities (A/fs)
 		m_: the mass vector. (kg)
+	Returns:
+		x: updated positions
+		v: updated Velocities
+		a: updated accelerations
+		e: Energy at midpoint.
 	"""
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 	e, f_x_ = 0.0, None
@@ -286,7 +291,7 @@ class VelocityVerlet:
 			PARAMS["MDV0"]: Sort of velocity initialization (None, or "Random")
 			PARAMS["MDLogTrajectory"]: Write MD Trajectory.
 		Returns:
-			A reaction path.
+			Nothing. 
 		"""
 		self.name = name_
 		self.maxstep = PARAMS["MDMaxStep"]
@@ -344,7 +349,7 @@ class VelocityVerlet:
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["MDThermostat"]==None):
-				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
 				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 
@@ -468,7 +473,7 @@ class IRTrajectory(VelocityVerlet):
 			vhis[step] = self.v.copy()
 
 			if (PARAMS["MDThermostat"]==None):
-				self.x , self.v, self.a, self.EPot = VelocityVerletstep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
+				self.x , self.v, self.a, self.EPot = VelocityVerletStep(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 			else:
 				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(None, self.a, self.x, self.v, self.m, self.dt,self.ForcesWithCharge)
 
