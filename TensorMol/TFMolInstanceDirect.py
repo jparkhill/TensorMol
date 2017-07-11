@@ -1168,6 +1168,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		"""
 		# Check sanity of input
 		nmol = batch_data[2].shape[0]
+		self.MaxNAtoms = batch_data[0].shape[1]
 		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
 		self.batch_size = nmol
 		if not self.sess:
