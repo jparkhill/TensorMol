@@ -20,6 +20,8 @@ class MSet:
 		self.center=center_
 
 	def Save(self, filename=None):
+		for mol in self.mols:
+			mol.Clean()
 		if filename == None:
 			filename = self.name
 		LOGGER.info("Saving set to: %s ", self.path+filename+self.suffix)
@@ -147,6 +149,9 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
+	def BondTypes(self):
+		return np.asarray([x for x in itertools.product(self.AtomTypes().tolist(), repeat=2)])
+
 	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, has_charge=False, has_mmff94=False):
 		"""
 		Reads XYZs in distinct files in one directory as a molset
@@ -166,18 +171,18 @@ class MSet:
 			self.mols[-1].ReadGDB9(path+file, file)
 			self.mols[-1].properties["set_name"] = self.name
 			if has_force:
-				self.mols[-1].Force_from_xyz(path+file)
+				self.mols[-1].ForceFromXYZ(path+file)
 			if has_energy:
-				self.mols[-1].Energy_from_xyz(path+file)
+				self.mols[-1].EnergyFromXYZ(path+file)
 			if has_charge:
-				self.mols[-1].Charge_from_xyz(path+file)
+				self.mols[-1].ChargeFromXYZ(path+file)
 			if has_mmff94:
-				self.mols[-1].MMFF94_Force_from_xyz(path+file)
+				self.mols[-1].MMFF94FromXYZ(path+file)
 		if (self.center):
 			self.CenterSet()
 		return
 
-	def ReadXYZ(self,filename = None, xyz_type = 'mol', eqforce=False):
+	def ReadXYZ(self,filename = None, xyz_type = 'mol'):
 		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
 		if filename == None:
 			filename = self.name
@@ -198,8 +203,6 @@ class MSet:
 				self.mols[-1].properties["set_name"] = self.name
 		if (self.center):
 			self.CenterSet()
-		if (eqforce):
-			self.EQ_forces()
 		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 
@@ -299,6 +302,12 @@ class MSet:
 		for mol in self.mols:
 			mol.WriteSmiles()
 		return
+
+	def MakeBonds(self):
+		self.NBonds = 0
+		for m in self.mols:
+			self.NBonds += m.MakeBonds()
+		self.BondTypes = np.unique(np.concatenate([m.bondtypes for m in self.mols],axis=0),axis=0)
 
 
 
