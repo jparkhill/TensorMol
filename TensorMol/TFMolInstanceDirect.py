@@ -14,7 +14,6 @@ from TensorMol.TFMolInstance import *
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.RawEmbeddings import *
 from tensorflow.python.client import timeline
-import gc
 
 
 class BumpHolder:
@@ -1130,9 +1129,6 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)
-		gc_t = time.time()
-		gc.collect()
-		print ("gc collect time:", time.time() - gc_t)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
 
@@ -1245,11 +1241,11 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		"""
 		with tf.Graph().as_default():
 			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
 			SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			SFPa2 = tf.Variable(self.SFPa2, trainable=False, dtype = self.tf_prec)

@@ -61,7 +61,7 @@ def TrainForceField():
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 101
-                PARAMS["batch_size"] = 30
+                PARAMS["batch_size"] = 35
                 PARAMS["test_freq"] = 2
                 PARAMS["tf_prec"] = "tf.float64"
                 d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme

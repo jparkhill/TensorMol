@@ -38,7 +38,7 @@ def AllTriples(rng):
 	v6 = tf.concat([v4,v5], axis = 3) # All triples in the range.
 	return v6
 
-def AllTriplesSet(rng):
+def AllTriplesSet(rng, prec=tf.int32):
 	"""Returns all possible triples of integers between zero and natom.
 
 	Args:
@@ -55,11 +55,11 @@ def AllTriplesSet(rng):
 	v4 = tf.tile(tf.reshape(v3,[nmol,natom,natom,1,2]),[1,1,1,natom,1])
 	v5 = tf.tile(tf.reshape(rng,[nmol,1,1,natom,1]),[1,natom,natom,1,1])
 	v6 = tf.concat([v4,v5], axis = 4) # All triples in the range.
-	v7 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1]), dtype=tf.int64)
+	v7 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1]), dtype=prec)
 	v8 = tf.concat([v7,v6], axis = -1)
 	return v8
 
-def AllDoublesSet(rng):
+def AllDoublesSet(rng, prec=tf.int32):
 	"""Returns all possible triples of integers between zero and natom.
 
 	Args:
@@ -72,11 +72,11 @@ def AllDoublesSet(rng):
 	v1 = tf.tile(tf.reshape(rng,[nmol,natom,1]),[1,1,natom])
 	v2 = tf.tile(tf.reshape(rng,[nmol,1,natom]),[1,natom,1])
 	v3 = tf.transpose(tf.stack([v1,v2],1),perm=[0,2,3,1])
-	v4 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1]),[1,natom,natom,1]),dtype=tf.int64)
+	v4 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1]),[1,natom,natom,1]),dtype=prec)
 	v5 = tf.concat([v4,v3], axis = -1)
 	return v5
 
-def AllSinglesSet(rng):
+def AllSinglesSet(rng, prec=tf.int32):
 	"""Returns all possible triples of integers between zero and natom.
 
 	Args:
@@ -87,7 +87,7 @@ def AllSinglesSet(rng):
 	natom = tf.shape(rng)[1]
 	nmol = tf.shape(rng)[0]
 	v1 = tf.reshape(rng,[nmol,natom,1])
-	v2 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1]),[1,natom,1]), dtype=tf.int64)
+	v2 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1]),[1,natom,1]), dtype=prec)
 	v3 = tf.concat([v2,v1], axis = -1)
 	return v3
 
@@ -583,7 +583,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	onescalar = 1.0 - 0.0000000000000001
 
 	# atom triples.
-	ats = AllTriplesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64))
+	ats = AllTriplesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64), prec=tf.int64)
 	# before performing any computation reduce this to desired pairs.
 	# Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
 	# Get Rij, Rik...
@@ -704,7 +704,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	infinitesimal = 0.000000000000000000000000001
 
 	# atom triples.
-	ats = AllDoublesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64))
+	ats = AllDoublesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64), prec=tf.int64)
 	# before performing any computation reduce this to desired pairs.
 	# Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
 	# Get Rij, Rik...
@@ -712,7 +712,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	Ri_inds = tf.slice(ats,[0,0,0,1],[nmol,natom,natom,1])
 	Rj_inds = tf.slice(ats,[0,0,0,2],[nmol,natom,natom,1])
 	#Rjk_inds = tf.reshape(tf.concat([Rm_inds,Rj_inds,Rk_inds],axis=4),[nmol,natom3,3])
-	ZAll = AllDoublesSet(Zs)
+	ZAll = AllDoublesSet(Zs, prec=tf.int64)
 	ZPairs = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1]) # should have shape nmol X natom X natom X 1
 	ElemReduceMask = tf.reduce_all(tf.equal(tf.reshape(ZPairs,[nmol,natom2,1,1]),tf.reshape(eles_,[1,1,nele,1])),axis=-1) # nmol X natom3 X nelep
 	# Zero out the diagonal contributions (i==j or i==k)
@@ -890,7 +890,7 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
         GM = tf.concat([GMR, GMA], axis=2)
         num_ele, num_dim = eles_.get_shape().as_list()
         MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
-        ToMask = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]),dtype=tf.int64))
+        ToMask = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]),dtype=tf.int64), prec=tf.int64)
         IndexList = []
         SymList=[]
         GatherList = []
