@@ -894,7 +894,6 @@ def Test_LJMD():
 	# Convert from hartree/ang to joules/mol ang.
 	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[0][0]
 	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
-
 	if (0):
 		PARAMS["OptThresh"] = 0.01
 		m = GeomOptimizer(EnergyForceField).Opt(m)
@@ -902,24 +901,39 @@ def Test_LJMD():
 		anneal.Prop()
 		m.coords = anneal.Minx.copy()
 		m = GeomOptimizer(EnergyForceField).Opt(m)
-
 	PARAMS["MDTemp"] = 300.0
 	PARAMS["MDThermostat"] = None
 	PARAMS["MDV0"] = None
 	PARAMS["MDdt"] = 0.2
-	#print "TF grad:",EnergyForceField(m.coords)
-	#print "Fdiff Grad: "
-	#print JOULEPERHARTREE*FdiffGradient(ForceField,m.coords)
-	#Ee = 0.01*np.ones((8,8))
-	#Re = 1.*np.ones((8,8))
-	#EnergyField = lambda x: ins.EvalForce(Mol(m.atoms,x))[0][0]
-	#EnergyField = lambda x: LJEnergy_Numpy(x, m.atoms, Ee, Re)
-	#ForceField = lambda x: -1.0*JOULEPERHARTREE*FdiffGradient(EnergyField,x)
-	#EnergyForceField = lambda x: (EnergyField(x), ForceField(x))
 	md = VelocityVerlet(ForceField,m,"LJ test", EnergyForceField)
 	md.Prop()
 	return
 
+def Test_Periodic_LJMD():
+	"""
+	Test TensorFlow LJ fluid Molecular dynamics with periodic BC
+	"""
+	a=MSet("Test")
+	ParticlesPerEdge = 2
+	EdgeSize = 2
+	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
+	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
+	m = a.mols[0]
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
+	tset = TensorMolData(a,d)
+	ins = MolInstance_DirectForce(tset,None,False,"Harm")
+	ins.TrainPrepare()
+	# Generate a Periodic Force field.
+	PF = PeriodicForce(m, [[10.0,0.0,0.0],[0.0,10.0,0.0],[0.,0.,10.0]])
+	PF.AddLocal(ins.LocalLJForce)
+	PARAMS["MDTemp"] = 300.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDV0"] = None
+	PARAMS["MDdt"] = 0.2
+	md = PeriodicVelocityVerlet(PF,m,"Periodic test")
+	md.Prop()
+	return
 
 def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
