@@ -55,7 +55,7 @@ def AllTriplesSet(rng):
 	v4 = tf.tile(tf.reshape(v3,[nmol,natom,natom,1,2]),[1,1,1,natom,1])
 	v5 = tf.tile(tf.reshape(rng,[nmol,1,1,natom,1]),[1,natom,natom,1,1])
 	v6 = tf.concat([v4,v5], axis = 4) # All triples in the range.
-	v7 = tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1])
+	v7 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1]), dtype=tf.int64)
 	v8 = tf.concat([v7,v6], axis = -1)
 	return v8
 
@@ -72,7 +72,7 @@ def AllDoublesSet(rng):
 	v1 = tf.tile(tf.reshape(rng,[nmol,natom,1]),[1,1,natom])
 	v2 = tf.tile(tf.reshape(rng,[nmol,1,natom]),[1,natom,1])
 	v3 = tf.transpose(tf.stack([v1,v2],1),perm=[0,2,3,1])
-	v4 = tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1]),[1,natom,natom,1])
+	v4 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1]),[1,natom,natom,1]),dtype=tf.int64)
 	v5 = tf.concat([v4,v3], axis = -1)
 	return v5
 
@@ -87,7 +87,7 @@ def AllSinglesSet(rng):
 	natom = tf.shape(rng)[1]
 	nmol = tf.shape(rng)[0]
 	v1 = tf.reshape(rng,[nmol,natom,1])
-	v2 = tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1]),[1,natom,1])
+	v2 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1]),[1,natom,1]), dtype=tf.int64)
 	v3 = tf.concat([v2,v1], axis = -1)
 	return v3
 
@@ -571,7 +571,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-	natom = inp_shp[1]
+        natom = inp_shp[1]
 	natom2 = natom*natom
 	natom3 = natom*natom2
 	nelep = tf.shape(eleps_)[0]
@@ -583,7 +583,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	onescalar = 1.0 - 0.0000000000000001
 
 	# atom triples.
-	ats = AllTriplesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+	ats = AllTriplesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64))
 	# before performing any computation reduce this to desired pairs.
 	# Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
 	# Get Rij, Rik...
@@ -600,7 +600,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	Mask = tf.logical_and(ElemReduceMask,IdentMask) # nmol X natom3 X nelep
 	# Mask is true if atoms ijk => pair_l and many triples are unused.  
 	# So we create a final index tensor, which is only nonzero m,ijk,l
-	pinds = tf.range(nelep)
+	pinds = tf.cast(tf.range(nelep),dtype=tf.int64)
 	ats = tf.tile(tf.reshape(ats,[nmol,natom3,1,4]),[1,1,nelep,1])
 	ps = tf.tile(tf.reshape(pinds,[1,1,nelep,1]),[nmol,natom3,1,1])
 	ToMask = tf.concat([ats,ps],axis=3)
@@ -655,17 +655,17 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	#Gm = tf.reshape(fac2*fac34t,[nnz2*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	Gm = tf.reshape(fac1*fac2*fac34t,[nnz2*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	# Finally scatter out the symmetry functions where they belong. 
-	jk2 = tf.add(tf.multiply(tf.slice(GoodInds2,[0,2],[nnz2,1]), natom), tf.slice(GoodInds2,[0,3],[nnz2, 1]))
+	jk2 = tf.add(tf.multiply(tf.slice(GoodInds2,[0,2],[nnz2,1]), tf.cast(natom, dtype=tf.int64)), tf.slice(GoodInds2,[0,3],[nnz2, 1]))
 	mil_jk2 = tf.concat([tf.slice(GoodInds2,[0,0],[nnz2,2]),tf.slice(GoodInds2,[0,4],[nnz2,1]),tf.reshape(jk2,[nnz2,1])],axis=-1)
 	mil_jk_Outer2 = tf.tile(tf.reshape(mil_jk2,[nnz2,1,4]),[1,nsym,1])
 	# So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices. 
     
-	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.range(ntheta), nr),[ntheta,1,1]),[1,nr,1])
-	p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.range(nr),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
+	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.cast(tf.range(ntheta), dtype=tf.int64), tf.cast(nr, dtype=tf.int64)),[ntheta,1,1]),[1,nr,1])
+	p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
 	p3_2 = tf.reshape(tf.reduce_sum(p2_2,axis=-1),[1,nsym,1]) # scatter_nd only supports up to rank 5... so gotta smush this... 
 	p6_2 = tf.tile(p3_2,[nnz2,1,1]) # should be nnz X nsym     
 	ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnz2*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
-	to_reduce2 = tf.scatter_nd(ind2,Gm,[nmol,natom,nelep,natom2,nsym])
+	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nelep,natom2,nsym], dtype=tf.int64))
 	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
 	return tf.reduce_sum(to_reduce2, axis=3)
@@ -695,7 +695,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-	natom = inp_shp[1]
+        natom = inp_shp[1]
 	natom2 = natom*natom
 	nele = tf.shape(eles_)[0]
 	pshape = tf.shape(SFPs_)
@@ -704,7 +704,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	infinitesimal = 0.000000000000000000000000001
 
 	# atom triples.
-	ats = AllDoublesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+	ats = AllDoublesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64))
 	# before performing any computation reduce this to desired pairs.
 	# Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
 	# Get Rij, Rik...
@@ -720,7 +720,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	Mask = tf.logical_and(ElemReduceMask,IdentMask) # nmol X natom3 X nelep
 	# Mask is true if atoms ijk => pair_l and many triples are unused.  
 	# So we create a final index tensor, which is only nonzero m,ijk,l
-	pinds = tf.range(nele)
+	pinds = tf.cast(tf.range(nele), dtype=tf.int64)
 	ats = tf.tile(tf.reshape(ats,[nmol,natom2,1,3]),[1,1,nele,1])
 	ps = tf.tile(tf.reshape(pinds,[1,1,nele,1]),[nmol,natom2,1,1])
 	ToMask = tf.concat([ats,ps],axis=3)
@@ -753,10 +753,10 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	mil_j = tf.concat([tf.slice(GoodInds2,[0,0],[nnz2,2]),tf.slice(GoodInds2,[0,3],[nnz2,1]),tf.slice(GoodInds2,[0,2],[nnz2,1])],axis=-1)
 	mil_j_Outer = tf.tile(tf.reshape(mil_j,[nnz2,1,4]),[1,nsym,1])
 	# So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices. 
-	p2_2 = tf.reshape(tf.reshape(tf.range(nr),[nr,1]),[1,nr,1])
+	p2_2 = tf.reshape(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[nr,1]),[1,nr,1])
 	p4_2 = tf.tile(p2_2,[nnz2,1,1]) # should be nnz X nsym     
 	ind2 = tf.reshape(tf.concat([mil_j_Outer,p4_2],axis=-1),[nnz2*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
-	to_reduce2 = tf.scatter_nd(ind2,Gm,[nmol,natom,nele,natom,nsym])
+	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nele,natom,nsym], dtype=tf.int64))
 	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
 	return tf.reduce_sum(to_reduce2, axis=3)
@@ -881,7 +881,7 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
                 Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
         """
         inp_shp = tf.shape(R)
-        nmol = inp_shp[0]
+	nmol = inp_shp[0]
         natom = inp_shp[1]
         nele = tf.shape(eles_)[0]
         nelep = tf.shape(eleps_)[0]
@@ -890,7 +890,7 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
         GM = tf.concat([GMR, GMA], axis=2)
         num_ele, num_dim = eles_.get_shape().as_list()
         MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
-        ToMask = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+        ToMask = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]),dtype=tf.int64))
         IndexList = []
         SymList=[]
         GatherList = []
