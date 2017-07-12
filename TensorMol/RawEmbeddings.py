@@ -38,7 +38,7 @@ def AllTriples(rng):
 	v6 = tf.concat([v4,v5], axis = 3) # All triples in the range.
 	return v6
 
-def AllTriplesSet(rng):
+def AllTriplesSet(rng, prec=tf.int32):
 	"""Returns all possible triples of integers between zero and natom.
 
 	Args:
@@ -55,11 +55,11 @@ def AllTriplesSet(rng):
 	v4 = tf.tile(tf.reshape(v3,[nmol,natom,natom,1,2]),[1,1,1,natom,1])
 	v5 = tf.tile(tf.reshape(rng,[nmol,1,1,natom,1]),[1,natom,natom,1,1])
 	v6 = tf.concat([v4,v5], axis = 4) # All triples in the range.
-	v7 = tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1])
+	v7 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1,1]),[1,natom,natom,natom,1]), dtype=prec)
 	v8 = tf.concat([v7,v6], axis = -1)
 	return v8
 
-def AllDoublesSet(rng):
+def AllDoublesSet(rng, prec=tf.int32):
 	"""Returns all possible triples of integers between zero and natom.
 
 	Args:
@@ -72,11 +72,11 @@ def AllDoublesSet(rng):
 	v1 = tf.tile(tf.reshape(rng,[nmol,natom,1]),[1,1,natom])
 	v2 = tf.tile(tf.reshape(rng,[nmol,1,natom]),[1,natom,1])
 	v3 = tf.transpose(tf.stack([v1,v2],1),perm=[0,2,3,1])
-	v4 = tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1]),[1,natom,natom,1])
+	v4 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1,1]),[1,natom,natom,1]),dtype=prec)
 	v5 = tf.concat([v4,v3], axis = -1)
 	return v5
 
-def AllSinglesSet(rng):
+def AllSinglesSet(rng, prec=tf.int32):
 	"""Returns all possible triples of integers between zero and natom.
 
 	Args:
@@ -87,7 +87,7 @@ def AllSinglesSet(rng):
 	natom = tf.shape(rng)[1]
 	nmol = tf.shape(rng)[0]
 	v1 = tf.reshape(rng,[nmol,natom,1])
-	v2 = tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1]),[1,natom,1])
+	v2 = tf.cast(tf.tile(tf.reshape(tf.range(nmol),[nmol,1,1]),[1,natom,1]), dtype=prec)
 	v3 = tf.concat([v2,v1], axis = -1)
 	return v3
 
@@ -571,7 +571,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-	natom = inp_shp[1]
+        natom = inp_shp[1]
 	natom2 = natom*natom
 	natom3 = natom*natom2
 	nelep = tf.shape(eleps_)[0]
@@ -583,7 +583,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	onescalar = 1.0 - 0.0000000000000001
 
 	# atom triples.
-	ats = AllTriplesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+	ats = AllTriplesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64), prec=tf.int64)
 	# before performing any computation reduce this to desired pairs.
 	# Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
 	# Get Rij, Rik...
@@ -600,7 +600,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	Mask = tf.logical_and(ElemReduceMask,IdentMask) # nmol X natom3 X nelep
 	# Mask is true if atoms ijk => pair_l and many triples are unused.
 	# So we create a final index tensor, which is only nonzero m,ijk,l
-	pinds = tf.range(nelep)
+	pinds = tf.cast(tf.range(nelep),dtype=tf.int64)
 	ats = tf.tile(tf.reshape(ats,[nmol,natom3,1,4]),[1,1,nelep,1])
 	ps = tf.tile(tf.reshape(pinds,[1,1,nelep,1]),[nmol,natom3,1,1])
 	ToMask = tf.concat([ats,ps],axis=3)
@@ -655,17 +655,17 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	#Gm = tf.reshape(fac2*fac34t,[nnz2*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	Gm = tf.reshape(fac1*fac2*fac34t,[nnz2*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	# Finally scatter out the symmetry functions where they belong.
-	jk2 = tf.add(tf.multiply(tf.slice(GoodInds2,[0,2],[nnz2,1]), natom), tf.slice(GoodInds2,[0,3],[nnz2, 1]))
+	jk2 = tf.add(tf.multiply(tf.slice(GoodInds2,[0,2],[nnz2,1]), tf.cast(natom, dtype=tf.int64)), tf.slice(GoodInds2,[0,3],[nnz2, 1]))
 	mil_jk2 = tf.concat([tf.slice(GoodInds2,[0,0],[nnz2,2]),tf.slice(GoodInds2,[0,4],[nnz2,1]),tf.reshape(jk2,[nnz2,1])],axis=-1)
 	mil_jk_Outer2 = tf.tile(tf.reshape(mil_jk2,[nnz2,1,4]),[1,nsym,1])
 	# So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
 
-	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.range(ntheta), nr),[ntheta,1,1]),[1,nr,1])
-	p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.range(nr),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
+	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.cast(tf.range(ntheta), dtype=tf.int64), tf.cast(nr, dtype=tf.int64)),[ntheta,1,1]),[1,nr,1])
+	p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
 	p3_2 = tf.reshape(tf.reduce_sum(p2_2,axis=-1),[1,nsym,1]) # scatter_nd only supports up to rank 5... so gotta smush this...
 	p6_2 = tf.tile(p3_2,[nnz2,1,1]) # should be nnz X nsym
 	ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnz2*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
-	to_reduce2 = tf.scatter_nd(ind2,Gm,[nmol,natom,nelep,natom2,nsym])
+	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nelep,natom2,nsym], dtype=tf.int64))
 	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
 	return tf.reduce_sum(to_reduce2, axis=3)
@@ -695,7 +695,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-	natom = inp_shp[1]
+        natom = inp_shp[1]
 	natom2 = natom*natom
 	nele = tf.shape(eles_)[0]
 	pshape = tf.shape(SFPs_)
@@ -704,7 +704,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	infinitesimal = 0.000000000000000000000000001
 
 	# atom triples.
-	ats = AllDoublesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+	ats = AllDoublesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64), prec=tf.int64)
 	# before performing any computation reduce this to desired pairs.
 	# Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
 	# Get Rij, Rik...
@@ -712,7 +712,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	Ri_inds = tf.slice(ats,[0,0,0,1],[nmol,natom,natom,1])
 	Rj_inds = tf.slice(ats,[0,0,0,2],[nmol,natom,natom,1])
 	#Rjk_inds = tf.reshape(tf.concat([Rm_inds,Rj_inds,Rk_inds],axis=4),[nmol,natom3,3])
-	ZAll = AllDoublesSet(Zs)
+	ZAll = AllDoublesSet(Zs, prec=tf.int64)
 	ZPairs = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1]) # should have shape nmol X natom X natom X 1
 	ElemReduceMask = tf.reduce_all(tf.equal(tf.reshape(ZPairs,[nmol,natom2,1,1]),tf.reshape(eles_,[1,1,nele,1])),axis=-1) # nmol X natom3 X nelep
 	# Zero out the diagonal contributions (i==j or i==k)
@@ -720,7 +720,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	Mask = tf.logical_and(ElemReduceMask,IdentMask) # nmol X natom3 X nelep
 	# Mask is true if atoms ijk => pair_l and many triples are unused.
 	# So we create a final index tensor, which is only nonzero m,ijk,l
-	pinds = tf.range(nele)
+	pinds = tf.cast(tf.range(nele), dtype=tf.int64)
 	ats = tf.tile(tf.reshape(ats,[nmol,natom2,1,3]),[1,1,nele,1])
 	ps = tf.tile(tf.reshape(pinds,[1,1,nele,1]),[nmol,natom2,1,1])
 	ToMask = tf.concat([ats,ps],axis=3)
@@ -753,10 +753,10 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	mil_j = tf.concat([tf.slice(GoodInds2,[0,0],[nnz2,2]),tf.slice(GoodInds2,[0,3],[nnz2,1]),tf.slice(GoodInds2,[0,2],[nnz2,1])],axis=-1)
 	mil_j_Outer = tf.tile(tf.reshape(mil_j,[nnz2,1,4]),[1,nsym,1])
 	# So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
-	p2_2 = tf.reshape(tf.reshape(tf.range(nr),[nr,1]),[1,nr,1])
+	p2_2 = tf.reshape(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[nr,1]),[1,nr,1])
 	p4_2 = tf.tile(p2_2,[nnz2,1,1]) # should be nnz X nsym
 	ind2 = tf.reshape(tf.concat([mil_j_Outer,p4_2],axis=-1),[nnz2*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
-	to_reduce2 = tf.scatter_nd(ind2,Gm,[nmol,natom,nele,natom,nsym])
+	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nele,natom,nsym], dtype=tf.int64))
 	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
 	return tf.reduce_sum(to_reduce2, axis=3)
@@ -865,41 +865,41 @@ def TFSymSet_Scattered_Update(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, Ra_
 
 
 def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
-	"""
-	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
-	Args:
-		R: a nmol X maxnatom X 3 tensor of coordinates.
-		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-		eles_: a neles X 1 tensor of elements present in the data.
-		SFPsR_: A symmetry function parameter of radius part
-		Rr_cut: Radial Cutoff of radius part
-		eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
-		SFPsA_: A symmetry function parameter of angular part
-		RA_cut: Radial Cutoff of angular part
+        """
+        A tensorflow implementation of the AN1 symmetry function for a set of molecule.
+        Args:
+                R: a nmol X maxnatom X 3 tensor of coordinates.
+                Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+                eles_: a neles X 1 tensor of elements present in the data.
+                SFPsR_: A symmetry function parameter of radius part
+                Rr_cut: Radial Cutoff of radius part
+                eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+                SFPsA_: A symmetry function parameter of angular part
+                RA_cut: Radial Cutoff of angular part
 
-	Returns:
-		Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
-	"""
-	inp_shp = tf.shape(R)
+        Returns:
+                Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+        """
+        inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-	natom = inp_shp[1]
-	nele = tf.shape(eles_)[0]
-	nelep = tf.shape(eleps_)[0]
-	GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
-	GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
-	GM = tf.concat([GMR, GMA], axis=2)
-	num_ele, num_dim = eles_.get_shape().as_list()
-	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
-	ToMask = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
-	IndexList = []
-	SymList=[]
-	GatherList = []
-	for e in range(num_ele):
-		GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
-		SymList.append(tf.gather_nd(GM, GatherList[-1]))
-		NAtomOfEle=tf.shape(GatherList[-1])[0]
-		IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
-	return SymList, IndexList
+        natom = inp_shp[1]
+        nele = tf.shape(eles_)[0]
+        nelep = tf.shape(eleps_)[0]
+        GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
+        GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+        GM = tf.concat([GMR, GMA], axis=2)
+        num_ele, num_dim = eles_.get_shape().as_list()
+        MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
+        ToMask = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]),dtype=tf.int64), prec=tf.int64)
+        IndexList = []
+        SymList=[]
+        GatherList = []
+        for e in range(num_ele):
+                GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
+                SymList.append(tf.gather_nd(GM, GatherList[-1]))
+                NAtomOfEle=tf.shape(GatherList[-1])[0]
+                IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
+        return SymList, IndexList
 
 def TFBond(R, Zs, Eles_, ElePairs_):
 	"""
@@ -918,7 +918,46 @@ def TFBond(R, Zs, Eles_, ElePairs_):
 	BondIdxMatrix = NeighborFunctionHere
 	RMatrix = tf.norm(tf.slice(R, tf.slice(BondIdxMatrix))-tf.slice(R, tf.slice(BondIdxMatrix)))
 
+def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
+        """
+        A tensorflow implementation of the AN1 symmetry function for a set of molecule.
+        Args:
+                R: a nmol X maxnatom X 3 tensor of coordinates.
+                Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+                eles_: a neles X 1 tensor of elements present in the data.
+                SFPsR_: A symmetry function parameter of radius part
+                Rr_cut: Radial Cutoff of radius part
+                eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+                SFPsA_: A symmetry function parameter of angular part
+                RA_cut: Radial Cutoff of angular part
 
+        Returns:
+                Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+        """
+        inp_shp = tf.shape(R)
+        nmol = inp_shp[0]
+        natom = inp_shp[1]
+        nele = tf.shape(eles_)[0]
+        nelep = tf.shape(eleps_)[0]
+        GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
+        GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+        GM = tf.concat([GMR, GMA], axis=2)
+        num_ele, num_dim = eles_.get_shape().as_list()
+        MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
+        ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+	v = tf.reshape(tf.range(nmol*natom), [nmol, natom, 1])
+	ToMask = tf.concat([ToMask1, v], axis = -1)
+        IndexList = []
+        SymList= []
+        GatherList = []
+        for e in range(num_ele):
+                GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
+                SymList.append(tf.gather_nd(GM, GatherList[-1]))
+                NAtomOfEle=tf.shape(GatherList[-1])[0]
+		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
+		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
+                IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
+        return SymList, IndexList
 
 def NNInterface(R, Zs, eles_, GM):
 	"""
@@ -1038,8 +1077,9 @@ class ANISym:
 			Rr_cut = 4.6
 
 			#self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
-			self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
+			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
+			self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
 			#self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)
 			#self.gradient_update2 = tf.gradients(self.Scatter_Sym_Update2, self.xyz_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym_Update, self.xyz_pl)
@@ -1084,4 +1124,5 @@ class ANISym:
             		#chrome_trace = fetched_timeline.generate_chrome_trace_format()
             		#with open('timeline_step_%d_old.json' % i, 'w') as f:
                 	#	f.write(chrome_trace)
+			print (sym_index[0][:20], sym_index[1][:20])
 		print ("total time:", time.time() - t_total)
