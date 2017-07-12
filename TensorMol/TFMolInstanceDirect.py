@@ -536,16 +536,16 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.SFPa = None
 		self.SFPr = None
 		self.Ra_cut = None
-                self.Rr_cut = None
+		self.Rr_cut = None
 		self.MaxNAtoms = self.TData.MaxNAtoms
-                self.eles = self.TData.eles
-                self.n_eles = len(self.eles)
-                self.eles_np = np.asarray(self.eles).reshape((self.n_eles,1))
-                self.eles_pairs = []
-                for i in range (len(self.eles)):
-                        for j in range(i, len(self.eles)):
-                                self.eles_pairs.append([self.eles[i], self.eles[j]])
-                self.eles_pairs_np = np.asarray(self.eles_pairs)
+		self.eles = self.TData.eles
+		self.n_eles = len(self.eles)
+		self.eles_np = np.asarray(self.eles).reshape((self.n_eles,1))
+		self.eles_pairs = []
+		for i in range (len(self.eles)):
+			for j in range(i, len(self.eles)):
+				self.eles_pairs.append([self.eles[i], self.eles[j]])
+		self.eles_pairs_np = np.asarray(self.eles_pairs)
 		self.SetANI1Param()
 		self.batch_size = PARAMS["batch_size"]
 		self.NetType = "RawBP_noGrad"
@@ -553,7 +553,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
 		if (self.Trainable):
-                        self.TData.LoadDataToScratch(self.tformer)
+			self.TData.LoadDataToScratch(self.tformer)
 		self.xyzs_pl = None
 		self.Zs_pl = None
 		self.label_pl = None
@@ -592,11 +592,11 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
 
 		p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
-                p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
-                SFPa2 = np.concatenate([p1,p2],axis=2)
-                self.SFPa2 = np.transpose(SFPa2, [2,0,1])
+		p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
+		SFPa2 = np.concatenate([p1,p2],axis=2)
+		self.SFPa2 = np.transpose(SFPa2, [2,0,1])
 		p1_new = np.reshape(rs_R,[AN1_num_r_Rs,1])
-                self.SFPr2 = np.transpose(p1_new, [1,0])
+		self.SFPr2 = np.transpose(p1_new, [1,0])
 		self.zeta = PARAMS["AN1_zeta"]
 		self.eta = PARAMS["AN1_eta"]
 
@@ -636,8 +636,8 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
 			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
-                        #self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
-                        #self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
+			#self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
 			#tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
 			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
@@ -782,9 +782,9 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
 			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-                        #chrome_trace = fetched_timeline.generate_chrome_trace_format()
-                        #with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-                        #       f.write(chrome_trace)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+			#       f.write(chrome_trace)
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.print_training(step, train_loss, num_of_mols, duration)
@@ -1098,7 +1098,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
 
 		Args:
-		        step: the index of this step.
+			step: the index of this step.
 		"""
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
