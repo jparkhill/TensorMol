@@ -1127,8 +1127,8 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			#       f.write(chrome_trace)
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
-		#self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)
-		self.print_training(step, train_loss,  num_of_mols, duration)
+		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
 
 	def test(self, step):
@@ -1142,23 +1142,27 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		start_time = time.time()
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
+		test_energy_loss = 0.0
+                test_grads_loss = 0.0
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size)
 			feed_dict=self.fill_feed_dict(batch_data)
 			actual_mols  = self.batch_size
-			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+			preds, total_loss_value, loss_value, energy_loss, grads_loss, mol_output, atom_outputs = self.sess.run([self.output, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
+			test_energy_loss += energy_loss
+			test_grads_loss += grads_loss
 		duration = time.time() - start_time
 		print( "testing...")
-		self.print_training(step, test_loss, num_of_mols, duration)
+		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, num_of_mols, duration)
 		return test_loss, feed_dict
 
-	def print_training(self, step, loss, Ncase, duration, Train=True):
+	def print_training(self, step, loss, energy_loss, grads_loss, Ncase, duration, Train=True):
 		if Train:
-			LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f", step, duration, (float(loss)/(Ncase)))
+			LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f  energy_loss: %.10f  grad_loss: %.10f", step, duration, (float(loss)/(Ncase)), (float(energy_loss)/(Ncase)), (float(grads_loss)/(Ncase)))
 		else:
-			LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f", step, duration, (float(loss)/(Ncase)))
+			LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f energy_loss: %.10f  grad_loss: %.10f", step, duration, (float(loss)/(Ncase)), (float(energy_loss)/(Ncase)), (float(grads_loss)/(Ncase)))
 		return
 
 	def evaluate(self, batch_data, IfGrad=True):
