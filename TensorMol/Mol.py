@@ -189,6 +189,9 @@ class Mol:
 			self.CalculateAtomization()
 		return
 
+	def Clean(self):
+		self.DistMatrix = None
+
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
@@ -250,7 +253,7 @@ class Mol:
 
 	def XYZtoGridIndex(self, xyz, ngrids = 250,padding = 2.0):
 		Max = (self.coords).max() + padding
-                Min = (self.coords).min() - padding
+		Min = (self.coords).min() - padding
 		binsize = (Max-Min)/float(ngrids-1)
 		x_index = math.floor((xyz[0]-Min)/binsize)
 		y_index = math.floor((xyz[1]-Min)/binsize)
@@ -654,7 +657,7 @@ class Mol:
 		Ps /= Z
 		return Ps
 
-	def Force_from_xyz(self, path):
+	def ForceFromXYZ(self, path):
 		"""
 		Reads the forces from the comment line in the md_dataset,
 		and if no forces exist sets them to zero. Switched on by
@@ -673,7 +676,7 @@ class Mol:
 		except Exception as Ex:
 			print "Reading Force Failed.", Ex
 
-	def MMFF94_Force_from_xyz(self, path):
+	def MMFF94FromXYZ(self, path):
 		"""
 		Reads the forces from the comment line in the md_dataset,
 		and if no forces exist sets them to zero. Switched on by
@@ -693,7 +696,7 @@ class Mol:
 		except Exception as Ex:
 			print "Reading MMFF94 Force Failed.", Ex
 
-	def Charge_from_xyz(self, path):
+	def ChargeFromXYZ(self, path):
 		"""
 		Reads the forces from the comment line in the md_dataset,
 		and if no forces exist sets them to zero. Switched on by
@@ -712,7 +715,7 @@ class Mol:
 			print "Reading Charges Failed.", Ex
 
 
-	def Energy_from_xyz(self, path):
+	def EnergyFromXYZ(self, path):
 		"""
 		Reads the energy from the comment line in the md_dataset.
 		Switched on by has_energy=True in the ReadGDB9Unpacked routine
@@ -724,6 +727,24 @@ class Mol:
 			self.properties['energy'] = energy
 		except Exception as Ex:
 			print "Reading Energy Failed.", Ex
+
+	def MakeBonds(self):
+		self.BuildDistanceMatrix()
+		maxnb = 0
+		bonds = []
+		for i in range(self.NAtoms()):
+			for j in range(i+1,self.NAtoms()):
+				if self.DistMatrix[i,j] < 3.0:
+					bonds.append([i,j])
+		bonds = np.asarray(bonds, dtype=np.int)
+		self.properties["bonds"] = bonds
+		self.nbonds = bonds.shape[0]
+		f=np.vectorize(lambda x: self.atoms[x])
+		self.bondtypes = np.unique(f(bonds), axis=0)
+		return self.nbonds
+
+	def BondTypes(self):
+		return np.unique(self.bonds[:,0]).astype(int)
 
 	def AtomName(self, i):
 		return atoi.keys()[atoi.values().index(self.atoms[i])]

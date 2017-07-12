@@ -30,20 +30,60 @@ def TestBPDirect():
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=10)
 	# Test out some MD with the trained network.
-	#manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_noGradTrain_1", Trainable_ = False) # Initialzie a manager than manage the training of neural network.
+
 	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_b3lyp_force_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_1",tset,False,"fc_sqdiff_BP_Direct_Grad",False,False) # Initialzie a manager than manage the training of neural network.
+	dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
+
 	m = a.mols[0]
 	#print manager.Eval_BPEnergy_Direct_Grad(m)
 	#print manager.EvalBPDirectSingleEnergyWGrad(m)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-	EnergyForceField = lambda x: manager.EvalBPDirectSingleEnergyWGrad(Mol(m.atoms,x))
-	PARAMS["MDdt"] = 0.2
-	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 10000
+	EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad(Mol(m.atoms,x))
+	EnergyField = lambda x: manager.Eval_BPEnergy_Direct_Grad(Mol(m.atoms,x), Grad=False)
+	def ChargeField(x_):
+		m.coords = x_
+		dipole, charge = dipole_manager.Eval_BPDipole_2(m)
+		return np.asarray(charge[0])
+
+
+	#PARAMS["MDdt"] = 0.2
+	#PARAMS["RemoveInvariant"]=True
+	#PARAMS["MDMaxStep"] = 10000
+	#PARAMS["MDThermostat"] = "Nose"
+	#PARAMS["MDTemp"]= 600.0
+	##traj = VelocityVerlet(None,m,"DirectMD", EnergyForceField)
+	##traj.Prop()
+
+	#PARAMS["MDdt"] = 0.2
+        #PARAMS["RemoveInvariant"]=True
+        #PARAMS["MDMaxStep"] = 10000
+        #PARAMS["MDThermostat"] = "Nose"
+        #PARAMS["MDV0"] = None
+        #PARAMS["MDTemp"]= 1.0
+	#PARAMS["MDAnnealSteps"] = 2000
+	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
+        #anneal.Prop()
+	#m.coords = anneal.Minx.copy()
+	#m = GeomOptimizer(EnergyForceField).Opt(m)
+	#m.WriteXYZfile("./results/", "H2O_trimer_opt")
+
+	PARAMS["MDFieldAmp"] = 0.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
 	PARAMS["MDThermostat"] = "Nose"
-	PARAMS["MDTemp"]= 600.0
-	traj = VelocityVerlet(None,m,"DirectMD", EnergyForceField)
-	traj.Prop()
+	PARAMS["MDTemp"] = 30
+	PARAMS["MDdt"] = 0.1
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDV0"] = None
+	PARAMS["MDMaxStep"] = 10000
+	warm = VelocityVerlet(None, m,"warm",EnergyForceField)
+	warm.Prop()
+	m.coords = warm.x.copy()
+	PARAMS["MDMaxStep"] = 40000
+	md = IRTrajectory(EnergyForceField, ChargeField, m,"H2O_udp_grad_IR",warm.v.copy())
+	md.Prop()
+	WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_grad_IR.txt")
 	return
 
 # John's tests

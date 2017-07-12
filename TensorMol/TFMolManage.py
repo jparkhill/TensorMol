@@ -1071,10 +1071,11 @@ class TFMolManage(TFManage):
 		return mol_out, atom_out, gradient
 
 
-        def Eval_BPEnergy_Direct_Grad(self, mol, Grad=True):
+        def Eval_BPEnergy_Direct_Grad(self, mol, Grad=True, Energy=True):
                 mol_set = MSet()
                 mol_set.mols.append(mol)
                 nmols = len(mol_set.mols)
+		self.TData.MaxNAtoms = mol.NAtoms()
                 dummy_outputs = np.zeros((nmols))
                 xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
                 dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
@@ -1083,10 +1084,12 @@ class TFMolManage(TFManage):
                         xyzs[i][:mol.NAtoms()] = mol.coords
                         Zs[i][:mol.NAtoms()] = mol.atoms
                 mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
-                if Grad:
+                if Grad and Energy:
                         return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
-                else:
+		elif Energy and not Grad:
                         return mol_out[0]
+		else:
+			return -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
 
 
 	def EvalBPDirectSingleEnergyWGrad(self, mol):
@@ -1097,6 +1100,7 @@ class TFMolManage(TFManage):
 		mol_set.mols.append(mol)
 		nmols = len(mol_set.mols)
 		dummy_outputs = np.zeros((nmols))
+		self.TData.MaxNAtoms = mol.NAtoms()
 		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
 		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
