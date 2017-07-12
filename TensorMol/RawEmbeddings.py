@@ -896,7 +896,46 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
                 IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
         return SymList, IndexList
 
+def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
+        """
+        A tensorflow implementation of the AN1 symmetry function for a set of molecule. 
+        Args:
+                R: a nmol X maxnatom X 3 tensor of coordinates. 
+                Zs : nmol X maxnatom X 1 tensor of atomic numbers.  
+                eles_: a neles X 1 tensor of elements present in the data. 
+                SFPsR_: A symmetry function parameter of radius part
+                Rr_cut: Radial Cutoff of radius part
+                eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+                SFPsA_: A symmetry function parameter of angular part
+                RA_cut: Radial Cutoff of angular part
 
+        Returns:
+                Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+        """
+        inp_shp = tf.shape(R)
+        nmol = inp_shp[0]
+        natom = inp_shp[1]
+        nele = tf.shape(eles_)[0]
+        nelep = tf.shape(eleps_)[0]
+        GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
+        GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+        GM = tf.concat([GMR, GMA], axis=2)
+        num_ele, num_dim = eles_.get_shape().as_list()
+        MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
+        ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
+	v = tf.reshape(tf.range(nmol*natom), [nmol, natom, 1])
+	ToMask = tf.concat([ToMask1, v], axis = -1)
+        IndexList = []
+        SymList= []
+        GatherList = []
+        for e in range(num_ele):
+                GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
+                SymList.append(tf.gather_nd(GM, GatherList[-1]))
+                NAtomOfEle=tf.shape(GatherList[-1])[0]
+		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
+		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
+                IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
+        return SymList, IndexList
 
 def NNInterface(R, Zs, eles_, GM):
 	"""
@@ -1013,6 +1052,7 @@ class ANISym:
 			#self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
+			self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
 			#self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)
 			#self.gradient_update2 = tf.gradients(self.Scatter_Sym_Update2, self.xyz_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym_Update, self.xyz_pl)
@@ -1054,7 +1094,8 @@ class ANISym:
 			#print ("sym_index_update:", np.array_equal(sym_index_update[0], sym_index[0]))
 			#print ("gradient:", gradient[0].shape)
 			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
-			#with open('timeline_step_%d_old.json' % i, 'w') as f:
-			#	f.write(chrome_trace)
+            		#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+            		#with open('timeline_step_%d_old.json' % i, 'w') as f:
+                	#	f.write(chrome_trace)
+			print (sym_index[0][:20], sym_index[1][:20])
 		print ("total time:", time.time() - t_total)
