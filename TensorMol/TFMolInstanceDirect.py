@@ -14,6 +14,8 @@ from TensorMol.TFMolInstance import *
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.RawEmbeddings import *
 from tensorflow.python.client import timeline
+import gc
+
 
 class BumpHolder:
 	def __init__(self,natom_,maxbump_):
@@ -92,6 +94,36 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		self.dbg2 = None
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 
+	def TrainPrepare(self,  continue_training =False):
+		"""
+		Get placeholders, graph and losses in order to begin training.
+		Also assigns the desired padding.
+
+		Args:
+			continue_training: should read the graph variables from a saved checkpoint.
+		"""
+		with tf.Graph().as_default():
+			self.inp_pl=tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,4]))
+			self.frce_pl = tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,3])) # Forces.
+			if (self.ForceType=="LJ"):
+				self.LJe = tf.Variable(0.316*tf.ones([8,8]),trainable=True)
+				self.LJr = tf.Variable(tf.ones([8,8]),trainable=True)
+				# These are squared later to keep them positive.
+				self.energies, self.forces = self.LJFrc(self.inp_pl)
+				self.total_loss, self.loss = self.loss_op(self.forces, self.frce_pl)
+				self.train_op = self.training(self.total_loss, PARAMS["learning_rate"], PARAMS["momentum"])
+				self.saver = tf.train.Saver()
+			elif (self.ForceType=="Harm"):
+				self.energies, self.forces = self.HarmFrc(self.inp_pl)
+			else:
+				raise Exception("Unknown Kernel")
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
+		return
+
 	def loss_op(self, output, labels):
 		"""
 		The loss operation of this model is complicated
@@ -122,34 +154,13 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		maxnatom = inp_shp[1]
 		XYZs = tf.slice(inp_pl,[0,0,1],[-1,-1,-1])
 		Zs = tf.cast(tf.reshape(tf.slice(inp_pl,[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
+		#self.LJe = tf.Print(self.LJe,[self.LJe],"LJe",1000,1000)
+		#self.LJr = tf.Print(self.LJr,[self.LJr],"LJr",1000,1000)
 		LJe2 = self.LJe*self.LJe
 		LJr2 = self.LJr*self.LJr
 		#LJe2 = tf.Print(LJe2,[LJe2],"LJe2",1000,1000)
 		#LJr2 = tf.Print(LJr2,[LJr2],"LJr2",1000,1000)
 		Ens = LJEnergies(XYZs, Zs, LJe2, LJr2)
-		#Ens = tf.Print(Ens,[Ens],"Energies",5000,5000)
-		frcs = -1.0*(tf.gradients(Ens, XYZs)[0])
-		return Ens, frcs
-
-	def LJFrcLinear(self, inp_pl, nzp_pl):
-		"""
-		Compute forces for a batch of molecules
-		with the current LJe, and LJr. This version is linear scaling
-		provided a linear scaling neighborlist (nzp_pl)
-
-		Args:
-			inp_pl: placeholder for the NMol X MaxNatom X 4 tensor of Z,x,y,z
-			nzp_pl: placeholder for the nonzero pairs of atoms. (nmol X nnz X 2)
-		"""
-		# separate out the Z from the XYZ.
-		inp_shp = tf.shape(inp_pl)
-		nmol = inp_shp[0]
-		maxnatom = inp_shp[1]
-		XYZs = tf.slice(inp_pl,[0,0,1],[-1,-1,-1])
-		Zs = tf.cast(tf.reshape(tf.slice(inp_pl,[0,0,0],[-1,-1,1]),[nmol,maxnatom,1]),tf.int32)
-		LJe2 = self.LJe*self.LJe
-		LJr2 = self.LJr*self.LJr
-		Ens = LJEnergiesLinear(XYZs, Zs, LJe2, LJr2, nzp_pl)
 		#Ens = tf.Print(Ens,[Ens],"Energies",5000,5000)
 		frcs = -1.0*(tf.gradients(Ens, XYZs)[0])
 		return Ens, frcs
@@ -190,15 +201,12 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		En,Frc = self.sess.run([self.energies, self.forces],feed_dict=feeddict)
 		return En, JOULEPERHARTREE*Frc[0] # Returns energies and forces.
 
-	def EvalForceLinear(self,m,nzp):
-		Ins = self.TData.dig.Emb(m,False,False)
-		Ins = Ins.reshape(tuple([1]+list(Ins.shape)))
-		feeddict = {self.inp_pl:Ins, self.nzp_pl:nzp}
-		En,Frc = self.sess.run([self.energiesLinear, self.forcesLinear],feed_dict=feeddict)
-		return En, JOULEPERHARTREE*Frc[0] # Returns energies and forces.
-
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		print("step: ", "%7d"%step, "  duration: ", "%.5f"%duration,  "  train loss: ", "%.10f"%(float(loss)/(Ncase)))
+		return
+
+	def Prepare(self):
+		self.TrainPrepare()
 		return
 
 	def train_step(self, step):
@@ -230,42 +238,6 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		#print ("train_loss:", train_loss, " Ncase_train:", Ncase_train, train_loss/num_of_mols)
 		#print ("diff:", mol_output - batch_data[2], " shape:", mol_output.shape)
 		self.print_training(step, train_loss, num_of_mols, duration)
-		return
-
-	def Prepare(self):
-		self.TrainPrepare()
-		return
-
-	def TrainPrepare(self,  continue_training =False):
-		"""
-		Get placeholders, graph and losses in order to begin training.
-		Also assigns the desired padding.
-
-		Args:
-			continue_training: should read the graph variables from a saved checkpoint.
-		"""
-		with tf.Graph().as_default():
-			self.inp_pl=tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,4]))
-			self.nzp_pl=tf.placeholder(tf.float32, shape=tuple([None,None,2]))
-			self.frce_pl = tf.placeholder(tf.float32, shape=tuple([None,self.MaxNAtoms,3])) # Forces.
-			if (self.ForceType=="LJ"):
-				self.LJe = tf.Variable(0.316*tf.ones([8,8]),trainable=True)
-				self.LJr = tf.Variable(tf.ones([8,8]),trainable=True)
-				# These are squared later to keep them positive.
-				self.energies, self.forces = self.LJFrc(self.inp_pl)
-				self.energiesLinear, self.forcesLinear = self.LJFrcLinear(self.inp_pl, self.nzp_pl)
-				self.total_loss, self.loss = self.loss_op(self.forces, self.frce_pl)
-				self.train_op = self.training(self.total_loss, PARAMS["learning_rate"], PARAMS["momentum"])
-				self.saver = tf.train.Saver()
-			elif (self.ForceType=="Harm"):
-				self.energies, self.forces = self.HarmFrc(self.inp_pl)
-			else:
-				raise Exception("Unknown Kernel")
-			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			self.sess.run(init)
 		return
 
 	def train(self, mxsteps=10000):
@@ -1158,6 +1130,9 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)
+		gc_t = time.time()
+		gc.collect()
+		print ("gc collect time:", time.time() - gc_t)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
 
@@ -1226,11 +1201,11 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		"""
 		with tf.Graph().as_default():
 			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
 			SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			SFPa2 = tf.Variable(self.SFPa2, trainable=False, dtype = self.tf_prec)
