@@ -5,6 +5,7 @@ No symmetry but general unit cells supported.
 
 from Sets import *
 from TFManage import *
+from Neighbors import * 
 from Electrostatics import *
 from QuasiNewtonTools import *
 from SimpleMD import *

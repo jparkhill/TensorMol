@@ -119,7 +119,7 @@ class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
 	"""
-	def __init__(self,x_,rcut_=5.0):
+	def __init__(self, x_, rcut_=5.0):
 		"""
 		Builds or updates a neighbor list of atoms within rcut_
 		using n*Log(n) kd-tree.
@@ -133,27 +133,35 @@ class NeighborList:
 		self.r = rcut_
 		self.pairs = None
 		self.triples = None
+		self.npairs = None
+		self.ntriples = None
+		return
 
-	def buildPairs(self):
+	def buildPairs(self, rcut_ = 5.0):
 		"""
 		pairs is a number of nonzero atom pairs X 2 tensor.
 		"""
 		tree = kdtree(self.x.T)
 		pairs = []
 		for i in range(self.natom):
-			pairs = pairs+[[i,k] for k in radius_search(tree,self.x[i],self.r) if i != k]
+			pairs = pairs+[[i,k] for k in radius_search(tree,self.x[i],rcut_) if i != k]
 		print "Found ", len(pairs), "nonzero pairs"
 		return np.array(pairs)
 
-	def Update(x_,rcut_=5.0):
+	def Update(self, x_,rcut_=5.0, molind_ = None):
+		"""
+		In the future this should only force incremental builds.
+		"""
 		self.x = x_.copy()
-		self.pairs, self.triples = self.buildPairsAndTriples(rcut_)
+		self.pairs, self.triples = self.buildPairsAndTriples(rcut_,molind_)
+		self.npairs = self.pairs.shape[0]
+		self.ntriples = self.triples.shape[0]
 		return
 
-	def buildPairsAndTriples(self, rcut=5.0):
+	def buildPairsAndTriples(self, rcut=5.0, molind_=None):
 		"""
 		Returns the nonzero pairs, triples in self.x within the cutoff.
-        Triples are non-repeating ie: no 1,2,2 or 2,2,2 etc. but unordered
+		Triples are non-repeating ie: no 1,2,2 or 2,2,2 etc. but unordered
 
 		Args:
 			rcut: the cutoff for pairs and triples
@@ -168,19 +176,85 @@ class NeighborList:
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		ntrip = sum(map(lambda x: x*(x-1) if x>0 else 0, npairi))
-		p=np.zeros((npair,2),dtype = np.uint32)
-		t=np.zeros((ntrip,3),dtype = np.uint32)
+		p = None
+		t = None
+		if (molind_!=None):
+			p=np.zeros((npair,3),dtype = np.uint64)
+			t=np.zeros((ntrip,4),dtype = np.uint64)
+		else:
+			p=np.zeros((npair,2),dtype = np.uint64)
+			t=np.zeros((ntrip,3),dtype = np.uint64)
 		pp = 0
 		tp = 0
 		for i in range(self.natom):
 			for j in pair[i]:
-				p[pp,0]=i
-				p[pp,1]=j
+				if (molind_!=None):
+					p[pp,0]=molind_
+					p[pp,1]=i
+					p[pp,2]=j
+				else:
+					p[pp,0]=i
+					p[pp,1]=j
 				pp = pp+1
 				for k in pair[i]:
 					if (k!=j):
-						t[tp,0]=i
-						t[tp,1]=j
-						t[tp,2]=k
+						if (molind_!=None):
+							t[tp,0]=molind_
+							t[tp,1]=i
+							t[tp,2]=j
+							t[tp,3]=k
+						else:
+							t[tp,0]=i
+							t[tp,1]=j
+							t[tp,2]=k
 						tp=tp+1
 		return p,t
+
+class NeighborListSet:
+	def __init__(self,x_,nnz_):
+		"""
+		A neighborlist for a set
+
+		Args:
+			x_: NMol X MaxNAtom X 3 tensor of coordinates.
+			nnz_: NMol vector of maximum atoms in each mol.
+		"""
+		self.nlist = []
+		self.nmol = x_.shape[0]
+		self.x = x_.copy()
+		self.nnz = nnz_.copy()
+		self.pairs = None
+		self.triples = None
+		for i in range(self.nmol):
+			self.nlist.append(NeighborList(x_[i,:nnz_[i]]))
+			(self.nlist[-1]).Update(x_[i,:nnz_[i]])
+		return
+
+	def Update(self, x_, rcut_ = 5.0):
+		self.x = x_.copy()
+		self.pairs, self.triples = self.buildPairsAndTriples(rcut_)
+
+	def buildPairsAndTriples(self, rcut=5.0):
+		"""
+		builds nonzero pairs and triples for current x.
+
+		Args:
+			rcut_: a cutoff parameter.
+		Returns:
+			(nnzero pairs X 3 pair tensor) (mol , I , J)
+			(nnzero X 4 triples tensor) (mol , I , J , K)
+		"""
+		for i,mol in enumerate(self.nlist):
+			mol.Update(self.x[i,:self.nnz[i]],rcut,i)
+		nzp = sum([mol.npairs for mol in self.nlist])
+		nzt = sum([mol.ntriples for mol in self.nlist])
+		trp = np.zeros((nzp,3),dtype=np.uint64)
+		trt = np.zeros((nzt,4),dtype=np.uint64)
+		pp = 0
+		tp = 0
+		for mol in self.nlist:
+			trp[pp:pp+mol.npairs] = mol.pairs
+			trt[tp:tp+mol.ntriples] = mol.triples
+			pp += mol.npairs
+			tp += mol.ntriples
+		return trp, trt
