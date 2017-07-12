@@ -50,6 +50,42 @@ def TFDistances(r_):
 	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 1e-26
 	return tf.sqrt(D)
 
+def TFDistanceLinear(B,NZP):
+	"""
+	Compute a distance vector of B, a coordinate matrix
+	Args:
+		B: a Nx3 matrix
+		NZP: a (nonzero pairs X 2) index matrix.
+	Returns:
+		D: a NZP X 1 tensor of distances.
+	"""
+	Ii = tf.slice(NZP,[0,0],[-1,1])
+	Ij = tf.slice(NZP,[0,1],[-1,1])
+	Ri = tf.gather_nd(B,Ii)
+	Rj = tf.gather_nd(B,Ij)
+	A = Ri - Rj + 1e-26
+	return tf.sqrt(tf.reduce_sum(A*A, 1))
+
+def TFDistancesLinear(B,NZP):
+	"""
+	Returns distance vector batched over mols
+	With these sparse versions I think the mol dimension should be eliminated.
+
+	Args:
+		r_: Nmol X MaxNAtom X 3 coordinate tensor
+		NZP: a ( nonzero pairs X 3) index matrix. (mol, i, j)
+	Returns
+		D: nonzero pairs  Distance vector. (Dij)
+		The calling routine has to scatter back into mol dimension using NZP if desired.
+	"""
+	Ii = tf.slice(NZP,[0,0],[-1,2])
+	Ij = tf.concat([tf.slice(NZP,[0,0],[-1,1]),tf.slice(NZP,[0,2],[-1,1])],1)
+	Ri = tf.gather_nd(B,Ii)
+	Rj = tf.gather_nd(B,Ij)
+	A = Ri - Rj + 1e-26
+	D = tf.sqrt(tf.reduce_sum(A*A, 1))
+	return
+
 def BumpEnergy(h,w,xyz,x,nbump):
 	"""
 	A -1*potential energy which is just the sum of gaussians
@@ -165,6 +201,44 @@ def LJKernels(Ds,Zs,Ee,Re):
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
 	return K
 
+def LJKernelsLinear(Ds,Zs,Ee,Re,NZP):
+	"""
+	Batched over molecules.
+	Args:
+		Ds: Distances Enumerated by NZP (flat)
+		Zs: A batch of Atomic Numbers.
+		Ee: a matrix of LJ well depths.
+		Re: a matrix of Bond minima.
+		NZP: a list of nonzero atom pairs NNZ X (mol, i, j).
+	Returns
+		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
+	"""
+	# Zero distances will be set to 100.0 then masked to zero energy contributions.
+	ones = tf.ones(tf.shape(Ds))
+	zeros = tf.zeros(tf.shape(Ds))
+	ZeroTensor = tf.where(tf.less_equal(Ds,0.000000001),ones,zeros)
+	Ds += ZeroTensor
+	# Zero atomic numbers will be set to 1 and masked elsewhere
+	Zs = tf.where(tf.equal(Zs,0),tf.ones_like(Zs),Zs)
+	# Extract De_ij and Re_ij
+	Zshp = tf.shape(Zs)
+	Zr = tf.reshape(Zs,[Zshp[0],Zshp[1],1])-1 # Indices start at 0 AN's start at 1.
+	Zij1 = tf.tile(Zr,[1,1,Zshp[1]]) # molXatomXatom
+	Zij2 = tf.transpose(Zij1,perm=[0,2,1])
+	Zij = tf.stack([Zij1,Zij2],axis=3) # molXatomXatomX2
+	# Gather desired LJ parameters.
+	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[1]*Zshp[1],2])
+	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[Zshp[0],Zshp[1],Zshp[1]])
+	Reij = tf.reshape(tf.gather_nd(Re,Zij),[Zshp[0],Zshp[1],Zshp[1]])
+	R = Reij/Ds
+	tf.assert_less(R,100000000.0)
+	K = Eeij*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
+	# Use the ZeroTensors to mask the output for zero dist or AN.
+	K = tf.where(tf.equal(ZeroTensor,1.0),tf.zeros_like(K),K)
+	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
+	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
+	return K
+
 def LJEnergy_Numpy(XYZ,Z,Ee,Re):
 	"""
 	The same as the routine below, but
@@ -226,6 +300,28 @@ def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	Ks = LJKernels(Ds,Zs_,LJe,LJr)
 	Ens = tf.reduce_sum(Ks,[1,2])
 	return Ens
+
+def LJEnergiesLinear(XYZs_,Zs_,Ee_, Re_, NZP_):
+	"""
+	Returns LJ Energies batched over molecules.
+	Input can be padded with zeros. That will be
+	removed by LJKernels. This version is linear scaling with sparse indices NZP
+
+	Args:
+		XYZs_: nmols X maxatom X 3 coordinate tensor.
+		Zs_: nmols X maxatom X 1 atomic number tensor.
+		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Epsilon parameter matrix.
+		Re_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
+		NZP_: Nonzero Pairs (nnzp X 3) matrix (mol, i, j)
+	"""
+	Ds = TFDistancesLinear(XYZs_,NZP_)
+	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
+	LJe = Ee_*tf.ones([8,8])
+	LJr = Re_*tf.ones([8,8])
+	Ks = LJKernelsLinear(Ds, Zs_, LJe, LJr, NZP_)
+	Ens = tf.reduce_sum(Ks,[1,2])
+	return Ens
+
 
 def HarmKernels(XYZs, Deqs, Keqs):
 	"""
