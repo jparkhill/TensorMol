@@ -319,4 +319,4 @@ def BIMNN_NEq():
 
 a=MSet("OptMols")
 a.ReadXYZ()
-print QchemDft(a.mols[0],basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='optmols0', path_='./qchem/', threads=None)
+print QchemDft(a.mols[0],basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='optmols0', path_='./qchem/', threads=2)

@@ -38,14 +38,14 @@ def QchemDft(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='sp', filename_='tmp', p
 	#print istring
 	with open(path_+filename_+'.in','w') as fin:
 		fin.write(istring)
-	with open(path_+filename_+'.out','r+') as fout:
-		fout.seek(0)
+	with open(path_+filename_+'.out','w') as fout:
 		if threads:
-			subprocess.call(['qchem', '-nt '+str(threads), path_+filename_+'.in'], stdout=fout,shell=False)
+			proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
 		else:
-			subprocess.call(['qchem', path_+filename_+'.in'], stdout=fout,shell=False)
-	with open(path_+filename_+'.out','r+') as fout:
-		lines = fout.readlines()
+			proc = subprocess.Popen(['qchem', path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+		out, err = proc.communicate()
+		fout.write(out)
+	lines = out.split('\n')
 	if jobtype_ == 'force':
 		Forces = np.zeros((m_.atoms.shape[0],3))
 		for i, line in enumerate(lines):
@@ -61,12 +61,14 @@ def QchemDft(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='sp', filename_='tmp', p
 						k += 4
 						l = 0
 		return Energy, Forces
-	if jobtype_ == 'sp':
+	elif jobtype_ == 'sp':
 		for line in lines:
 			if line.count('Convergence criterion met')>0:
 				Energy = float(line.split()[1])
 		return Energy
-	return np.array([0.0])[0]
+	else:
+		raise Exception("jobtype needs formatted for return variables")
+
 
 def PullFreqData():
 	a = open("/media/sdb1/dtoth/qchem_jobs/new/phenol.out", "r+") #Change file name
