@@ -26,7 +26,7 @@ class MetaDynamics(VelocityVerlet):
 		BE = 0.0
 		BF = np.zeros(x_.shape)
 		if (self.NBump > 0):
-			BE, BF = self.Bumper.Bump(self.BumpCoords, x_, self.NBump)
+			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump)
 		PF = self.ForceFunction(x_)
 		tmp = PF+JOULEPERHARTREE*BF[0]
 		return tmp

@@ -36,13 +36,14 @@ class BumpHolder:
 		self.w = None
 		self.Prepare()
 		return
+
 	def Prepare(self):
 		with tf.Graph().as_default():
 			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
 			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.natom,3]))
-			self.nb_pl=tf.placeholder(tf.int64)
-			self.h = tf.Variable(0.5,dtype = tf.float64)
-			self.w = tf.Variable(0.2,dtype = tf.float64)
+			self.nb_pl=tf.placeholder(tf.int32)
+			self.h = tf.Variable(0.6,dtype = tf.float64)
+			self.w = tf.Variable(1.0,dtype = tf.float64)
 			init = tf.global_variables_initializer()
 			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
@@ -50,6 +51,7 @@ class BumpHolder:
 			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
+
 	def Bump(self, BumpCoords, x_, NBump_):
 		"""Returns the Bump force.
 		"""
@@ -1851,5 +1853,3 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 			#self.run_metadata = tf.RunMetadata()
 		return
-
-
