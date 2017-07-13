@@ -152,7 +152,7 @@ class Instance:
 		self.PreparedFor = Ncase
 		return
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		""" Builds the graphs by calling inference """
 		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
@@ -411,7 +411,7 @@ class Instance:
 		return train_op
 
 	def train(self, mxsteps, continue_training= False):
-		self.train_prepare(continue_training)
+		self.TrainPrepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
 		for step in range(1, mxsteps+1):
@@ -429,7 +429,7 @@ class Instance:
 		return
 
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
@@ -726,6 +726,7 @@ class Instance_fc_sqdiff(Instance):
 			tmp_output.resize((self.batch_size,  batch_data[1].shape[1]))
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
+
 
 class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 	def __init__(self, TData_, ele_=1, Name_=None):
@@ -1501,7 +1502,7 @@ class Queue_Instance:
 		return train_op
 
 	def train(self, mxsteps, continue_training= False):
-		self.train_prepare(continue_training)
+		self.TrainPrepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
 		self.coord = tf.train.Coordinator()
@@ -1540,7 +1541,7 @@ class Queue_Instance:
 		return
 
 
-	def train_prepare(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.inputs()

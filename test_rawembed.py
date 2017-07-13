@@ -4,7 +4,7 @@ from TensorMol.MBE_Opt import *
 from TensorMol.RawEmbeddings import *
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 if (0):
 	import numpy as np
