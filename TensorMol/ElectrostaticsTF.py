@@ -29,7 +29,7 @@ def TFDistance(A):
 	r = tf.reshape(r, [-1, 1]) # For the later broadcast.
 	# Tensorflow can only reverse mode grad the sqrt if all these elements
 	# are nonzero
-	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r) + 1e-26
+	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r) + tf.cast(1e-26,tf.float64)
 	return tf.sqrt(D)
 
 def TFDistances(r_):
@@ -47,7 +47,7 @@ def TFDistances(r_):
 	rmtt = tf.transpose(rmt,perm=[0,2,1])
 	# Tensorflow can only reverse mode grad of sqrt if all these elements
 	# are nonzero
-	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + 1e-26
+	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + tf.cast(1e-26,tf.float64)
 	return tf.sqrt(D)
 
 def TFDistanceLinear(B,NZP):
@@ -104,8 +104,7 @@ def BumpEnergy(h,w,xyz,x,nbump):
 	nx = xshp[0]
 	Nzxyz = tf.slice(xyz,[0,0,0],[nbump,nx,3])
 	Ds = TFDistances(Nzxyz) # nbump X MaxNAtom X MaxNAtom Distance tensor.
-	Dx = TFDistance(x) # MaxNAtom X MaxNAtom Distance tensor.
-	#sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
+	Dx = TFDistance(x) # MaxNAtom X MaxNAtom Distance tensor.	#sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
 	w2 = w*w
 	rij = Ds - tf.tile(tf.reshape(Dx,[1,nx,nx]),[nbump,1,1])
 	ToExp = tf.einsum('ijk,ijk->i',rij,rij)

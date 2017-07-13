@@ -141,7 +141,7 @@ class NosePerParticleThermostat(Thermostat):
 		self.Rescale(v_)
 		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
 		return
-	def step(self,f_, a_, x_, v_, m_, dt_, fande_=None ):
+	def step(self,f_, a_, x_, v_, m_, dt_, fande_=None , frc_ = True):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
@@ -158,7 +158,10 @@ class NosePerParticleThermostat(Thermostat):
 		kedto2s = (1./2.)*np.einsum("i,i->i",np.einsum("ia,ia->i",vdto2,vdto2),m_)
 		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2s - (((3.*self.N+1)/2.))*self.kT)
 		v = np.einsum("ij,i->ij",(vdto2 + (dt_/2.)*a),1.0/(1 + (dt_/2.)*self.eta))
-		return x,v,a,e
+		if frc_:
+			return x,v,a,e,f_x_
+		else:
+			return x,v,a,e
 
 class NoseChainThermostat(Thermostat):
 	def __init__(self,m_,v_):

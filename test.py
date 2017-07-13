@@ -268,7 +268,7 @@ def TestMetadynamics():
 	a.ReadXYZ("johnsonmols")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	PARAMS["NeuronType"]="softplus"
-	m = a.mols[3]
+	m = a.mols[2]
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),False)
@@ -1085,9 +1085,9 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	Test MolecularDynamics
 	"""
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
-	a=MSet("OCSDB_test")
-	a.ReadXYZ("OCSDB_test")
-	m = a.mols[1]
+	a=MSet("david_test")
+	a.ReadXYZ("david_test")
+	m = a.mols[3]
 	# Convert the forces from kcal/mol ang to joules/mol ang.
 	ForceField = lambda x: 4183.9953*tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
 	PARAMS["MNHChain"] = 10
@@ -1162,6 +1162,23 @@ def TestEE():
 		np.savetxt("./results/AutoCorr.dat", autocorr)
 	return
 
+def TestRandom():
+	a = MSet("sampling_mols")
+	a.ReadXYZ("sampling_mols")
+	mol = a.mols[4]
+	f = open('/media/sdb1/dtoth/sampling_mols/rnd_mols/hexanol/hexanol_rnd' + '.in', 'w')
+	for i in range(10000):
+		tmp_mol = copy.deepcopy(mol)
+		tmp_mol.Distort(0.05, .80)
+		f.write("$molecule \n0 1 \n")
+		for i in range(len(tmp_mol.atoms)):
+			if tmp_mol.atoms[i] == 1:
+				f.write("H  " + str(tmp_mol.coords[i, 0]) + "  " + str(tmp_mol.coords[i, 1]) + "  " + str(tmp_mol.coords[i,2]) + "\n")
+			if tmp_mol.atoms[i] == 6:
+				f.write("C  " + str(tmp_mol.coords[i, 0]) + "  " + str(tmp_mol.coords[i,1]) + "  " + str(tmp_mol.coords[i,2]) + "\n")
+			if tmp_mol.atoms[i] == 8:
+				f.write("O  " + str(tmp_mol.coords[i, 0]) + "  " + str(tmp_mol.coords[i,1]) + "  " + str(tmp_mol.coords[i,2]) + "\n")
+		f.write("$end \n \n$rem \njobtype  force \nmethod   wB97X-D \nbasis  6-311G** \n$end \n@@@ \n \n")
 
 #
 # Tests to run.
@@ -1178,8 +1195,8 @@ def TestEE():
 # TestIndoIR()
 # david_testIR()
 #david_HarmonicAnalysis()
-#TestMetadynamics()
-Test_Periodic_LJMD()
+TestMetadynamics()
+#Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
@@ -1188,6 +1205,7 @@ Test_Periodic_LJMD()
 #TestOCSDB()
 #TestNeb()
 #TestMD()
+#TestRandom()
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.
