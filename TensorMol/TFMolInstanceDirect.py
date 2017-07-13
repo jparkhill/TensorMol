@@ -199,7 +199,7 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		Ins = self.TData.dig.Emb(m,False,False)
 		Ins = Ins.reshape(tuple([1]+list(Ins.shape))) # mol X 4
 		if (self.NL==None):
-			self.NL = NeighborListSet(Ins[:,:,1:],np.array([m.NAtoms()]),False)
+			self.NL = NeighborListSet(Ins[:,:,1:],np.array([m.NAtoms()]))
 		self.NL.Update(Ins[:,:,1:],7.0)
 		feeddict = {self.inp_pl:Ins, self.nzp_pl:self.NL.pairs}
 		En,Frc = self.sess.run([self.energiesLinear, self.forcesLinear],feed_dict=feeddict)

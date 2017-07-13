@@ -266,18 +266,25 @@ class NeighborListSet:
 		self.pairs = None
 		self.DoTriples = DoTriples_
 		self.triples = None
+		self.UpdateInterval = 15
+		self.UpdateCounter = 0
 		for i in range(self.nmol):
 			self.nlist.append(NeighborList(x_[i,:nnz_[i]]))
 			(self.nlist[-1]).Update(x_[i,:nnz_[i]])
 		return
 
 	def Update(self, x_, rcut_ = 5.0):
-		self.x = x_.copy()
-		if (self.DoTriples):
-			self.pairs, self.triples = self.buildPairsAndTriples(rcut_)
+		if (self.UpdateCounter == 0):
+			self.UpdateCounter = self.UpdateCounter + 1
+			self.x = x_.copy()
+			if (self.DoTriples):
+				self.pairs, self.triples = self.buildPairsAndTriples(rcut_)
+			else:
+				self.pairs = self.buildPairs(rcut_)
+		elif (self.UpdateCounter < self.UpdateInterval):
+			self.UpdateCounter = self.UpdateCounter + 1
 		else:
-			self.pairs = self.buildPairs(rcut_)
-
+			self.UpdateCounter = 0
 
 	def buildPairs(self, rcut=5.0):
 		"""

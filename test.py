@@ -952,18 +952,29 @@ def Test_LJMD():
 def Test_Periodic_LJMD():
 	"""
 	Test TensorFlow LJ fluid Molecular dynamics with periodic BC
+	This version also tests linear-scaling-ness of the neighbor list
+	Etc.
 	"""
 	a=MSet("Test")
-	ParticlesPerEdge = 2
-	EdgeSize = 2
+	ParticlesPerEdge = 20
+	EdgeSize = 18
 	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
 	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
 	tset = TensorMolData(a,d)
-	ins = MolInstance_DirectForce(tset,None,False,"Harm")
+	ins = MolInstance_DirectForce(tset,None,False,"LJ")
 	ins.TrainPrepare()
+	ForceField = lambda x: ins.EvalForceLinear(Mol(m.atoms,x))[0][0]
+	EnergyForceField = lambda x: ins.EvalForceLinear(Mol(m.atoms,x))
+	PARAMS["MDTemp"] = 300.0
+	PARAMS["MDThermostat"] = None
+	PARAMS["MDV0"] = None
+	PARAMS["MDdt"] = 0.2
+	md = VelocityVerlet(ForceField,m,"LJLinearTest", EnergyForceField)
+	md.Prop()
+
 	# Generate a Periodic Force field.
 	PF = PeriodicForce(m, [[10.0,0.0,0.0],[0.0,10.0,0.0],[0.,0.,10.0]])
 	PF.AddLocal(ins.LocalLJForce)
@@ -1168,7 +1179,7 @@ def TestEE():
 # david_testIR()
 #david_HarmonicAnalysis()
 #TestMetadynamics()
-TestBPDirect()
+Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
