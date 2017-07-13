@@ -1187,12 +1187,7 @@ Test_Periodic_LJMD()
 #TestHerrNet1()
 #TestOCSDB()
 #TestNeb()
-<<<<<<< HEAD
-TestMD()
-# TestRandom()
-=======
 #TestMD()
->>>>>>> c289f0771b60f2d6c5c8c06e74b3087b82e35354
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.
