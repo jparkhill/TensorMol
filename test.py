@@ -1162,25 +1162,8 @@ def TestEE():
 		np.savetxt("./results/AutoCorr.dat", autocorr)
 	return
 
-def TestRandom():
-	a = MSet("sampling_mols")
-	a.ReadXYZ("sampling_mols")
-	mol = a.mols[4]
-	f = open('/media/sdb1/dtoth/sampling_mols/rnd_mols/hexanol/hexanol_rnd' + '.in', 'w')
-	for i in range(10000):
-		tmp_mol = copy.deepcopy(mol)
-		tmp_mol.Distort(0.05, .80)
-		f.write("$molecule \n0 1 \n")
-		for i in range(len(tmp_mol.atoms)):
-			if tmp_mol.atoms[i] == 1:
-				f.write("H  " + str(tmp_mol.coords[i, 0]) + "  " + str(tmp_mol.coords[i, 1]) + "  " + str(tmp_mol.coords[i,2]) + "\n")
-			if tmp_mol.atoms[i] == 6:
-				f.write("C  " + str(tmp_mol.coords[i, 0]) + "  " + str(tmp_mol.coords[i,1]) + "  " + str(tmp_mol.coords[i,2]) + "\n")
-			if tmp_mol.atoms[i] == 8:
-				f.write("O  " + str(tmp_mol.coords[i, 0]) + "  " + str(tmp_mol.coords[i,1]) + "  " + str(tmp_mol.coords[i,2]) + "\n")
-		f.write("$end \n \n$rem \njobtype  force \nmethod   wB97X-D \nbasis  6-311G** \n$end \n@@@ \n \n")
 
-
+#
 # Tests to run.
 #
 
@@ -1195,9 +1178,8 @@ def TestRandom():
 # TestIndoIR()
 # david_testIR()
 #david_HarmonicAnalysis()
-# TestMetadynamics()
 #TestMetadynamics()
-# Test_Periodic_LJMD()
+Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
@@ -1205,8 +1187,12 @@ def TestRandom():
 #TestHerrNet1()
 #TestOCSDB()
 #TestNeb()
+<<<<<<< HEAD
 TestMD()
 # TestRandom()
+=======
+#TestMD()
+>>>>>>> c289f0771b60f2d6c5c8c06e74b3087b82e35354
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.

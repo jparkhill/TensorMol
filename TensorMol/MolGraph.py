@@ -38,14 +38,13 @@ def Setdiff(A, B): # return the element of A that not included in B
 			diff.append(value)
 	return diff
 
-class MolGraph:
-	def __init__(self, mol_, bond_length_thresh_ =  None):
+class MolGraph(Mol):
+	def __init__(self, atoms_ =  None, coords_ = None, bond_length_thresh_ =  None):
 		""" graph of a molecule """
-		self.name= mol_.name+"_graph"
+		Mol.__init__(self, atoms_, coords_)
+		# self.name= self.name+"_graph"
 		self.num_atom_connected = None # connected  atoms of each atom
 		self.atom_nodes = None
-		self.atoms = np.copy(mol_.atoms)
-		self.coords = np.copy(mol_.coords)
 		self.bonds = None  #{connection type, length, atom_index_1, atom_index_2}
 		self.bond_type = None # define whether it is a single, double or triple bond
 		self.bond_conju = None # whether a bond is in a conjugated system
@@ -56,7 +55,7 @@ class MolGraph:
 		self.shortest_path = None
 		if not bond_length_thresh_:
 			self.bond_length_thresh = bond_length_thresh
-		self.Make_Mol_Graph(mol_)
+		self.Make_Mol_Graph()
 		return
 
 	def NAtoms(self):
@@ -71,10 +70,10 @@ class MolGraph:
 	def BondTypes(self):
 		return np.unique(self.bonds[:,0]).astype(int)
 
-	def Make_Mol_Graph(self, mol):
-		self.Make_AtomNodes(mol)
-		self.Connect_AtomNodes(mol)
-		self.Make_Bonds(mol)
+	def Make_Mol_Graph(self):
+		self.Make_AtomNodes()
+		self.Connect_AtomNodes()
+		self.Make_Bonds()
 		return
 
 	def Find_Bond_Index(self):
@@ -86,18 +85,18 @@ class MolGraph:
 			self.bond_index[LtoS(pair)] = i
 		return
 
-	def Make_AtomNodes(self, mol):
+	def Make_AtomNodes(self):
 		self.atom_nodes = []
 		for i in range (0, self.NAtoms()):
 			self.atom_nodes.append(AtomNode(self.atoms[i], i))
 		return
 
-	def Connect_AtomNodes(self, mol):
-		mol.DistMatrix = MolEmb.Make_DistMat(mol.coords)
+	def Connect_AtomNodes(self):
+		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		self.num_atom_connected = []
 		for i in range (0, self.NAtoms()):
 			for j in range (i+1, self.NAtoms()):
-				dist = mol.DistMatrix[i][j]
+				dist = self.DistMatrix[i][j]
 				atom_pair=[self.atoms[i], self.atoms[j]]
 				atom_pair.sort()
 				bond_name = AtomName_From_List(atom_pair)
@@ -108,7 +107,7 @@ class MolGraph:
 			self.num_atom_connected.append(len(self.atom_nodes[i].connected_nodes))
 		return
 
-	def Make_Bonds(self, mol):
+	def Make_Bonds(self):
 		self.bonds = []
 		visited_pairs = []
 		for i in range (0, self.NAtoms()):
@@ -122,7 +121,7 @@ class MolGraph:
 					atom_pair.sort()
 					bond_name = AtomName_From_List(atom_pair)
 					bond_type = bond_index[bond_name]
-					dist = mol.DistMatrix[i][j]
+					dist = self.DistMatrix[i][j]
 					self.bonds.append(np.array([bond_type, dist, pair_index[0], pair_index[1]]))
 		self.bonds = np.asarray(self.bonds)
 		self.Find_Bond_Index()
@@ -184,7 +183,7 @@ class MolGraph:
 
 	def Find_Frag(self, frag, ignored_ele=[1], frag_head=0, avail_atoms=None):   # ignore all the H for assigment
 		if avail_atoms==None:
-		        avail_atoms = range(0, self.NAtoms())
+			avail_atoms = range(0, self.NAtoms())
 		frag_head_node = frag.atom_nodes[frag_head]
 		frag_node_stack = [frag_head_node]
 		frag_visited_list = []
@@ -260,7 +259,7 @@ class MolGraph:
 	def AllAtomNames(self):
 		names=[]
 		for i in range (0, self.atoms.shape[0]):
-		        names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
+			names.append(atoi.keys()[atoi.values().index(self.atoms[i])])
 		return names
 
 class Frag_of_MolGraph(MolGraph):

@@ -6,20 +6,14 @@ from LinearOperations import *
 
 class Mol:
 	""" Provides a general purpose molecule"""
-	def __init__(self, atoms_ =  None, coords_ = None):
+	def __init__(self, atoms_ =  np.zeros(1,dtype=np.uint8), coords_ = np.zeros(shape=(1,1),dtype=np.float)):
 		"""
 		Args:
 			atoms_: np.array(dtype=uint8) of atomic numbers.
 			coords_: np.array(dtype=uint8) of coordinates.
 		"""
-		if (atoms_!=None):
-			self.atoms = atoms_.copy().astype(np.uint8)
-		else:
-			self.atoms = np.zeros(1,dtype=np.uint8)
-		if (coords_!=None):
-			self.coords = coords_.copy()
-		else:
-			self.coords=np.zeros(shape=(1,1),dtype=np.float)
+		self.atoms = atoms_.copy()
+		self.coords = coords_.copy()
 		self.properties = {}
 		self.name=None
 		#things below here are sometimes populated if it is useful.
@@ -195,6 +189,9 @@ class Mol:
 			self.CalculateAtomization()
 		return
 
+	def Clean(self):
+		self.DistMatrix = None
+
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
@@ -256,7 +253,7 @@ class Mol:
 
 	def XYZtoGridIndex(self, xyz, ngrids = 250,padding = 2.0):
 		Max = (self.coords).max() + padding
-                Min = (self.coords).min() - padding
+		Min = (self.coords).min() - padding
 		binsize = (Max-Min)/float(ngrids-1)
 		x_index = math.floor((xyz[0]-Min)/binsize)
 		y_index = math.floor((xyz[1]-Min)/binsize)
@@ -282,7 +279,6 @@ class Mol:
 			return np.einsum("ax,a->x",self.coords,m)/np.sum(m)
 		else:
 			return np.average(self.coords,axis=0)
-
 
 	def rms(self, m):
 		""" Cartesian coordinate difference. """
@@ -661,7 +657,7 @@ class Mol:
 		Ps /= Z
 		return Ps
 
-	def Force_from_xyz(self, path):
+	def ForceFromXYZ(self, path):
 		"""
 		Reads the forces from the comment line in the md_dataset,
 		and if no forces exist sets them to zero. Switched on by
@@ -680,7 +676,7 @@ class Mol:
 		except Exception as Ex:
 			print "Reading Force Failed.", Ex
 
-	def MMFF94_Force_from_xyz(self, path):
+	def MMFF94FromXYZ(self, path):
 		"""
 		Reads the forces from the comment line in the md_dataset,
 		and if no forces exist sets them to zero. Switched on by
@@ -700,7 +696,7 @@ class Mol:
 		except Exception as Ex:
 			print "Reading MMFF94 Force Failed.", Ex
 
-	def Charge_from_xyz(self, path):
+	def ChargeFromXYZ(self, path):
 		"""
 		Reads the forces from the comment line in the md_dataset,
 		and if no forces exist sets them to zero. Switched on by
@@ -719,7 +715,7 @@ class Mol:
 			print "Reading Charges Failed.", Ex
 
 
-	def Energy_from_xyz(self, path):
+	def EnergyFromXYZ(self, path):
 		"""
 		Reads the energy from the comment line in the md_dataset.
 		Switched on by has_energy=True in the ReadGDB9Unpacked routine
@@ -731,6 +727,24 @@ class Mol:
 			self.properties['energy'] = energy
 		except Exception as Ex:
 			print "Reading Energy Failed.", Ex
+
+	def MakeBonds(self):
+		self.BuildDistanceMatrix()
+		maxnb = 0
+		bonds = []
+		for i in range(self.NAtoms()):
+			for j in range(i+1,self.NAtoms()):
+				if self.DistMatrix[i,j] < 3.0:
+					bonds.append([i,j])
+		bonds = np.asarray(bonds, dtype=np.int)
+		self.properties["bonds"] = bonds
+		self.nbonds = bonds.shape[0]
+		f=np.vectorize(lambda x: self.atoms[x])
+		self.bondtypes = np.unique(f(bonds), axis=0)
+		return self.nbonds
+
+	def BondTypes(self):
+		return np.unique(self.bonds[:,0]).astype(int)
 
 	def AtomName(self, i):
 		return atoi.keys()[atoi.values().index(self.atoms[i])]
@@ -747,32 +761,6 @@ class Mol:
 
 	def Make_Spherical_Forces(self):
 		self.properties["sphere_forces"] = CartToSphereV(self.properties["forces"])
-
-	def PySCF_Energy(self, basis_='cc-pvqz'):
-		mol = gto.Mole()
-		pyscfatomstring=""
-		for j in range(len(self.atoms)):
-			s = self.coords[j]
-			pyscfatomstring=pyscfatomstring+str(self.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(self.atoms)-1 else "")
-		mol.atom = pyscfatomstring
-		mol.basis = basis_
-		mol.verbose = 0
-		try:
-			mol.build()
-			mf=scf.RHF(mol)
-			hf_en = mf.kernel()
-			mp2 = mp.MP2(mf)
-			mp2_en = mp2.kernel()
-			en = hf_en + mp2_en[0]
-			self.energy = en
-			return en
-		except Exception as Ex:
-			print "PYSCF Calculation error... :",Ex
-			print "Mol.atom:", mol.atom
-			print "Pyscf string:", pyscfatomstring
-			return 0.0
-			#raise Ex
-		return
 
 	def MultipoleInputs(self):
 		"""

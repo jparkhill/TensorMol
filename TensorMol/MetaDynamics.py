@@ -28,7 +28,6 @@ class MetaDynamics(VelocityVerlet):
 		if (self.NBump > 0):
 			BE, BF = self.Bumper.Bump(self.BumpCoords, x_, self.NBump)
 		PF = self.ForceFunction(x_)
-		print JOULEPERHARTREE*BF[0]
 		tmp = PF+JOULEPERHARTREE*BF[0]
 		return tmp
 
@@ -54,7 +53,7 @@ class MetaDynamics(VelocityVerlet):
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["MDThermostat"]==None):
-				self.x , self.v, self.a, self.EPot = VelocityVerletstep(self.BumpForce, self.a, self.x, self.v, self.m, self.dt, None)
+				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.BumpForce, self.a, self.x, self.v, self.m, self.dt, None)
 			else:
 				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.BumpForce, self.a, self.x, self.v, self.m, self.dt, None)
 

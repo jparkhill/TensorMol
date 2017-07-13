@@ -20,6 +20,8 @@ class MSet:
 		self.center=center_
 
 	def Save(self, filename=None):
+		for mol in self.mols:
+			mol.Clean()
 		if filename == None:
 			filename = self.name
 		LOGGER.info("Saving set to: %s ", self.path+filename+self.suffix)
@@ -147,6 +149,9 @@ class MSet:
 			types = np.union1d(types,m.AtomTypes())
 		return types
 
+	def BondTypes(self):
+		return np.asarray([x for x in itertools.product(self.AtomTypes().tolist(), repeat=2)])
+
 	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, has_charge=False, has_mmff94=False):
 		"""
 		Reads XYZs in distinct files in one directory as a molset
@@ -166,18 +171,18 @@ class MSet:
 			self.mols[-1].ReadGDB9(path+file, file)
 			self.mols[-1].properties["set_name"] = self.name
 			if has_force:
-				self.mols[-1].Force_from_xyz(path+file)
+				self.mols[-1].ForceFromXYZ(path+file)
 			if has_energy:
-				self.mols[-1].Energy_from_xyz(path+file)
+				self.mols[-1].EnergyFromXYZ(path+file)
 			if has_charge:
-				self.mols[-1].Charge_from_xyz(path+file)
+				self.mols[-1].ChargeFromXYZ(path+file)
 			if has_mmff94:
-				self.mols[-1].MMFF94_Force_from_xyz(path+file)
+				self.mols[-1].MMFF94FromXYZ(path+file)
 		if (self.center):
 			self.CenterSet()
 		return
 
-	def ReadXYZ(self,filename = None, xyz_type = 'mol', eqforce=False):
+	def ReadXYZ(self,filename = None, xyz_type = 'mol'):
 		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
 		if filename == None:
 			filename = self.name
@@ -195,11 +200,9 @@ class MSet:
 					raise Exception("Unknown Type!")
 				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
 				self.mols[-1].name = str(txts[line0+1])
-                                self.mols[-1].properties["set_name"] = self.name
+				self.mols[-1].properties["set_name"] = self.name
 		if (self.center):
 			self.CenterSet()
-		if (eqforce):
-			self.EQ_forces()
 		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
 		return
 
@@ -277,10 +280,6 @@ class MSet:
 		print "RMSD Histogram", np.histogram(rmsd, 100)
 		return
 
-	def Make_Graphs(self):
-		graphs = map(MolGraph, self.mols)
-		return graphs
-
 	def Clean_GDB9(self):
 		s = MSet(self.name+"_cleaned")
 		s.path = self.path
@@ -303,6 +302,12 @@ class MSet:
 		for mol in self.mols:
 			mol.WriteSmiles()
 		return
+
+	def MakeBonds(self):
+		self.NBonds = 0
+		for m in self.mols:
+			self.NBonds += m.MakeBonds()
+		self.BondTypes = np.unique(np.concatenate([m.bondtypes for m in self.mols],axis=0),axis=0)
 
 
 
@@ -353,7 +358,7 @@ class FragableMSet(MSet):
 
 	def PySCF_Energy(self):
 		for mol in self.mols:
-			mol.PySCF_Energy()
+			mol.properties["energy"] = PySCFMP2Energy(mol)
 		return
 
 	def Generate_All_MBE_term(self,  atom_group=1, cutoff=10, center_atom=0, max_case = 1000000):
@@ -408,39 +413,40 @@ class FragableMSet(MSet):
 
 
 class FragableMSetBF(FragableMSet):
-        def __init__(self, name_ ="NaClH2O", path_="./datasets/"):
-                MSet.__init__(self, name_, path_)
-                return
+	def __init__(self, name_ ="NaClH2O", path_="./datasets/"):
+		MSet.__init__(self, name_, path_)
+		return
 
-        def ReadXYZ(self,filename, xyz_type = 'mol'):
-                """ Reads XYZs concatenated into a single separated by \n\n file as a molset """
-                f = open(self.path+filename+".xyz","r")
-                txts = f.readlines()
-                for line in range(len(txts)):
-                        if (txts[line].count('Comment:')>0):
-                                line0=line-1
-                                nlines=int(txts[line0])
-                                if xyz_type == 'mol':
-                                        self.mols.append(FragableClusterBF())
-                                elif xyz_type == 'frag_of_mol':
-                                        self.mols.append(Frag_of_Mol())
-                                else:
-                                        raise Exception("Unknown Type!")
-                                self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
-                                self.mols[-1].name = str(line)
-                                self.mols[-1].properties["set_name"] = self.name
-                return
+	def ReadXYZ(self,filename, xyz_type = 'mol'):
+		""" Reads XYZs concatenated into a single separated by \n\n file as a molset """
+		f = open(self.path+filename+".xyz","r")
+		txts = f.readlines()
+		for line in range(len(txts)):
+			if (txts[line].count('Comment:')>0):
+				line0=line-1
+				nlines=int(txts[line0])
+				if xyz_type == 'mol':
+					self.mols.append(FragableClusterBF())
+				elif xyz_type == 'frag_of_mol':
+					self.mols.append(Frag_of_Mol())
+				else:
+					raise Exception("Unknown Type!")
+				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+				self.mols[-1].name = str(line)
+				self.mols[-1].properties["set_name"] = self.name
+		return
 
-        def Generate_All_MBE_term_General(self, frag_list=[]):
-                for mol in self.mols:
-                        mol.Generate_All_MBE_term_General(frag_list)
-                return
-
-
+	def Generate_All_MBE_term_General(self, frag_list=[]):
+		for mol in self.mols:
+			mol.Generate_All_MBE_term_General(frag_list)
+		return
 
 
-class GraphSet:
-	def __init__(self, name_ ="gdb9", path_="./datasets/"):
+
+
+class GraphSet(MSet):
+	def __init__(self, name_ ="gdb9", path_="./datasets/", center_=True):
+		MSet.__init__(self, name_, path_, center_)
 		self.graphs=[]
 		self.path=path_
 		self.name=name_
@@ -457,6 +463,36 @@ class GraphSet:
 		for m in self.mols:
 			nbonds += m.NBonds()
 		return nbonds
+
+	def MakeGraphs(self):
+		graphs = map(MolGraph, self.mols)
+		return graphs
+
+	def ReadXYZ(self,filename = None, xyz_type = 'mol', eqforce=False):
+		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
+		if filename == None:
+			filename = self.name
+		f = open(self.path+filename+".xyz","r")
+		txts = f.readlines()
+		for line in range(len(txts)):
+			if (txts[line].count('Comment:')>0):
+				line0=line-1
+				nlines=int(txts[line0])
+				if xyz_type == 'mol':
+					self.mols.append(MolGraph())
+				elif xyz_type == 'frag_of_mol':
+					self.mols.append(Frag_of_Mol())
+				else:
+					raise Exception("Unknown Type!")
+				self.mols[-1].FromXYZString(''.join(txts[line0:line0+nlines+2]))
+				self.mols[-1].name = str(txts[line0+1])
+				self.mols[-1].properties["set_name"] = self.name
+		if (self.center):
+			self.CenterSet()
+		if (eqforce):
+			self.EQ_forces()
+		LOGGER.debug("Read "+str(len(self.mols))+" molecules from XYZ")
+		return
 
 	def Save(self):
 		print "Saving set to: ", self.path+self.name+self.suffix
