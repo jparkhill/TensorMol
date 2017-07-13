@@ -1085,9 +1085,9 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	Test MolecularDynamics
 	"""
 	tfm=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
-	a=MSet("OCSDB_test")
-	a.ReadXYZ("OCSDB_test")
-	m = a.mols[1]
+	a=MSet("david_test")
+	a.ReadXYZ("david_test")
+	m = a.mols[3]
 	# Convert the forces from kcal/mol ang to joules/mol ang.
 	ForceField = lambda x: 4183.9953*tfm.EvalRotAvForce(Mol(m.atoms,x), RotAv=PARAMS["RotAvOutputs"])
 	PARAMS["MNHChain"] = 10
@@ -1205,8 +1205,8 @@ def TestRandom():
 #TestHerrNet1()
 #TestOCSDB()
 #TestNeb()
-#TestMD()
-TestRandom()
+TestMD()
+# TestRandom()
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 
 # This visualizes the go potential and projections on to basis vectors.
