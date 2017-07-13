@@ -1469,3 +1469,4 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
+

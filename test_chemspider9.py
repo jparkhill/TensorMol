@@ -69,5 +69,5 @@ def TrainForceField():
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=101)
 
-TrainPrepare()
+#TrainPrepare()
 TrainForceField()
