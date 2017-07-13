@@ -84,7 +84,7 @@ def TFDistancesLinear(B,NZP):
 	Rj = tf.gather_nd(B,Ij)
 	A = Ri - Rj + 1e-26
 	D = tf.sqrt(tf.reduce_sum(A*A, 1))
-	return
+	return D
 
 def BumpEnergy(h,w,xyz,x,nbump):
 	"""
@@ -136,7 +136,6 @@ def MorseKernel(D,Z,Ae,De,Re):
 	K = Deij*tf.pow(1.0 - tf.exp(-Aeij*(Dt-Reij)),2.0)
 	K = tf.subtract(K,tf.diag(tf.diag_part(K)))
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle
-	#K = tf.Print(K,[K],"K Kernel",-1,1000000)
 	return K
 
 def LJKernel(D,Z,Ee,Re):
@@ -176,8 +175,8 @@ def LJKernels(Ds,Zs,Ee,Re):
 		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
 	"""
 	# Zero distances will be set to 100.0 then masked to zero energy contributions.
-	ones = tf.ones(tf.shape(Ds))
-	zeros = tf.zeros(tf.shape(Ds))
+	ones = tf.ones(tf.shape(Ds),dtype = tf.float64)
+	zeros = tf.zeros(tf.shape(Ds),dtype = tf.float64)
 	ZeroTensor = tf.where(tf.less_equal(Ds,0.000000001),ones,zeros)
 	Ds += ZeroTensor
 	# Zero atomic numbers will be set to 1 and masked elsewhere
@@ -193,7 +192,6 @@ def LJKernels(Ds,Zs,Ee,Re):
 	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[Zshp[0],Zshp[1],Zshp[1]])
 	Reij = tf.reshape(tf.gather_nd(Re,Zij),[Zshp[0],Zshp[1],Zshp[1]])
 	R = Reij/Ds
-	tf.assert_less(R,100000000.0)
 	K = Eeij*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
 	# Use the ZeroTensors to mask the output for zero dist or AN.
 	K = tf.where(tf.equal(ZeroTensor,1.0),tf.zeros_like(K),K)
@@ -206,38 +204,34 @@ def LJKernelsLinear(Ds,Zs,Ee,Re,NZP):
 	Batched over molecules.
 	Args:
 		Ds: Distances Enumerated by NZP (flat)
-		Zs: A batch of Atomic Numbers.
+		Zs: A batch of Atomic Numbers. (nmol X maxatom X 1)
 		Ee: a matrix of LJ well depths.
 		Re: a matrix of Bond minima.
 		NZP: a list of nonzero atom pairs NNZ X (mol, i, j).
 	Returns
 		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
 	"""
-	# Zero distances will be set to 100.0 then masked to zero energy contributions.
-	ones = tf.ones(tf.shape(Ds))
-	zeros = tf.zeros(tf.shape(Ds))
-	ZeroTensor = tf.where(tf.less_equal(Ds,0.000000001),ones,zeros)
-	Ds += ZeroTensor
-	# Zero atomic numbers will be set to 1 and masked elsewhere
-	Zs = tf.where(tf.equal(Zs,0),tf.ones_like(Zs),Zs)
-	# Extract De_ij and Re_ij
-	Zshp = tf.shape(Zs)
-	Zr = tf.reshape(Zs,[Zshp[0],Zshp[1],1])-1 # Indices start at 0 AN's start at 1.
-	Zij1 = tf.tile(Zr,[1,1,Zshp[1]]) # molXatomXatom
-	Zij2 = tf.transpose(Zij1,perm=[0,2,1])
-	Zij = tf.stack([Zij1,Zij2],axis=3) # molXatomXatomX2
+	NZP_shape = tf.shape(NZP)
+	Zs_shp = tf.shape(Zs)
+	maxnpairs = NZP_shape[0]
+	nmols = Zs_shp[0]
+	Ii = tf.slice(NZP,[0,0],[-1,2])
+	Ij = tf.concat([tf.slice(NZP,[0,0],[-1,1]),tf.slice(NZP,[0,2],[-1,1])],1)
+	Zi = tf.reshape(tf.gather_nd(Zs,Ii),[maxnpairs])
+	Zj = tf.reshape(tf.gather_nd(Zs,Ij),[maxnpairs])
 	# Gather desired LJ parameters.
-	Zij = tf.reshape(Zij,[Zshp[0]*Zshp[1]*Zshp[1],2])
-	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[Zshp[0],Zshp[1],Zshp[1]])
-	Reij = tf.reshape(tf.gather_nd(Re,Zij),[Zshp[0],Zshp[1],Zshp[1]])
-	R = Reij/Ds
-	tf.assert_less(R,100000000.0)
+	Zij = tf.stack([Zi,Zj],axis=1)
+	Eeij = tf.reshape(tf.gather_nd(Ee,Zij),[maxnpairs])
+	Reij = tf.reshape(tf.gather_nd(Re,Zij),[maxnpairs])
+	R = Reij/tf.reshape(Ds,[maxnpairs])
 	K = Eeij*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
-	# Use the ZeroTensors to mask the output for zero dist or AN.
-	K = tf.where(tf.equal(ZeroTensor,1.0),tf.zeros_like(K),K)
 	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
-	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
-	return K
+	range_index = tf.reshape(tf.range(tf.cast(maxnpairs, tf.int64), dtype=tf.int64),[maxnpairs,1])
+	mol_index = tf.reshape(tf.slice(NZP,[0,0],[-1,1]),[maxnpairs,1])
+	inds = tf.reshape(tf.stack([mol_index,range_index],axis=1),[maxnpairs,2])
+	# Now use the sparse reduce sum trick to scatter this into mols.
+	sp_atomoutputs = tf.SparseTensor(inds, tf.reshape(K,[maxnpairs]), dense_shape=[tf.cast(nmols, tf.int64), tf.cast(maxnpairs, tf.int64)])
+	return tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
 
 def LJEnergy_Numpy(XYZ,Z,Ee,Re):
 	"""
@@ -295,8 +289,8 @@ def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	"""
 	Ds = TFDistances(XYZs_)
 	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
-	LJe = Ee_*tf.ones([8,8])
-	LJr = Re_*tf.ones([8,8])
+	LJe = Ee_*tf.ones([8,8],dtype = tf.float64)
+	LJr = Re_*tf.ones([8,8],dtype = tf.float64)
 	Ks = LJKernels(Ds,Zs_,LJe,LJr)
 	Ens = tf.reduce_sum(Ks,[1,2])
 	return Ens
@@ -315,13 +309,9 @@ def LJEnergiesLinear(XYZs_,Zs_,Ee_, Re_, NZP_):
 		NZP_: Nonzero Pairs (nnzp X 3) matrix (mol, i, j)
 	"""
 	Ds = TFDistancesLinear(XYZs_,NZP_)
-	Ds = tf.where(tf.is_nan(Ds), tf.zeros_like(Ds), Ds)
-	LJe = Ee_*tf.ones([8,8])
-	LJr = Re_*tf.ones([8,8])
-	Ks = LJKernelsLinear(Ds, Zs_, LJe, LJr, NZP_)
-	Ens = tf.reduce_sum(Ks,[1,2])
-	return Ens
-
+	LJe = Ee_*tf.ones([8,8],dtype = tf.float64)
+	LJr = Re_*tf.ones([8,8],dtype = tf.float64)
+	return LJKernelsLinear(Ds, Zs_, LJe, LJr, NZP_)
 
 def HarmKernels(XYZs, Deqs, Keqs):
 	"""

@@ -119,7 +119,7 @@ class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
 	"""
-	def __init__(self, x_, rcut_=5.0):
+	def __init__(self, x_, rcut_=5.0, DoTriples_ = False):
 		"""
 		Builds or updates a neighbor list of atoms within rcut_
 		using n*Log(n) kd-tree.
@@ -134,6 +134,7 @@ class NeighborList:
 		self.pairs = None
 		self.triples = None
 		self.npairs = None
+		self.DoTriples = DoTriples_
 		self.ntriples = None
 		return
 
@@ -148,15 +149,54 @@ class NeighborList:
 		print "Found ", len(pairs), "nonzero pairs"
 		return np.array(pairs)
 
-	def Update(self, x_,rcut_=5.0, molind_ = None):
+	def Update(self, x_, rcut_=5.0, molind_ = None):
 		"""
 		In the future this should only force incremental builds.
 		"""
 		self.x = x_.copy()
-		self.pairs, self.triples = self.buildPairsAndTriples(rcut_,molind_)
-		self.npairs = self.pairs.shape[0]
-		self.ntriples = self.triples.shape[0]
+		if (self.DoTriples):
+			self.pairs, self.triples = self.buildPairsAndTriples(rcut_,molind_)
+			self.npairs = self.pairs.shape[0]
+			self.ntriples = self.triples.shape[0]
+		else:
+			self.pairs = self.buildPairs(rcut_,molind_)
+			self.npairs = self.pairs.shape[0]
 		return
+
+	def buildPairs(self, rcut=5.0, molind_=None):
+		"""
+		Returns the nonzero pairs, triples in self.x within the cutoff.
+		Triples are non-repeating ie: no 1,2,2 or 2,2,2 etc. but unordered
+
+		Args:
+			rcut: the cutoff for pairs and triples
+		Returns:
+			pair matrix (npair X 2)
+			triples matrix (ntrip X 3)
+		"""
+		tree = kdtree(self.x.T)
+		pair = []
+		for i in range(self.natom):
+			pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i != k]]
+		npairi = map(len,pair)
+		npair = sum(npairi)
+		p = None
+		if (molind_!=None):
+			p=np.zeros((npair,3),dtype = np.uint64)
+		else:
+			p=np.zeros((npair,2),dtype = np.uint64)
+		pp = 0
+		for i in range(self.natom):
+			for j in pair[i]:
+				if (molind_!=None):
+					p[pp,0]=molind_
+					p[pp,1]=i
+					p[pp,2]=j
+				else:
+					p[pp,0]=i
+					p[pp,1]=j
+				pp = pp+1
+		return p
 
 	def buildPairsAndTriples(self, rcut=5.0, molind_=None):
 		"""
@@ -211,7 +251,7 @@ class NeighborList:
 		return p,t
 
 class NeighborListSet:
-	def __init__(self,x_,nnz_):
+	def __init__(self, x_, nnz_, DoTriples_= False ):
 		"""
 		A neighborlist for a set
 
@@ -224,6 +264,7 @@ class NeighborListSet:
 		self.x = x_.copy()
 		self.nnz = nnz_.copy()
 		self.pairs = None
+		self.DoTriples = DoTriples_
 		self.triples = None
 		for i in range(self.nmol):
 			self.nlist.append(NeighborList(x_[i,:nnz_[i]]))
@@ -232,7 +273,31 @@ class NeighborListSet:
 
 	def Update(self, x_, rcut_ = 5.0):
 		self.x = x_.copy()
-		self.pairs, self.triples = self.buildPairsAndTriples(rcut_)
+		if (self.DoTriples):
+			self.pairs, self.triples = self.buildPairsAndTriples(rcut_)
+		else:
+			self.pairs = self.buildPairs(rcut_)
+
+
+	def buildPairs(self, rcut=5.0):
+		"""
+		builds nonzero pairs and triples for current x.
+
+		Args:
+			rcut_: a cutoff parameter.
+		Returns:
+			(nnzero pairs X 3 pair tensor) (mol , I , J)
+			(nnzero X 4 triples tensor) (mol , I , J , K)
+		"""
+		for i,mol in enumerate(self.nlist):
+			mol.Update(self.x[i,:self.nnz[i]],rcut,i)
+		nzp = sum([mol.npairs for mol in self.nlist])
+		trp = np.zeros((nzp,3),dtype=np.uint64)
+		pp = 0
+		for mol in self.nlist:
+			trp[pp:pp+mol.npairs] = mol.pairs
+			pp += mol.npairs
+		return trp
 
 	def buildPairsAndTriples(self, rcut=5.0):
 		"""
