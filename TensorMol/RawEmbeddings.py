@@ -944,20 +944,22 @@ def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
         GM = tf.concat([GMR, GMA], axis=2)
         num_ele, num_dim = eles_.get_shape().as_list()
         MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
-        ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]))
-	v = tf.reshape(tf.range(nmol*natom), [nmol, natom, 1])
-	ToMask = tf.concat([ToMask1, v], axis = -1)
+	ToMask1 = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]),dtype=tf.int64), prec=tf.int64)
+        v = tf.cast(tf.reshape(tf.range(nmol*natom), [nmol, natom, 1]), dtype=tf.int64)
+        ToMask = tf.concat([ToMask1, v], axis = -1)
         IndexList = []
         SymList= []
         GatherList = []
         for e in range(num_ele):
                 GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
-                SymList.append(tf.gather_nd(GM, GatherList[-1]))
-                NAtomOfEle=tf.shape(GatherList[-1])[0]
-		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
-		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
+		NAtomOfEle=tf.shape(GatherList[-1])[0]
+                SymList.append(tf.gather_nd(GM, tf.slice(GatherList[-1],[0,0],[NAtomOfEle,2])))
+        	mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
+        	atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
                 IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
         return SymList, IndexList
+	#return GM, GatherList
+	
 
 def NNInterface(R, Zs, eles_, GM):
 	"""
@@ -1061,9 +1063,9 @@ class ANISym:
 	        """
 	        with tf.Graph().as_default():
 	                self.xyz_pl=tf.placeholder(tf.float64, shape=tuple([self.MolPerBatch, self.MaxAtoms,3]))
-	                self.Z_pl=tf.placeholder(tf.int32, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
-			Ele = tf.Variable([[1],[8]], dtype = tf.int32)
-			Elep = tf.Variable([[1,1],[1,8],[8,8]], dtype = tf.int32)
+	                self.Z_pl=tf.placeholder(tf.int64, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
+			Ele = tf.Variable([[1],[8]], dtype = tf.int64)
+			Elep = tf.Variable([[1,1],[1,8],[8,8]], dtype = tf.int64)
 			#zetas = tf.Variable([[8.0]], dtype = tf.float64)
 			#etas = tf.Variable([[4.0]], dtype = tf.float64)
 
@@ -1095,7 +1097,7 @@ class ANISym:
 
 	def Generate_ANISYM(self):
 		xyzs = np.zeros((self.nmol, self.MaxAtoms, 3),dtype=np.float64)
-		Zs = np.zeros((self.nmol, self.MaxAtoms), dtype=np.int32)
+		Zs = np.zeros((self.nmol, self.MaxAtoms), dtype=np.int64)
 		random.shuffle(self.set.mols)
 		for i, mol in enumerate(self.set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
@@ -1114,7 +1116,8 @@ class ANISym:
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym_Update2, self.Sym_Index_Update2], feed_dict = feed_dict)
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym, self.Sym_Index], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			sym_output,   sym_index = self.sess.run([self.Scatter_Sym_Update, self.Sym_Index_Update], feed_dict = feed_dict)
-			print ("i: ", i,  "sym_ouotput: ", len(sym_output)," time:", time.time() - t, " second", "gpu time:", time.time()-t1, sym_index)
+			#print ("i: ", i,  "sym_ouotput: ", len(sym_output)," time:", time.time() - t, " second", "gpu time:", time.time()-t1, sym_index)
+			print ("sym_index.shape", sym_index[0].shape)
 			#print ("sym_output_update:", np.array_equal(sym_output_update2[0], sym_output[0]))
 			#print ("sym_output_update:", np.sum(np.abs(sym_output_update2[0]-sym_output[0])))
 			#print ("gradient_update:", np.sum(np.abs(gradient[0]-gradient_update[0])))

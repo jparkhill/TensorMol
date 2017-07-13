@@ -69,6 +69,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
                         self.Instances = MolInstance_DirectBP_Grad_noGradTrain(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
+			self.Instances = MolInstance_DirectBP_Grad_NewIndex(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1127,6 +1129,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
                         self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
+			self.Instances = MolInstance_DirectBP_Grad_NewIndex(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):
