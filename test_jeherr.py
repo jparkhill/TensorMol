@@ -65,7 +65,7 @@ def InterpolateGeometries():
 	mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
 	# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
-def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_del/*/*/", energy=False, forces=False, charges=False, mmff94=False):
+def ReadSmallMols(set_="Rndjobset", dir_="/media/sdb1/dtoth/qchem_jobs/new/rndjobs/data/tarfiles/", energy=True, forces=True, charges=False, mmff94=False):
 	import glob
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
@@ -301,10 +301,10 @@ def BIMNN_NEq():
 	# manager.Train(maxstep=500)
 
 def TestMetadynamics():
-	a = MSet("MDTrajectoryMetaMD")
+	a = MSet("sampling_mols")
 	a.ReadXYZ()
-	m = a.mols[0]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
+	m = a.mols[2]
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='phenol', path_='./qchem/', threads=16)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 2.0
@@ -312,7 +312,7 @@ def TestMetadynamics():
 	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 600.0
-	meta = MetaDynamics(ForceField, m)
+	meta = MetaDynamics(ForceField, m, name_ = "phenol")
 	meta.Prop()
 
 def TestTFBond():
@@ -325,7 +325,7 @@ def TestTFBond():
 
 
 # InterpoleGeometries()
-# ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)
+ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 30000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -339,7 +339,7 @@ def TestTFBond():
 # TestForces()
 # MakeTestSet()
 # BIMNN_NEq()
-TestMetadynamics()
+#TestMetadynamics()
 # TestMD()
 # TestTFBond()
 
