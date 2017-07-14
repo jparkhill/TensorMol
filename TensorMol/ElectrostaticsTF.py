@@ -208,7 +208,7 @@ def LJKernelsLinear(Ds,Zs,Ee,Re,NZP):
 		Re: a matrix of Bond minima.
 		NZP: a list of nonzero atom pairs NNZ X (mol, i, j).
 	Returns
-		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
+		A #Mols vector of LJ energies.
 	"""
 	NZP_shape = tf.shape(NZP)
 	Zs_shp = tf.shape(Zs)
@@ -224,6 +224,45 @@ def LJKernelsLinear(Ds,Zs,Ee,Re,NZP):
 	Reij = tf.reshape(tf.gather_nd(Re,Zij),[maxnpairs])
 	R = Reij/tf.reshape(Ds,[maxnpairs])
 	K = Eeij*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
+	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
+	range_index = tf.reshape(tf.range(tf.cast(maxnpairs, tf.int64), dtype=tf.int64),[maxnpairs,1])
+	mol_index = tf.reshape(tf.slice(NZP,[0,0],[-1,1]),[maxnpairs,1])
+	inds = tf.reshape(tf.stack([mol_index,range_index],axis=1),[maxnpairs,2])
+	# Now use the sparse reduce sum trick to scatter this into mols.
+	sp_atomoutputs = tf.SparseTensor(inds, tf.reshape(K,[maxnpairs]), dense_shape=[tf.cast(nmols, tf.int64), tf.cast(maxnpairs, tf.int64)])
+	return tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+
+def ElectrostaticDampedShiftedLinear(Ds,Qs,NZP,alpha,Rc):
+	"""
+	A tensorflow linear scaling implementation of the Damped Shifted Electrostatic Force
+	http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/10.1063/1.2206581
+	Batched over molecules.
+
+	Args:
+		Ds: Distances Enumerated by NZP (flat)
+		Qs: A batch of Atomic Charges. (nmol X maxatom)
+		NZP: a list of nonzero atom pairs NNZ X (mol, i, j).
+		alpha: DSF alpha parameter (~0.2)
+		Rc: DSF Rc parameter. (15A)
+	Returns
+		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
+	"""
+	twooversqrtpi = tf.constant(1.1283791671,dtype=tf.float64)
+	NZP_shape = tf.shape(NZP)
+	Zs_shp = tf.shape(Zs)
+	maxnpairs = NZP_shape[0]
+	nmols = Zs_shp[0]
+	Ii = tf.slice(NZP,[0,0],[-1,2])
+	Ij = tf.concat([tf.slice(NZP,[0,0],[-1,1]),tf.slice(NZP,[0,2],[-1,1])],1)
+	Qi = tf.reshape(tf.gather_nd(Qs,Ii),[maxnpairs])
+	Qj = tf.reshape(tf.gather_nd(Qs,Ij),[maxnpairs])
+	# Gather desired LJ parameters.
+	Qij = Qi*Qj
+	# This is Dan's Equation (18)
+	XX = alpha*Rc
+	ZZ = tf.erfc(XX)/Rc
+	YY = twooversqrtpi*alpha*tf.exp(-XX*XX)/Rc
+	K = Qij*(tf.erfc(alpha*Ds)/Ds - ZZ + (Ds-Rc)*(ZZ+YY))
 	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
 	range_index = tf.reshape(tf.range(tf.cast(maxnpairs, tf.int64), dtype=tf.int64),[maxnpairs,1])
 	mol_index = tf.reshape(tf.slice(NZP,[0,0],[-1,1]),[maxnpairs,1])
