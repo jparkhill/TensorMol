@@ -28,25 +28,48 @@ def PyscfDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
 	e = mf.kernel()
 	return e
 
-def QchemDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
+def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
 	istring = '$molecule\n0 1 \n'
 	crds = m_.coords.copy()
 	crds[abs(crds)<0.0000] *=0.0
 	for j in range(len(m_.atoms)):
 		istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
-	istring =istring + '$end\n\n$rem\njobtype sp\nbasis '+basis_+'\nexchange '+xc_+'\n thresh 11\n symmetry false\n sym_ignore true\n$end\n'
+	istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
 	#print istring
-	f=open('./qchem/tmp.in','w')
-	f.write(istring)
-	f.close()
-	subprocess.call('qchem ./qchem/tmp.in ./qchem/tmp.out'.split(),shell=False)
-	f=open('./qchem/tmp.out','r')
-	lines = f.readlines()
-	f.close()
-	for line in lines:
-		if line.count(' met')>0:
-			return np.array([float(line.split()[1])])[0]
-	return np.array([0.0])[0]
+	with open(path_+filename_+'.in','w') as fin:
+		fin.write(istring)
+	with open(path_+filename_+'.out','w') as fout:
+		if threads:
+			proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+		else:
+			proc = subprocess.Popen(['qchem', path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+		out, err = proc.communicate()
+		fout.write(out)
+	lines = out.split('\n')
+	if jobtype_ == 'force':
+		Forces = np.zeros((m_.atoms.shape[0],3))
+		for i, line in enumerate(lines):
+			if line.count('Convergence criterion met')>0:
+				Energy = float(line.split()[1])
+			if line.count("Gradient of SCF Energy") > 0:
+				k = 0
+				l = 0
+				for j in range(1, m_.atoms.shape[0]+1):
+					Forces[j-1,:] = float(lines[i+k+2].split()[l+1]), float(lines[i+k+3].split()[l+1]), float(lines[i+k+4].split()[l+1])
+					l += 1
+					if (j % 6) == 0:
+						k += 4
+						l = 0
+		# return Energy, Forces
+		return -Forces*JOULEPERHARTREE/BOHRPERA
+	elif jobtype_ == 'sp':
+		for line in lines:
+			if line.count('Convergence criterion met')>0:
+				Energy = float(line.split()[1])
+		return Energy
+	else:
+		raise Exception("jobtype needs formatted for return variables")
+
 
 def PullFreqData():
 	a = open("/media/sdb1/dtoth/qchem_jobs/new/phenol.out", "r+") #Change file name

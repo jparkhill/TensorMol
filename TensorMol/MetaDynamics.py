@@ -66,7 +66,7 @@ class MetaDynamics(VelocityVerlet):
 				self.Bump()
 				bumptimer = self.BumpTime
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%1==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
