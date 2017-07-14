@@ -901,29 +901,6 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
                 IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
         return SymList, IndexList
 
-def TFBond(XYZs, Zs, BndIdx, Eles_, ElePairs_):
-	"""
-	Tensorflow embedding of bond descriptor
-	Args:
-		XYZs: a nmol X maxnatom X 3 tensor of coordinates.
-		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-		Eles_: a neles X 1 tensor of elements present in the data.
-		ElePairs_: a nelepairs X 2 of elements pairs present in the data.
-	"""
-	inp_shp = tf.shape(XYZs)
-	nmol = inp_shp[0]
-	natom = inp_shp[1]
-	nele = tf.shape(Eles_)[0]
-	nelep = tf.shape(ElePairs_)[0]
-	RMatrix = TFDistancesLinear(XYZs, BndIdx)
-	IdxZ1s = BndIdx[:,:2]
-	IdxZ2s = BndIdx[:,::2]
-	Z1s = tf.gather(Zs, IdxZ1s)
-	Z2s = tf.gather(Zs, IdxZ2s)
-	ZPairs = tf.stack(Z1s,Z2s)
-
-	return RMatrix
-
 def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
         """
         A tensorflow implementation of the AN1 symmetry function for a set of molecule.
@@ -999,6 +976,29 @@ def NNInterface(R, Zs, eles_, GM):
 		IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
 	return SymList, IndexList
 
+def TFBond(XYZs, Zs, BndIdx, Eles_, ElePairs_):
+	"""
+	Tensorflow embedding of bond descriptor
+	Args:
+		XYZs: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		Eles_: a neles X 1 tensor of elements present in the data.
+		ElePairs_: a nelepairs X 2 of elements pairs present in the data.
+	"""
+	inp_shp = tf.shape(XYZs)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	nele = tf.shape(Eles_)[0]
+	nelep = tf.shape(ElePairs_)[0]
+	RMatrix = TFDistancesLinear(XYZs, BndIdx)
+	IdxZ1s = BndIdx[:,:2]
+	IdxZ2s = BndIdx[:,::2]
+	Z1s = tf.gather_nd(Zs, IdxZ1s)
+	Z2s = tf.gather_nd(Zs, IdxZ2s)
+	ZPairs = tf.stack(Z1s,Z2s)
+	print(np.unique(ZPairs, return_counts=True, axis=0))
+	return
+	# return RMatrix
 
 
 class ANISym:

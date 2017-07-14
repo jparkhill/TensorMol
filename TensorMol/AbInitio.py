@@ -38,7 +38,7 @@ def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp'
 	#print istring
 	with open(path_+filename_+'.in','w') as fin:
 		fin.write(istring)
-	with open(path_+filename_+'.out','w') as fout:
+	with open(path_+filename_+'.out','a') as fout:
 		if threads:
 			proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
 		else:

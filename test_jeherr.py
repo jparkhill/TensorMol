@@ -303,39 +303,25 @@ def BIMNN_NEq():
 def TestMetadynamics():
 	a = MSet("MDTrajectoryMetaMD")
 	a.ReadXYZ()
-	# manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	# PARAMS["NeuronType"]="softplus"
 	m = a.mols[0]
-	# qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-	# EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
-	# ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),False)
-	# ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
-	PARAMS["MDdt"] = 0.5
+	PARAMS["MDdt"] = 2.0
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 8000
+	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
-	PARAMS["MDTemp"]= 300.0
+	PARAMS["MDTemp"]= 600.0
 	meta = MetaDynamics(ForceField, m)
 	meta.Prop()
 
-def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
-	"""
-	Test MolecularDynamics
-	"""
-	a=MSet("johnsonmols")
-	a.ReadXYZ()
-	m = a.mols[2]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
-	# Convert the forces from kcal/mol ang to joules/mol ang.
-	PARAMS["MNHChain"] = 10
-	PARAMS["MDTemp"] = 150.0
-	PARAMS["MDThermostat"] = "NosePerParticle"
-	md = VelocityVerlet(ForceField,m)
-	md.Prop()
-	return
+def TestTFBond():
+	a=MSet("SmallMols")
+	a.Load()
+	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
+	tset = TensorMolData_BPBond_Direct(a,d)
+	tset.BuildTrain("SmallMols")
+
 
 
 # InterpoleGeometries()
@@ -355,6 +341,7 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 # BIMNN_NEq()
 TestMetadynamics()
 # TestMD()
+# TestTFBond()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()

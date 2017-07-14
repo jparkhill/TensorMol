@@ -42,8 +42,8 @@ class BumpHolder:
 			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
 			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.natom,3]))
 			self.nb_pl=tf.placeholder(tf.int32)
-			self.h = tf.Variable(0.1,dtype = tf.float64)
-			self.w = tf.Variable(0.2,dtype = tf.float64)
+			self.h = tf.Variable(1.0,dtype = tf.float64)
+			self.w = tf.Variable(2.0,dtype = tf.float64)
 			init = tf.global_variables_initializer()
 			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
@@ -53,7 +53,8 @@ class BumpHolder:
 		return
 
 	def Bump(self, BumpCoords, x_, NBump_):
-		"""Returns the Bump force.
+		"""
+		Returns the Bump force.
 		"""
 		return self.sess.run([self.BE,self.BF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
 

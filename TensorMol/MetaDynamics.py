@@ -15,8 +15,8 @@ class MetaDynamics(VelocityVerlet):
 		based on a poissionian process.... Requires a thermostat.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
-		self.BumpTime = 7.0 # Fs
-		self.MaxBumps = 1000
+		self.BumpTime = 8.0 # Fs
+		self.MaxBumps = 2500
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
 		self.NBump = 0
 		self.Tstat = NoseThermostat(self.m,self.v)
@@ -28,6 +28,8 @@ class MetaDynamics(VelocityVerlet):
 		if (self.NBump > 0):
 			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump)
 		PF = self.ForceFunction(x_)
+		if self.NBump > 0:
+			BF[0] *= self.m[:,None]
 		tmp = PF+JOULEPERHARTREE*BF[0]
 		return tmp
 
@@ -66,7 +68,7 @@ class MetaDynamics(VelocityVerlet):
 				self.Bump()
 				bumptimer = self.BumpTime
 
-			if (step%1==0 and PARAMS["MDLogTrajectory"]):
+			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
