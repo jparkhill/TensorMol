@@ -1754,7 +1754,6 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 		Returns:
 			The BP graph output
 		"""
-		# convert the index matrix from bool to float
 		branches=[]
 		atom_outputs = []
 		hidden1_units=self.hidden1
@@ -1805,11 +1804,6 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 				atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
 				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
 				output = tf.add(output, ToAdd)
-				#range_index = tf.range(tf.cast(shp_out[0], tf.int64), dtype=tf.int64)
-				#sparse_index =tf.stack([index, range_index], axis=1)
-				#sp_atomoutputs = tf.SparseTensor(sparse_index, rshpflat, dense_shape=[tf.cast(self.batch_size, tf.int64), tf.cast(shp_out[0], tf.int64)])
-				#mol_tmp = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
-				#output = tf.add(output, mol_tmp)
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
 			#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), atom_outputs
