@@ -217,11 +217,11 @@ class TFMolManage(TFManage):
 	def Eval_BPForceSet(self, mol_set, total_energy = False):
 		"""
 		Args:
-		    mol_set: a MSet
-		    total_energy: whether to also return the energy as a first argument.
+			mol_set: a MSet
+			total_energy: whether to also return the energy as a first argument.
 		Returns:
-		    (if total_energy == True): Energy in Hartree
-		    and Forces (J/mol)
+			(if total_energy == True): Energy in Hartree
+			and Forces (J/mol)
 		"""
 		nmols = len(mol_set.mols)
 		natoms = mol_set.NAtoms()

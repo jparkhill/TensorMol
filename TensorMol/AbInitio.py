@@ -28,7 +28,7 @@ def PyscfDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
 	e = mf.kernel()
 	return e
 
-def QchemDft(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=False):
+def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
 	istring = '$molecule\n0 1 \n'
 	crds = m_.coords.copy()
 	crds[abs(crds)<0.0000] *=0.0
@@ -54,13 +54,14 @@ def QchemDft(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='sp', filename_='tmp', p
 			if line.count("Gradient of SCF Energy") > 0:
 				k = 0
 				l = 0
-				for j in range(m_.atoms.shape[0]):
-					Forces[j,:] = float(lines[i+k+2].split()[l+1]), float(lines[i+k+3].split()[l+1]), float(lines[i+k+4].split()[l+1])
+				for j in range(1, m_.atoms.shape[0]+1):
+					Forces[j-1,:] = float(lines[i+k+2].split()[l+1]), float(lines[i+k+3].split()[l+1]), float(lines[i+k+4].split()[l+1])
 					l += 1
-					if (j+1 % 6) == 0:
+					if (j % 6) == 0:
 						k += 4
 						l = 0
-		return Energy, Forces
+		# return Energy, Forces
+		return -Forces*JOULEPERHARTREE/BOHRPERA
 	elif jobtype_ == 'sp':
 		for line in lines:
 			if line.count('Convergence criterion met')>0:
