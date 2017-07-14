@@ -1255,7 +1255,8 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		return
 
 	def LoadData(self):
-		self.ReloadSet()
+		if self.set == None:
+			self.ReloadSet()
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)

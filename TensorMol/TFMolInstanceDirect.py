@@ -42,8 +42,8 @@ class BumpHolder:
 			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
 			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.natom,3]))
 			self.nb_pl=tf.placeholder(tf.int32)
-			self.h = tf.Variable(0.6,dtype = tf.float64)
-			self.w = tf.Variable(1.0,dtype = tf.float64)
+			self.h = tf.Variable(0.1,dtype = tf.float64)
+			self.w = tf.Variable(0.2,dtype = tf.float64)
 			init = tf.global_variables_initializer()
 			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
@@ -1044,10 +1044,12 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		"""
 		with tf.Graph().as_default():
 			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+			self.BondIdxMtrx = tf.placeholder(tf.int64, shape=tuple([self.batch_size, 3]))
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+			RMatrix = TFBond(self.xyzs_pl, self.Zs_pl, self.BondIdxMatrix, Ele, Elep)
 			# SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			# SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			# self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2, self.Rr_cut, Elep, self.SFPa2,self.zeta, self.eta, self.Ra_cut)
@@ -1103,7 +1105,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		nrm4=1.0/(10+math.sqrt(float(hidden3_units)))
 		print("Norms:", nrm1,nrm2,nrm3)
 		LOGGER.info("Layer initial Norms: %f %f %f", nrm1,nrm2,nrm3)
-		for e in range(len(self.eles)):
+		for e in range(len(self.eles_pairs)):
 			branches.append([])
 			inputs = inp[e]
 			shp_in = tf.shape(inputs)
@@ -1161,7 +1163,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]])}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl]+[self.BondIdxMtrx], [batch_data[0]]+[batch_data[1]]+[batch_data[2]]+[batch_data[3]])}
 		return feed_dict
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
@@ -1754,7 +1756,6 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 		Returns:
 			The BP graph output
 		"""
-		# convert the index matrix from bool to float
 		branches=[]
 		atom_outputs = []
 		hidden1_units=self.hidden1
@@ -1805,11 +1806,6 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 				atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
 				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
 				output = tf.add(output, ToAdd)
-				#range_index = tf.range(tf.cast(shp_out[0], tf.int64), dtype=tf.int64)
-				#sparse_index =tf.stack([index, range_index], axis=1)
-				#sp_atomoutputs = tf.SparseTensor(sparse_index, rshpflat, dense_shape=[tf.cast(self.batch_size, tf.int64), tf.cast(shp_out[0], tf.int64)])
-				#mol_tmp = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
-				#output = tf.add(output, mol_tmp)
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
 			#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), atom_outputs
