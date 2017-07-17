@@ -330,11 +330,7 @@ class NeighborListSet:
 			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
 		for i,mol in enumerate(self.nlist):
-<<<<<<< HEAD
 			mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
-=======
-			mol.Update(self.x[i,:self.nnz[i]],rcut, i)
->>>>>>> 9d68609332e806fc503f50ba050c58ec55c19feb
 		nzp = sum([mol.npairs for mol in self.nlist])
 		nzt = sum([mol.ntriples for mol in self.nlist])
 		trp = np.zeros((nzp,3),dtype=np.uint64)
