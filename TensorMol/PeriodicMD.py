@@ -137,8 +137,8 @@ class PeriodicForce:
 		z,x = self.lattice.TessLattice(self.atoms,x_, mxrng)
 		# Construct NeighborList
 		if (self.NL==None):
-			self.NL = NeighborList(x,mxrng,NeedsTriples)
-		self.NL.Update(x,mxrng,None,self.natomsReal)
+			self.NL = NeighborList(x,NeedsTriples)
+		self.NL.Update(x, mxrng, 0.0, self.natomsReal)
 		# Compute forces and energies.
 		for f in self.LocalForces:
 			einc, finc = f(z,x,self.NL.pairs)

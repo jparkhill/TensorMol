@@ -119,7 +119,7 @@ class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
 	"""
-	def __init__(self, x_, rcut_=5.0, DoTriples_ = False):
+	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False):
 		"""
 		Builds or updates a neighbor list of atoms within rcut_
 		using n*Log(n) kd-tree.
@@ -132,12 +132,13 @@ class NeighborList:
 		self.x = x_.copy()
 		self.pairs = None
 		self.triples = None
-		self.npairs = None
 		self.DoTriples = DoTriples_
+		self.DoPerms = DoPerms_
+		self.npairs = None
 		self.ntriples = None
 		return
 
-	def Update(self, x_, rcut_=5.0, molind_ = None, nreal_ = None):
+	def Update(self, x_, rcut_pairs=5.0, rcut_triples=5.0, molind_ = None, nreal_ = None):
 		"""
 		In the future this should only force incremental builds.
 
@@ -149,11 +150,11 @@ class NeighborList:
 		"""
 		self.x = x_.copy()
 		if (self.DoTriples):
-			self.pairs, self.triples = self.buildPairsAndTriples(rcut_,molind_)
+			self.pairs, self.triples = self.buildPairsAndTriples(rcut_pairs,rcut_triples,molind_)
 			self.npairs = self.pairs.shape[0]
 			self.ntriples = self.triples.shape[0]
 		else:
-			self.pairs = self.buildPairs(rcut_,molind_,nreal_)
+			self.pairs = self.buildPairs(rcut_pairs,molind_,nreal_)
 			self.npairs = self.pairs.shape[0]
 		return
 
@@ -174,7 +175,11 @@ class NeighborList:
 		if (nreal_ != None):
 			ntodo = nreal_
 		for i in range(ntodo):
-			pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i != k]]
+			pair = None
+			if (self.DoPerms):
+				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i != k]]
+			else:
+				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i < k]]
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		p = None
@@ -195,7 +200,7 @@ class NeighborList:
 				pp = pp+1
 		return p
 
-	def buildPairsAndTriples(self, rcut=5.0, molind_=None, nreal_=None):
+	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0, molind_=None, nreal_=None):
 		"""
 		Returns the nonzero pairs, triples in self.x within the cutoff.
 		Triples are non-repeating ie: no 1,2,2 or 2,2,2 etc. but unordered
@@ -208,12 +213,19 @@ class NeighborList:
 		"""
 		tree = kdtree(self.x.T)
 		pair = []
+		tpairs = [] # since these may have different cutoff
 		ntodo = self.natom
 		if (nreal_ != None):
 			ntodo = nreal_
 		for i in range(ntodo):
-			pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i != k]]
-		npairi = map(len,pair)
+			pair = None
+			if (self.DoPerms):
+				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut_pairs) if i != k]]
+				tpair = tpair+[[k for k in radius_search(tree,self.x[i],rcut_triples) if i != k]]
+			else:
+				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut_pairs) if i < k]]
+				tpair = tpair+[[k for k in radius_search(tree,self.x[i],rcut_triples) if i < k]]
+		npairi = map(len,tpair)
 		npair = sum(npairi)
 		ntrip = sum(map(lambda x: x*(x-1) if x>0 else 0, npairi))
 		p = None
@@ -236,7 +248,7 @@ class NeighborList:
 					p[pp,0]=i
 					p[pp,1]=j
 				pp = pp+1
-				for k in pair[i]:
+				for k in tpair[i]:
 					if (k!=j):
 						if (molind_!=None):
 							t[tp,0]=molind_
@@ -251,7 +263,7 @@ class NeighborList:
 		return p,t
 
 class NeighborListSet:
-	def __init__(self, x_, nnz_, DoTriples_= False ):
+	def __init__(self, x_, nnz_, DoTriples_=False, DoPerms_=False):
 		"""
 		A neighborlist for a set
 
@@ -265,22 +277,24 @@ class NeighborListSet:
 		self.nnz = nnz_.copy()
 		self.pairs = None
 		self.DoTriples = DoTriples_
+		self.DoPerms = DoPerms_
 		self.triples = None
 		self.UpdateInterval = 15
 		self.UpdateCounter = 0
 		for i in range(self.nmol):
-			self.nlist.append(NeighborList(x_[i,:nnz_[i]]))
+			#__init__(self, x_, DoTriples_ = False, DoPerms_ = False):
+			self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_))
 			(self.nlist[-1]).Update(x_[i,:nnz_[i]])
 		return
 
-	def Update(self, x_, rcut_ = 5.0):
+	def Update(self, x_, rcut_pairs = 5.0, rcut_triples = 5.0):
 		if (self.UpdateCounter == 0):
 			self.UpdateCounter = self.UpdateCounter + 1
 			self.x = x_.copy()
 			if (self.DoTriples):
-				self.pairs, self.triples = self.buildPairsAndTriples(rcut_)
+				self.pairs, self.triples = self.buildPairsAndTriples(rcut_pairs,rcut_triples)
 			else:
-				self.pairs = self.buildPairs(rcut_)
+				self.pairs = self.buildPairs(rcut_pairs)
 		elif (self.UpdateCounter < self.UpdateInterval):
 			self.UpdateCounter = self.UpdateCounter + 1
 		else:
@@ -297,7 +311,7 @@ class NeighborListSet:
 			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
 		for i,mol in enumerate(self.nlist):
-			mol.Update(self.x[i,:self.nnz[i]],rcut,i)
+			mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i)
 		nzp = sum([mol.npairs for mol in self.nlist])
 		trp = np.zeros((nzp,3),dtype=np.uint64)
 		pp = 0
@@ -306,7 +320,7 @@ class NeighborListSet:
 			pp += mol.npairs
 		return trp
 
-	def buildPairsAndTriples(self, rcut=5.0):
+	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0):
 		"""
 		builds nonzero pairs and triples for current x.
 
@@ -317,7 +331,7 @@ class NeighborListSet:
 			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
 		for i,mol in enumerate(self.nlist):
-			mol.Update(self.x[i,:self.nnz[i]],rcut,i)
+			mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
 		nzp = sum([mol.npairs for mol in self.nlist])
 		nzt = sum([mol.ntriples for mol in self.nlist])
 		trp = np.zeros((nzp,3),dtype=np.uint64)

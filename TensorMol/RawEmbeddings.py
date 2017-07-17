@@ -1235,7 +1235,7 @@ class ANISym:
 			#P5 = tf.Variable(self.P5, tf.int32)
 			Ra_cut = 3.1
 			Rr_cut = 4.6
-			
+
 			#self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
@@ -1269,7 +1269,7 @@ class ANISym:
 		for i in range (0, int(self.nmol/self.MolPerBatch-1)):
 			t = time.time()
 			NL = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], True)
-			ang_p, ang_t = NL.buildPairsAndTriples(self.Ra_cut)
+			ang_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut,self.Ra_cut)
 			rad_p = NL.buildPairs(self.Rc_cut)
 			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p, ang_p, ang_t]
 			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.Radp_pl, self.Angp_pl, self.Angt_pl)
