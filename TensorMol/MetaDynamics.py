@@ -11,8 +11,7 @@ class MetaDynamics(VelocityVerlet):
 		"""
 		A trajectory which explores chemical space more rapidly
 		by droppin' gaussians after a region has been explored for BumpTime
-		This is an elementary version which just biases away
-		based on a poissionian process.... Requires a thermostat.
+		Requires a thermostat currently uses Nose.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
 		self.BumpTime = 7.0 # Fs
