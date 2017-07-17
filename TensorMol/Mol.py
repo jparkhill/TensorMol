@@ -723,7 +723,7 @@ class Mol:
 		try:
 			f = open(path, 'r')
 			lines = f.readlines()
-			energy = (lines[1].strip().split(';'))[0]
+			energy = float((lines[1].strip().split(';'))[0])
 			self.properties['energy'] = energy
 		except Exception as Ex:
 			print "Reading Energy Failed.", Ex

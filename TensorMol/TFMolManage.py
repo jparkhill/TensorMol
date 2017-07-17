@@ -65,10 +65,12 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP_Update(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
 			self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
+		elif (self.NetType == "fc_sqdiff_BPBond_Direct"):
+			self.Instances = MolInstance_DirectBPBond_NoGrad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
-                        self.Instances = MolInstance_DirectBP_Grad_noGradTrain(self.TData)
+			self.Instances = MolInstance_DirectBP_Grad_noGradTrain(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(self.TData)
 		elif (self.NetType == "Dipole_BP"):

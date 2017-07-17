@@ -273,8 +273,8 @@ class NeighborListSet:
 		"""
 		self.nlist = []
 		self.nmol = x_.shape[0]
-		self.x = x_.copy()
-		self.nnz = nnz_.copy()
+		self.x = x_
+		self.nnz = nnz_
 		self.pairs = None
 		self.DoTriples = DoTriples_
 		self.DoPerms = DoPerms_
@@ -282,7 +282,6 @@ class NeighborListSet:
 		self.UpdateInterval = 15
 		self.UpdateCounter = 0
 		for i in range(self.nmol):
-			#__init__(self, x_, DoTriples_ = False, DoPerms_ = False):
 			self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_))
 			(self.nlist[-1]).Update(x_[i,:nnz_[i]])
 		return
@@ -331,7 +330,11 @@ class NeighborListSet:
 			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
 		for i,mol in enumerate(self.nlist):
+<<<<<<< HEAD
 			mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
+=======
+			mol.Update(self.x[i,:self.nnz[i]],rcut, i)
+>>>>>>> 9d68609332e806fc503f50ba050c58ec55c19feb
 		nzp = sum([mol.npairs for mol in self.nlist])
 		nzt = sum([mol.ntriples for mol in self.nlist])
 		trp = np.zeros((nzp,3),dtype=np.uint64)
