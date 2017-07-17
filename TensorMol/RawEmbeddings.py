@@ -848,13 +848,18 @@ def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	Rreverse = tf.concat([Rtmp, tf.slice(Radpair,[0,1],[nnz,1])], axis=-1)
 	#Rreverse = tf.reverse(Radpair, axis=-1)
 	Rboth = tf.concat([Radpair, Rreverse], axis=0)
-	Rij = DifferenceVectorsLinear(Rboth, Radpair)
-	#RijRij = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+	nnzboth = tf.shape(Rboth)[0]
+	Rij = DifferenceVectorsLinear(R, Rboth)
+	RijRij = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
 	ZAll = AllDoublesSet(Zs, prec=tf.int64)
 	ZPairs = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1])
 	Rl=tf.gather_nd(ZPairs, Rboth)
+	ElemIndex = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles_,[1,nele]))),[0,1],[nnzboth,1])	
+	GoodIns = tf.concat([Rboth, ElemIndex], axis=-1)	
 	
 	
+	
+
 
 	# Mask any troublesome entries.
 	#rtmp = tf.cast(tf.reshape(SFPs_[0],[1,nr]),prec) # ijk X zeta X eta ....
@@ -876,7 +881,7 @@ def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	##to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	##to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
 	#return tf.reduce_sum(to_reduce2, axis=3)
-	return Rl
+	return GoodIns, Rreverse
 
 
 def TFSymSet(R, Zs, eles_, SFPsR_, Rr_cut, eleps_, SFPsA_, Ra_cut):
@@ -1253,7 +1258,7 @@ class ANISym:
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
-			self.Scatter_Sym_Update  = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angp_pl, self.Angt_pl)
+			self.A, self.B  = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angp_pl, self.Angt_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)
 			#self.gradient_update2 = tf.gradients(self.Scatter_Sym_Update2, self.xyz_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym_Update, self.xyz_pl)
@@ -1282,9 +1287,10 @@ class ANISym:
 		for i in range (0, int(self.nmol/self.MolPerBatch-1)):
 			t = time.time()
 			NL = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], True)
-			print ("self.Ra_cut:", self.Ra_cut)
 			ang_p, ang_t = NL.buildPairsAndTriples(self.Ra_cut)
 			rad_p = NL.buildPairs(self.Rr_cut)
+			print ("rad_p:", rad_p.shape)
+			print ("time to build pairs:", time.time() - t)
 			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p, ang_p, ang_t]
 			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.Radp_pl, self.Angp_pl, self.Angt_pl)
 			t1 = time.time()
@@ -1293,7 +1299,7 @@ class ANISym:
 			#sym_output_update, sym_index_update, sym_output, sym_index, gradient, gradient_update = self.sess.run([self.Scatter_Sym_Update, self.Sym_Index_Update, self.Scatter_Sym, self.Sym_Index, self.gradient, self.gradient_update], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym_Update2, self.Sym_Index_Update2], feed_dict = feed_dict)
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym, self.Sym_Index], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			sym_output = self.sess.run([self.Scatter_Sym_Update], feed_dict = feed_dict)
+			A, B = self.sess.run([self.A, self.B], feed_dict = feed_dict)
 			#print ("i: ", i,  "sym_ouotput: ", len(sym_output)," time:", time.time() - t, " second", "gpu time:", time.time()-t1, sym_index)
 			#print ("sym_output_update:", np.array_equal(sym_output_update2[0], sym_output[0]))
 			#print ("sym_output_update:", np.sum(np.abs(sym_output_update2[0]-sym_output[0])))
@@ -1304,5 +1310,5 @@ class ANISym:
             		#chrome_trace = fetched_timeline.generate_chrome_trace_format()
             		#with open('timeline_step_%d_old.json' % i, 'w') as f:
                 	#	f.write(chrome_trace)
-			print ("sym_output:", sym_output)
+			print ("A:", A, A.shape, "B:", B, B.shape)
 		print ("total time:", time.time() - t_total)
