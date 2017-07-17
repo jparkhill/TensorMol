@@ -806,44 +806,48 @@ def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	infinitesimal = 0.000000000000000000000000001
 
 	# atom triples.
-	ats = AllDoublesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64), prec=tf.int64)
-	# before performing any computation reduce this to desired pairs.
-	# Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
-	# Get Rij, Rik...
-	Rm_inds = tf.slice(ats,[0,0,0,0],[nmol,natom,natom,1])
-	Ri_inds = tf.slice(ats,[0,0,0,1],[nmol,natom,natom,1])
-	Rj_inds = tf.slice(ats,[0,0,0,2],[nmol,natom,natom,1])
-	#Rjk_inds = tf.reshape(tf.concat([Rm_inds,Rj_inds,Rk_inds],axis=4),[nmol,natom3,3])
-	ZAll = AllDoublesSet(Zs, prec=tf.int64)
-	ZPairs = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1]) # should have shape nmol X natom X natom X 1
-	ElemReduceMask = tf.reduce_all(tf.equal(tf.reshape(ZPairs,[nmol,natom2,1,1]),tf.reshape(eles_,[1,1,nele,1])),axis=-1) # nmol X natom3 X nelep
-	# Zero out the diagonal contributions (i==j or i==k)
-	IdentMask = tf.tile(tf.reshape(tf.not_equal(Ri_inds,Rj_inds),[nmol,natom2,1]),[1,1,nele])
-	Mask = tf.logical_and(ElemReduceMask,IdentMask) # nmol X natom3 X nelep
-	# Mask is true if atoms ijk => pair_l and many triples are unused.
-	# So we create a final index tensor, which is only nonzero m,ijk,l
-	pinds = tf.cast(tf.range(nele), dtype=tf.int64)
-	ats = tf.tile(tf.reshape(ats,[nmol,natom2,1,3]),[1,1,nele,1])
-	ps = tf.tile(tf.reshape(pinds,[1,1,nele,1]),[nmol,natom2,1,1])
-	ToMask = tf.concat([ats,ps],axis=3)
-	GoodInds = tf.boolean_mask(ToMask,Mask)
-	nnz = tf.shape(GoodInds)[0]
-	# Good Inds has shape << nmol * natom2 * nele X 4 (mol, i, j, l=element pair.)
-	# and contains all the indices we actually want to compute, Now we just slice, gather and compute.
-	mijs = tf.slice(GoodInds,[0,0],[nnz,3])
-	Rij = DifferenceVectorsSet(R,prec) # nmol X atom X atom X 3
-	A = tf.gather_nd(Rij,mijs)
-	RijRij = tf.sqrt(tf.reduce_sum(A*A,axis=1)+infinitesimal)
+	#ats = AllDoublesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), dtype=tf.int64), prec=tf.int64)
+	## before performing any computation reduce this to desired pairs.
+	## Construct the angle triples acos(<Rij,Rik>/|Rij||Rik|) and mask them onto the correct output
+	## Get Rij, Rik...
+	#Rm_inds = tf.slice(ats,[0,0,0,0],[nmol,natom,natom,1])
+	#Ri_inds = tf.slice(ats,[0,0,0,1],[nmol,natom,natom,1])
+	#Rj_inds = tf.slice(ats,[0,0,0,2],[nmol,natom,natom,1])
+	##Rjk_inds = tf.reshape(tf.concat([Rm_inds,Rj_inds,Rk_inds],axis=4),[nmol,natom3,3])
+	#ZAll = AllDoublesSet(Zs, prec=tf.int64)
+	#ZPairs = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1]) # should have shape nmol X natom X natom X 1
+	#ElemReduceMask = tf.reduce_all(tf.equal(tf.reshape(ZPairs,[nmol,natom2,1,1]),tf.reshape(eles_,[1,1,nele,1])),axis=-1) # nmol X natom3 X nelep
+	## Zero out the diagonal contributions (i==j or i==k)
+	#IdentMask = tf.tile(tf.reshape(tf.not_equal(Ri_inds,Rj_inds),[nmol,natom2,1]),[1,1,nele])
+	#Mask = tf.logical_and(ElemReduceMask,IdentMask) # nmol X natom3 X nelep
+	## Mask is true if atoms ijk => pair_l and many triples are unused.
+	## So we create a final index tensor, which is only nonzero m,ijk,l
+	#pinds = tf.cast(tf.range(nele), dtype=tf.int64)
+	#ats = tf.tile(tf.reshape(ats,[nmol,natom2,1,3]),[1,1,nele,1])
+	#ps = tf.tile(tf.reshape(pinds,[1,1,nele,1]),[nmol,natom2,1,1])
+	#ToMask = tf.concat([ats,ps],axis=3)
+	#GoodInds = tf.boolean_mask(ToMask,Mask)
+	#nnz = tf.shape(GoodInds)[0]
+	## Good Inds has shape << nmol * natom2 * nele X 4 (mol, i, j, l=element pair.)
+	## and contains all the indices we actually want to compute, Now we just slice, gather and compute.
+	#mijs = tf.slice(GoodInds,[0,0],[nnz,3])
+	#Rij = DifferenceVectorsSet(R,prec) # nmol X atom X atom X 3
+	#A = tf.gather_nd(Rij,mijs)
+	#RijRij = tf.sqrt(tf.reduce_sum(A*A,axis=1)+infinitesimal)
 
-	MaskDist = tf.where(tf.greater_equal(RijRij,R_cut),tf.zeros([nnz], dtype=tf.bool), tf.ones([nnz], dtype=tf.bool))
-	GoodInds2 = tf.boolean_mask(GoodInds, MaskDist)
-	nnz2 = tf.shape(GoodInds2)[0]
-	mijs2 = tf.slice(GoodInds2,[0,0],[nnz2,3])
-	A2 = tf.gather_nd(Rij,mijs2)
-	RijRij2 = tf.sqrt(tf.reduce_sum(A2*A2,axis=1)+infinitesimal)
+	#MaskDist = tf.where(tf.greater_equal(RijRij,R_cut),tf.zeros([nnz], dtype=tf.bool), tf.ones([nnz], dtype=tf.bool))
+	#GoodInds2 = tf.boolean_mask(GoodInds, MaskDist)
+	#nnz2 = tf.shape(GoodInds2)[0]
+	#mijs2 = tf.slice(GoodInds2,[0,0],[nnz2,3])
+	#A2 = tf.gather_nd(Rij,mijs2)
+	#RijRij2 = tf.sqrt(tf.reduce_sum(A2*A2,axis=1)+infinitesimal)
 
-	Rij = DifferenceVectorsLinear(R, Radpair)
+	Rreverse = tf.reverse(R, axis=-1)
+	Rboth = tf.concat([R, Rreverse], axis=0)
+	Rij = DifferenceVectorsLinear(Rboth, Radpair)
 	RijRij = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+	ZAll = AllDoublesSet(Zs, prec=tf.int64)
+	
 
 	# Mask any troublesome entries.
 	rtmp = tf.cast(tf.reshape(SFPs_[0],[1,nr]),prec) # ijk X zeta X eta ....
