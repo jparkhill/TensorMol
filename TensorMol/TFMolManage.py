@@ -77,6 +77,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
 			self.Instances = MolInstance_BP_Dipole_2(self.TData)
+		elif (self.NetType == "Dipole_BP_2_Direct"):
+			self.Instances = MolInstance_BP_Dipole_2_Direct(self.TData)
 		elif (self.NetType == "LJForce"):
 			self.Instances = MolInstance_LJForce(self.TData)
 		else:
@@ -1137,6 +1139,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):
 			self.Instances = MolInstance_BP_Dipole_2(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "Dipole_BP_2_Direct"):
+			self.Instances = MolInstance_BP_Dipole_2_Direct(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		else:
 			raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.

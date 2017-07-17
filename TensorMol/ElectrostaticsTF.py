@@ -198,6 +198,36 @@ def LJKernels(Ds,Zs,Ee,Re):
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
 	return K
 
+def LJKernelLinear(Ds,Zs,Ee,Re,NZP):
+	"""
+	Linear Scaling Lennard-Jones Energy for a single Molecule.
+
+	Args:
+		Ds: Distances Enumerated by NZP (flat)
+		Zs: A batch of Atomic Numbers. (maxatom X 1)
+		Ee: a matrix of LJ well depths.
+		Re: a matrix of Bond minima.
+		NZP: a list of nonzero atom pairs NNZ X 2 = (i, j).
+	Returns
+		LJ energy.
+	"""
+	NZP_shape = tf.shape(NZP)
+	Zs_shp = tf.shape(Zs)
+	NZP_shape = tf.Print(NZP_shape,[NZP_shape])
+	maxnpairs = tf.shape(NZP)[0]
+	Ii = tf.slice(NZP,[0,0],[-1,1])
+	Ij = tf.slice(NZP,[0,1],[-1,1])
+	Zi = tf.reshape(tf.gather_nd(Zs,Ii),[tf.shape(Ii)[0],1])
+	Zj = tf.reshape(tf.gather_nd(Zs,Ij),[tf.shape(Ii)[0],1])
+	Zij = tf.concat([Zi,Zj],axis=1)
+	Eeij = tf.gather_nd(Ee,Zij)
+	Reij = tf.gather_nd(Re,Zij)
+	R = Reij/Ds
+	K = Eeij*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
+	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
+	K = tf.reduce_sum(K,axis=0)
+	return K
+
 def LJKernelsLinear(Ds,Zs,Ee,Re,NZP):
 	"""
 	Batched over molecules.
@@ -332,6 +362,22 @@ def LJEnergies(XYZs_,Zs_,Ee_, Re_):
 	Ks = LJKernels(Ds,Zs_,LJe,LJr)
 	Ens = tf.reduce_sum(Ks,[1,2])
 	return Ens
+
+def LJEnergyLinear(XYZs_,Zs_,Ee_, Re_, NZP_):
+	"""
+	Linear scaling Lennard-Jones energy.
+
+	Args:
+		XYZs_: maxatom X 3 coordinate tensor.
+		Zs_: nmols X maxatom X 1 atomic number tensor.
+		Ee_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Epsilon parameter matrix.
+		Re_: MAX_ATOMIC_NUMBER X MAX_ATOMIC_NUMBER Re parameter matrix.
+		NZP_: Nonzero Pairs (nnzp X 3) matrix (mol, i, j)
+	"""
+	Ds = TFDistanceLinear(XYZs_[0,:,:],NZP_)
+	LJe = Ee_*tf.ones([8,8],dtype = tf.float64)
+	LJr = Re_*tf.ones([8,8],dtype = tf.float64)
+	return LJKernelLinear(Ds, Zs_, LJe, LJr, NZP_)
 
 def LJEnergiesLinear(XYZs_,Zs_,Ee_, Re_, NZP_):
 	"""

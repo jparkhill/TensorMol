@@ -77,8 +77,12 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		self.train_dir = './networks/'+self.name
 		self.MaxNAtoms = TData_.MaxNAtoms
 		self.batch_size_output = 4096
+		self.PreparedFor = 0
 		self.inp_pl=None
 		self.nzp_pl=None
+		self.x_pl=None
+		self.z_pl=None
+		self.nzp2_pl=None
 		self.frce_pl=None
 		self.sess = None
 		self.ForceType = ForceType_
@@ -86,6 +90,8 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		self.energies = None
 		self.forcesLinear = None
 		self.energiesLinear = None
+		self.forceLinear = None
+		self.energyLinear = None
 		self.total_loss = None
 		self.loss = None
 		self.train_op = None
@@ -141,7 +147,22 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		frcs = -1.0*(tf.gradients(Ens, XYZs)[0])
 		return Ens, frcs
 
-	def LJFrcLinear(self, inp_pl, nzp_pl):
+	def LJFrcLinear(self, z_pl, x_pl, nzp2_pl):
+		"""
+		Compute forces
+		Args:
+			inp_pl: placeholder for the NMol X MaxNatom X 4 tensor of Z,x,y,z
+			nzp_pl: placeholder for the NMol X 3 tensor of nonzero pairs.
+		"""
+		LJe2 = 0.116*tf.ones([8,8],dtype=tf.float64)
+		LJr2 = tf.ones([8,8],dtype=tf.float64)
+		x_plshp = tf.shape(x_pl)
+		xpl = tf.reshape(x_pl,[1,x_plshp[0],x_plshp[1]])
+		Ens = LJEnergyLinear(xpl, z_pl, LJe2, LJr2, nzp2_pl)
+		frcs = -1.0*(tf.gradients(Ens, xpl)[0])
+		return Ens, frcs
+
+	def LJFrcsLinear(self, inp_pl, nzp_pl):
 		"""
 		Compute forces for a batch of molecules
 		with the current LJe, and LJr with linear scaling.
@@ -198,8 +219,19 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		En,Frc = self.sess.run([self.energies, self.forces],feed_dict=feeddict)
 		return En, JOULEPERHARTREE*Frc[0] # Returns energies and forces.
 
+	def CallLinearLJForce(self,z,x,NZ):
+		if (z.shape[0] != self.PreparedFor):
+			self.MaxNAtoms = z.shape[0]
+			self.Prepare()
+		feeddict = {self.z_pl:z.astype(np.int64).reshape(z.shape[0],1),self.x_pl:x, self.nzp2_pl:NZ}
+		En,Frc = self.sess.run([self.energyLinear, self.forceLinear],feed_dict=feeddict)
+		return En, JOULEPERHARTREE*Frc[0] # Returns energies and forces.
+
 	def EvalForceLinear(self,m):
 		Ins = self.TData.dig.Emb(m,False,False)
+		if (Ins.shape[0] != self.PreparedFor):
+			self.MaxNAtoms = Ins.shape[0]
+			self.Prepare()
 		Ins = Ins.reshape(tuple([1]+list(Ins.shape))) # mol X 4
 		if (self.NL==None):
 			self.NL = NeighborListSet(Ins[:,:,1:],np.array([m.NAtoms()]))
@@ -255,16 +287,21 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		Args:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
+		self.PreparedFor = self.MaxNAtoms
 		with tf.Graph().as_default():
 			self.inp_pl=tf.placeholder(tf.float64, shape=tuple([None,self.MaxNAtoms,4]))
 			self.nzp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
+			self.z_pl=tf.placeholder(tf.int64, shape=tuple([self.MaxNAtoms,1]))
+			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.MaxNAtoms,3]))
+			self.nzp2_pl=tf.placeholder(tf.int64, shape=tuple([None,2]))
 			self.frce_pl = tf.placeholder(tf.float64, shape=tuple([None,self.MaxNAtoms,3])) # Forces.
 			if (self.ForceType=="LJ"):
-				self.LJe = tf.Variable(0.316*tf.ones([8,8],dtype=tf.float64),trainable=True,dtype=tf.float64)
-				self.LJr = tf.Variable(tf.ones([8,8],dtype=tf.float64),trainable=True,dtype=tf.float64)
+				self.LJe = tf.Variable(0.020*tf.ones([8,8],dtype=tf.float64),trainable=True,dtype=tf.float64)
+				self.LJr = tf.Variable(1.1*tf.ones([8,8],dtype=tf.float64),trainable=True,dtype=tf.float64)
 				# These are squared later to keep them positive.
 				self.energies, self.forces = self.LJFrc(self.inp_pl)
-				self.energiesLinear, self.forcesLinear = self.LJFrcLinear(self.inp_pl,self.nzp_pl)
+				self.energyLinear, self.forceLinear = self.LJFrcLinear(self.z_pl,self.x_pl,self.nzp2_pl)
+				self.energiesLinear, self.forcesLinear = self.LJFrcsLinear(self.inp_pl,self.nzp_pl)
 				self.total_loss, self.loss = self.loss_op(self.forces, self.frce_pl)
 				self.train_op = self.training(self.total_loss, PARAMS["learning_rate"], PARAMS["momentum"])
 				self.saver = tf.train.Saver()
@@ -384,7 +421,6 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		Args:
 			inp_pl: placeholder for the NMol X MaxNatom X 4 tensor of Z,x,y,z
 		"""
-		print(params)
 		feeddict = {self.LJe:params[0], self.LJr:params[1]}
 		result = self.sess.run(self.mae,feed_dict=feeddict)
 		return result
@@ -1343,6 +1379,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		self.eles_pairs_np = np.asarray(self.eles_pairs)
 		self.SetANI1Param()
 		self.batch_size = PARAMS["batch_size"]
+		self.GradScaler = PARAMS["GradScaler"]
 		self.NetType = "RawBP_Grad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
@@ -1419,7 +1456,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		energy_loss = tf.nn.l2_loss(energy_diff)
 		grads_diff = tf.subtract(nn_grads, grads)
 		grads_loss = tf.nn.l2_loss(grads_diff)
-		loss = tf.add(energy_loss, grads_loss)
+		loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
 		#loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss

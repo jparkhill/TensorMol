@@ -1,31 +1,34 @@
 """
 A periodic version of SimpleMD
 No symmetry but general unit cells supported.
+
+Maintenance of the unit cell, etc. are handled by PeriodicForce.
+Only linear scaling forces with energy are supported.
 """
 
 from Sets import *
 from TFManage import *
-from Neighbors import * 
+from Neighbors import *
 from Electrostatics import *
 from QuasiNewtonTools import *
 from SimpleMD import *
 
 class Lattice:
-	def __init__(self, latvec_ = [[10.0,0.0,0.0],[0.0,10.0,0.0],[0.,0.,10.0]]):
+	def __init__(self, latvec_):
 		"""
 		Build a periodic lattice
 
 		Args:
 			latvec_: A 3x3 tensor of lattice vectors.
 		"""
-		self.lattice = np.array(latvec_)
-		self.latticeMetric = MatrixPower(self.lattice,-1/2.)
-		self.latticeCenter = np.average(self.lattice,axis=0)
-		self.latticeMinDiameter = min([np.norm(self.lattice[0]-self.latticeCenter),np.norm(self.lattice[1]-self.latticeCenter),np.norm(self.lattice[2]-self.latticeCenter)])
+		self.lattice = latvec_.copy()
+		self.latticeMetric = MatrixPower(np.array([[np.dot(self.lattice[i],self.lattice[j]) for j in range(3)] for i in range(3)]),-1/2.)
+		self.latticeCenter = (self.lattice[0]+self.lattice[1]+self.lattice[2])/2.0
+		self.latticeMinDiameter = 2.0*min([np.linalg.norm(self.lattice[0]-self.latticeCenter),np.linalg.norm(self.lattice[1]-self.latticeCenter),np.linalg.norm(self.lattice[2]-self.latticeCenter)])
 		return
-	def CenteredInLattice(mol):
-		return Mol(mol.atoms,mol.coords - mol.Center() + self.latticeCenter)
-	def ModuloLattice(self,crds):
+	def CenteredInLattice(self, mol):
+		return Mol(mol.atoms,self.ModuloLattice(mol.coords - mol.Center() + self.latticeCenter))
+	def ModuloLattice(self, crds):
 		"""
 		Transports all coordinates into the primitive cell.
 
@@ -34,9 +37,14 @@ class Lattice:
 		Returns:
 			crds modulo the primitive lattice.
 		"""
-		tmp = np.einsum("ij,ik->ik",self.latticeMetric,crds) # Lat X atom.
-		fpart, ipart = np.fmod(tmp)
-		return np.einsum("ij,ik->kj",self.lattice,fpart) # atom X coord
+		#print "CoordsL", crds
+		tmp = np.einsum("ij,jk->ij", crds, self.latticeMetric ) # atom X lattice.
+		fpart = np.fmod(tmp,1.0)
+		revs=np.where(fpart < 0.0)
+		fpart[revs] = 1.0 + fpart[revs]
+		tore = np.einsum("ij,jk->ik", fpart, self.lattice) # atom X coord
+		return tore
+
 	def TessLattice(self, atoms_, coords_, rng_):
 		"""
 		Enlarges a molecule to allow for accurate calculation of a short-ranged force
@@ -50,55 +58,69 @@ class Lattice:
 		if (rng_ > self.latticeMinDiameter):
 			raise Exception("Enlarge Cell")
 		natom = atoms_.shape[0]
-		newAtoms = np.zeros(9*natom,dtype=np.uint8)
-		newCoords = np.zeros((9*natom,3))
+		newAtoms = np.zeros(27*natom,dtype=np.uint8)
+		newCoords = np.zeros((27*natom,3))
 		newAtoms[:natom] = atoms_
-		newCoords[:natom,3] = coords_
+		newCoords[:natom,:3] = coords_
 		ind = 1
 		for i in range(-1,2):
 			for j in range(-1,2):
 				for k in range(-1,2):
 					if (i==0 and j==0 and k ==0):
 						continue
-					newAtoms[ind*natom,(ind+1)*natom] = atoms_
-					newCoords[ind*natom,(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
+					newAtoms[ind*natom:(ind+1)*natom] = atoms_
+					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
 					ind = ind + 1
 		return newAtoms, newCoords
 
 class LocalForce:
-	def __init__(f_,rng_=5.0):
-		self.range = 5.0
+	def __init__(self, f_, rng_=5.0, NeedsTriples_=False):
+		self.range = rng_
 		self.func=f_
+		self.NeedsTriples = NeedsTriples_
 		return
-	def __call__(x):
-		return self.func(x)
+	def __call__(self, z, x, NZ):
+		"""
+		Generic call to a linear scaling local force.
+
+		Args:
+			z: atomic number vector
+			x: atoms X 3 coordinate vector.
+			NZ: pair or triples matrix. (NZP X 2)
+		returns:
+			energy number, and force vector with same shape as x.
+		"""
+		tmp = self.func(z, x, NZ)
+		return tmp
 
 class PeriodicForce:
 	def __init__(self, pm_, lat_):
 		"""
 		A periodic force evaluator. The force consists of two components
 		Short-Ranged forces, and long-ranged forces. Short ranged forces are
-		evaluated by tesselation.
+		evaluated by tesselation. Long-range forces are not supported yet.
 
 		Args:
 			pm_: a molecule.
 			lat_: lattice vectors.
 		"""
 		self.lattice = Lattice(lat_)
-		self.mol0 = self.lattice(CenteredInLattice(pm_))
-		self.atoms = mol0.atoms.copy()
-		self.natoms = mol0.NAtoms()
+		self.NL = None
+		self.mol0 = self.lattice.CenteredInLattice(pm_)
+		self.atoms = self.mol0.atoms.copy()
+		self.natoms = self.mol0.NAtoms()
+		self.natomsReal = pm_.NAtoms()
 		self.LocalForces = []
-		self.LongForces = []
+		#self.LongForces = [] Everything is real-space courtesy of DSF.
 		return
-	def AddLocal(lf_):
+	def AddLocal(self, lf_,rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.
 
 		Args:
 			lf_: a function which takes z,x and returns atom energies, atom forces.
 		"""
-		self.LocalForces.append(LocalForce(lf_))
+		self.LocalForces.append(LocalForce(lf_,rng_))
 	def __call__(self,x_):
 		"""
 		Returns the Energy per unit cell and force on all primitive atoms
@@ -108,15 +130,20 @@ class PeriodicForce:
 		"""
 		# Compute local energy.
 		etore = 0.0
-		ftore = np.zeros((self.natoms,3))
+		ftore = np.zeros((self.natomsReal,3))
 		mxrng = max([f.range for f in self.LocalForces])
+		NeedsTriples = any([f.NeedsTriples for f in self.LocalForces])
 		# Tesselate atoms.
 		z,x = self.lattice.TessLattice(self.atoms,x_, mxrng)
+		# Construct NeighborList
+		if (self.NL==None):
+			self.NL = NeighborList(x,mxrng,NeedsTriples)
+		self.NL.Update(x,mxrng,None,self.natomsReal)
 		# Compute forces and energies.
 		for f in self.LocalForces:
-			einc, finc = f(z,x)
-			etore += np.sum(einc[:self.natoms])
-			ftore += finc[:self.natoms]
+			einc, finc = f(z,x,self.NL.pairs)
+			etore += np.sum(einc)
+			ftore += finc[:self.natomsReal]
 		return etore, ftore
 	def Ewald(self):
 		"""
@@ -149,7 +176,7 @@ def PeriodicVelocityVerletStep(pf_, a_, x_, v_, m_, dt_):
 
 class PeriodicNoseThermostat(NoseThermostat):
 	def __init__(self,m_,v_):
-		NoseThermostat.__init__(m_,v_)
+		NoseThermostat.__init__(self,m_,v_)
 		return
 	def step(self, pf_, a_, x_, v_, m_, dt_ ):
 		"""
@@ -178,19 +205,16 @@ class PeriodicNoseThermostat(NoseThermostat):
 		kedto2 = (1./2.)*np.dot(np.einsum("ia,ia->i",vdto2,vdto2),m_)
 		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2 - (((3.*self.N+1)/2.))*self.kT)
 		v = (vdto2 + (dt_/2.)*a)/(1 + (dt_/2.)*self.eta)
-		if frc_:
-			return x,v,a,e,f_x_
-		else:
-			return x,v,a,e
+		return x,v,a,e
 
 class PeriodicVelocityVerlet(VelocityVerlet):
-	def __init__(self, Force_, PMol_, name_ =""):
+	def __init__(self, Force_, name_ ="PdicMD"):
 		"""
 		Molecular dynamics
 
 		Args:
 			Force_: A PERIODIC energy, force CLASS.
-			PMol_: initial PERIODIC molecule.
+			PMol_: initial molecule.
 			PARAMS["MDMaxStep"]: Number of steps to take.
 			PARAMS["MDTemp"]: Temperature to initialize or Thermostat to.
 			PARAMS["MDdt"]: Timestep.
@@ -200,7 +224,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 			Nothing.
 		"""
 		self.PForce = Force_
-		VelocityVerlet.__init__(self, PForce.JustForce, g0_, name_, PForce.EnergyForce)
+		VelocityVerlet.__init__(self, None, self.PForce.mol0, name_, self.PForce.__call__)
 		if (PARAMS["MDThermostat"]=="Nose"):
 			self.Tstat = PeriodicNoseThermostat(self.m,self.v)
 		else:
@@ -221,8 +245,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = PeriodicVelocityVerletStep(self.PForce, self.a, self.x, self.v, self.m, self.dt)
 			else:
-				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.PForce, self.a, self.x, self.v, self.m, self.dt)
-
+				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.PForce, self.a, self.x, self.v, self.m, self.dt)
 			self.md_log[step,0] = self.t
 			self.md_log[step,4] = self.KE
 			self.md_log[step,5] = self.EPot
