@@ -854,9 +854,9 @@ def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	ZAll = AllDoublesSet(Zs, prec=tf.int64)
 	ZPairs = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1])
 	Rl=tf.gather_nd(ZPairs, Rboth)
-	ElemIndex = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles_,[1,nele]))),[0,1],[nnz2,1])	
-	GoodInds2 = tf.concat([Rboth, ElemIndex], axis=-1)	
-	
+	ElemIndex = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles_,[1,nele]))),[0,1],[nnz2,1])
+	GoodInds2 = tf.concat([Rboth, ElemIndex], axis=-1)
+
 	rtmp = tf.cast(tf.reshape(SFPs_[0],[1,nr]),prec) # ijk X zeta X eta ....
 	tet = tf.tile(tf.reshape(RijRij2,[nnz2,1]),[1,nr]) - rtmp
 	fac1 = tf.exp(-eta*tet*tet)
@@ -1080,7 +1080,7 @@ def TFSymSet_Scattered_Update_Scatter_debug(R, Zs, eles_, SFPsR_, Rr_cut,  eleps
         nele = tf.shape(eles_)[0]
         nelep = tf.shape(eleps_)[0]
         GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
-        return GMR 
+        return GMR
 
 
 
@@ -1309,16 +1309,11 @@ class ANISym:
 		for i in range (0, int(self.nmol/self.MolPerBatch-1)):
 			t = time.time()
 			NL = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], True)
-<<<<<<< HEAD
-			ang_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut,self.Ra_cut)
-			rad_p = NL.buildPairs(self.Rc_cut)
-=======
 			ang_p, ang_t = NL.buildPairsAndTriples(self.Ra_cut)
 			rad_p = NL.buildPairs(self.Rr_cut)
 			print ("rad_p:", rad_p.shape)
 			print ("time to build pairs:", time.time() - t)
 			print ("xyzs[i*self.MolPerBatch]:", xyzs[i*self.MolPerBatch])
->>>>>>> 9d68609332e806fc503f50ba050c58ec55c19feb
 			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p, ang_p, ang_t]
 			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.Radp_pl, self.Angp_pl, self.Angt_pl)
 			t1 = time.time()
