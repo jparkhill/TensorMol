@@ -42,8 +42,8 @@ class BumpHolder:
 			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
 			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.natom,3]))
 			self.nb_pl=tf.placeholder(tf.int32)
-			self.h = tf.Variable(0.1,dtype = tf.float64)
-			self.w = tf.Variable(0.2,dtype = tf.float64)
+			self.h = tf.Variable(1.0,dtype = tf.float64)
+			self.w = tf.Variable(2.0,dtype = tf.float64)
 			init = tf.global_variables_initializer()
 			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
@@ -53,7 +53,8 @@ class BumpHolder:
 		return
 
 	def Bump(self, BumpCoords, x_, NBump_):
-		"""Returns the Bump force.
+		"""
+		Returns the Bump force.
 		"""
 		return self.sess.run([self.BE,self.BF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
 
@@ -1383,6 +1384,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		self.eles_pairs_np = np.asarray(self.eles_pairs)
 		self.SetANI1Param()
 		self.batch_size = PARAMS["batch_size"]
+		self.GradScaler = PARAMS["GradScaler"]
 		self.NetType = "RawBP_Grad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
@@ -1459,7 +1461,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		energy_loss = tf.nn.l2_loss(energy_diff)
 		grads_diff = tf.subtract(nn_grads, grads)
 		grads_loss = tf.nn.l2_loss(grads_diff)
-		loss = tf.add(energy_loss, grads_loss)
+		loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
 		#loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss

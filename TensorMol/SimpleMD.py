@@ -294,7 +294,7 @@ class VelocityVerlet:
 			PARAMS["MDV0"]: Sort of velocity initialization (None, or "Random")
 			PARAMS["MDLogTrajectory"]: Write MD Trajectory.
 		Returns:
-			Nothing. 
+			Nothing.
 		"""
 		self.name = name_
 		self.maxstep = PARAMS["MDMaxStep"]
