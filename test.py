@@ -953,11 +953,10 @@ def Test_Periodic_LJMD():
 	"""
 	Test TensorFlow LJ fluid Molecular dynamics with periodic BC
 	This version also tests linear-scaling-ness of the neighbor list
-	Etc.
 	"""
 	a=MSet("Test")
-	ParticlesPerEdge = 20
-	EdgeSize = 18
+	ParticlesPerEdge = 6
+	EdgeSize = 6
 	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
 	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
@@ -966,23 +965,26 @@ def Test_Periodic_LJMD():
 	tset = TensorMolData(a,d)
 	ins = MolInstance_DirectForce(tset,None,False,"LJ")
 	ins.TrainPrepare()
-	ForceField = lambda x: ins.EvalForceLinear(Mol(m.atoms,x))[0][0]
-	EnergyForceField = lambda x: ins.EvalForceLinear(Mol(m.atoms,x))
-	PARAMS["MDTemp"] = 300.0
-	PARAMS["MDThermostat"] = None
-	PARAMS["MDV0"] = None
-	PARAMS["MDdt"] = 0.2
-	md = VelocityVerlet(ForceField,m,"LJLinearTest", EnergyForceField)
-	md.Prop()
-
+	if (0):
+		# this would test the a-periodic but linear scaling force.
+		# which works for thousands of atoms on a MacBook Pro
+		ForceField = lambda x: ins.EvalForceLinear(Mol(m.atoms,x))[0][0]
+		EnergyForceField = lambda x: ins.EvalForceLinear(Mol(m.atoms,x))
+		PARAMS["MDTemp"] = 300.0
+		PARAMS["MDThermostat"] = None
+		PARAMS["MDV0"] = None
+		PARAMS["MDdt"] = 0.2
+		md = VelocityVerlet(ForceField,m,"LJLinearTest", EnergyForceField)
+		md.Prop()
 	# Generate a Periodic Force field.
-	PF = PeriodicForce(m, [[10.0,0.0,0.0],[0.0,10.0,0.0],[0.,0.,10.0]])
-	PF.AddLocal(ins.LocalLJForce)
+	BoxSize=8.1
+	PF = PeriodicForce(m, np.array([[BoxSize,0.0,0.0],[0.0,BoxSize,0.0],[0.,0.,BoxSize]]))
+	PF.AddLocal(ins.CallLinearLJForce,10.0)
 	PARAMS["MDTemp"] = 300.0
-	PARAMS["MDThermostat"] = None
+	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
-	PARAMS["MDdt"] = 0.2
-	md = PeriodicVelocityVerlet(PF,m,"Periodic test")
+	PARAMS["MDdt"] = 0.1
+	md = PeriodicVelocityVerlet(PF,"Periodic test")
 	md.Prop()
 	return
 
@@ -1195,8 +1197,8 @@ def TestRandom():
 # TestIndoIR()
 # david_testIR()
 #david_HarmonicAnalysis()
-TestMetadynamics()
-#Test_Periodic_LJMD()
+#TestMetadynamics()
+Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
