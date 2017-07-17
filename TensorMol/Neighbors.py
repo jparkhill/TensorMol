@@ -261,8 +261,8 @@ class NeighborListSet:
 		"""
 		self.nlist = []
 		self.nmol = x_.shape[0]
-		self.x = x_.copy()
-		self.nnz = nnz_.copy()
+		self.x = x_
+		self.nnz = nnz_
 		self.pairs = None
 		self.DoTriples = DoTriples_
 		self.triples = None

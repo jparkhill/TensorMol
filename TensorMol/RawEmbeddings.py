@@ -1160,29 +1160,31 @@ def NNInterface(R, Zs, eles_, GM):
 		IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
 	return SymList, IndexList
 
-def TFBond(XYZs, Zs, BndIdx, Eles_, ElePairs_):
+def TFBond(Zxyzs, BndIdxMat, Elems_, ElemPairs_):
 	"""
 	Tensorflow embedding of bond descriptor
 	Args:
-		XYZs: a nmol X maxnatom X 3 tensor of coordinates.
-		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-		Eles_: a neles X 1 tensor of elements present in the data.
-		ElePairs_: a nelepairs X 2 of elements pairs present in the data.
+		Zxyzs: a nmol X maxnatom X 4 tensor of Zs and coordinates.
+		BndIdx: nbond X 3 matrix of (m, i, j) indices.
+		Elems_: a neles X 1 tensor of elements present in the data.
+		ElemPairs_: a nelepairs X 2 of elements pairs present in the data.
 	"""
-	inp_shp = tf.shape(XYZs)
+	inp_shp = tf.shape(Zxyzs)
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
-	nele = tf.shape(Eles_)[0]
-	nelep = tf.shape(ElePairs_)[0]
-	RMatrix = TFDistancesLinear(XYZs, BndIdx)
-	IdxZ1s = BndIdx[:,:2]
-	IdxZ2s = BndIdx[:,::2]
-	Z1s = tf.gather_nd(Zs, IdxZ1s)
-	Z2s = tf.gather_nd(Zs, IdxZ2s)
-	ZPairs = tf.stack(Z1s,Z2s)
-	print(np.unique(ZPairs, return_counts=True, axis=0))
-	return
-	# return RMatrix
+	nelem = tf.shape(Elems_)[0]
+	nelemp = tf.shape(ElemPairs_)[0]
+	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
+	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int64)
+	MaskAll = tf.reduce_all(tf.equal(tf.reshape(tf.reverse(tf.nn.top_k(ZPairs,k=2).values,[1]), [tf.shape(ZPairs)[0],1,tf.shape(ZPairs)[1]]),tf.reshape(ElemPairs_,[1,nelemp,2])),2)
+	rlist = []
+	indexlist = []
+	num_ele, num_dim = ElemPairs_.get_shape().as_list()
+	# tmp = tf.map_fn(lambda x:tf.boolean_mask(RMatrix,MaskAll[:,x]), tf.range(nelemp), dtype=tf.float32)
+	for e in range(num_ele):
+		rlist.append(tf.boolean_mask(RMatrix,MaskAll[:,e]))
+		indexlist.append(tf.boolean_mask(BndIdxMat,MaskAll[:,e]))
+	return rlist, indexlist
 
 
 class ANISym:

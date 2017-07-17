@@ -10,6 +10,7 @@ import os, gc
 from Sets import *
 from DigestMol import *
 from TensorData import *
+from Neighbors import *
 #import tables should go to hdf5 soon...
 
 class TensorMolData(TensorData):
@@ -159,6 +160,7 @@ class TensorMolData(TensorData):
 #				print "m coords", m.coords
 				ti, to = self.dig.Emb(m, True, False)
 				n=ti.shape[0]
+
 				Ins[ndone,:n,:] = ti.copy()
 				Outs[ndone,:n,:] = to.copy()
 				ndone += 1
@@ -1253,6 +1255,42 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		self.labels = None
 		self.grads = None
 		return
+
+	def RawBatch(self,nmol = 4096):
+		"""
+			Shimmy Shimmy Ya Shimmy Ya Shimmy Yay.
+			This type of batch is not built beforehand
+			because there's no real digestion involved.
+
+			Args:
+				nmol: number of molecules to put in the output.
+
+			Returns:
+				Ins: a #atomsX4 tensor (AtNum,x,y,z)
+				Outs: output of the digester
+				Keys: (nmol)X(MaxNAtoms) tensor listing each molecule's place in the input.
+		"""
+		ndone = 0
+		natdone = 0
+		self.MaxNAtoms = self.set.MaxNAtoms()
+		Ins = np.zeros(tuple([nmol,self.MaxNAtoms,4]))
+		NAtomsVec = np.zeros((nmol),dtype=np.int32)
+		Outs = np.zeros(tuple([nmol]))
+		while (ndone<nmol):
+			try:
+				m = self.raw_it.next()
+				ti, to = self.dig.Emb(m, True, False)
+				n=ti.shape[0]
+				Ins[ndone,:n,:] = ti
+				NAtomsVec[ndone] = m.NAtoms()
+				Outs[ndone] = to
+				ndone += 1
+				natdone += n
+			except StopIteration:
+				self.raw_it = iter(self.set.mols)
+		NL = NeighborListSet(Ins[:,:,1:],NAtomsVec)
+		BondIdxMatrix = NL.buildPairs()
+		return Ins,BondIdxMatrix,Outs
 
 	def LoadData(self):
 		if self.set == None:
