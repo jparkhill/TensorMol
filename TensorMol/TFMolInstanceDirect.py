@@ -1738,51 +1738,50 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		return
 
 class MolInstance_DirectBP_Grad_noGradTrain(MolInstance_DirectBP_Grad):
-        """
-        An Instance which does a direct Behler Parinello
-        Using Output from RawEmbeddings.py
-        Do not use gradient in training
-        """
-        def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
-                """
-                Args:
-                        TData_: A TensorMolData instance.
-                        Name_: A name for this instance.
-                """
-                self.NetType = "RawBP_Grad_noGradTrain"
-                MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
-                self.NetType = "RawBP_Grad_noGradTrain"
-                self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-                self.train_dir = './networks/'+self.name
+	"""
+	An Instance which does a direct Behler Parinello
+	Using Output from RawEmbeddings.py
+	Do not use gradient in training
+	"""
+	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+		"""
+		Args:
+			TData_: A TensorMolData instance.
+			Name_: A name for this instance.
+		"""
+		self.NetType = "RawBP_Grad_noGradTrain"
+		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
+		self.NetType = "RawBP_Grad_noGradTrain"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 
-
-        def loss_op(self, output, nn_grads, labels, grads):
-                energy_diff  = tf.subtract(output, labels)
-                energy_loss = tf.nn.l2_loss(energy_diff)
-                grads_diff = tf.subtract(nn_grads, grads)
-                grads_loss = tf.nn.l2_loss(grads_diff)
-                #loss = tf.add(energy_loss, grads_loss)
-                loss = tf.identity(energy_loss)
-                tf.add_to_collection('losses', loss)
-                return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
+	def loss_op(self, output, nn_grads, labels, grads):
+		energy_diff  = tf.subtract(output, labels)
+		energy_loss = tf.nn.l2_loss(energy_diff)
+		grads_diff = tf.subtract(nn_grads, grads)
+		grads_loss = tf.nn.l2_loss(grads_diff)
+		#loss = tf.add(energy_loss, grads_loss)
+		loss = tf.identity(energy_loss)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
 
 class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
-        """
-        An Update version of Instance which does a direct Behler Parinello
-        Using Output from RawEmbeddings.py
+	"""
+	An Update version of Instance which does a direct Behler Parinello
+	Using Output from RawEmbeddings.py
 	index_pl holds both the index of molecule and the index of each atom
-        """
-        def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
-                """
-                Args:
-                        TData_: A TensorMolData instance.
-                        Name_: A name for this instance.
-                """
-                self.NetType = "RawBP_Grad_Update"
-                MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
-                self.NetType = "RawBP_Grad_Update"
-                self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-                self.train_dir = './networks/'+self.name
+	"""
+	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+		"""
+		Args:
+			TData_: A TensorMolData instance.
+			Name_: A name for this instance.
+		"""
+		self.NetType = "RawBP_Grad_Update"
+		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
+		self.NetType = "RawBP_Grad_Update"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 
 	def inference(self, inp, indexs):
 		"""
