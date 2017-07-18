@@ -1083,9 +1083,9 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		with tf.Graph().as_default():
 			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			self.BondIdxMatrix_pl = tf.placeholder(tf.int64, shape=tuple([None,3]))
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
+			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
 			RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, Ele, Elep)
 			# SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			# SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)

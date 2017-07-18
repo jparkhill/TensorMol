@@ -33,7 +33,7 @@ PARAMS["TestRatio"] = 0.2
 PARAMS["max_steps"] = 100
 PARAMS["batch_size"] = 500
 PARAMS["NeuronType"] = "relu"
-PARAMS["Profiling"] = False
+# PARAMS["Profiling"] = True
 
 # PARAMS["AN1_r_Rc"] = 6.
 # PARAMS["AN1_a_Rc"] = 4.
@@ -320,7 +320,7 @@ def TestMetadynamics():
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
@@ -349,7 +349,7 @@ def TestTFBond():
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 50000)
+RandomSmallSet("SmallMols", 25000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()

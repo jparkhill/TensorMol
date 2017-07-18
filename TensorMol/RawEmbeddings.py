@@ -1199,14 +1199,18 @@ def TFBond(Zxyzs, BndIdxMat, Elems_, ElemPairs_):
 	nelem = tf.shape(Elems_)[0]
 	nelemp = tf.shape(ElemPairs_)[0]
 	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
-	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int64)
-	MaskAll = tf.reduce_all(tf.equal(tf.reshape(tf.reverse(tf.nn.top_k(ZPairs,k=2).values,[1]), [tf.shape(ZPairs)[0],1,tf.shape(ZPairs)[1]]),tf.reshape(ElemPairs_,[1,nelemp,2])),2)
+	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
+	# SortedZPairs = tf.reverse(tf.nn.top_k(ZPairs,k=2).values,[1])
+	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))
+	TmpZ2 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmax(ZPairs, axis=1), tf.int32)],axis=1))
+	SortedZPairs = tf.stack([TmpZ1,TmpZ2],axis=1)
+	BondTypeMask = tf.reduce_all(tf.equal(tf.reshape(SortedZPairs, [tf.shape(ZPairs)[0],1,tf.shape(ZPairs)[1]]),tf.reshape(ElemPairs_,[1,nelemp,2])),2)
 	rlist = []
 	indexlist = []
 	num_ele, num_dim = ElemPairs_.get_shape().as_list()
 	for e in range(num_ele):
-		rlist.append(tf.boolean_mask(RMatrix,MaskAll[:,e]))
-		indexlist.append(tf.boolean_mask(BndIdxMat,MaskAll[:,e]))
+		rlist.append(tf.boolean_mask(RMatrix,BondTypeMask[:,e]))
+		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
 
 
