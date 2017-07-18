@@ -213,12 +213,12 @@ class NeighborList:
 		"""
 		tree = kdtree(self.x.T)
 		pair = []
-		tpairs = [] # since these may have different cutoff
+		tpair = [] # since these may have different cutoff
 		ntodo = self.natom
 		if (nreal_ != None):
 			ntodo = nreal_
 		for i in range(ntodo):
-			pair = None
+			#pair = None
 			if (self.DoPerms):
 				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut_pairs) if i != k]]
 				tpair = tpair+[[k for k in radius_search(tree,self.x[i],rcut_triples) if i != k]]
@@ -283,7 +283,7 @@ class NeighborListSet:
 		self.UpdateCounter = 0
 		for i in range(self.nmol):
 			self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_))
-			(self.nlist[-1]).Update(x_[i,:nnz_[i]])
+			#(self.nlist[-1]).Update(x_[i,:nnz_[i]])
 		return
 
 	def Update(self, x_, rcut_pairs = 5.0, rcut_triples = 5.0):
@@ -330,11 +330,7 @@ class NeighborListSet:
 			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
 		for i,mol in enumerate(self.nlist):
-<<<<<<< HEAD
 			mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
-=======
-			mol.Update(self.x[i,:self.nnz[i]],rcut, i)
->>>>>>> 9d68609332e806fc503f50ba050c58ec55c19feb
 		nzp = sum([mol.npairs for mol in self.nlist])
 		nzt = sum([mol.ntriples for mol in self.nlist])
 		trp = np.zeros((nzp,3),dtype=np.uint64)

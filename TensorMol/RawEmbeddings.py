@@ -1308,17 +1308,12 @@ class ANISym:
 		t_total = time.time()
 		for i in range (0, int(self.nmol/self.MolPerBatch-1)):
 			t = time.time()
-			NL = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], True)
-<<<<<<< HEAD
-			ang_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut,self.Ra_cut)
-			rad_p = NL.buildPairs(self.Rc_cut)
-=======
-			ang_p, ang_t = NL.buildPairsAndTriples(self.Ra_cut)
+			NL = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], True, True)
+			ang_p, ang_t = NL.buildPairsAndTriples(self.Ra_cut, self.Ra_cut)
 			rad_p = NL.buildPairs(self.Rr_cut)
 			print ("rad_p:", rad_p.shape)
 			print ("time to build pairs:", time.time() - t)
 			print ("xyzs[i*self.MolPerBatch]:", xyzs[i*self.MolPerBatch])
->>>>>>> 9d68609332e806fc503f50ba050c58ec55c19feb
 			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p, ang_p, ang_t]
 			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.Radp_pl, self.Angp_pl, self.Angt_pl)
 			t1 = time.time()
