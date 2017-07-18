@@ -176,7 +176,6 @@ class NeighborList:
 		if (nreal_ != None):
 			ntodo = nreal_
 		for i in range(ntodo):
-			pair = None
 			if (self.DoPerms):
 				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i != k]]
 			else:

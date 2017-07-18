@@ -978,7 +978,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
-	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+	def __init__(self, TData_, Name_=None, Trainable_=True):
 		"""
 		Args:
 			TData_: A TensorMolData instance.
@@ -988,10 +988,10 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		#if (Name_ != None):
 		#	return
-		self.SFPa = None
-		self.SFPr = None
-		self.Ra_cut = None
-		self.Rr_cut = None
+		# self.SFPa = None
+		# self.SFPr = None
+		# self.Ra_cut = None
+		# self.Rr_cut = None
 		self.MaxNAtoms = self.TData.MaxNAtoms
 		self.eles = self.TData.eles
 		self.n_eles = len(self.eles)
@@ -1019,6 +1019,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.summary_op = None
 		self.saver = None
 		self.summary_writer = None
+		self.profiling = PARAMS["Profiling"]
 
 	# def SetANI1Param(self, prec=np.float64):
 	# 	self.Ra_cut = PARAMS["AN1_a_Rc"]
@@ -1082,9 +1083,9 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		with tf.Graph().as_default():
 			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			self.BondIdxMatrix_pl = tf.placeholder(tf.int64, shape=tuple([None,3]))
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
+			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
 			RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, Ele, Elep)
 			# SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			# SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
@@ -1094,7 +1095,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
 			#self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
-			#tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
+			# tf.verify_tensor_all_finite(RList[0], "Nan in output!!! 0 ")
 			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
 			self.output, self.atom_outputs = self.inference(RList, MolIdxList)
 			self.check = tf.add_check_numerics_ops()
@@ -1107,8 +1108,9 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.saver = tf.train.Saver()
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
-			self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			self.run_metadata = tf.RunMetadata()
+			if self.profiling:
+				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+				self.run_metadata = tf.RunMetadata()
 		return
 
 	def loss_op(self, output, labels):
@@ -1223,20 +1225,22 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			batch_data = self.TData.RawBatch(nmol=self.batch_size)
 			actual_mols  = self.batch_size
 			t = time.time()
-			# dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
+			if self.profiling:
+				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
+			else:
+				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#print ("gradient:", gradient[0][:4])
-
 			#print ("gradient:", np.sum(gradient[0]))
 			#print ("gradient:", np.sum(np.isinf(gradient[0])))
 			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
-			fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-			chrome_trace = fetched_timeline.generate_chrome_trace_format()
-			with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-				f.write(chrome_trace)
+			if self.profiling:
+				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+				chrome_trace = fetched_timeline.generate_chrome_trace_format()
+				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+					f.write(chrome_trace)
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.print_training(step, train_loss, num_of_mols, duration)
@@ -1249,20 +1253,21 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		Args:
 			step: the index of this step.
 		"""
+		print( "testing...")
 		test_loss =  0.0
 		start_time = time.time()
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
-			batch_data=self.TData.GetTestBatch(self.batch_size)
+			batch_data = self.TData.RawBatch(nmol=self.batch_size)
 			feed_dict=self.fill_feed_dict(batch_data)
 			actual_mols  = self.batch_size
-			preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=feed_dict)
+			# preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
 		duration = time.time() - start_time
-		print( "testing...")
-		self.print_training(step, test_loss, num_of_mols, duration)
+		self.print_training(step, test_loss, num_of_mols, duration, Train=False)
 		return test_loss, feed_dict
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
@@ -1740,51 +1745,50 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		return
 
 class MolInstance_DirectBP_Grad_noGradTrain(MolInstance_DirectBP_Grad):
-        """
-        An Instance which does a direct Behler Parinello
-        Using Output from RawEmbeddings.py
-        Do not use gradient in training
-        """
-        def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
-                """
-                Args:
-                        TData_: A TensorMolData instance.
-                        Name_: A name for this instance.
-                """
-                self.NetType = "RawBP_Grad_noGradTrain"
-                MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
-                self.NetType = "RawBP_Grad_noGradTrain"
-                self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-                self.train_dir = './networks/'+self.name
+	"""
+	An Instance which does a direct Behler Parinello
+	Using Output from RawEmbeddings.py
+	Do not use gradient in training
+	"""
+	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+		"""
+		Args:
+			TData_: A TensorMolData instance.
+			Name_: A name for this instance.
+		"""
+		self.NetType = "RawBP_Grad_noGradTrain"
+		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
+		self.NetType = "RawBP_Grad_noGradTrain"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 
-
-        def loss_op(self, output, nn_grads, labels, grads):
-                energy_diff  = tf.subtract(output, labels)
-                energy_loss = tf.nn.l2_loss(energy_diff)
-                grads_diff = tf.subtract(nn_grads, grads)
-                grads_loss = tf.nn.l2_loss(grads_diff)
-                #loss = tf.add(energy_loss, grads_loss)
-                loss = tf.identity(energy_loss)
-                tf.add_to_collection('losses', loss)
-                return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
+	def loss_op(self, output, nn_grads, labels, grads):
+		energy_diff  = tf.subtract(output, labels)
+		energy_loss = tf.nn.l2_loss(energy_diff)
+		grads_diff = tf.subtract(nn_grads, grads)
+		grads_loss = tf.nn.l2_loss(grads_diff)
+		#loss = tf.add(energy_loss, grads_loss)
+		loss = tf.identity(energy_loss)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
 
 class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
-        """
-        An Update version of Instance which does a direct Behler Parinello
-        Using Output from RawEmbeddings.py
+	"""
+	An Update version of Instance which does a direct Behler Parinello
+	Using Output from RawEmbeddings.py
 	index_pl holds both the index of molecule and the index of each atom
-        """
-        def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
-                """
-                Args:
-                        TData_: A TensorMolData instance.
-                        Name_: A name for this instance.
-                """
-                self.NetType = "RawBP_Grad_Update"
-                MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
-                self.NetType = "RawBP_Grad_Update"
-                self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-                self.train_dir = './networks/'+self.name
+	"""
+	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+		"""
+		Args:
+			TData_: A TensorMolData instance.
+			Name_: A name for this instance.
+		"""
+		self.NetType = "RawBP_Grad_Update"
+		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
+		self.NetType = "RawBP_Grad_Update"
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.train_dir = './networks/'+self.name
 
 	def inference(self, inp, indexs):
 		"""

@@ -30,9 +30,10 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 5000
+PARAMS["max_steps"] = 100
 PARAMS["batch_size"] = 500
-PARAMS["NeuronType"] = "elu"
+PARAMS["NeuronType"] = "relu"
+# PARAMS["Profiling"] = True
 
 # PARAMS["AN1_r_Rc"] = 6.
 # PARAMS["AN1_a_Rc"] = 4.
@@ -68,7 +69,7 @@ def InterpolateGeometries():
 	mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
 	# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
-def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_del/*/*/", energy=False, forces=False, charges=False, mmff94=False):
+def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/*/*/", energy=False, forces=False, charges=False, mmff94=False):
 	import glob
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
@@ -344,13 +345,11 @@ def TestTFBond():
 	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
 
 
-
-
-
 # InterpoleGeometries()
-# ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)
+# ReadSmallMols(set_="SmallMols", forces=True, energy=True)
+# ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 30000)
+RandomSmallSet("SmallMols", 25000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
