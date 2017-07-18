@@ -119,7 +119,7 @@ class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
 	"""
-	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False):
+	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False, ele_ = None):
 		"""
 		Builds or updates a neighbor list of atoms within rcut_
 		using n*Log(n) kd-tree.
@@ -134,6 +134,7 @@ class NeighborList:
 		self.triples = None
 		self.DoTriples = DoTriples_
 		self.DoPerms = DoPerms_
+		self.ele = ele_
 		self.npairs = None
 		self.ntriples = None
 		return
@@ -225,9 +226,11 @@ class NeighborList:
 			else:
 				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut_pairs) if i < k]]
 				tpair = tpair+[[k for k in radius_search(tree,self.x[i],rcut_triples) if i < k]]
-		npairi = map(len,tpair)
+		npairi = map(len,pair)
 		npair = sum(npairi)
-		ntrip = sum(map(lambda x: x*(x-1) if x>0 else 0, npairi))
+
+		npairi = map(len,tpair)
+		ntrip = sum(map(lambda x: x*(x-1)/2 if x>0 else 0, npairi))
 		p = None
 		t = None
 		if (molind_!=None):
@@ -248,22 +251,32 @@ class NeighborList:
 					p[pp,0]=i
 					p[pp,1]=j
 				pp = pp+1
+			for j in tpair[i]:
 				for k in tpair[i]:
-					if (k!=j):
+					if (k > j): # do not do ijk, ikj permutation
+					#if (k!=j):
 						if (molind_!=None):
 							t[tp,0]=molind_
 							t[tp,1]=i
-							t[tp,2]=j
-							t[tp,3]=k
+							if self.ele is not None and self.ele[j] > self.ele[k]:  # atom will smaller element index alway go first
+								t[tp,2]=k
+								t[tp,3]=j
+							else:
+								t[tp,2]=j
+								t[tp,3]=k
 						else:
 							t[tp,0]=i
-							t[tp,1]=j
-							t[tp,2]=k
+							if self.ele is not None and self.ele[j] > self.ele[k]:
+								t[tp,1]=k
+								t[tp,2]=j
+							else:
+								t[tp,1]=j
+								t[tp,2]=k
 						tp=tp+1
 		return p,t
 
 class NeighborListSet:
-	def __init__(self, x_, nnz_, DoTriples_=False, DoPerms_=False):
+	def __init__(self, x_, nnz_, DoTriples_=False, DoPerms_=False, ele_=None):
 		"""
 		A neighborlist for a set
 
@@ -275,14 +288,19 @@ class NeighborListSet:
 		self.nmol = x_.shape[0]
 		self.x = x_
 		self.nnz = nnz_
+		self.ele = ele_
 		self.pairs = None
 		self.DoTriples = DoTriples_
 		self.DoPerms = DoPerms_
 		self.triples = None
 		self.UpdateInterval = 15
 		self.UpdateCounter = 0
-		for i in range(self.nmol):
-			self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_))
+		if self.ele is None:
+			for i in range(self.nmol):
+				self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, None))
+		else:
+			for i in range(self.nmol):
+				self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]]))
 			#(self.nlist[-1]).Update(x_[i,:nnz_[i]])
 		return
 
