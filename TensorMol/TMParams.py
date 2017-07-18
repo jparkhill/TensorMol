@@ -53,13 +53,14 @@ class TMParams(dict):
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001
 		self["batch_size"] = 1000
-		self["test_freq"] = 50
+		self["test_freq"] = 10
 		self["HiddenLayers"] = [512, 512, 512]
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
 		self["GradWeight"] = 0.01
 		self["TestRatio"] = 0.2
+		self["Profiling"] = False
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None

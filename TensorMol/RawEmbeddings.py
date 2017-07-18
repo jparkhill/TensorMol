@@ -1196,7 +1196,6 @@ def TFBond(Zxyzs, BndIdxMat, Elems_, ElemPairs_):
 	rlist = []
 	indexlist = []
 	num_ele, num_dim = ElemPairs_.get_shape().as_list()
-	# tmp = tf.map_fn(lambda x:tf.boolean_mask(RMatrix,MaskAll[:,x]), tf.range(nelemp), dtype=tf.float32)
 	for e in range(num_ele):
 		rlist.append(tf.boolean_mask(RMatrix,MaskAll[:,e]))
 		indexlist.append(tf.boolean_mask(BndIdxMat,MaskAll[:,e]))
