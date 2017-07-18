@@ -854,9 +854,9 @@ def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	ZAll = AllDoublesSet(Zs, prec=tf.int64)
 	ZPairs = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1])
 	Rl=tf.gather_nd(ZPairs, Rboth)
-	ElemIndex = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles_,[1,nele]))),[0,1],[nnz2,1])	
-	GoodInds2 = tf.concat([Rboth, ElemIndex], axis=-1)	
-	
+	ElemIndex = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles_,[1,nele]))),[0,1],[nnz2,1])
+	GoodInds2 = tf.concat([Rboth, ElemIndex], axis=-1)
+
 	rtmp = tf.cast(tf.reshape(SFPs_[0],[1,nr]),prec) # ijk X zeta X eta ....
 	tet = tf.tile(tf.reshape(RijRij2,[nnz2,1]),[1,nr]) - rtmp
 	fac1 = tf.exp(-eta*tet*tet)
@@ -1080,7 +1080,7 @@ def TFSymSet_Scattered_Update_Scatter_debug(R, Zs, eles_, SFPsR_, Rr_cut,  eleps
         nele = tf.shape(eles_)[0]
         nelep = tf.shape(eleps_)[0]
         GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
-        return GMR 
+        return GMR
 
 
 
