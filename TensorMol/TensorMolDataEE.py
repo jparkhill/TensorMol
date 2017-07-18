@@ -674,7 +674,7 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
                 xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
                 Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
                 labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-		natom = self.natom[self.ScratchPointer-ncases:self.ScratchPointer]
+		natom = self.natom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
                 if (self.HasGrad):
                         return [xyzs, Zs, labels, 1.0/natom, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer]]
                 else:
