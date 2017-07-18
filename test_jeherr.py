@@ -326,28 +326,28 @@ def TestTFBond():
 		mol.CalculateAtomization()
 	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
 	tset = TensorMolData_BPBond_Direct(a,d)
-	batchdata=tset.RawBatch()
-	Zxyzs = tf.Variable(batchdata[0], dtype=tf.float32)
-	BondIdxMatrix = tf.Variable(batchdata[1], dtype=tf.int64)
-	eles = [1,6,7,8]
-	eles_np = np.asarray(eles).reshape(4,1)
-	eles_pairs = []
-	for i in range (len(eles)):
-		for j in range(i, len(eles)):
-			eles_pairs.append([eles[i], eles[j]])
-	eles_pairs_np = np.asarray(eles_pairs)
-	Ele = tf.constant(eles_np, dtype = tf.int64)
-	Elep = tf.constant(eles_pairs_np, dtype = tf.int64)
-	sess=tf.Session()
-	init = tf.global_variables_initializer()
-	sess.run(init)
-	print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
-	# manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
+	# batchdata=tset.RawBatch()
+	# Zxyzs = tf.Variable(batchdata[0], dtype=tf.float32)
+	# BondIdxMatrix = tf.Variable(batchdata[1], dtype=tf.int64)
+	# eles = [1,6,7,8]
+	# eles_np = np.asarray(eles).reshape(4,1)
+	# eles_pairs = []
+	# for i in range (len(eles)):
+	# 	for j in range(i, len(eles)):
+	# 		eles_pairs.append([eles[i], eles[j]])
+	# eles_pairs_np = np.asarray(eles_pairs)
+	# Ele = tf.constant(eles_np, dtype = tf.int64)
+	# Elep = tf.constant(eles_pairs_np, dtype = tf.int64)
+	# sess=tf.Session()
+	# init = tf.global_variables_initializer()
+	# sess.run(init)
+	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
 
 
 # InterpoleGeometries()
-ReadSmallMols(set_="SmallMols", forces=True, energy=True)
-ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/", energy=False, forces=False)
+# ReadSmallMols(set_="SmallMols", forces=True, energy=True)
+# ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 50000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -363,7 +363,7 @@ ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 # BIMNN_NEq()
 # TestMetadynamics()
 # TestMD()
-# TestTFBond()
+TestTFBond()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()

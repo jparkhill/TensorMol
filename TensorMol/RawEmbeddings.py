@@ -810,7 +810,7 @@ def TFSymASet_Linear(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Angtri, prec=tf.flo
 	nnzt = tf.shape(Angtri)[0]
 
 	Z1Z2 = ZouterSet(Zs)
-	
+
 	Rij_inds = tf.slice(Angtri,[0,0],[nnzt,3])
 	Rik_inds = tf.concat([tf.slice(Angtri,[0,0],[nnzt,2]), tf.slice(Angtri,[0,3],[nnzt,1])],axis=-1)
 	Rjk_inds = tf.concat([tf.slice(Angtri,[0,0],[nnzt,1]), tf.slice(Angtri,[0,2],[nnzt,2])],axis=-1)
@@ -819,7 +819,7 @@ def TFSymASet_Linear(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Angtri, prec=tf.flo
 	GoodInds2 = tf.concat([Angtri,EleIndex],axis=-1)
 
 	Rij = DifferenceVectorsLinear(R, Rij_inds)
-	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)	
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
 	Rik = DifferenceVectorsLinear(R, Rik_inds)
 	RikRik2 = tf.sqrt(tf.reduce_sum(Rik*Rik,axis=1)+infinitesimal)
 	RijRik2 = tf.reduce_sum(Rij*Rik, axis=1)
@@ -1204,7 +1204,6 @@ def TFBond(Zxyzs, BndIdxMat, Elems_, ElemPairs_):
 	rlist = []
 	indexlist = []
 	num_ele, num_dim = ElemPairs_.get_shape().as_list()
-	# tmp = tf.map_fn(lambda x:tf.boolean_mask(RMatrix,MaskAll[:,x]), tf.range(nelemp), dtype=tf.float32)
 	for e in range(num_ele):
 		rlist.append(tf.boolean_mask(RMatrix,MaskAll[:,e]))
 		indexlist.append(tf.boolean_mask(BndIdxMat,MaskAll[:,e]))
