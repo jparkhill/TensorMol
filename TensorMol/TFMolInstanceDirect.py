@@ -1620,7 +1620,6 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			#print ("gradient:", np.sum(gradient[0]))
 			#print ("gradient:", np.sum(np.isinf(gradient[0])))
 			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
-			print(mol_output, labels)
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
