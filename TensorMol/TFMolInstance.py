@@ -74,10 +74,10 @@ class MolInstance(Instance):
 		for step in  range (0, mxsteps):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
+				test_loss = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					self.save_chk(step)
 		self.SaveAndClose()
 		return
 
@@ -97,7 +97,7 @@ class MolInstance(Instance):
 		self.print_training(step, train_loss, total_correct, Ncase_train, duration)
 		return
 
-	def save_chk(self,  step, feed_dict=None):  # We need to merge this with the one in TFInstance
+	def save_chk(self, step):  # We need to merge this with the one in TFInstance
 		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
 		os.system(cmd)
 		self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
@@ -299,7 +299,7 @@ class MolInstance_fc_classify(MolInstance):
 			duration = time.time() - test_start_time
 			print("testing...")
 			self.print_training(step, test_loss, test_correct, Ncase_test, duration)
-		return test_loss, feed_dict
+		return test_loss
 
 class MolInstance_fc_sqdiff(MolInstance):
 	def __init__(self, TData_,  Name_=None, Trainable_=True):
@@ -398,7 +398,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 			duration = time.time() - test_start_time
 		print("testing...")
 		self.print_training(step, test_loss,  Ncase_test, duration)
-		return test_loss, feed_dict
+		return test_loss
 
 	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
@@ -700,7 +700,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
-		return test_loss, feed_dict
+		return test_loss
 
 	def test_after_training(self, step):   # testing in the training
 		"""
@@ -751,7 +751,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
-		return test_loss, feed_dict
+		return test_loss
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		if Train:
@@ -762,16 +762,16 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 
 	def continue_training(self, mxsteps):
 		self.EvalPrepare()
-		test_loss , feed_dict = self.test(-1)
+		test_loss = self.test(-1)
 		test_freq = 1
 		mini_test_loss = test_loss
 		for step in  range (0, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
+				test_loss = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					self.save_chk(step)
 		self.SaveAndClose()
 		return
 
@@ -1078,7 +1078,7 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
-		return test_loss, feeddict
+		return test_loss
 
 	def EvalPrepare(self):
 		raise Exception("NYI")
@@ -1321,7 +1321,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
-		return test_loss, feed_dict
+		return test_loss
 
 	def test_after_training(self, step):   # testing in the training
 		"""
@@ -1372,7 +1372,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		#self.TData.dig.EvaluateTestOutputs(batch_data[2],preds)
-		return test_loss, feed_dict
+		return test_loss
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		if Train:
@@ -1383,16 +1383,16 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 
 	def continue_training(self, mxsteps):
 		self.EvalPrepare()
-		test_loss , feed_dict = self.test(-1)
+		test_loss = self.test(-1)
 		test_freq = 1
 		mini_test_loss = test_loss
 		for step in  range (0, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
+				test_loss = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					self.save_chk(step)
 		self.SaveAndClose()
 		return
 
@@ -1469,4 +1469,3 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
-
