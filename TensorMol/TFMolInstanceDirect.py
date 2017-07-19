@@ -1487,19 +1487,20 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 			self.coord = tf.train.Coordinator()
-			self.threads = tf.train.start_queue_runners(coord=self.coord, sess=self.sess)
+			self.threads = self.queuerunner.create_threads(self.sess, coord=self.coord, start=True)
+			# self.threads = tf.train.start_queue_runners(coord=self.coord, sess=self.sess)
 			if self.profiling:
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
 		return
 
 	def InitQueue(self):
-		queue = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.int32, tf.float32])
-		enqueue_op = queue.enqueue(self.TData.RawBatch(nmol=self.batch_size))
+		self.queue = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.int32, tf.float32])
+		self.enqueue_op = self.queue.enqueue(self.TData.RawBatch(nmol=self.batch_size))
 		numberOfThreads = 4
-		queuerunner = tf.train.QueueRunner(queue, [enqueue_op] * numberOfThreads)
-		tf.train.add_queue_runner(queuerunner)
-		self.dequeue_op = queue.dequeue()
+		self.queuerunner = tf.train.QueueRunner(self.queue, [self.enqueue_op] * numberOfThreads)
+		tf.train.add_queue_runner(self.queuerunner)
+		self.dequeue_op = self.queue.dequeue()
 
 	def loss_op(self, output, labels):
 		diff  = tf.subtract(output, labels)
@@ -1543,15 +1544,15 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			if (PARAMS["CheckLevel"]>3):
 				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=1e7,summarize=1e8)
 			with tf.name_scope(str(self.eles_pairs[e][0])+str(self.eles_pairs[e][1])+'_hidden_1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=1.0e-3)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=1.e-3)
 				biases = tf.Variable(tf.zeros([hidden1_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles_pairs[e][0])+str(self.eles_pairs[e][1])+'_hidden_2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=1.0e-3)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=1.e-3)
 				biases = tf.Variable(tf.zeros([hidden2_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles_pairs[e][0])+str(self.eles_pairs[e][1])+'_hidden_3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=1.0e-3)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=1.e-3)
 				biases = tf.Variable(tf.zeros([hidden3_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
@@ -1614,11 +1615,12 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			if self.profiling:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], options=self.options, run_metadata=self.run_metadata)
 			else:
-				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs])
+				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, labels = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.label])
 			#print ("gradient:", gradient[0][:4])
 			#print ("gradient:", np.sum(gradient[0]))
 			#print ("gradient:", np.sum(np.isinf(gradient[0])))
 			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
+			print(mol_output, labels)
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
@@ -1655,7 +1657,7 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 
 	def PrintTest(self, output, labels, loss, Ncase, duration):
 		for i in range(50):
-			LOGGER.info("Label: %.5f   Prediction: %.5f", labels[i], output[i])
+			LOGGER.info("Label: %.5f a.u.  Prediction: %.5f a.u.", labels[i], output[i])
 		LOGGER.info("Duration: %.5f  Test Loss: %.10f", duration, (float(loss)/(Ncase)))
 		return
 

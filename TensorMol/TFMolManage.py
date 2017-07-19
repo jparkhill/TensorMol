@@ -90,7 +90,7 @@ class TFMolManage(TFManage):
 		else:
 			raise Exception("Unknown Network Type!")
 		self.n_train = PARAMS["max_steps"]
-		self.Instances.train(self.n_train) # Just for the sake of debugging.
+		self.Instances.train(self.n_train)
 		nm = self.Instances.name
 		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:
