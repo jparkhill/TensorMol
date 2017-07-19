@@ -888,7 +888,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		duration = time.time() - start_time
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
-		return test_loss, feed_dict
+		return test_loss
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		if Train:
@@ -959,16 +959,16 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 
 	def continue_training(self, mxsteps):
 		self.EvalPrepare()
-		test_loss , feed_dict = self.test(-1)
+		test_loss = self.test(-1)
 		test_freq = 1
 		mini_test_loss = test_loss
 		for step in  range (0, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
+				test_loss = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					self.save_chk(step)
 		self.SaveAndClose()
 		return
 
@@ -1268,7 +1268,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			num_of_mols += actual_mols
 		duration = time.time() - start_time
 		self.print_training(step, test_loss, num_of_mols, duration, Train=False)
-		return test_loss, feed_dict
+		return test_loss
 
 	def print_training(self, step, loss, Ncase, duration, Train=True):
 		if Train:
@@ -1339,16 +1339,16 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 
 	def continue_training(self, mxsteps):
 		self.EvalPrepare()
-		test_loss , feed_dict = self.test(-1)
+		test_loss = self.test(-1)
 		test_freq = 1
 		mini_test_loss = test_loss
 		for step in  range (0, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
+				test_loss = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					self.save_chk(step)
 		self.SaveAndClose()
 		return
 
@@ -1737,7 +1737,7 @@ class MolInstance_DirectBPBond_NoGradtmp(MolInstance_fc_sqdiff_BP):
 				test_loss = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					self.save_chk(step)
 		self.coord.request_stop()
 		self.coord.join(self.threads)
 		self.SaveAndClose()
@@ -2011,7 +2011,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		duration = time.time() - start_time
 		print( "testing...")
 		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, num_of_mols, duration)
-		return test_loss, feed_dict
+		return test_loss
 
 	def print_training(self, step, loss, energy_loss, grads_loss, Ncase, duration, Train=True):
 		if Train:
@@ -2122,16 +2122,16 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 
 	def continue_training(self, mxsteps):
 		self.EvalPrepare()
-		test_loss , feed_dict = self.test(-1)
+		test_loss = self.test(-1)
 		test_freq = 1
 		mini_test_loss = test_loss
 		for step in  range (0, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
+				test_loss = self.test(step)
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
-					self.save_chk(step, feed_dict)
+					self.save_chk(step)
 		self.SaveAndClose()
 		return
 
