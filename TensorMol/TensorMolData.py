@@ -1512,3 +1512,9 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 		else:
 			return [xyzs, Zs, labels, rad_p, ang_t]
 
+
+	def GetBatch(self, ncases, Train_=True):
+		if Train_:
+			return self.GetTrainBatch(ncases)
+		else:
+			return self.GetTestBatch(ncases)
