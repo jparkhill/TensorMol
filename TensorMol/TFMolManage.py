@@ -66,7 +66,9 @@ class TFMolManage(TFManage):
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
 			self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BPBond_Direct"):
-			self.Instances = MolInstance_DirectBPBond_NoGradtmp(self.TData)
+			self.Instances = MolInstance_DirectBPBond_NoGrad(self.TData)
+		elif (self.NetType == "fc_sqdiff_BPBond_DirectQueue"):
+			self.Instances = MolInstance_DirectBPBond_NoGrad_Queue(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
