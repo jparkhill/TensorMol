@@ -30,11 +30,11 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 10
-PARAMS["test_freq"] = 2
-PARAMS["batch_size"] = 2000
+PARAMS["max_steps"] = 200
+PARAMS["test_freq"] = 5
+PARAMS["batch_size"] = 4000
 PARAMS["NeuronType"] = "relu"
-PARAMS["Profiling"] = True
+# PARAMS["Profiling"] = True
 
 # PARAMS["AN1_r_Rc"] = 6.
 # PARAMS["AN1_a_Rc"] = 4.
@@ -343,7 +343,7 @@ def TestTFBond():
 	# init = tf.global_variables_initializer()
 	# sess.run(init)
 	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
-	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_DirectQueue")
 
 
 # InterpoleGeometries()

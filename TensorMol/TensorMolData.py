@@ -1289,9 +1289,7 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 			except StopIteration:
 				self.raw_it = iter(self.set.mols)
 		NL = NeighborListSet(Ins[:,:,1:],NAtomsVec)
-		t1 = time.time()
 		BondIdxMatrix = NL.buildPairs()
-		print time.time()-t1
 		return Ins,BondIdxMatrix,Outs
 
 	def LoadData(self):

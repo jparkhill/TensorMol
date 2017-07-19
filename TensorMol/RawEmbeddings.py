@@ -1176,23 +1176,21 @@ def NNInterface(R, Zs, eles_, GM):
 		IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
 	return SymList, IndexList
 
-def TFBond(Zxyzs, BndIdxMat, Elems_, ElemPairs_):
+def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 	"""
 	Tensorflow embedding of bond descriptor
 	Args:
-		Zxyzs: a nmol X maxnatom X 4 tensor of Zs and coordinates.
-		BndIdx: nbond X 3 matrix of (m, i, j) indices.
-		Elems_: a neles X 1 tensor of elements present in the data.
-		ElemPairs_: a nelepairs X 2 of elements pairs present in the data.
+		Zxyzs: a nmol X maxnatom X 4 tensor of atomic Zs and coordinates.
+		BndIdxMat: nbond X 3 matrix of (molecule, atom1, atom2) indices.
+		ElemPairs_: a NumElementPairs X 2 of elements pairs present in the data.
 	"""
 	inp_shp = tf.shape(Zxyzs)
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
-	nelem = tf.shape(Elems_)[0]
 	nelemp = tf.shape(ElemPairs_)[0]
 	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
 	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
-	# SortedZPairs = tf.reverse(tf.nn.top_k(ZPairs,k=2).values,[1])
+	# tf.nn.top_k is slow, next lines faster for sorting nx2 array of atomic Zs
 	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))
 	TmpZ2 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmax(ZPairs, axis=1), tf.int32)],axis=1))
 	SortedZPairs = tf.stack([TmpZ1,TmpZ2],axis=1)

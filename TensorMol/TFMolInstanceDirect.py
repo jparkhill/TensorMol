@@ -1085,9 +1085,8 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
-			RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, Ele, Elep)
+			ElemPairs = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+			RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, ElemPairs)
 			# SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			# SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			# self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2, self.Rr_cut, Elep, self.SFPa2,self.zeta, self.eta, self.Ra_cut)
@@ -1390,9 +1389,6 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 		self.train_dir = './networks/'+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
-		self.xyzs_pl = None
-		self.Zs_pl = None
-		self.label_pl = None
 		self.sess = None
 		self.total_loss = None
 		self.loss = None
@@ -1441,19 +1437,18 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 
 	def Clean(self):
 		Instance.Clean(self)
-		self.xyzs_pl=None
+		# self.Zxyzs = None
+		# self.BondIdxMatrix = None
 		self.check = None
-		self.Zs_pl=None
-		self.label_pl=None
+		self.label = None
 		self.atom_outputs = None
 		self.Scatter_Sym = None
 		self.Sym_Index = None
 		self.options = None
 		self.run_metadata = None
 		self.coord = None
-		self.thread = None
-		self.queue = None
-		self.queuerunner = None
+		self.threads = None
+		self.dequeue_op = None
 		return
 
 
@@ -1466,14 +1461,10 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			# self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
-			# self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			# self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
-			self.Queue()
-			self.Zxyzs_pl, self.BondIdxMatrix_pl, self.label_pl = self.dequeue_op
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
-			RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, Ele, Elep)
+			self.InitQueue()
+			Zxyzs, BondIdxMatrix, self.label = self.dequeue_op
+			ElemPairs = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+			RList, MolIdxList = TFBond(Zxyzs, BondIdxMatrix, ElemPairs)
 			# SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
 			# SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			# self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2, self.Rr_cut, Elep, self.SFPa2,self.zeta, self.eta, self.Ra_cut)
@@ -1487,7 +1478,7 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			self.output, self.atom_outputs = self.inference(RList, MolIdxList)
 			self.check = tf.add_check_numerics_ops()
 			# self.gradient  = tf.gradients(self.output, self.xyzs_pl)
-			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
+			self.total_loss, self.loss = self.loss_op(self.output, self.label)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -1502,13 +1493,13 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 				self.run_metadata = tf.RunMetadata()
 		return
 
-	def Queue(self):
-		self.queue = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.int32, tf.float32])
-		self.enqueue_op = self.queue.enqueue(self.TData.RawBatch(nmol=self.batch_size))
+	def InitQueue(self):
+		queue = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.int32, tf.float32])
+		enqueue_op = queue.enqueue(self.TData.RawBatch(nmol=self.batch_size))
 		numberOfThreads = 4
-		self.queuerunner = tf.train.QueueRunner(self.queue, [self.enqueue_op] * numberOfThreads)
-		tf.train.add_queue_runner(self.queuerunner)
-		self.dequeue_op = self.queue.dequeue()
+		queuerunner = tf.train.QueueRunner(queue, [enqueue_op] * numberOfThreads)
+		tf.train.add_queue_runner(queuerunner)
+		self.dequeue_op = queue.dequeue()
 
 	def loss_op(self, output, labels):
 		diff  = tf.subtract(output, labels)
@@ -1546,21 +1537,21 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			shp_in = tf.shape(inputs)
 			index = tf.cast(indexs[e], tf.int64)
 			if (PARAMS["CheckLevel"]>2):
-				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=10000000,summarize=100000000)
+				tf.Print(tf.to_float(shp_in), [tf.to_float(shp_in)], message="Element "+str(e)+"input shape ",first_n=1e7,summarize=1e8)
 				index_shape = tf.shape(index)
-				tf.Print(tf.to_float(index_shape), [tf.to_float(index_shape)], message="Element "+str(e)+"index shape ",first_n=10000000,summarize=100000000)
+				tf.Print(tf.to_float(index_shape), [tf.to_float(index_shape)], message="Element "+str(e)+"index shape ",first_n=1e7,summarize=1e8)
 			if (PARAMS["CheckLevel"]>3):
-				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=10000000,summarize=100000000)
+				tf.Print(tf.to_float(inputs), [tf.to_float(inputs)], message="This is input shape ",first_n=1e7,summarize=1e8)
 			with tf.name_scope(str(self.eles_pairs[e][0])+str(self.eles_pairs[e][1])+'_hidden_1'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, hidden1_units], var_stddev=nrm1, var_wd=1.0e-3)
 				biases = tf.Variable(tf.zeros([hidden1_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 			with tf.name_scope(str(self.eles_pairs[e][0])+str(self.eles_pairs[e][1])+'_hidden_2'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden1_units, hidden2_units], var_stddev=nrm2, var_wd=1.0e-3)
 				biases = tf.Variable(tf.zeros([hidden2_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles_pairs[e][0])+str(self.eles_pairs[e][1])+'_hidden_3'):
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=0.001)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[hidden2_units, hidden3_units], var_stddev=nrm3, var_wd=1.0e-3)
 				biases = tf.Variable(tf.zeros([hidden3_units], dtype=self.tf_prec), name='biases')
 				branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 				#tf.Print(branches[-1], [branches[-1]], message="This is layer 2: ",first_n=10000000,summarize=100000000)
@@ -1583,23 +1574,23 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return output, atom_outputs
 
-	# def fill_feed_dict(self, batch_data):
-	# 	"""
-	# 	Fill the tensorflow feed dictionary.
-	#
-	# 	Args:
-	# 		batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
-	# 		and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
-	#
-	# 	Returns:
-	# 		Filled feed dictionary.
-	# 	"""
-	# 	# Don't eat shit.
-	# 	if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-	# 		print("I was fed shit")
-	# 		raise Exception("DontEatShit")
-	# 	feed_dict={i: d for i, d in zip([self.Zxyzs_pl]+[self.BondIdxMatrix_pl]+[self.label_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]])}
-	# 	return feed_dict
+	def fill_feed_dict(self, batch_data):
+		"""
+		Fill the tensorflow feed dictionary.
+
+		Args:
+			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
+			and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
+
+		Returns:
+			Filled feed dictionary.
+		"""
+		# Don't eat shit.
+		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
+			print("I was fed shit")
+			raise Exception("DontEatShit")
+		feed_dict={i: d for i, d in zip([self.Zxyzs_pl]+[self.BondIdxMatrix_pl]+[self.label_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]])}
+		return feed_dict
 
 	def Prepare(self):
 		self.TrainPrepare()
@@ -1618,7 +1609,6 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 		num_of_mols = 0
 		pre_output = np.zeros((self.batch_size),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
-			#print ("ministep:", ministep)
 			actual_mols  = self.batch_size
 			t = time.time()
 			if self.profiling:
@@ -1654,21 +1644,23 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 		start_time = time.time()
 		Ncase_test = self.TData.NTest
 		num_of_mols = 0
-		for ministep in range (0, int(Ncase_test/self.batch_size)):
+		for ministep in range(0, int(Ncase_test/self.batch_size)):
 			actual_mols  = self.batch_size
-			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs])
-			# preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+			total_loss_value, loss_value, mol_output, atom_outputs, labels = self.sess.run([self.total_loss, self.loss, self.output,  self.atom_outputs, self.label])
 			test_loss += loss_value
 			num_of_mols += actual_mols
 		duration = time.time() - start_time
-		self.print_training(step, test_loss, num_of_mols, duration, Train=False)
+		self.PrintTest(mol_output, labels, test_loss, num_of_mols, duration)
 		return test_loss
 
-	def print_training(self, step, loss, Ncase, duration, Train=True):
-		if Train:
-			LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f", step, duration, (float(loss)/(Ncase)))
-		else:
-			LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f", step, duration, (float(loss)/(Ncase)))
+	def PrintTest(self, output, labels, loss, Ncase, duration):
+		for i in range(50):
+			LOGGER.info("Label: %.5f   Prediction: %.5f", labels[i], output[i])
+		LOGGER.info("Duration: %.5f  Test Loss: %.10f", duration, (float(loss)/(Ncase)))
+		return
+
+	def print_training(self, step, loss, Ncase, duration):
+		LOGGER.info("Step: %7d  Duration: %.5f  Train Loss: %.10f", step, duration, (float(loss)/(Ncase)))
 		return
 
 	def evaluate(self, batch_data, IfGrad=True):   #this need to be modified
