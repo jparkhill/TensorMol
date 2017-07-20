@@ -31,8 +31,8 @@ PARAMS["RandomizeData"] = True
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
 PARAMS["max_steps"] = 200
-PARAMS["test_freq"] = 5
-PARAMS["batch_size"] = 4000
+PARAMS["test_freq"] = 10
+PARAMS["batch_size"] = 8000
 PARAMS["NeuronType"] = "relu"
 # PARAMS["Profiling"] = True
 
@@ -321,7 +321,7 @@ def TestMetadynamics():
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()

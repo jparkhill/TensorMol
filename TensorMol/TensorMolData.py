@@ -1290,7 +1290,6 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 				self.raw_it = iter(self.set.mols)
 		NL = NeighborListSet(Ins[:,:,1:],NAtomsVec)
 		BondIdxMatrix = NL.buildPairs()
-		print Ins
 		return Ins,BondIdxMatrix,Outs
 
 	def LoadData(self):

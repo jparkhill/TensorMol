@@ -1061,9 +1061,9 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 
 	def Clean(self):
 		Instance.Clean(self)
-		self.xyzs_pl=None
+		self.Zxyzs_pl=None
 		self.check = None
-		self.Zs_pl=None
+		self.BondIdxMatrix_pl=None
 		self.label_pl=None
 		self.atom_outputs = None
 		self.Scatter_Sym = None
@@ -1243,7 +1243,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 					f.write(chrome_trace)
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
-		self.print_training(step, train_loss, num_of_mols, duration)
+		self.PrintTrain(step, train_loss, num_of_mols, duration)
 		return
 
 	def test(self, step):
@@ -1262,19 +1262,22 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			batch_data = self.TData.RawBatch(nmol=self.batch_size)
 			feed_dict=self.fill_feed_dict(batch_data)
 			actual_mols  = self.batch_size
-			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=feed_dict)
+			dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, labels = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.label_pl], feed_dict=feed_dict)
 			# preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
 		duration = time.time() - start_time
-		self.print_training(step, test_loss, num_of_mols, duration, Train=False)
+		self.PrintTest(mol_output, labels, test_loss, num_of_mols, duration)
 		return test_loss
 
-	def print_training(self, step, loss, Ncase, duration, Train=True):
-		if Train:
-			LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f", step, duration, (float(loss)/(Ncase)))
-		else:
-			LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f", step, duration, (float(loss)/(Ncase)))
+	def PrintTest(self, output, labels, loss, Ncase, duration):
+		for i in range(50):
+			LOGGER.info("Label: %.5f   Prediction: %.5f", labels[i], output[i])
+		LOGGER.info("Duration: %.5f  Test Loss: %.10f", duration, (float(loss)/(Ncase)))
+		return
+
+	def PrintTrain(self, step, loss, Ncase, duration, Train=True):
+		LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f", step, duration, (float(loss)/(Ncase)))
 		return
 
 	def evaluate(self, batch_data, IfGrad=True):   #this need to be modified
