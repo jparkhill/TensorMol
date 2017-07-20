@@ -28,7 +28,6 @@ class BumpHolder:
 		self.natom = natom_
 		self.maxbump = maxbump_
 		self.sess = None
-		self.Prepare()
 		self.xyzs_pl = None
 		self.x_pl = None
 		self.nb_pl = None
@@ -691,7 +690,6 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.options = None
 		self.run_metadata = None
 		return
-
 
 	def TrainPrepare(self,  continue_training =False):
 		"""
