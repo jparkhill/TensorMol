@@ -67,12 +67,18 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BPBond_Direct"):
 			self.Instances = MolInstance_DirectBPBond_NoGrad(self.TData)
+		elif (self.NetType == "fc_sqdiff_BPBond_DirectQueue"):
+			self.Instances = MolInstance_DirectBPBond_NoGrad_Queue(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
 			self.Instances = MolInstance_DirectBP_Grad_noGradTrain(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -84,7 +90,7 @@ class TFMolManage(TFManage):
 		else:
 			raise Exception("Unknown Network Type!")
 		self.n_train = PARAMS["max_steps"]
-		self.Instances.train(self.n_train) # Just for the sake of debugging.
+		self.Instances.train(self.n_train)
 		nm = self.Instances.name
 		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:
@@ -1135,6 +1141,10 @@ class TFMolManage(TFManage):
                         self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):

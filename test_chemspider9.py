@@ -1,5 +1,6 @@
 from TensorMol import *
 import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 def TrainPrepare():
 
@@ -65,9 +66,11 @@ def TrainForceField():
                 PARAMS["test_freq"] = 2
                 PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["GradScaler"] = 1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [512, 512, 512, 512, 512, 512]
                 d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad") # Initialzie a manager than manage the training of neural network.
+                tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad_Linear") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=101)
 
 #TrainPrepare()

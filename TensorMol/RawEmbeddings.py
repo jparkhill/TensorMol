@@ -1176,29 +1176,31 @@ def NNInterface(R, Zs, eles_, GM):
 		IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
 	return SymList, IndexList
 
-def TFBond(Zxyzs, BndIdxMat, Elems_, ElemPairs_):
+def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 	"""
 	Tensorflow embedding of bond descriptor
 	Args:
-		Zxyzs: a nmol X maxnatom X 4 tensor of Zs and coordinates.
-		BndIdx: nbond X 3 matrix of (m, i, j) indices.
-		Elems_: a neles X 1 tensor of elements present in the data.
-		ElemPairs_: a nelepairs X 2 of elements pairs present in the data.
+		Zxyzs: a nmol X maxnatom X 4 tensor of atomic Zs and coordinates.
+		BndIdxMat: nbond X 3 matrix of (molecule, atom1, atom2) indices.
+		ElemPairs_: a NumElementPairs X 2 of elements pairs present in the data.
 	"""
 	inp_shp = tf.shape(Zxyzs)
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
-	nelem = tf.shape(Elems_)[0]
 	nelemp = tf.shape(ElemPairs_)[0]
-	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
-	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int64)
-	MaskAll = tf.reduce_all(tf.equal(tf.reshape(tf.reverse(tf.nn.top_k(ZPairs,k=2).values,[1]), [tf.shape(ZPairs)[0],1,tf.shape(ZPairs)[1]]),tf.reshape(ElemPairs_,[1,nelemp,2])),2)
+	RMatrix = tf.divide(TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat),5.0)
+	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
+	# tf.nn.top_k is slow, next lines faster for sorting nx2 array of atomic Zs
+	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))
+	TmpZ2 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmax(ZPairs, axis=1), tf.int32)],axis=1))
+	SortedZPairs = tf.stack([TmpZ1,TmpZ2],axis=1)
+	BondTypeMask = tf.reduce_all(tf.equal(tf.reshape(SortedZPairs, [tf.shape(ZPairs)[0],1,tf.shape(ZPairs)[1]]),tf.reshape(ElemPairs_,[1,nelemp,2])),2)
 	rlist = []
 	indexlist = []
 	num_ele, num_dim = ElemPairs_.get_shape().as_list()
 	for e in range(num_ele):
-		rlist.append(tf.boolean_mask(RMatrix,MaskAll[:,e]))
-		indexlist.append(tf.boolean_mask(BndIdxMat,MaskAll[:,e]))
+		rlist.append(tf.boolean_mask(RMatrix,BondTypeMask[:,e]))
+		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
 
 
@@ -1290,8 +1292,8 @@ class ANISym:
 			#self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
-			self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
-			#self.Scatter_Sym_Linear, self.Sym_Index_Linear = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angt_pl)
+			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
+			self.Scatter_Sym_Linear, self.Sym_Index_Linear = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)
 			#self.gradient_update2 = tf.gradients(self.Scatter_Sym_Update2, self.xyz_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym_Update, self.xyz_pl)
@@ -1331,8 +1333,8 @@ class ANISym:
 			#sym_output_update, sym_index_update, sym_output, sym_index, gradient, gradient_update = self.sess.run([self.Scatter_Sym_Update, self.Sym_Index_Update, self.Scatter_Sym, self.Sym_Index, self.gradient, self.gradient_update], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym_Update2, self.Sym_Index_Update2], feed_dict = feed_dict)
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym, self.Sym_Index], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			A, B  = self.sess.run([self.Scatter_Sym_Update, self.Sym_Index_Update], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			#A, B  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			#A, B  = self.sess.run([self.Scatter_Sym_Update, self.Sym_Index_Update], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			A, B  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			#print ("i: ", i,  "sym_ouotput: ", len(sym_output)," time:", time.time() - t, " second", "gpu time:", time.time()-t1, sym_index)
 			#print ("sym_output_update:", np.array_equal(sym_output_update2[0], sym_output[0]))
 			#print ("sym_output_update:", np.sum(np.abs(sym_output_update2[0]-sym_output[0])))

@@ -30,10 +30,11 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 100
-PARAMS["batch_size"] = 500
+PARAMS["max_steps"] = 200
+PARAMS["test_freq"] = 10
+PARAMS["batch_size"] = 8000
 PARAMS["NeuronType"] = "relu"
-PARAMS["Profiling"] = False
+# PARAMS["Profiling"] = True
 
 # PARAMS["AN1_r_Rc"] = 6.
 # PARAMS["AN1_a_Rc"] = 4.
@@ -320,7 +321,7 @@ def TestMetadynamics():
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
@@ -343,7 +344,6 @@ def TestTFBond():
 	# sess.run(init)
 	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
 	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
-
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
