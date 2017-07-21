@@ -827,7 +827,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		        TData_: A TensorMolData instance.
 		        Name_: A name for this instance.
 		"""
-		self.NetType = "RawBP_noGrad"
+		self.NetType = "RawBP_Dipole"
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		#if (Name_ != None):
 		#       return
@@ -846,7 +846,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		self.eles_pairs_np = np.asarray(self.eles_pairs)
 		self.SetANI1Param()
 		self.batch_size = PARAMS["batch_size"]
-		self.NetType = "RawBP_noGrad"
+		self.NetType = "RawBP_Dipole"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name

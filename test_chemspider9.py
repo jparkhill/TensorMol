@@ -62,12 +62,12 @@ def TrainForceField():
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 101
-                PARAMS["batch_size"] = 35
+                PARAMS["batch_size"] = 30
                 PARAMS["test_freq"] = 2
                 PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["GradScaler"] = 1.0
 		PARAMS["NeuronType"] = "relu"
-		PARAMS["HiddenLayers"] = [512, 512, 512, 512, 512, 512]
+		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
                 d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
                 tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad_Linear") # Initialzie a manager than manage the training of neural network.
