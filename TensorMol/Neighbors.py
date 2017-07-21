@@ -5,6 +5,7 @@ Depending on cutoffs and density these scale to >20,000 atoms
 """
 
 import numpy as np
+from PairProviderTF import *
 
 def kdtree( data_, leafsize=10 ):
 	"""
@@ -275,7 +276,7 @@ class NeighborList:
 		return p,t
 
 class NeighborListSet:
-	def __init__(self, x_, nnz_, DoTriples_=False, DoPerms_=False, ele_=None):
+	def __init__(self, x_, nnz_, DoTriples_=False, DoPerms_=False, ele_=None, alg_ = None ):
 		"""
 		A neighborlist for a set
 
@@ -285,6 +286,13 @@ class NeighborListSet:
 		"""
 		self.nlist = []
 		self.nmol = x_.shape[0]
+		self.maxnatom = x_.shape[1]
+#		self.alg = 0 if self.maxnatom < 100 else 1
+#		if (alg_ != None):
+#			self.alg = alg_
+		self.alg = 1
+		# alg=0 naive quadratic.
+		# alg=1 linear scaling kdtree
 		self.x = x_
 		self.nnz = nnz_
 		self.ele = ele_
@@ -294,13 +302,16 @@ class NeighborListSet:
 		self.triples = None
 		self.UpdateInterval = 15
 		self.UpdateCounter = 0
-		if self.ele is None:
-			for i in range(self.nmol):
-				self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, None))
+		self.PairMaker=None
+		if (self.alg==1):
+			if self.ele is None:
+				for i in range(self.nmol):
+					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, None))
+			else:
+				for i in range(self.nmol):
+					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]]))
 		else:
-			for i in range(self.nmol):
-				self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]]))
-			#(self.nlist[-1]).Update(x_[i,:nnz_[i]])
+			self.PairMaker = PairProvider(self.nmol,self.maxnatom)
 		return
 
 	def Update(self, x_, rcut_pairs = 5.0, rcut_triples = 5.0):
@@ -324,10 +335,12 @@ class NeighborListSet:
 			rcut_: a cutoff parameter.
 		Returns:
 			(nnzero pairs X 3 pair tensor) (mol , I , J)
-			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
-		for i,mol in enumerate(self.nlist):
-			mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i)
+		if self.alg == 1:
+			for i,mol in enumerate(self.nlist):
+				mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i)
+		else:
+			return self.PairMaker(self.x,rcut,self.nnz)
 		nzp = sum([mol.npairs for mol in self.nlist])
 		trp = np.zeros((nzp,3),dtype=np.uint64)
 		pp = 0
@@ -346,17 +359,30 @@ class NeighborListSet:
 			(nnzero pairs X 3 pair tensor) (mol , I , J)
 			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
-		for i,mol in enumerate(self.nlist):
-			mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
-		nzp = sum([mol.npairs for mol in self.nlist])
-		nzt = sum([mol.ntriples for mol in self.nlist])
-		trp = np.zeros((nzp,3),dtype=np.uint64)
-		trt = np.zeros((nzt,4),dtype=np.uint64)
-		pp = 0
-		tp = 0
-		for mol in self.nlist:
-			trp[pp:pp+mol.npairs] = mol.pairs
-			trt[tp:tp+mol.ntriples] = mol.triples
-			pp += mol.npairs
-			tp += mol.ntriples
-		return trp, trt
+		if (self.alg==0):
+			trp = self.PairMaker(self.x,rcut_pairs,self.nnz)
+			trtmp = self.PairMaker(self.x,rcut_triples,self.nnz)
+			hack=[[[] for j in range(self.maxnatom)] for i in range(self.nmol)]
+			tore = []
+			for p in trtmp:
+				(hack[p[0]])[p[1]].append(p[2])
+			for i in range(self.nmol):
+				for j in range(self.maxnatom):
+					for k in hack[i][j]:
+						tore.append([i,j,k])
+			return trp, np.array(tore)
+		else:
+			for i,mol in enumerate(self.nlist):
+				mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
+			nzp = sum([mol.npairs for mol in self.nlist])
+			nzt = sum([mol.ntriples for mol in self.nlist])
+			trp = np.zeros((nzp,3),dtype=np.uint64)
+			trt = np.zeros((nzt,4),dtype=np.uint64)
+			pp = 0
+			tp = 0
+			for mol in self.nlist:
+				trp[pp:pp+mol.npairs] = mol.pairs
+				trt[tp:tp+mol.ntriples] = mol.triples
+				pp += mol.npairs
+				tp += mol.ntriples
+			return trp, trt

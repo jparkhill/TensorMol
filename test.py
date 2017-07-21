@@ -1182,6 +1182,32 @@ def TestRandom():
 				f.write("O  " + str(tmp_mol.coords[i, 0]) + "  " + str(tmp_mol.coords[i,1]) + "  " + str(tmp_mol.coords[i,2]) + "\n")
 		f.write("$end \n \n$rem \njobtype  force \nmethod   wB97X-D \nbasis  6-311G** \n$end \n@@@ \n \n")
 
+def TestNeighborList():
+	"""
+	Test the performance and equality of the two approaches.
+	"""
+	nmol = 30
+	maxnatom = 40
+	nnz = 39
+	nreplica = 100
+	talg0 = 0.0
+	talg1 = 0.0
+	for i in range(nreplica):
+		x = np.random.random((nmol,maxnatom,3))*30.0
+		nnzl = np.array([nnz for i in range(nmol)])
+		t0 = time.time()
+		nl0 = NeighborListSet(x,nnzl,True,False,None,0)
+		nl0.Update(x,10.0,9.0)
+		talg0+=time.time() - t0
+		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape, nl0.triples.shape
+		t1 = time.time()
+		talg1+=time.time() - t1
+		nl1 = NeighborListSet(x,nnzl,True,False,None,1)
+		nl1.Update(x,10.0,9.0)
+		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape, nl1.triples.shape
+		# Compare the two lists.
+		
+
 #
 # Tests to run.
 #
@@ -1198,13 +1224,14 @@ def TestRandom():
 # david_testIR()
 #david_HarmonicAnalysis()
 #TestMetadynamics()
-Test_Periodic_LJMD()
+#Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()
 #TestHerrNet1()
 #TestOCSDB()
+TestNeighborList()
 #TestNeb()
 #TestMD()
 #TestRandom()
