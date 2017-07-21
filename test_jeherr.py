@@ -343,7 +343,7 @@ def TestTFBond():
 	# init = tf.global_variables_initializer()
 	# sess.run(init)
 	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
-	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_DirectQueue")
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
