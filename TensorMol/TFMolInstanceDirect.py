@@ -2681,7 +2681,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 	Electrostatic embedding Behler Parinello
 	"""
 
-	 def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
 		"""
 		Args:
 			TData_: A TensorMolData instance.
