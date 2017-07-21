@@ -1406,7 +1406,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
 		TensorMolData_BP_Direct.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_, WithGrad_)
-		self.Rr_cut = PARAMS["AN1_r_Rc"] 
+		self.Rr_cut = PARAMS["AN1_r_Rc"]
 		self.Ra_cut = PARAMS["AN1_a_Rc"]
 		return
 
@@ -1435,7 +1435,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 		if (self.HasGrad):
 			return xyzs, Zs, labels, natom, grads
 		else:
-			return xyzs, Zs, labels, natom	
+			return xyzs, Zs, labels, natom
 
 	def LoadDataToScratch(self, tformer):
 		"""
@@ -1452,7 +1452,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 			Also determines mean stoichiometry
 		"""
 		try:
-			self.HasGrad 
+			self.HasGrad
 		except:
 			self.HasGrad = False
 		if (self.ScratchState == 1):
@@ -1467,7 +1467,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
                 self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
-		self.ScratchState = 1 
+		self.ScratchState = 1
 		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
 		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
 		return

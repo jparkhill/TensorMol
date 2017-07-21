@@ -869,7 +869,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		self.charge_gradient = None
 		self.output_list = None
 		self.unscaled_atom_outputs = None
-		
+
 	def Clean(self):
 		MolInstance_DirectBP_NoGrad.Clean(self)
 		self.unscaled_atom_outputs = None
@@ -883,7 +883,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
-		
+
 		Args:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
@@ -992,7 +992,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			delta_charge_tile = tf.tile(tf.reshape(delta_charge,[self.batch_size,1]),[1, self.MaxNAtoms])
 			scaled_charge = tf.subtract(output, delta_charge_tile)
 			flat_dipole = tf.multiply(tf.reshape(xyzs,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(output,[self.batch_size*self.MaxNAtoms, 1]))
-			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)	
+			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
 		return  dipole, scaled_charge, output
 
 	def fill_feed_dict(self, batch_data):
@@ -1011,7 +1011,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			print("I was fed shit")
 			raise Exception("DontEatShit")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.natom_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]] + [batch_data[3]])}
-		return feed_dict 
+		return feed_dict
 
 	def train_step(self, step):
 		"""
@@ -1121,4 +1121,3 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		print("Prepared for Evaluation...")
 		return
-
