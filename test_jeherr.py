@@ -294,17 +294,6 @@ def MakeTestSet():
 	# test_set = TensorData_TFRecords(c,d, test_=True)
 	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
-
-def BIMNN_NEq():
-	a=MSet("gdb9_cleaned")
-	a.Load()
-	print "Number of train Mols: ", len(a.mols)
-	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
-	tset = TensorMolData_BPBond_Direct(a,d)
-	# tset.BuildTrain("gdb9")
-	# manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
-	# manager.Train(maxstep=500)
-
 def TestMetadynamics():
 	a = MSet("MDTrajectoryMetaMD")
 	a.ReadXYZ()
@@ -325,6 +314,7 @@ def TestTFBond():
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
+	a.Save()
 	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
 	tset = TensorMolData_BPBond_Direct(a,d)
 	# batchdata=tset.RawBatch()
@@ -337,13 +327,13 @@ def TestTFBond():
 	# 	for j in range(i, len(eles)):
 	# 		eles_pairs.append([eles[i], eles[j]])
 	# eles_pairs_np = np.asarray(eles_pairs)
-	# Ele = tf.constant(eles_np, dtype = tf.int64)
-	# Elep = tf.constant(eles_pairs_np, dtype = tf.int64)
+	# Ele = tf.constant(eles_np, dtype = tf.int32)
+	# Elep = tf.constant(eles_pairs_np, dtype = tf.int32)
 	# sess=tf.Session()
 	# init = tf.global_variables_initializer()
 	# sess.run(init)
-	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
-	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
+	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Elep)))
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_DirectQueue")
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
@@ -357,13 +347,12 @@ def TestTFBond():
 # OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # Brute_LJParams()
-# QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
+QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
-# BIMNN_NEq()
 # TestMetadynamics()
 # TestMD()
-TestTFBond()
+# TestTFBond()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()

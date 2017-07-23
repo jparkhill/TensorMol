@@ -1,6 +1,7 @@
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
+from TensorMol.ElectrostaticsTF import *
 
 def TrainPrepare():
 
@@ -37,7 +38,7 @@ def TrainPrepare():
 				mol.WriteXYZfile(fname="large_force")
 				print rmsgrad
 
-	if (1):
+	if (0):
 		a = MSet("chemspider9_force")
                 a.Load()
                 b = MSet("chemspider9_force_cleaned")
@@ -50,11 +51,16 @@ def TrainPrepare():
 		c.mols = b.mols[:1000]
 		c.Save()
 	
+	if (1):
+		a = MSet("chemspider9_force")
+		a.Load()
+		print a.mols[0].properties
+		a.mols[0].WriteXYZfile(fname="test")
 
 def TrainForceField():
 	if (1):
                 a = MSet("chemspider9_force_cleaned")
-                a.Load()
+		a.Load()
                 TreatedAtoms = a.AtomTypes()
                 PARAMS["hidden1"] = 1000
                 PARAMS["hidden2"] = 1000
@@ -62,16 +68,17 @@ def TrainForceField():
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 101
-                PARAMS["batch_size"] = 35
+                PARAMS["batch_size"] = 28
                 PARAMS["test_freq"] = 2
                 PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
+		PARAMS["GradScaler"] = 0.05
 		PARAMS["NeuronType"] = "relu"
-		PARAMS["HiddenLayers"] = [512, 512, 512, 512, 512, 512]
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad_Linear") # Initialzie a manager than manage the training of neural network.
+		PARAMS["HiddenLayers"] = [1000, 1000, 1000]
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
                 manager.Train(maxstep=101)
 
+#TestCoulomb()
 #TrainPrepare()
 TrainForceField()
