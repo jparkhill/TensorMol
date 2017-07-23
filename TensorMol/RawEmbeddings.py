@@ -860,6 +860,38 @@ def TFSymASet_Linear(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Angtri, prec=tf.flo
 	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nelep,natom2,nsym], dtype=tf.int64))
 	return tf.reduce_sum(to_reduce2, axis=3)
 
+def TFCoulomb(R, Qs, R_cut, Radpair, prec=tf.float64):
+	"""
+	Tensorflow implementation of sparse-coulomb
+	Madelung energy build.
+
+	Args:
+	    R: a nmol X maxnatom X 3 tensor of coordinates.
+	    Qs : nmol X maxnatom X 1 tensor of atomic charges.
+	    R_cut: Radial Cutoff
+	    Radpair: None zero pairs X 3 tensor (mol, i, j)
+	    prec: a precision.
+	Returns:
+	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+	"""
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	natom2 = natom*natom
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+	# Grab the Q's.
+	Qii = tf.slice(Radpair,[0,0],[-1,2])
+	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])])
+	Qi = tf.gather_nd(Qs,Qii)
+	Qj = tf.gather_nd(Qs,Qji)
+	# Finish the Kernel.
+	Kern = Qi*Qj/RijRij2
+	return tf.reduce_sum(Kern, axis=1)
+
+
 def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	"""
 	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
