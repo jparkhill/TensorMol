@@ -1389,8 +1389,6 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
-		if (self.Trainable):
-			self.TData.LoadDataToScratch(self.tformer)
 		self.sess = None
 		self.total_loss = None
 		self.loss = None
@@ -1464,12 +1462,15 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 		"""
 		with tf.Graph().as_default():
 			# self.InitQueue()
-			self.queue = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.int32, tf.float32])
-			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
+			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms,4]))
 			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
-			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			self.enqueue_op = self.queue.enqueue([self.Zxyzs_pl, self.BondIdxMatrix_pl, self.label_pl])
-			self.Zxyzs, self.BondIdxMatrix, self.label = self.queue.dequeue()
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([None]))
+			self.queue1 = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.float32])
+			self.queue2 = tf.FIFOQueue(capacity=5, dtypes=tf.int32)
+			self.enqueue_op1 = self.queue1.enqueue_many([self.Zxyzs_pl, self.label_pl])
+			self.enqueue_op2 = self.queue2.enqueue_many(self.BondIdxMatrix_pl)
+			self.Zxyzs, self.label = self.queue1.dequeue()
+			self.BondIdxMatrix = self.queue2.dequeue()
 			# Zxyzs, BondIdxMatrix, self.label = self.dequeue_op
 			ElemPairs = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
 			RList, MolIdxList = TFBond(self.Zxyzs, self.BondIdxMatrix, ElemPairs)
@@ -1494,10 +1495,10 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 			self.saver = tf.train.Saver()
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
-			self.coord = tf.train.Coordinator()
-			numberOfThreads = 4
-			for i in range(numberOfThreads):
-				threading.Thread(target=self.EnqueueThread()).start()
+			# self.coord = tf.train.Coordinator()
+			# numberOfThreads = 4
+			# for i in range(numberOfThreads):
+			# 	threading.Thread(target=self.EnqueueThread()).start()
 			# self.threads = self.queuerunner.create_threads(self.sess, coord=self.coord, start=True)
 			# self.threads = tf.train.start_queue_runners(coord=self.coord, sess=self.sess)
 			if self.profiling:
@@ -1505,13 +1506,41 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 				self.run_metadata = tf.RunMetadata()
 		return
 
-	def InitQueue(self):
-		self.queue = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.int32, tf.float32])
-		# self.enqueue_op = self.queue.enqueue(self.TData.RawBatch(nmol=self.batch_size))
-		numberOfThreads = 4
-		self.queuerunner = tf.train.QueueRunner(self.queue, [self.enqueue_op] * numberOfThreads)
-		tf.train.add_queue_runner(self.queuerunner)
-		self.dequeue_op = self.queue.dequeue()
+	# def InitQueue(self):
+	# 	self.queue = tf.FIFOQueue(capacity=5, dtypes=[tf.float32, tf.int32, tf.float32])
+	# 	# self.enqueue_op = self.queue.enqueue(self.TData.RawBatch(nmol=self.batch_size))
+	# 	numberOfThreads = 4
+	# 	self.queuerunner = tf.train.QueueRunner(self.queue, [self.enqueue_op] * numberOfThreads)
+	# 	tf.train.add_queue_runner(self.queuerunner)
+	# 	self.dequeue_op = self.queue.dequeue()
+
+	def LoadAndEnqueue(self):
+		while True:
+			batch_data = self.TData.RawBatch(nmol=self.batch_size)
+			self.sess.run([self.enqueue_op1, self.enqueue_op2], feed_dict={i: d for i, d in zip([self.Zxyzs_pl]+[self.BondIdxMatrix_pl]+[self.label_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]])})
+
+	def train(self, mxsteps, continue_training= False):
+		LOGGER.info("running the TFMolInstance.train()")
+		self.TrainPrepare(continue_training)
+		tf.train.start_queue_runners(sess=self.sess)
+		self.threads = []
+		for i in range(4):
+			t=threading.Thread(target=self.LoadAndEnqueue)
+			t.daemon = True
+			t.start()
+			self.threads.append(t)
+		# time.sleep(120)
+		test_freq = PARAMS["test_freq"]
+		mini_test_loss = float('inf') # some big numbers
+		for step in  range (0, mxsteps):
+			self.train_step(step)
+			if step%test_freq==0 and step!=0 :
+				test_loss = self.test(step)
+				if test_loss < mini_test_loss:
+					mini_test_loss = test_loss
+					self.save_chk(step)
+		self.SaveAndClose()
+		return
 
 	def loss_op(self, output, labels):
 		diff  = tf.subtract(output, labels)
@@ -1604,10 +1633,10 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 		feed_dict={i: d for i, d in zip([self.Zxyzs_pl]+[self.BondIdxMatrix_pl]+[self.label_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]])}
 		return feed_dict
 
-	def EnqueueThread(self):
-		with self.coord.stop_on_exception():
-			while not coord.should_stop():
-				sess.run(self.enqueue_op, feed_dict={self.TData.RawBatch(nmol=self.batch_size)})
+	# def EnqueueThread(self):
+	# 	with self.coord.stop_on_exception():
+	# 		while not coord.should_stop():
+	# 			sess.run(self.enqueue_op, feed_dict={self.TData.RawBatch(nmol=self.batch_size)})
 
 	def Prepare(self):
 		self.TrainPrepare()
@@ -1627,12 +1656,14 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 		pre_output = np.zeros((self.batch_size),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			actual_mols  = self.batch_size
-			feed_dict = self.sess.run(self.dequeue_op)
+			# feed_dict = self.sess.run(self.dequeue_op)
 			t = time.time()
-			if self.profiling:
-				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
-			else:
-				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, labels = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.label], feed_dict=feed_dict)
+			Zxyzs, labels, BondIdxMatrix = self.sess.run([self.Zxyzs, self.label, self.BondIdxMatrix])
+			print(Zxyzs, labels, BondIdxMatrix)
+			# if self.profiling:
+			# 	_1, _2, _3, dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.Zxyzs, self.label, self.BondIdxMatrix, self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], options=self.options, run_metadata=self.run_metadata)
+			# else:
+			# 	_1, _2, _3, dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs, labels = self.sess.run([self.Zxyzs, self.label, self.BondIdxMatrix, self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs, self.label])
 			#print ("gradient:", gradient[0][:4])
 			#print ("gradient:", np.sum(gradient[0]))
 			#print ("gradient:", np.sum(np.isinf(gradient[0])))
@@ -1753,8 +1784,6 @@ class MolInstance_DirectBPBond_NoGrad_Queue(MolInstance_fc_sqdiff_BP):
 				if test_loss < mini_test_loss:
 					mini_test_loss = test_loss
 					self.save_chk(step)
-		self.coord.request_stop()
-		self.coord.join(self.threads)
 		self.SaveAndClose()
 		return
 
@@ -2692,8 +2721,8 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.NetType = "RawBP_EE"
 		self.DipoleScaler = PARAMS["DipoleScaler"]
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name	
-		
+		self.train_dir = './networks/'+self.name
+
 	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
@@ -2798,7 +2827,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 				output = tf.add(output, ToAdd)
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		bp_energy = tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
-		
+
 		Dbranches=[]
 		atom_outputs_charge = []
 		output_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
