@@ -2720,6 +2720,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE"
 		self.DipoleScaler = PARAMS["DipoleScaler"]
+		self.Ree_cut  = PARAMS["EECutoff"]
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 
@@ -2739,6 +2740,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
 			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
 			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.Reep_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
 			self.isatom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms]))
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
@@ -2748,11 +2750,12 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
 			Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
 			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			Ree_cut = tf.Variable(self.Ree_cut, trainable=False, dtype = self.tf_prec)
 			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
 			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.isatom_pl)
+			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.isatom_pl, Ree_cut, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
@@ -2781,7 +2784,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
 
-	def inference(self, inp, indexs, xyzs, isatom):
+	def inference(self, inp, indexs, xyzs, isatom, EE_cutoff, Reep):
 		"""
 		Builds a Behler-Parinello graph
 
@@ -2835,6 +2838,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			Dbranches.append([])
 			inputs = inp[e]
 			shp_in = tf.shape(inputs)
+			index = tf.cast(indexs[e], tf.int64)
 			for i in range(len(self.HiddenLayers)):
 				if i == 0:
 					with tf.name_scope(str(self.eles[e])+'_hidden1_charge'):
@@ -2869,7 +2873,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			flat_dipole = tf.multiply(tf.reshape(xyzsInBohr,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(output,[self.batch_size*self.MaxNAtoms, 1]))	
 			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
 			
-		cc_energy = XyzsToCoulomb(xyzsInBohr, scaled_charge)
+		cc_energy = TFCoulombCosLR(xyzsInBohr, scaled_charge, EE_cutoff, Reep)
 		total_energy = tf.add(bp_energy, cc_energy)
 		return total_energy, bp_energy, cc_energy, dipole, scaled_charge
 
@@ -2888,7 +2892,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_pl] + [self.Angt_pl] + [self.isatom_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_pl] + [self.Angt_pl] + [self.Reep_pl] + [self.isatom_pl], batch_data)}
 		return feed_dict
 
 
@@ -2913,6 +2917,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss, mol_output, atom_outputs, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
 			train_loss = train_loss + loss_value
 			train_energy_loss += energy_loss
 			train_grads_loss += grads_loss

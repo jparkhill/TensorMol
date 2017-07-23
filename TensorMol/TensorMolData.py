@@ -1525,6 +1525,7 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
 		TensorMolData_BP_Direct_Linear.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_, WithGrad_)
+		self.Ree_cut = PARAMS["EECutoff"]
 		return
 
 	def LoadData(self):
@@ -1605,12 +1606,14 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		Dlabels = self.Dlabels[self.ScratchPointer-ncases:self.ScratchPointer]
 		Elabels = self.Elabels[self.ScratchPointer-ncases:self.ScratchPointer]
 		isatom = self.isatom[self.ScratchPointer-ncases:self.ScratchPointer]
-		NL = NeighborListSet(xyzs, np.sum(isatom, axis=-1), True, True, Zs)
+		NL = NeighborListSet(xyzs, np.sum(isatom, axis=-1).astype(int), True, True, Zs)
 		rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
+		NLEE = NeighborListSet(xyzs, np.sum(isatom, axis=-1).astype(int), False, False,  None)
+		rad_eep = NLEE.buildPairs(self.Ree_cut)
 		if (self.HasGrad):
-			return [xyzs, Zs, Elabels, Dlabels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer], rad_p, ang_t, isatom]
+			return [xyzs, Zs, Elabels, Dlabels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer], rad_p, ang_t, rad_eep, isatom]
 		else:
-			return [xyzs, Zs, Elabels, Dlabels, rad_p, ang_t, isatom]
+			return [xyzs, Zs, Elabels, Dlabels, rad_p, ang_t, rad_eep, isatom]
 
 	def GetTestBatch(self,ncases):
 		if (self.ScratchState == 0):
@@ -1626,9 +1629,11 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		Elabels = self.Elabels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		Dlabels = self.Dlabels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		isatom = self.isatom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-		NL = NeighborListSet(xyzs, np.sum(isatom, axis=-1), True, True, Zs)
+		NL = NeighborListSet(xyzs, np.sum(isatom, axis=-1).astype(int), True, True, Zs)
 		rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
+		NLEE = NeighborListSet(xyzs, np.sum(isatom, axis=-1).astype(int), False, False,  None)
+		rad_eep = NLEE.buildPairs(self.Ree_cut)
 		if (self.HasGrad):
-			return [xyzs, Zs, Elabels, Dlabels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], rad_p, ang_t, isatom]
+			return [xyzs, Zs, Elabels, Dlabels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], rad_p, ang_t, rad_eep, isatom]
 		else:
-			return [xyzs, Zs, Elabels, Dlabels, rad_p, ang_t, isatom]
+			return [xyzs, Zs, Elabels, Dlabels, rad_p, ang_t, rad_eep, isatom]
