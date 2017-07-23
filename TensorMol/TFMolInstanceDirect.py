@@ -2690,6 +2690,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.NetType = "RawBP_EE"
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE"
+		self.DipoleScaler = PARAMS["DipoleScaler"]
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name	
 		
@@ -2709,7 +2710,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
 			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
 			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
-			self.isatom_pl = tf.placeholder(tf.prec, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.isatom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms]))
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
 			#SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
@@ -2737,6 +2738,20 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			#self.run_metadata = tf.RunMetadata()
 		return
 
+	def loss_op(self, energy, energy_grads, dipole, Elabels, grads, Dlabels):
+		energy_diff  = tf.subtract(energy, Elabels)
+		energy_loss = tf.nn.l2_loss(energy_diff)
+		grads_diff = tf.subtract(energy_grads, grads)
+		grads_loss = tf.nn.l2_loss(grads_diff)
+		dipole_diff = tf.subtract(dipole, Dlabels)
+		dipole_loss = tf.nn.l2_loss(dipole_diff)
+		#loss = tf.multiply(grads_loss, energy_loss)
+		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
+		loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScaler))
+		#loss = tf.identity(energy_loss)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
+
 	def inference(self, inp, indexs, xyzs, isatom):
 		"""
 		Builds a Behler-Parinello graph
@@ -2749,6 +2764,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		"""
 		# convert the index matrix from bool to float
 		Ebranches=[]
+		xyzsInBohr = tf.multiply(xyzs,BOHRPERA)
 		output = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
 		atom_outputs = []
 		for e in range(len(self.eles)):
@@ -2766,7 +2782,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 					with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
 						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-						Ebranches[-1].append(self.activation_function(tf.matmul(Dbranches[-1][-1], weights) + biases))
+						Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
@@ -2821,9 +2837,72 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			delta_charge = tf.divide(netcharge, natom)
 			delta_charge_tile = tf.tile(tf.reshape(delta_charge,[self.batch_size,1]),[1, self.MaxNAtoms])
 			scaled_charge = tf.multiply(tf.subtract(output, delta_charge_tile), isatom)
-			flat_dipole = tf.multiply(tf.reshape(xyzs,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(output,[self.batch_size*self.MaxNAtoms, 1]))	
+			flat_dipole = tf.multiply(tf.reshape(xyzsInBohr,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(output,[self.batch_size*self.MaxNAtoms, 1]))	
 			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
-
-		cc_energy = XyzsToCoulomb(xyzs, scaled_charge)
+			
+		cc_energy = XyzsToCoulomb(xyzsInBohr, scaled_charge)
 		total_energy = tf.add(bp_energy, cc_energy)
 		return total_energy, bp_energy, cc_energy, dipole, scaled_charge
+
+	def fill_feed_dict(self, batch_data):
+		"""
+		Fill the tensorflow feed dictionary.
+
+		Args:
+			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
+			and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
+
+		Returns:
+			Filled feed dictionary.
+		"""
+		# Don't eat shit.
+		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
+			print("I was fed shit")
+			raise Exception("DontEatShit")
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_pl] + [self.Angt_pl] + [self.isatom_pl], batch_data)}
+		return feed_dict
+
+
+	def train_step(self, step):
+		"""
+		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		train_energy_loss = 0.0
+		train_dipole_loss = 0.0
+		train_grads_loss = 0.0
+		num_of_mols = 0
+		pre_output = np.zeros((self.batch_size),dtype=np.float64)
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep:", ministep)
+			batch_data = self.TData.GetTrainBatch(self.batch_size)
+			actual_mols  = self.batch_size
+			t = time.time()
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss, mol_output, atom_outputs, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			train_loss = train_loss + loss_value
+			train_energy_loss += energy_loss
+			train_grads_loss += grads_loss
+			train_dipole_loss += dipole_loss
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+			#       f.write(chrome_trace)
+		#print ("gradients:", gradients)
+		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
+		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
+		return
+
+        def print_training(self, step, loss, energy_loss, grads_loss, dipole_loss, Ncase, duration, Train=True):
+                if Train:
+                        LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f  energy_loss: %.10f  grad_loss: %.10f, dipole_loss: %.10f", step, duration, (float(loss)/(Ncase)), (float(energy_loss)/(Ncase)), (float(grads_loss)/(Ncase)), (float(dipole_loss)/(Ncase)))
+                else:
+                        LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f energy_loss: %.10f  grad_loss: %.10f, dipole_loss: %.10f", step, duration, (float(loss)/(Ncase)), (float(energy_loss)/(Ncase)), (float(grads_loss)/(Ncase)), (float(dipole_loss)/(Ncase)))
+                return

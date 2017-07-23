@@ -421,11 +421,12 @@ def CoulombKernel(D):
 			'Cos' => 1/r -> (0.5*(cos(PI*r/EECutoff)+1))/r (if r>Cutoff else 0)
 			'Tanh' => 1/r => 0.5*(Tanh[(x - EECutoff)/EEdr] + 1)/r
 	"""
-	K = tf.div(1.0,D)
+	K = tf.div(tf.cast(1.0, dtype=tf.float64),D)
 	K = tf.subtract(K,tf.diag(tf.diag_part(K)))
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle
 	#K = tf.Print(K,[K],"K Kernel",-1,1000000)
 	return K
+
 
 def CosKernelLR(D):
 	"""
@@ -435,8 +436,8 @@ def CosKernelLR(D):
 		Long: Whether long range or short range
 
 	"""
-	ones = tf.ones(tf.shape(D))
-	CosScreen = tf.where(tf.greater(D, PARAMS["EECutoff"]),ones,0.0*D)
+	ones = tf.ones_like(D)
+	CosScreen = tf.where(tf.greater(D, PARAMS["EECutoff"]), ones, 0.0*D)
 	Cut = (1.0-0.5*(tf.cos(D*Pi/PARAMS["EECutoff"])+1))*CosScreen
 	#Cut = tf.Print(Cut,[Cut],"CosCut", 10000, 1000 )
 	return CoulombKernel(D)*Cut
@@ -449,8 +450,8 @@ def CosKernelSR(D):
 		Long: Whether long range or short range
 
 	"""
-	ones = tf.ones(tf.shape(D))
-	CosScreen = tf.where(tf.greater(D, PARAMS["EECutoff"]),ones,0.0*D)
+	ones = tf.ones_like(D)
+	CosScreen = tf.where(tf.greater(D, PARAMS["EECutoff"]), ones, 0.0*D)
 	Cut = 1.0-(1.0-0.5*(tf.cos(D*Pi/PARAMS["EECutoff"])+1))*CosScreen
 	#Cut = tf.Print(Cut,[Cut],"CosCut", 10000, 1000 )
 	return CoulombKernel(D)*Cut
@@ -461,8 +462,8 @@ def TanhKernelLR(D):
 		D:  A square distance matrix (bohr)
 		'Tanh' => 1/r => 0.5*(Tanh[(x - EECutoff)/EEdr] + 1)/r
 	"""
-	ones = tf.ones(tf.shape(D))
-	Screen = tf.where(tf.greater(D, PARAMS["EECutoff"]+3.0*PARAMS["EEdr"]),ones,0.0*D)
+	ones = tf.ones_like(D)
+	Screen = tf.where(tf.greater(D, PARAMS["EECutoff"]+3.0*PARAMS["EEdr"]), ones,0.0*D)
 	TanhOut = 0.5*(tf.tanh((D - PARAMS["EECutoff"])/PARAMS["EEdr"]) + 1)
 	Cut = TanhOut*Screen
 	K = CoulombKernel(D)
@@ -475,8 +476,8 @@ def TanhKernelSR(D):
 		D:  A square distance matrix (bohr)
 		'Tanh' => 1/r => 0.5*(Tanh[(x - EECutoff)/EEdr] + 1)/r
 	"""
-	ones = tf.ones(tf.shape(D))
-	Screen = tf.where(tf.greater(D, PARAMS["EECutoff"]+3.0*PARAMS["EEdr"]),ones,0.0*D)
+	ones = tf.ones_like(D)
+	Screen = tf.where(tf.greater(D, PARAMS["EECutoff"]+3.0*PARAMS["EEdr"]), ones,0.0*D)
 	TanhOut = 0.5*(tf.tanh((D - PARAMS["EECutoff"])/PARAMS["EEdr"]) + 1)
 	Cut = TanhOut*Screen
 	K = CoulombKernel(D)
@@ -501,7 +502,7 @@ def XyzsToCoulomb(xyz_pl, q_pl, Long = True):
 		Returns:
 			E mol = \sum_{atom1,atom2,cart} q_1*q_2*Kernel(sqrt(pow(atom1_cart - atom2_cart,2.0)))
 	"""
-	D = TFDistances(xyz_pl) # Make distance matrices for all mols.
+	D = TFDistances(xyz_pl)  # Make distance matrices for all mols.
 	# Compute Kernel of the distances.
 	K = None
 	if (PARAMS["EESwitchFunc"] == None):
@@ -523,14 +524,13 @@ def XyzsToCoulomb(xyz_pl, q_pl, Long = True):
 	return Emols
 
 def TestCoulomb():
-	xyz_ = tf.Variable([[0.,0.,0.],[10.0,0.,0.],[0.,0.,5.],[0.,0.,2.],[0.,1.,9.],[0.,1.,20.]])
-	q_ = tf.Variable([1.,-1.,1.,-1.,0.5,0.5])
+	xyz_ = tf.Variable([[0.,0.,0.],[10.0,0.,0.],[0.,0.,5.],[0.,0.,2.],[0.,1.,9.],[0.,1.,20.]], dtype=tf.float64)
+	q_ = tf.Variable([1.,-1.,1.,-1.,0.5,0.5], dtype=tf.float64)
 	molis = tf.Variable([[0,1,2],[3,4,5]])
 	xyzs = tf.gather(xyz_,molis)
 	charges = tf.gather(q_,molis)
 	Ds = TFDistances(xyzs)
 	dDs = tf.gradients(Ds,xyz_)
-
 	init = tf.global_variables_initializer()
 	import sys
 	sys.stderr = sys.stdout
