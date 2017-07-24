@@ -10,6 +10,7 @@ import os, gc
 from Sets import *
 from DigestMol import *
 from TensorData import *
+from Neighbors import *
 #import tables should go to hdf5 soon...
 
 class TensorMolData(TensorData):
@@ -159,6 +160,7 @@ class TensorMolData(TensorData):
 #				print "m coords", m.coords
 				ti, to = self.dig.Emb(m, True, False)
 				n=ti.shape[0]
+
 				Ins[ndone,:n,:] = ti.copy()
 				Outs[ndone,:n,:] = to.copy()
 				ndone += 1
@@ -1254,6 +1256,42 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		self.grads = None
 		return
 
+	def RawBatch(self,nmol = 4096):
+		"""
+			Shimmy Shimmy Ya Shimmy Ya Shimmy Yay.
+			This type of batch is not built beforehand
+			because there's no real digestion involved.
+
+			Args:
+				nmol: number of molecules to put in the output.
+
+			Returns:
+				Ins: a #atomsX4 tensor (AtNum,x,y,z)
+				Outs: output of the digester
+				Keys: (nmol)X(MaxNAtoms) tensor listing each molecule's place in the input.
+		"""
+		ndone = 0
+		natdone = 0
+		self.MaxNAtoms = self.set.MaxNAtoms()
+		Ins = np.zeros(tuple([nmol,self.MaxNAtoms,4]))
+		NAtomsVec = np.zeros((nmol),dtype=np.int32)
+		Outs = np.zeros(tuple([nmol]))
+		while (ndone<nmol):
+			try:
+				m = self.raw_it.next()
+				ti, to = self.dig.Emb(m, True, False)
+				n=ti.shape[0]
+				Ins[ndone,:n,:] = ti
+				NAtomsVec[ndone] = m.NAtoms()
+				Outs[ndone] = to
+				ndone += 1
+				natdone += n
+			except StopIteration:
+				self.raw_it = iter(self.set.mols)
+		NL = NeighborListSet(Ins[:,:,1:],NAtomsVec)
+		BondIdxMatrix = NL.buildPairs()
+		return Ins,BondIdxMatrix,Outs
+
 	def LoadData(self):
 		if self.set == None:
 			self.ReloadSet()
@@ -1315,6 +1353,125 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
 		return
 
+
+	# def GetTrainBatch(self,ncases):
+	# 	if (self.ScratchState == 0):
+	# 		self.LoadDataToScratch()
+	# 	reset = False
+	# 	if (ncases > self.NTrain):
+	# 		raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+	# 	if (self.ScratchPointer+ncases >= self.NTrain):
+	# 		self.ScratchPointer = 0
+	# 	self.ScratchPointer += ncases
+	# 	xyzs = self.xyzs[self.ScratchPointer-ncases:self.ScratchPointer]
+	# 	Zs = self.Zs[self.ScratchPointer-ncases:self.ScratchPointer]
+	# 	labels = self.labels[self.ScratchPointer-ncases:self.ScratchPointer]
+	# 	if (self.HasGrad):
+	# 		return [xyzs, Zs, labels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer]]
+	# 	else:
+	# 		return [xyzs, Zs, labels]
+	#
+	# def GetTestBatch(self,ncases):
+	# 	if (self.ScratchState == 0):
+	# 		self.LoadDataToScratch()
+	# 	reset = False
+	# 	if (ncases > self.NTest):
+	# 		raise Exception("Insufficent training data to fill a batch"+str(self.NTest)+" vs "+str(ncases))
+	# 	if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
+	# 		self.test_ScratchPointer = self.LastTrainMol
+	# 	self.test_ScratchPointer += ncases
+	# 	xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+	# 	Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+	# 	labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+	# 	if (self.HasGrad):
+	# 		return [xyzs, Zs, labels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer]]
+	# 	else:
+	# 		return [xyzs, Zs, labels]
+
+	def PrintStatus(self):
+		print "self.ScratchState",self.ScratchState
+		print "self.ScratchPointer",self.ScratchPointer
+		#print "self.test_ScratchPointer",self.test_ScratchPointer
+
+	def Save(self):
+		self.CleanScratch()
+		f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
+
+class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
+	"""
+	This tensordata serves up batches digested within TensorMol.
+	"""
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
+		TensorMolData_BP_Direct.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_, WithGrad_)
+		self.Rr_cut = PARAMS["AN1_r_Rc"]
+		self.Ra_cut = PARAMS["AN1_a_Rc"]
+		return
+
+	def LoadData(self):
+		self.ReloadSet()
+		random.shuffle(self.set.mols)
+		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((self.Nmols), dtype = np.int64)
+		if (self.dig.OType == "AtomizationEnergy"):
+			labels = np.zeros((self.Nmols), dtype = np.float64)
+		else:
+			raise Exception("Output Type is not implemented yet")
+		if (self.HasGrad):
+			grads = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype=np.float64)
+		for i, mol in enumerate(self.set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+			if (self.dig.OType  == "AtomizationEnergy"):
+				labels[i] = mol.properties["atomization"]
+			else:
+                        	raise Exception("Output Type is not implemented yet")
+			if (self.HasGrad):
+				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
+		if (self.HasGrad):
+			return xyzs, Zs, labels, natom, grads
+		else:
+			return xyzs, Zs, labels, natom
+
+	def LoadDataToScratch(self, tformer):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+		note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		try:
+			self.HasGrad
+		except:
+			self.HasGrad = False
+		if (self.ScratchState == 1):
+			return
+		if (self.HasGrad):
+			self.xyzs, self.Zs, self.labels, self.natom, self.grads = self.LoadData()
+		else:
+			self.xyzs, self.Zs, self.labels, self.natom  = self.LoadData()
+		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
+		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
+		self.NTrain = self.LastTrainMol
+                self.NTest = self.NTestMols
+		self.test_ScratchPointer = self.LastTrainMol
+		self.ScratchPointer = 0
+		self.ScratchState = 1
+		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
+		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
+		return
+
 	def GetTrainBatch(self,ncases):
 		if (self.ScratchState == 0):
 			self.LoadDataToScratch()
@@ -1327,10 +1484,13 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		xyzs = self.xyzs[self.ScratchPointer-ncases:self.ScratchPointer]
 		Zs = self.Zs[self.ScratchPointer-ncases:self.ScratchPointer]
 		labels = self.labels[self.ScratchPointer-ncases:self.ScratchPointer]
+		natom = self.natom[self.ScratchPointer-ncases:self.ScratchPointer]
+		NL = NeighborListSet(xyzs, natom, True, True, Zs)
+		rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
 		if (self.HasGrad):
-			return [xyzs, Zs, labels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer]]
+			return [xyzs, Zs, labels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer], rad_p, ang_t]
 		else:
-			return [xyzs, Zs, labels]
+			return [xyzs, Zs, labels, rad_p, ang_t]
 
 	def GetTestBatch(self,ncases):
 		if (self.ScratchState == 0):
@@ -1344,19 +1504,136 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		natom = self.natom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		NL = NeighborListSet(xyzs, natom, True, True, Zs)
+		rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
 		if (self.HasGrad):
-			return [xyzs, Zs, labels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer]]
+			return [xyzs, Zs, labels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], rad_p, ang_t]
 		else:
-			return [xyzs, Zs, labels]
+			return [xyzs, Zs, labels, rad_p, ang_t]
 
-	def PrintStatus(self):
-		print "self.ScratchState",self.ScratchState
-		print "self.ScratchPointer",self.ScratchPointer
-		#print "self.test_ScratchPointer",self.test_ScratchPointer
 
-	def Save(self):
-		self.CleanScratch()
-		f=open(self.path+self.name+"_"+self.dig.name+".tdt","wb")
-		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
-		f.close()
+	def GetBatch(self, ncases, Train_=True):
+		if Train_:
+			return self.GetTrainBatch(ncases)
+		else:
+			return self.GetTestBatch(ncases)
+
+class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
+	"""
+	This tensordata serves up batches digested within TensorMol.
+	"""
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
+		TensorMolData_BP_Direct_Linear.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_, WithGrad_)
+		self.Ree_cut = PARAMS["EECutoff"]
 		return
+
+	def LoadData(self):
+		self.ReloadSet()
+		random.shuffle(self.set.mols)
+		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((self.Nmols), dtype = np.int32)
+		if (self.dig.OType == "EnergyAndDipole"):
+			Elabels = np.zeros((self.Nmols), dtype = np.float64)
+			Dlabels = np.zeros((self.Nmols, 3),  dtype = np.float64)
+		else:
+			raise Exception("Output Type is not implemented yet")
+		if (self.HasGrad):
+			grads = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype=np.float64)
+		for i, mol in enumerate(self.set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+			if (self.dig.OType  == "EnergyAndDipole"):
+				Elabels[i] = mol.properties["atomization"]
+				Dlabels[i] = mol.properties["dipole"]*AUPERDEBYE
+			else:
+                        	raise Exception("Output Type is not implemented yet")
+			if (self.HasGrad):
+				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
+		if (self.HasGrad):
+			return xyzs, Zs, Elabels, Dlabels, natom, grads
+		else:
+			return xyzs, Zs, Elabels, Dlabels, natom
+
+	def LoadDataToScratch(self, tformer):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+		note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		try:
+			self.HasGrad
+		except:
+			self.HasGrad = False
+		if (self.ScratchState == 1):
+			return
+		if (self.HasGrad):
+			self.xyzs, self.Zs, self.Elabels, self.Dlabels, self.natom, self.grads = self.LoadData()
+		else:
+			self.xyzs, self.Zs, self.Elabels, self.Dlabels, self.natom  = self.LoadData()
+		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
+		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
+		self.NTrain = self.LastTrainMol
+                self.NTest = self.NTestMols
+		self.test_ScratchPointer = self.LastTrainMol
+		self.ScratchPointer = 0
+		self.ScratchState = 1
+		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
+		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
+		return
+
+	def GetTrainBatch(self,ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTrain):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (self.ScratchPointer+ncases >= self.NTrain):
+			self.ScratchPointer = 0
+		self.ScratchPointer += ncases
+		xyzs = self.xyzs[self.ScratchPointer-ncases:self.ScratchPointer]
+		Zs = self.Zs[self.ScratchPointer-ncases:self.ScratchPointer]
+		Dlabels = self.Dlabels[self.ScratchPointer-ncases:self.ScratchPointer]
+		Elabels = self.Elabels[self.ScratchPointer-ncases:self.ScratchPointer]
+		natom = self.natom[self.ScratchPointer-ncases:self.ScratchPointer]
+		NL = NeighborListSet(xyzs, natom, True, True, Zs)
+		rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
+		rad_eep = NLEE.buildPairs(self.Ree_cut)
+		if (self.HasGrad):
+			return [xyzs, Zs, Elabels, Dlabels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer], rad_p, ang_t, rad_eep, 1.0/natom]
+		else:
+			return [xyzs, Zs, Elabels, Dlabels, rad_p, ang_t, rad_eep, 1.0/natom]
+
+	def GetTestBatch(self,ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTest):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTest)+" vs "+str(ncases))
+		if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
+			self.test_ScratchPointer = self.LastTrainMol
+		self.test_ScratchPointer += ncases
+		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Elabels = self.Elabels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Dlabels = self.Dlabels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		natom = self.natom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		NL = NeighborListSet(xyzs, natom, True, True, Zs)
+		rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
+		rad_eep = NLEE.buildPairs(self.Ree_cut)
+		if (self.HasGrad):
+			return [xyzs, Zs, Elabels, Dlabels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], rad_p, ang_t, rad_eep, 1.0/natom]
+		else:
+			return [xyzs, Zs, Elabels, Dlabels, rad_p, ang_t, rad_eep, 1.0/natom]

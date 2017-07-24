@@ -19,6 +19,9 @@ PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [
 PARAMS["ANES"] = np.array([[1.02539286, 1., 1., 1., 1., 2.18925953, 2.71734044, 3.03417733]])
 PARAMS["SH_NRAD"] = 14
 PARAMS["SH_LMAX"] = 4
+PARAMS["hidden1"] = 100
+PARAMS["hidden2"] = 100
+PARAMS["hidden3"] = 100
 
 S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
@@ -27,9 +30,11 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 5000
+PARAMS["max_steps"] = 200
+PARAMS["test_freq"] = 10
 PARAMS["batch_size"] = 8000
-PARAMS["NeuronType"] = "elu"
+PARAMS["NeuronType"] = "relu"
+# PARAMS["Profiling"] = True
 
 # PARAMS["AN1_r_Rc"] = 6.
 # PARAMS["AN1_a_Rc"] = 4.
@@ -65,7 +70,7 @@ def InterpolateGeometries():
 	mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
 	# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
-def ReadSmallMols(set_="Rndjobset", dir_="/media/sdb1/dtoth/qchem_jobs/new/rndjobs/data/tarfiles/", energy=True, forces=True, charges=False, mmff94=False):
+def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/*/*/", energy=False, forces=False, charges=False, mmff94=False):
 	import glob
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
@@ -289,22 +294,11 @@ def MakeTestSet():
 	# test_set = TensorData_TFRecords(c,d, test_=True)
 	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
-
-def BIMNN_NEq():
-	a=MSet("gdb9_cleaned")
-	a.Load()
-	print "Number of train Mols: ", len(a.mols)
-	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
-	tset = TensorMolData_BPBond_Direct(a,d)
-	# tset.BuildTrain("gdb9")
-	# manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
-	# manager.Train(maxstep=500)
-
 def TestMetadynamics():
-	a = MSet("sampling_mols")
+	a = MSet("MDTrajectoryMetaMD")
 	a.ReadXYZ()
-	m = a.mols[2]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='phenol', path_='./qchem/', threads=16)
+	m = a.mols[0]
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 2.0
@@ -312,22 +306,40 @@ def TestMetadynamics():
 	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 600.0
-	meta = MetaDynamics(ForceField, m, name_ = "phenol")
+	meta = MetaDynamics(ForceField, m)
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	a.Save()
 	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
 	tset = TensorMolData_BPBond_Direct(a,d)
-	tset.BuildTrain("SmallMols")
-
-
+	# batchdata=tset.RawBatch()
+	# Zxyzs = tf.Variable(batchdata[0], dtype=tf.float32)
+	# BondIdxMatrix = tf.Variable(batchdata[1], dtype=tf.int64)
+	# eles = [1,6,7,8]
+	# eles_np = np.asarray(eles).reshape(4,1)
+	# eles_pairs = []
+	# for i in range (len(eles)):
+	# 	for j in range(i, len(eles)):
+	# 		eles_pairs.append([eles[i], eles[j]])
+	# eles_pairs_np = np.asarray(eles_pairs)
+	# Ele = tf.constant(eles_np, dtype = tf.int32)
+	# Elep = tf.constant(eles_pairs_np, dtype = tf.int32)
+	# sess=tf.Session()
+	# init = tf.global_variables_initializer()
+	# sess.run(init)
+	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Elep)))
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_DirectQueue")
 
 # InterpoleGeometries()
-ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)
+# ReadSmallMols(set_="SmallMols", forces=True, energy=True)
+# ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 30000)
+# RandomSmallSet("SmallMols", 50000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -335,11 +347,10 @@ ReadSmallMols(set_="SmallMols", forces=True, energy=True, charges=True)
 # OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # Brute_LJParams()
-# QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
+QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
-# BIMNN_NEq()
-#TestMetadynamics()
+# TestMetadynamics()
 # TestMD()
 # TestTFBond()
 

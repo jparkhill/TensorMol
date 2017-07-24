@@ -2,9 +2,10 @@ from TensorMol import *
 from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
 from TensorMol.RawEmbeddings import *
+from TensorMol.Neighbors import *
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 if (0):
 	import numpy as np

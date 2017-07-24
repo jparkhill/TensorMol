@@ -827,7 +827,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		        TData_: A TensorMolData instance.
 		        Name_: A name for this instance.
 		"""
-		self.NetType = "RawBP_noGrad"
+		self.NetType = "RawBP_Dipole"
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		#if (Name_ != None):
 		#       return
@@ -846,7 +846,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		self.eles_pairs_np = np.asarray(self.eles_pairs)
 		self.SetANI1Param()
 		self.batch_size = PARAMS["batch_size"]
-		self.NetType = "RawBP_noGrad"
+		self.NetType = "RawBP_Dipole"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		self.train_dir = './networks/'+self.name
@@ -869,7 +869,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		self.charge_gradient = None
 		self.output_list = None
 		self.unscaled_atom_outputs = None
-		
+
 	def Clean(self):
 		MolInstance_DirectBP_NoGrad.Clean(self)
 		self.unscaled_atom_outputs = None
@@ -883,7 +883,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
-		
+
 		Args:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
@@ -904,7 +904,6 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
 			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update_Scatter(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
-			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index, self.natom_pl)
 			self.dipole_output, self.atom_outputs, self.unscaled_atom_outputs  = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
@@ -989,11 +988,11 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 				output = tf.add(output, ToAdd)
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
 			netcharge = tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
-			delta_charge = tf.multiply(netcharge, natom_pl)
+			delta_charge = tf.multiply(netcharge, natom)
 			delta_charge_tile = tf.tile(tf.reshape(delta_charge,[self.batch_size,1]),[1, self.MaxNAtoms])
 			scaled_charge = tf.subtract(output, delta_charge_tile)
-			flat_dipole = tf.multiply(tf.reshape(xyzs,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(output,[self.batch_size*self.MaxNAtoms]))
-			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)	
+			flat_dipole = tf.multiply(tf.reshape(xyzs,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(scaled_charge,[self.batch_size*self.MaxNAtoms, 1]))
+			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
 		return  dipole, scaled_charge, output
 
 	def fill_feed_dict(self, batch_data):
@@ -1008,11 +1007,11 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			Filled feed dictionary.
 		"""
 		# Don't eat shit.
-		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
+		if (not np.all(np.isfinite(np.sum(batch_data[2], axis=1)),axis=(0))):
 			print("I was fed shit")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.natom_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]] + [batch_data[3]] + [batch_data[4]])}
-		return feed_dict 
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.natom_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]] + [batch_data[3]])}
+		return feed_dict
 
 	def train_step(self, step):
 		"""
@@ -1035,6 +1034,8 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value,  dipole_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.dipole_output, self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "\n self.SFPr2_vary :", SFPr2_vary )
+			print ("loss_value:", loss_value)
+			#print (" dipole_output:", dipole_output, " atom_outputs:", list(atom_outputs[:5]))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
@@ -1070,3 +1071,54 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		print( "testing...")
 		self.print_training(step, test_loss, num_of_mols, duration)
 		return test_loss, feed_dict
+
+	def evaluate(self, batch_data, IfGrad=True):
+		"""
+		Evaluate the energy, atom energies, and IfGrad = True the gradients
+		of this Direct Behler-Parinello graph.
+		"""
+		# Check sanity of input
+		nmol = batch_data[2].shape[0]
+		self.MaxNAtoms = batch_data[0].shape[1]
+		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
+		self.batch_size = nmol
+		if not self.sess:
+			print ("loading the session..")
+			self.EvalPrepare()
+		feed_dict=self.fill_feed_dict(batch_data)
+		dipole_output, atom_outputs = self.sess.run([self.dipole_output, self.atom_outputs],  feed_dict=feed_dict)
+		return dipole_output, atom_outputs
+
+	def Prepare(self):
+		self.TrainPrepare()
+		return
+
+	def EvalPrepare(self):
+		"""
+		Doesn't generate the training operations or losses.
+		"""
+		with tf.Graph().as_default():
+			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, 3]))
+			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
+			SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
+			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
+			SFPa2 = tf.Variable(self.SFPa2, trainable=False, dtype = self.tf_prec)
+			SFPr2 = tf.Variable(self.SFPr2, trainable=False, dtype = self.tf_prec)
+			#self.SFPr2_vary = tf.Variable(self.SFPr2, trainable= True, dtype = self.tf_prec)
+			Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update_Scatter(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut)
+			self.dipole_output, self.atom_outputs, self.unscaled_atom_outputs  = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl)
+			self.check = tf.add_check_numerics_ops()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver = tf.train.Saver()
+			self.saver.restore(self.sess, self.chk_file)
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+		print("Prepared for Evaluation...")
+		return

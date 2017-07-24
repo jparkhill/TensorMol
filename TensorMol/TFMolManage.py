@@ -65,22 +65,34 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP_Update(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
 			self.Instances = MolInstance_DirectBP_NoGrad(self.TData)
+		elif (self.NetType == "fc_sqdiff_BPBond_Direct"):
+			self.Instances = MolInstance_DirectBPBond_NoGrad(self.TData)
+		elif (self.NetType == "fc_sqdiff_BPBond_DirectQueue"):
+			self.Instances = MolInstance_DirectBPBond_NoGrad_Queue(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
-                        self.Instances = MolInstance_DirectBP_Grad_noGradTrain(self.TData)
+			self.Instances = MolInstance_DirectBP_Grad_noGradTrain(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
+			self.Instances = MolInstance_DirectBP_EE(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
 			self.Instances = MolInstance_BP_Dipole_2(self.TData)
+		elif (self.NetType == "Dipole_BP_2_Direct"):
+			self.Instances = MolInstance_BP_Dipole_2_Direct(self.TData)
 		elif (self.NetType == "LJForce"):
 			self.Instances = MolInstance_LJForce(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
 		self.n_train = PARAMS["max_steps"]
-		self.Instances.train(self.n_train) # Just for the sake of debugging.
+		self.Instances.train(self.n_train)
 		nm = self.Instances.name
 		# Here we should print some summary of the pupil's progress as well, maybe.
 		if self.TrainedNetworks.count(nm)==0:
@@ -132,11 +144,11 @@ class TFMolManage(TFManage):
 		matrices = []
 		outputpointer = 0
 		for i in range (0, natoms):
-		        sto[self.TData.eles.index(meta[i, 1])] += 1
+			sto[self.TData.eles.index(meta[i, 1])] += 1
 		currentmol = 0
 		for e in range (len(self.TData.eles)):
-		        inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
-		        matrices.append(np.zeros((sto[e], nmols)))
+			inputs.append(np.zeros((sto[e], np.prod(self.TData.dig.eshape))))
+			matrices.append(np.zeros((sto[e], nmols)))
 		for i in range (0, natoms):
 			if currentmol != meta[i, 0]:
 				outputpointer += 1
@@ -1131,10 +1143,18 @@ class TFMolManage(TFManage):
                         self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
+			self.Instances = MolInstance_DirectBP_EE(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):
 			self.Instances = MolInstance_BP_Dipole_2(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "Dipole_BP_2_Direct"):
+			self.Instances = MolInstance_BP_Dipole_2_Direct(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		else:
 			raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.
