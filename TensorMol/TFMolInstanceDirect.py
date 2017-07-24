@@ -2755,11 +2755,11 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.isatom_pl, Ree_cut, self.Reep_pl)
+			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.isatom_pl, Ree_cut, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum, self.dipole_wb)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -2798,6 +2798,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		Ebranches=[]
 		xyzsInBohr = tf.multiply(xyzs,BOHRPERA)
 		output = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
+		energy_wb = []
 		atom_outputs = []
 		for e in range(len(self.eles)):
 			Ebranches.append([])
@@ -2810,16 +2811,22 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 						Ebranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+						energy_wb.append(weights)
+						energy_wb.append(biases)
 				else:
 					with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
 						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 						Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
+						energy_wb.append(weights)
+						energy_wb.append(biases)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
 				Ebranches[-1].append(tf.matmul(Ebranches[-1][-1], weights) + biases)
+				energy_wb.append(weights)
+				energy_wb.append(biases)
 				shp_out = tf.shape(Ebranches[-1][-1])
 				cut = tf.slice(Ebranches[-1][-1],[0,0],[shp_out[0],1])
 				rshp = tf.reshape(cut,[1,shp_out[0]])
@@ -2833,6 +2840,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 
 		Dbranches=[]
 		atom_outputs_charge = []
+		dipole_wb = []
 		output_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
 		for e in range(len(self.eles)):
 			Dbranches.append([])
@@ -2845,15 +2853,21 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 						Dbranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+						dipole_wb.append(weights)
+						dipole_wb.append(biases)
 				else:
 					with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)+"_charge"):
 						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 						Dbranches[-1].append(self.activation_function(tf.matmul(Dbranches[-1][-1], weights) + biases))
+						dipole_wb.append(weights)
+						dipole_wb.append(biases)
 			with tf.name_scope(str(self.eles[e])+'_regression_linear_charge'):
 				shp = tf.shape(inputs)
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
+				dipole_wb.append(weights)
+				dipole_wb.append(biases)
 				Dbranches[-1].append(tf.matmul(Dbranches[-1][-1], weights) + biases)
 				shp_out = tf.shape(Dbranches[-1][-1])
 				cut = tf.slice(Dbranches[-1][-1],[0,0],[shp_out[0],1])
@@ -2875,8 +2889,27 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			
 		cc_energy = TFCoulombCosLR(xyzsInBohr, scaled_charge, EE_cutoff, Reep)
 		total_energy = tf.add(bp_energy, cc_energy)
-		return total_energy, bp_energy, cc_energy, dipole, scaled_charge
+		return total_energy, bp_energy, cc_energy, dipole, scaled_charge, energy_wb, dipole_wb
 
+
+	def training(self, loss, learning_rate, momentum, update_var):
+		"""Sets up the training Ops.
+		Creates a summarizer to track the loss over time in TensorBoard.
+		Creates an optimizer and applies the gradients to all trainable variables.
+		The Op returned by this function is what must be passed to the
+		`sess.run()` call to cause the model to train.
+		Args:
+		loss: Loss tensor, from loss().
+		learning_rate: The learning rate to use for gradient descent.
+		Returns:
+		train_op: The Op for training.
+		"""
+		tf.summary.scalar(loss.op.name, loss)
+		optimizer = tf.train.AdamOptimizer(learning_rate)
+		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
+		global_step = tf.Variable(0, name='global_step', trainable=False)
+		train_op = optimizer.minimize(loss, global_step=global_step, var_list=update_var)
+		return train_op
 	def fill_feed_dict(self, batch_data):
 		"""
 		Fill the tensorflow feed dictionary.
@@ -2916,8 +2949,9 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			batch_data = self.TData.GetTrainBatch(self.batch_size)
 			actual_mols  = self.batch_size
 			t = time.time()
-			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss, mol_output, atom_outputs, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss, mol_output, atom_outputs, mol_dipole, atom_charge, energy_wb,  dipole_wb = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb], feed_dict=self.fill_feed_dict(batch_data))
 			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
 			train_loss = train_loss + loss_value
 			train_energy_loss += energy_loss
 			train_grads_loss += grads_loss
