@@ -12,6 +12,7 @@ from MolEmb import Make_NListNaive
 # I excised the K-D tree because it had some weird bugs.
 # we will have to do our own Octree implementation sometime.
 # for now I just coded the naive (quadratic) thing in C++ and seems fast enough IMHO.
+# JAP
 #
 
 class NeighborList:
@@ -92,6 +93,7 @@ class NeighborList:
 					p[pp,0]=i
 					p[pp,1]=j
 				pp = pp+1
+		del pair
 		return p
 
 	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0, molind_=None, nreal_=None):
@@ -105,6 +107,8 @@ class NeighborList:
 			pair matrix (npair X 2)
 			triples matrix (ntrip X 3)
 		"""
+		if (self.ele is None):
+			print "WARNING... need self.ele for angular SymFunc triples... "
 		pair = []
 		tpair = [] # since these may have different cutoff
 		ntodo = self.natom
@@ -158,6 +162,8 @@ class NeighborList:
 								t[tp,1]=j
 								t[tp,2]=k
 						tp=tp+1
+		del pair
+		del tpair
 		return p,t
 
 class NeighborListSet:

@@ -17,6 +17,7 @@
  - Optimizations
  - Nudged Elastic Band
  - Molecular Dynamics (NVE,NVT Nose-Hoover)
+ - Open/Periodic Boundary Conditions
  - Meta-Dynamics
  - Infrared spectra
 

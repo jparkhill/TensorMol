@@ -338,7 +338,7 @@ def TestTFBond():
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
-#ReadSmallMols(set_="DavidRandom", dir_="/media/sdb1/dtoth/qchem_jobs/new/rndjobs/data/*/", energy=True, forces=True)
+ReadSmallMols(set_="DavidMetaMD", dir_="/media/sdb1/dtoth/TensorMol/qchem/MetaMD/xyz/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 50000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -351,7 +351,7 @@ def TestTFBond():
 # QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
-TestMetadynamics()
+# TestMetadynamics()
 # TestMD()
 # TestTFBond()
 

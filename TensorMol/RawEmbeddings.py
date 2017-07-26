@@ -893,7 +893,7 @@ def TFCoulomb(R, Qs, R_cut, Radpair, prec=tf.float64):
 	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
 	sparse_index =tf.stack([mol_index, range_index], axis=1)
 	sp_atomoutputs = tf.SparseTensor(sparse_index, Kern, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
-	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)	
+	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
 	return E_ee
 
 
@@ -928,12 +928,12 @@ def TFCoulombCosLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	Qj = tf.gather_nd(Qs,Qji)
 	# Finish the Kernel.
 	Kern = Qi*Qj/RijRij2*Cut
-	# Scatter Back 
+	# Scatter Back
 	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
 	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
 	sparse_index =tf.stack([mol_index, range_index], axis=1)
 	sp_atomoutputs = tf.SparseTensor(sparse_index, Kern, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
-	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)	
+	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
 	return E_ee
 
 
@@ -969,12 +969,12 @@ def TFCoulombErfLR(R, Qs, R_cut,  Radpair, prec=tf.float64):
 	Qj = tf.gather_nd(Qs,Qji)
 	# Finish the Kernel.
 	Kern = Qi*Qj/RijRij2*Cut
-	# Scatter Back 
+	# Scatter Back
 	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
 	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
 	sparse_index =tf.stack([mol_index, range_index], axis=1)
 	sp_atomoutputs = tf.SparseTensor(sparse_index, Kern, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
-	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)	
+	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
 	return E_ee
 
 
@@ -1369,7 +1369,6 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
 
-
 class ANISym:
 	def __init__(self, mset_):
 		self.set = mset_
@@ -1386,7 +1385,7 @@ class ANISym:
 
 	def SetANI1Param(self):
 		zetas = np.array([[8.0]], dtype = np.float64)
-                etas = np.array([[4.0]], dtype = np.float64)
+		etas = np.array([[4.0]], dtype = np.float64)
 		self.zeta = 8.0
 		self.eta = 4.0
 		AN1_num_a_As = 8
@@ -1422,7 +1421,6 @@ class ANISym:
 		p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
 		SFPr = np.concatenate([p1_R,p2_R],axis=2)
 		self.SFPr = np.transpose(SFPr, [2,0,1])
-
 		# Create a parameter tensor. 1  X nr
 		p1_new = np.reshape(rs_R,[AN1_num_r_Rs,1])
 		self.SFPr2 = np.transpose(p1_new, [1,0])

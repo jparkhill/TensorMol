@@ -668,7 +668,6 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		SFPr = np.concatenate([p1_R,p2_R],axis=2)
 		self.SFPr = np.transpose(SFPr, [2,0,1])
 		self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
-
 		p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
 		p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
 		SFPa2 = np.concatenate([p1,p2],axis=2)
@@ -1822,7 +1821,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			self.SetANI1Param()
 		self.HiddenLayers = PARAMS["HiddenLayers"]
 		self.batch_size = PARAMS["batch_size"]
-		self.GradScaler = PARAMS["GradScaler"]
+		self.GradScalar = PARAMS["GradScalar"]
 		self.NetType = "RawBP_Grad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
@@ -1901,7 +1900,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		grads_diff = tf.subtract(nn_grads, grads)
 		grads_loss = tf.nn.l2_loss(grads_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
-		loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
+		loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
 		#loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
@@ -2424,16 +2423,22 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 		"""
 		Evaluate the energy, atom energies, and IfGrad = True the gradients
 		of this Direct Behler-Parinello graph.
+
+		Args:
+			batch_data: a list containing
+			XYZ,Z,radial pairs, angular triples (all set format Mol X MaxNAtoms... )
 		"""
 		# Check sanity of input
-		nmol = batch_data[2].shape[0]
-		self.MaxNAtoms = batch_data[0].shape[1]
-		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
-		self.batch_size = nmol
-		if not self.sess:
+		MustPrepare = not self.sess
+		if (batch_data[0].shape[1] != self.MaxNAtoms or self.batch_size != batch_data[0].shape[0]):
+			self.batch_size = batch_data[0].shape[0]
+			self.MaxNAtoms = batch_data[0].shape[1]
+			MustPrepare = True
+		LOGGER.debug("Batch_Size: %i", self.batch_size)
+		if MustPrepare:
 			print ("loading the session..")
 			self.EvalPrepare()
-		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.grads_pl] + [self.Radp_pl] + [self.Angt_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]] + [batch_data[3]] + [batch_data[4]] + [batch_data[5]])}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Radp_pl]+[self.Angt_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]]+[batch_data[3]])}
 		mol_output, atom_outputs, gradient = self.sess.run([self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
 		return mol_output, atom_outputs, gradient
 
@@ -2443,9 +2448,9 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 		Also assigns the desired padding.
 		"""
 		with tf.Graph().as_default():
+			self.SetANI1Param()
 			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
 			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
-			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
 			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
 			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
@@ -2453,10 +2458,10 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
 			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
 			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
-			Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
-			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
-			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
-			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
 			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
@@ -2478,6 +2483,7 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 		with tf.Graph().as_default():
 			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
 			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
 			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
 			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
@@ -2853,7 +2859,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		dipole_diff = tf.subtract(dipole, Dlabels)
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
+		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
 		loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScaler))
 		#loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
@@ -3078,7 +3084,6 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
-
 
 	def test(self, step):
 		"""
