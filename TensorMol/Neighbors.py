@@ -181,6 +181,7 @@ class NeighborList:
 				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i != k]]
 			else:
 				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i < k]]
+			#print ("self.x[i]", self.x[i], rcut)
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		p = None

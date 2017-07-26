@@ -33,7 +33,7 @@ class TMParams(dict):
 		self["AN1_a_Rs"] = np.array([ self["AN1_a_Rc"]*i/self["AN1_num_a_Rs"] for i in range (0, self["AN1_num_a_Rs"])])
 		self["AN1_a_As"] = np.array([ 2.0*Pi*i/self["AN1_num_a_As"] for i in range (0, self["AN1_num_a_As"])])
 		self["GradScaler"] = 1.0
-		self["DipoleScaler"] = 1.0
+		self["DipoleScalar"] = 1.0
 		# SET GENERATION parameters
 		self["RotateSet"] = 0
 		self["TransformSet"] = 1
@@ -112,6 +112,7 @@ class TMParams(dict):
 		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EECutoff"] = 5.0 # switch between 0 and 1/r occurs at Angstroms.
+		self["Erf_Width"] = 0.2
 		#paths
 		self["results_dir"] = "./results/"
 		self["dens_dir"] = "./densities/"
