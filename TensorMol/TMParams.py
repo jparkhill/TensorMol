@@ -111,8 +111,11 @@ class TMParams(dict):
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
-		self["EECutoff"] = 5.0 # switch between 0 and 1/r occurs at Angstroms.
+		self["EECutoff"] = 5.0 #switch between 0 and 1/r occurs at Angstroms.
+		self["EECutoffOn"] = 4.4 # switch on between 0 and 1/r occurs at Angstroms.
+		self["EECutoffOff"] = 15.0 # switch off between 0 and 1/r occurs at Angstroms.
 		self["Erf_Width"] = 0.2
+		self["DSFAlpha"] = 0.15
 		#paths
 		self["results_dir"] = "./results/"
 		self["dens_dir"] = "./densities/"

@@ -977,6 +977,55 @@ def TFCoulombErfLR(R, Qs, R_cut,  Radpair, prec=tf.float64):
 	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)	
 	return E_ee
 
+
+def TFCoulombErfSRDSFLR(R, Qs, R_srcut, R_lrcut, Radpair, alpha, prec=tf.float64):
+	"""
+	A tensorflow linear scaling implementation of the Damped Shifted Electrostatic Force with short range cutoff
+	http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/10.1063/1.2206581
+	Batched over molecules.
+
+	Args:
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Qs : nmol X maxnatom X 1 tensor of atomic charges.
+		R_srcut: Short Range Erf Cutoff
+		R_lrcut: Long Range DSF Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		alpha: DSF alpha parameter (~0.2)
+	Returns
+		Energy of  Mols 
+	"""
+	R_width = PARAMS["Erf_Width"]
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	natom2 = natom*natom
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+	Cut = (1.0 + tf.erf((RijRij2 - R_srcut)/R_width))*0.5
+
+	twooversqrtpi = tf.constant(1.1283791671,dtype=tf.float64)
+	Qii = tf.slice(Radpair,[0,0],[-1,2])
+	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
+	Qi = tf.gather_nd(Qs,Qii)
+	Qj = tf.gather_nd(Qs,Qji)
+	# Gather desired LJ parameters.
+	Qij = Qi*Qj
+	# This is Dan's Equation (18)
+	XX = alpha*R_lrcut
+	ZZ = tf.erfc(XX)/R_lrcut
+	YY = twooversqrtpi*alpha*tf.exp(-XX*XX)/R_lrcut
+	K = Qij*(tf.erfc(alpha*RijRij2)/RijRij2 - ZZ + (RijRij2-R_lrcut)*(ZZ/R_lrcut+YY))*Cut
+	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
+	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
+	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
+	sparse_index = tf.stack([mol_index, range_index], axis=1) 
+	sp_atomoutputs = tf.SparseTensor(sparse_index, K, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
+	# Now use the sparse reduce sum trick to scatter this into mols.
+	return tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+
+
 def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	"""
 	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.

@@ -101,7 +101,7 @@ class TFMolManage(TFManage):
 		gc.collect()
 		return
 
-	def Continue_Training(self, maxsteps):   # test a pretrained network
+	def Continue_Training(self, maxsteps=3000):   # test a pretrained network
 		self.n_train = PARAMS["max_steps"]
 		self.Instances.TData = self.TData
 		self.Instances.TData.LoadDataToScratch(self.Instances.tformer)
@@ -1161,8 +1161,6 @@ class TFMolManage(TFManage):
 		rad_p, ang_t = NL.buildPairsAndTriples(Rr_cut, Ra_cut)
 		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
 		rad_eep = NLEE.buildPairs(Ree_cut)
-		print Ree_cut
-		print rad_eep
 		Etotal, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
 		return Etotal, Ecc, mol_dipole, atom_charge, gradient
 
