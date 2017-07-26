@@ -2723,6 +2723,26 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.Ree_cut  = PARAMS["EECutoff"]
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
+		self.SetANI1Param()
+
+	def Clean(self):
+		MolInstance_DirectBP_Grad_Linear.Clean(self)
+		self.Elabel_pl = None
+		self.Dlabel_pl = None
+		self.Radp_pl = None
+		self.Angt_pl = None
+		self.Reep_pl = None
+		self.natom_pl = None
+		self.Etotal = None
+		self.Ebp = None
+		self.Ecc = None
+		self.dipole = None
+		self.charge = None
+		self.energy_wb = None
+		self.dipole_wb = None
+		self.dipole_loss = None
+		self.gradient = None
+		return
 
 	def TrainPrepare(self,  continue_training =False):
 		"""
@@ -2759,7 +2779,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum, self.dipole_wb)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -2779,8 +2799,8 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
 		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
-		#loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScaler))
-		loss = tf.identity(dipole_loss)
+		loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScaler))
+		#loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
 
@@ -2886,12 +2906,12 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			flat_dipole = tf.multiply(tf.reshape(xyzsInBohr,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(scaled_charge,[self.batch_size*self.MaxNAtoms, 1]))	
 			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
 			
-		cc_energy = TFCoulombCosLR(xyzsInBohr, scaled_charge, EE_cutoff, Reep)
+		cc_energy = TFCoulombErfLR(xyzsInBohr, scaled_charge, EE_cutoff, Reep)
 		total_energy = tf.add(bp_energy, cc_energy)
 		return total_energy, bp_energy, cc_energy, dipole, scaled_charge, energy_wb, dipole_wb
 
 
-	def training(self, loss, learning_rate, momentum, update_var):
+	def training(self, loss, learning_rate, momentum, update_var=None):
 		"""Sets up the training Ops.
 		Creates a summarizer to track the loss over time in TensorBoard.
 		Creates an optimizer and applies the gradients to all trainable variables.
@@ -2907,7 +2927,10 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		optimizer = tf.train.AdamOptimizer(learning_rate)
 		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
-		train_op = optimizer.minimize(loss, global_step=global_step, var_list=update_var)
+		if update_var == None:
+			train_op = optimizer.minimize(loss, global_step=global_step)
+		else:
+			train_op = optimizer.minimize(loss, global_step=global_step, var_list=update_var)
 		return train_op
 
 	def fill_feed_dict(self, batch_data):
@@ -2949,7 +2972,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			batch_data = self.TData.GetTrainBatch(self.batch_size)
 			actual_mols  = self.batch_size
 			t = time.time()
-			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss, mol_output, atom_outputs, mol_dipole, atom_charge, energy_wb,  dipole_wb = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb], feed_dict=self.fill_feed_dict(batch_data))
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
 			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
 			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
 			#print ("charge:", atom_charge )
@@ -2969,9 +2992,108 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
 
+
+
+	def test(self, step):
+		"""
+		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_test = self.TData.NTest
+		start_time = time.time()
+		test_loss =  0.0
+		test_energy_loss = 0.0
+		test_dipole_loss = 0.0
+		test_grads_loss = 0.0
+		num_of_mols = 0
+		for ministep in range (0, int(Ncase_test/self.batch_size)):
+			#print ("ministep:", ministep)
+			batch_data = self.TData.GetTestBatch(self.batch_size)
+			actual_mols  = self.batch_size
+			t = time.time()
+			total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
+			#print ("charge:", atom_charge )
+			test_loss = test_loss + loss_value
+			test_energy_loss += energy_loss
+			test_grads_loss += grads_loss
+			test_dipole_loss += dipole_loss
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+			#       f.write(chrome_trace)
+		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, test_dipole_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
+		return
+
+
         def print_training(self, step, loss, energy_loss, grads_loss, dipole_loss, Ncase, duration, Train=True):
                 if Train:
                         LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f  energy_loss: %.10f  grad_loss: %.10f, dipole_loss: %.10f", step, duration, (float(loss)/(Ncase)), (float(energy_loss)/(Ncase)), (float(grads_loss)/(Ncase)), (float(dipole_loss)/(Ncase)))
                 else:
                         LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f energy_loss: %.10f  grad_loss: %.10f, dipole_loss: %.10f", step, duration, (float(loss)/(Ncase)), (float(energy_loss)/(Ncase)), (float(grads_loss)/(Ncase)), (float(dipole_loss)/(Ncase)))
                 return
+
+
+	def EvalPrepare(self):
+		"""
+		Load pretrained network and build graph for evaluation
+		"""
+		with tf.Graph().as_default():
+			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.Elabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+			self.Dlabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, 3]))
+			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
+			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
+			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.Reep_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
+			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
+			#SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
+			#SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
+			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
+			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
+			Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			Ree_cut = tf.Variable(self.Ree_cut, trainable=False, dtype = self.tf_prec)
+			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
+			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_cut, self.Reep_pl)
+			self.check = tf.add_check_numerics_ops()
+			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
+			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver = tf.train.Saver()
+			self.saver.restore(self.sess, self.chk_file)
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+		print("Prepared for Evaluation...")
+		return
+
+	def evaluate(self, batch_data):
+		"""
+		Evaluate the energy, atom energies, and IfGrad = True the gradients
+		of this Direct Behler-Parinello graph.
+		"""
+		# Check sanity of input
+		nmol = batch_data[2].shape[0]
+		self.MaxNAtoms = batch_data[0].shape[1]
+		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
+		self.batch_size = nmol
+		if not self.sess:
+			print ("loading the session..")
+			self.EvalPrepare()
+		feed_dict=self.fill_feed_dict(batch_data)
+		Etotal, Ecc, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ecc, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
+		return Etotal, Ecc, mol_dipole, atom_charge, gradient
+
