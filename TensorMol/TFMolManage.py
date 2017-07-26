@@ -1138,6 +1138,34 @@ class TFMolManage(TFManage):
 		mol_out, atom_out, gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
 		return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
 
+
+	def EvalBPDirectEESingle(self, mol, Rr_cut, Ra_cut, Ree_cut):
+		"""
+		The energy, force and dipole routine for BPs_EE.
+		"""
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		dummy_dipole = np.zeros((nmols, 3))
+		self.TData.MaxNAtoms = mol.NAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSet(xyzs, natom, True, True, Zs)
+		rad_p, ang_t = NL.buildPairsAndTriples(Rr_cut, Ra_cut)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
+		rad_eep = NLEE.buildPairs(Ree_cut)
+		print Ree_cut
+		print rad_eep
+		Etotal, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
+		return Etotal, Ecc, mol_dipole, atom_charge, gradient
+
 	def Prepare(self):
 		self.Load()
 		self.Instances= None # In order of the elements in TData
