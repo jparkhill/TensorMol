@@ -8,7 +8,7 @@ def TrainPrepare():
 		a = MSet("chemspider9_force")
 		dic_list = pickle.load(open("./datasets/chemspider9_force.dat", "rb"))
 		for dic in dic_list:
-		atoms = []
+			atoms = []
 		for atom in dic['atoms']:
 			atoms.append(AtomicNumber(atom))
 		atoms = np.asarray(atoms, dtype=np.uint8)
@@ -51,19 +51,24 @@ def TrainPrepare():
 		c.Save()
 
 	if (1):
-		a = MSet("DavidMD")
+		a = MSet("DavidRandom")
 		a.Load()
 		for mol in a.mols:
 			mol.properties["gradients"] = mol.properties["forces"]
+			#mol.properties["energy"] = mol.properties["energy"] * KCALPERHARTREE
 			mol.properties["atomization"] = mol.properties["energy"]
+			#mol.properties["energy"] = mol.properties["energy"]/KCALPERHARTREE
 			for i in range(0, mol.NAtoms()):
 				mol.properties["atomization"] -= ele_E_david[mol.atoms[i]]
+		#	if abs(mol.properties["energy"]) > 1000:
+                 #               mol.properties["energy"] = mol.properties["energy"] / KCALPERHARTREE
+			print mol.properties["atomization"], mol.properties["energy"]
 		a.Save()
 		print a.mols[0].properties
 		a.mols[0].WriteXYZfile(fname="test")
 
 def TrainForceField(SetName_ = "DavidRandom"):
-	a = MSet(SetName)
+	a = MSet(SetName_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	PARAMS["hidden1"] = 200
@@ -111,5 +116,5 @@ def TestIRLinearDirect():
 
 #TestCoulomb()
 #TrainPrepare()
-#TrainForceField()
-TestIRLinearDirect()
+TrainForceField()
+#TestIRLinearDirect()
