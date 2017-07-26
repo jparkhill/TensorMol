@@ -295,10 +295,10 @@ def MakeTestSet():
 	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
 def TestMetadynamics():
-	a = MSet("MDTrajectoryMetaMD")
+	a = MSet("sampling_mols")
 	a.ReadXYZ()
-	m = a.mols[0]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
+	m = a.mols[2]
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='phenol', path_='./qchem/', threads=16)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 2.0
@@ -306,7 +306,7 @@ def TestMetadynamics():
 	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 600.0
-	meta = MetaDynamics(ForceField, m)
+	meta = MetaDynamics(ForceField, m, 'phenol')
 	meta.Prop()
 
 def TestTFBond():
@@ -347,10 +347,10 @@ def TestTFBond():
 # OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # Brute_LJParams()
-QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
+#QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
-# TestMetadynamics()
+TestMetadynamics()
 # TestMD()
 # TestTFBond()
 

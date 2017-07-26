@@ -52,20 +52,27 @@ def TrainPrepare():
 		c.Save()
 	
 	if (1):
-		a = MSet("DavidMD")
+		a = MSet("DavidNM")
 		a.Load()
 		for mol in a.mols:
 			mol.properties["gradients"] = mol.properties["forces"]
+			#mol.properties["energy"] = mol.properties["energy"] * KCALPERHARTREE
 			mol.properties["atomization"] = mol.properties["energy"]
+			#mol.properties["energy"] = mol.properties["energy"]/KCALPERHARTREE
 			for i in range(0, mol.NAtoms()):
 				mol.properties["atomization"] -= ele_E_david[mol.atoms[i]]
+		#	if abs(mol.properties["energy"]) > 1000:
+                 #               mol.properties["energy"] = mol.properties["energy"] / KCALPERHARTREE
+			print mol.properties["atomization"], mol.properties["energy"]
 		a.Save()
 		print a.mols[0].properties
 		a.mols[0].WriteXYZfile(fname="test")
 
-def TrainForceField(SetName_ = "DavidRandom"):
-                a = MSet(SetName)
+def TrainForceField(SetName_ = "DavidNM"):
+                a = MSet(SetName_)
 		a.Load()
+		for i, mol in enumerate(a.mols):
+			print mol.properties["atomization"] 
                 TreatedAtoms = a.AtomTypes()
                 PARAMS["hidden1"] = 200
                 PARAMS["hidden2"] = 200
@@ -85,5 +92,5 @@ def TrainForceField(SetName_ = "DavidRandom"):
                 manager.Train(maxstep=101)
 
 #TestCoulomb()
-#TrainPrepare()
-TrainForceField()
+TrainPrepare()
+#TrainForceField()
