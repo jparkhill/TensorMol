@@ -1084,27 +1084,41 @@ class TFMolManage(TFManage):
 		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs], True)
 		return mol_out, atom_out, gradient
 
-
-        def Eval_BPEnergy_Direct_Grad(self, mol, Grad=True, Energy=True):
-                mol_set = MSet()
-                mol_set.mols.append(mol)
-                nmols = len(mol_set.mols)
+	def Eval_BPEnergy_Direct_Grad(self, mol, Grad=True, Energy=True):
+		mol_set = MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
 		self.TData.MaxNAtoms = mol.NAtoms()
-                dummy_outputs = np.zeros((nmols))
-                xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-                dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-                Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
-                for i, mol in enumerate(mol_set.mols):
-                        xyzs[i][:mol.NAtoms()] = mol.coords
-                        Zs[i][:mol.NAtoms()] = mol.atoms
-                mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
-                if Grad and Energy:
-                        return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
+		dummy_outputs = np.zeros((nmols))
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
+		if Grad and Energy:
+			return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
 		elif Energy and not Grad:
-                        return mol_out[0]
+			return mol_out[0]
 		else:
 			return -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
 
+	def BPDirectGradLinearEval(self, Zs, xyzs, Radps, Angts):
+		"""
+		In time scaling with NTRIPLES size
+
+		Args:
+			Zs: nmol X MaxNatoms X 1, np.int32 atomic number tensor
+			XYZs: nmol X MaxNatoms X 3, np.float64 atomic coordinate tensor
+			Radps: nmol X NPAIRS X 3, np.int32 Pair Tensor
+			Angts: nmol X NTRIPLES X 4, np.int32 Triples Tensor
+
+		Returns:
+			Energy(Eh), AtomEnergies(Eh), Forces(J/Angstrom), Charges(None)
+		"""
+		mol_out, atom_out, gradient = self.Instances.evaluate(xyzs, Zs, Eles, Elep, Radps, Angts)
+		return mol_out, atom_out, -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()], None
 
 	def EvalBPDirectSingleEnergyWGrad(self, mol):
 		"""

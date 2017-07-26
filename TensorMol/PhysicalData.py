@@ -1,5 +1,6 @@
 # The spatial unit of TensorMol is Angstrom.
-# Tne energy unit of Tensormol is Hartree except in MD.
+# Tne energy unit of Tensormol is Hartree except in MD where it is kcal/mol
+# The time unit of Tensormol is the Fs. 
 #
 # These should be all Caps. etc...
 #
