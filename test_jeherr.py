@@ -1,5 +1,6 @@
 from TensorMol import *
-import time
+import time, os
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 #jeherr tests
 
@@ -52,7 +53,7 @@ PARAMS["NeuronType"] = "relu"
 # PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
 # PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
 
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+#os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
 # Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
@@ -70,7 +71,7 @@ def InterpolateGeometries():
 	mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
 	# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
-def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/*/*/", energy=False, forces=False, charges=False, mmff94=False):
+def ReadSmallMols(set_="MDMols", dir_="/media/sdb1/dtoth/sampling_mols/qchem_data/*/*", energy=False, forces=False, charges=False, mmff94=False):
 	import glob
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
@@ -297,8 +298,8 @@ def MakeTestSet():
 def TestMetadynamics():
 	a = MSet("sampling_mols")
 	a.ReadXYZ()
-	m = a.mols[2]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='phenol', path_='./qchem/', threads=16)
+	m = a.mols[4]
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='hexanol', path_='./qchem/', threads=24)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 2.0
@@ -306,7 +307,7 @@ def TestMetadynamics():
 	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 600.0
-	meta = MetaDynamics(ForceField, m, 'phenol')
+	meta = MetaDynamics(ForceField, m, 'hexanol')
 	meta.Prop()
 
 def TestTFBond():
@@ -337,7 +338,7 @@ def TestTFBond():
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
-# ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/", energy=True, forces=True)
+#ReadSmallMols(set_="DavidRandom", dir_="/media/sdb1/dtoth/qchem_jobs/new/rndjobs/data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 50000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -347,7 +348,7 @@ def TestTFBond():
 # OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
 # Brute_LJParams()
-#QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
+# QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
 TestMetadynamics()

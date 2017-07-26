@@ -952,8 +952,8 @@ def Test_Periodic_LJMD():
 	This version also tests linear-scaling-ness of the neighbor list
 	"""
 	a=MSet("Test")
-	ParticlesPerEdge = 6
-	EdgeSize = 6
+	ParticlesPerEdge = 7
+	EdgeSize = 7
 	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
 	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
@@ -1221,14 +1221,14 @@ def TestNeighborList():
 # david_testIR()
 #david_HarmonicAnalysis()
 #TestMetadynamics()
-#Test_Periodic_LJMD()
+Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()
 #TestHerrNet1()
 #TestOCSDB()
-TestNeighborList()
+#TestNeighborList()
 #TestNeb()
 #TestMD()
 #TestRandom()
