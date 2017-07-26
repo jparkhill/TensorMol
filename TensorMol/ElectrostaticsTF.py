@@ -292,7 +292,7 @@ def ElectrostaticDampedShiftedLinear(Ds,Qs,NZP,alpha,Rc):
 	XX = alpha*Rc
 	ZZ = tf.erfc(XX)/Rc
 	YY = twooversqrtpi*alpha*tf.exp(-XX*XX)/Rc
-	K = Qij*(tf.erfc(alpha*Ds)/Ds - ZZ + (Ds-Rc)*(ZZ+YY))
+	K = Qij*(tf.erfc(alpha*Ds)/Ds - ZZ + (Ds-Rc)*(ZZ/Rc+YY))
 	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
 	range_index = tf.reshape(tf.range(tf.cast(maxnpairs, tf.int64), dtype=tf.int64),[maxnpairs,1])
 	mol_index = tf.reshape(tf.slice(NZP,[0,0],[-1,1]),[maxnpairs,1])
