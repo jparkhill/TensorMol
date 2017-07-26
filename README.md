@@ -3,7 +3,7 @@
 -Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
 ### Authors:
- Kun Yao (kyao@nd.edu), John Herr (John.E.Herr.16@nd.edu),
+ Kun Yao (kyao@nd.edu), John Herr (jherr1@nd.edu),
  David Toth (dtoth1@nd.edu), John Parkhill (john.parkhill@gmail.com)
 
 ### Model Chemistries:
