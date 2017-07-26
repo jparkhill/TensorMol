@@ -264,11 +264,11 @@ def TestBP_WithGrad():
 	return
 
 def TestMetadynamics():
-	a = MSet("johnsonmols")
-	a.ReadXYZ("johnsonmols")
+	a = MSet("david_test")
+	a.ReadXYZ("david_test")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	PARAMS["NeuronType"]="softplus"
-	m = a.mols[2]
+	m = a.mols[3]
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),False)
