@@ -80,7 +80,7 @@ def TrainForceField(SetName_ = "DavidRandom"):
 	PARAMS["batch_size"] = 100
 	PARAMS["test_freq"] = 2
 	PARAMS["tf_prec"] = "tf.float64"
-	PARAMS["GradScaler"] = 1
+	PARAMS["GradScalar"] = 1
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["HiddenLayers"] = [200, 200, 200]
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
@@ -91,7 +91,7 @@ def TrainForceField(SetName_ = "DavidRandom"):
 def TestIRLinearDirect():
 	"""
 	Test the IR spectrum produced by a network created and trained with TrainForceField()
-	Intended to be used with MolInstance_DirectBP_EE soon... 
+	Intended to be used with MolInstance_DirectBP_EE soon...
 	"""
 	a = MSet("test")
 	a.ReadXYZ("1_1_Ostrech")
@@ -106,15 +106,35 @@ def TestIRLinearDirect():
 	PARAMS["batch_size"] = 100
 	PARAMS["test_freq"] = 2
 	PARAMS["tf_prec"] = "tf.float64"
-	PARAMS["GradScaler"] = 1
+	PARAMS["GradScalar"] = 1
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["HiddenLayers"] = [200, 200, 200]
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
 	manager= TFMolManage("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1" , tset, False, RandomTData_=False, Trainable_=False)
-	UnitedIR(manager.BPDirectGradLinearEval,mol,"UnitedIR")
+	ForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(m.atoms,x),True,False)
+	EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(m.atoms,x))
+	ChargeField = lambda x: np.random.random((m.NAtoms(),3))
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 0.9
+	PARAMS["OptStepSize"] = 0.02
+	PARAMS["OptMaxCycles"]=200
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 100
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDV0"] = None
+	PARAMS["MDTemp"]= 1.0
+	annealx_ = Annealer(EnergyForceField, None, m, "Anneal")
+	annealx_.Prop()
+	m.coords = annealx_.Minx.copy()
+	# now actually collect the IR.
+	PARAMS["MDMaxStep"] = 40000
+	md = IRTrajectory(EnergyForceField, ChargeField, m,"H2O_udp_grad_IR",annealx_.v.copy())
+	md.Prop()
+	WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_grad_IR.txt")
 
 #TestCoulomb()
 #TrainPrepare()
-TrainForceField()
-#TestIRLinearDirect()
+#TrainForceField()
+TestIRLinearDirect()
