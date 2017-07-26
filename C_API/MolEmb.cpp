@@ -242,14 +242,12 @@ void SymFunction(double *Sym_data, const int data_pointer, const double *xyz, co
 }
 
 void ANI1_SymFunction_deri(double *ANI1_Sym_deri_data,  const int data_pointer, const double *xyz, const uint8_t *atoms, const int natom, const uint8_t *ele, const int nele, const int atom_num, const array<std::vector<int>, 10> ele_index, const double radius_Rc, const double angle_Rc, const double *radius_Rs, const int radius_Rs_dim, const double *angle_Rs, const int angle_Rs_dim, const double *angle_As, const int angle_As_dim, const double eta, const double zeta) {
-	double dist1, fc1, dist2, fc2, dist3, fc3, theta, A, C ,B, tmp_v, theta_deri_ci, theta_deri_cj, theta_deri_ij, fc1_deri, fc2_deri, fc3_deri ;
+	double dist1, fc1, dist2, fc2, dist3, theta, A, C ,B, tmp_v, theta_deri_ci, theta_deri_cj, theta_deri_ij, fc1_deri, fc2_deri, fc3_deri ;
 	int g1_size = radius_Rs_dim;
-	int g2_size = angle_Rs_dim * angle_As_dim;
 	int bond_index = 0;
 	int at3 = atom_num*3;
 	int at31 = at3+1;
 	int at32 = at3+2;
-	int SYMdim = nele*radius_Rs_dim + nele*(nele+1)/2*angle_Rs_dim*angle_As_dim;
 	for (int j = 0; j < nele; j++ ) {
 		for ( int k = 0;  k < ele_index[j].size(); k++) {
 			int ejk = ele_index[j][k];
@@ -1098,6 +1096,42 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+//
+// Make a neighborlist using a naive, quadratic algorithm.
+// returns a python list.
+// Only does up to the nreal-th atom. (for periodic tesselation)
+//
+static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	double rng;
+	int nreal;
+	if (!PyArg_ParseTuple(args, "O!di", &PyArray_Type, &xyz, &rng, &nreal))
+		return NULL;
+	double *xyz_data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	const int nat = (xyz->dimensions)[0];
+	PyObject* Tore = PyList_New(0);
+	for (int i=0; i < nreal; ++i)
+		PyList_Append(Tore,PyList_New(0));
+#pragma omp parallel for
+	for (int i=0; i < nreal; ++i)
+	{
+		for (int j=i+1; j < nat; ++j)
+		{
+			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
+			if (dij < rng)
+			{
+				PyList_Append(PyList_GetItem(Tore,i),PyInt_FromLong((long)j));
+// For now we're not doing the permutations...
+//				if (j<nreal)
+//					PyList_Append(PyList_GetItem(Tore,j),PyInt_FromLong((long)i));
+			}
+		}
+	}
+	return Tore;
+}
+
 static PyObject* DipoleAutoCorr(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz;
@@ -1934,6 +1968,8 @@ static PyObject*  Make_Sym(PyObject *self, PyObject  *args) {
 
 static PyMethodDef EmbMethods[] =
 {
+	{"Make_NListNaive", Make_NListNaive, METH_VARARGS,
+	"Make_NListNaive method"},
 	{"DipoleAutoCorr", DipoleAutoCorr, METH_VARARGS,
 	"DipoleAutoCorr method"},
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,

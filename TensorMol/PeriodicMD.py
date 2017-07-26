@@ -138,7 +138,7 @@ class PeriodicForce:
 		# Construct NeighborList
 		if (self.NL==None):
 			self.NL = NeighborList(x,NeedsTriples)
-		self.NL.Update(x, mxrng, 0.0, self.natomsReal)
+		self.NL.Update(x, mxrng, 0.0, None, self.natomsReal)
 		# Compute forces and energies.
 		for f in self.LocalForces:
 			einc, finc = f(z,x,self.NL.pairs)
