@@ -92,6 +92,7 @@ class NeighborList:
 					p[pp,0]=i
 					p[pp,1]=j
 				pp = pp+1
+		del pair
 		return p
 
 	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0, molind_=None, nreal_=None):
@@ -158,6 +159,8 @@ class NeighborList:
 								t[tp,1]=j
 								t[tp,2]=k
 						tp=tp+1
+		del pair
+		del tpair
 		return p,t
 
 class NeighborListSet:

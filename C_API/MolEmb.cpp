@@ -1111,9 +1111,8 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	double *xyz_data;
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
-	PyObject* Tore = PyList_New(0);
-	for (int i=0; i < nreal; ++i)
-		PyList_Append(Tore,PyList_New(0));
+// Avoid stupid python reference counting issues by just using std::vector...
+std::vector< std::vector<int> > tmp(nat);
 #pragma omp parallel for
 	for (int i=0; i < nreal; ++i)
 	{
@@ -1122,12 +1121,21 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
 			if (dij < rng)
 			{
-				PyList_Append(PyList_GetItem(Tore,i),PyInt_FromLong((long)j));
-// For now we're not doing the permutations...
-//				if (j<nreal)
-//					PyList_Append(PyList_GetItem(Tore,j),PyInt_FromLong((long)i));
+				tmp[i].push_back(j);
+				// For now we're not doing the permutations...
 			}
 		}
+	}
+	PyObject* Tore = PyList_New(nreal);
+	for (int i=0; i < nreal; ++i)
+	{
+		PyObject* tl = PyList_New(tmp[i].size());
+		for (int j=0; j<tmp[i].size();++j)
+		{
+			PyObject* ti = PyInt_FromLong(tmp[i][j]);
+			PyList_SetItem(tl,j,ti);
+		}
+		PyList_SetItem(Tore,i,tl);
 	}
 	return Tore;
 }
