@@ -93,8 +93,8 @@ def TestIRLinearDirect():
 	Test the IR spectrum produced by a network created and trained with TrainForceField()
 	Intended to be used with MolInstance_DirectBP_EE soon...
 	"""
-	a = MSet("test")
-	a.ReadXYZ("1_1_Ostrech")
+	a = MSet("sampling_mols")
+	a.ReadXYZ()
 	m = a.mols[0]
 	TreatedAtoms = a.AtomTypes()
 	PARAMS["hidden1"] = 200
@@ -125,16 +125,17 @@ def TestIRLinearDirect():
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
 	PARAMS["MDTemp"]= 1.0
+	m = GeomOptimizer(EnergyForceField).Opt(m)
 	annealx_ = Annealer(EnergyForceField, None, m, "Anneal")
 	annealx_.Prop()
 	m.coords = annealx_.Minx.copy()
 	# now actually collect the IR.
 	PARAMS["MDMaxStep"] = 40000
-	md = IRTrajectory(EnergyForceField, ChargeField, m,"H2O_udp_grad_IR",annealx_.v.copy())
+	md = IRTrajectory(EnergyForceField, ChargeField, m,"THP_udp_grad_IR",annealx_.v.copy())
 	md.Prop()
-	WriteDerDipoleCorrelationFunction(md.mu_his,"H2O_udp_grad_IR.txt")
+	WriteDerDipoleCorrelationFunction(md.mu_his,"THP_udp_grad_IR.txt")
 
 #TestCoulomb()
 #TrainPrepare()
-#TrainForceField()
+# TrainForceField()
 TestIRLinearDirect()

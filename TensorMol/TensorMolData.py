@@ -1525,7 +1525,7 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
 		TensorMolData_BP_Direct_Linear.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_, WithGrad_)
-		self.Ree_cut = PARAMS["EECutoff"]
+		self.Ree_cut = PARAMS["EECutoffOff"]
 		return
 
 	def LoadData(self):
