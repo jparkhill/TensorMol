@@ -12,7 +12,7 @@ def WeightedCoordAverage(x_, q_, center_=None):
 	""" Dipole relative to center of x_ """
 	if (center_== None):
 		center_ = np.average(x_,axis=0)
-	return np.einsum("ax,a", x_-center_ , q_)
+	return np.einsum("ax,a...", x_-center_ , q_)
 
 def DipoleDebug(m_):
 		if ("dipole" in m_.properties and "charges" in m_.properties):
@@ -21,7 +21,6 @@ def DipoleDebug(m_):
 def Dipole(x_, q_):
 	""" Arguments are in A, and elementary charges.  """
  	return WeightedCoordAverage(x_*BOHRPERA, q_)
-
 
 def ChargeCharge(m1_, m2_):
 	"""calculate  the charge-charge interaction energy between two molecules"""
@@ -33,7 +32,7 @@ def ChargeCharge(m1_, m2_):
 	return cc_energy
 
 def Dimer_ChargeCharge(m_):
-	"""calculate the charge-charge interaction between two monomer in a dimer"""	
+	"""calculate the charge-charge interaction between two monomer in a dimer"""
 	cc_energy = 0.0
 	seperate_index = m_.properties["natom_each_mono"][0]
 	if type(m_.DistMatrix) is not np.ndarray:
@@ -71,7 +70,7 @@ def Dimer_ChargeCharge_Grad(m_):
 						cc_energy_grad[i][q] += (m_.properties['atom_charges_grads'][j][i][q]*m_.properties['atom_charges'][k]+m_.properties['atom_charges'][j]*m_.properties['atom_charges_grads'][k][i][q])/(m_.DistMatrix[j][k]*BOHRPERA) - (m_.properties['atom_charges'][j]*m_.properties['atom_charges'][k]*(m_.coords[j][q]-m_.coords[k][q]))/(m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*BOHRPERA)
 					elif k == i:
 						cc_energy_grad[i][q] += (m_.properties['atom_charges_grads'][j][i][q]*m_.properties['atom_charges'][k]+m_.properties['atom_charges'][j]*m_.properties['atom_charges_grads'][k][i][q])/(m_.DistMatrix[j][k]*BOHRPERA) - (m_.properties['atom_charges'][j]*m_.properties['atom_charges'][k]*(m_.coords[k][q]-m_.coords[j][q]))/(m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*m_.DistMatrix[j][k]*BOHRPERA)
-					else:	
+					else:
 						cc_energy_grad[i][q] += (m_.properties['atom_charges_grads'][j][i][q]*m_.properties['atom_charges'][k]+m_.properties['atom_charges'][j]*m_.properties['atom_charges_grads'][k][i][q])/(m_.DistMatrix[j][k]*BOHRPERA)
 	return cc_energy_grad
 
@@ -106,8 +105,8 @@ def Dimer_Replusive_Grad(m_):
                                                 replu_energy_grad[i][q] +=  - 0.1*(m_.coords[j][q]-m_.coords[k][q])/(m_.DistMatrix[j][k]**14)
                                         elif k == i:
 						replu_energy_grad[i][q] +=  - 0.1*(m_.coords[k][q]-m_.coords[j][q])/(m_.DistMatrix[j][k]**14)
-                                        else:  
-						continue 
+                                        else:
+						continue
         return replu_energy_grad
 
 def ElectricFieldForce(q_,E_):

@@ -436,7 +436,7 @@ class Mol:
 
 	def GoEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
-		if (self.DistMatrix==None):
+		if (self.DistMatrix is None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
 		xmat = np.array(x).reshape(self.NAtoms(),3)
