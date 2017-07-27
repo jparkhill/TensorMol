@@ -1112,7 +1112,7 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
 // Avoid stupid python reference counting issues by just using std::vector...
-std::vector< std::vector<int> > tmp(nat);
+std::vector< std::vector<int> > tmp(nreal);
 #pragma omp parallel for
 	for (int i=0; i < nreal; ++i)
 	{
@@ -1126,6 +1126,102 @@ std::vector< std::vector<int> > tmp(nat);
 			}
 		}
 	}
+	PyObject* Tore = PyList_New(nreal);
+	for (int i=0; i < nreal; ++i)
+	{
+		PyObject* tl = PyList_New(tmp[i].size());
+		for (int j=0; j<tmp[i].size();++j)
+		{
+			PyObject* ti = PyInt_FromLong(tmp[i][j]);
+			PyList_SetItem(tl,j,ti);
+		}
+		PyList_SetItem(Tore,i,tl);
+	}
+	return Tore;
+}
+
+//
+// Linear scaling version of the above routine.
+// Has sorting overhead, and not yet optimized in any way.
+// Skectches out a prism around each point then uses the
+// Dense algorithm there. Can be improved... but why.
+//
+static PyObject* Make_NListLinear(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	double Rc;
+	int nreal;
+	if (!PyArg_ParseTuple(args, "O!di", &PyArray_Type, &xyz, &Rc, &nreal))
+		return NULL;
+	double *x;
+	x = (double*) ((PyArrayObject*) xyz)->data;
+	const int nat = (xyz->dimensions)[0];
+	const int nx = nat;
+	double xmx = x[0];
+	double xmn = x[0];
+	for (int II = 0; II<nat ; ++II )
+	{
+		if (x[II*3]<xmn)
+			xmn = x[II*3];
+		if (x[II*3]>xmx)
+			xmx = x[II*3];
+	}
+	std::vector<int> y(nx);
+	std::size_t n(0);
+	std::generate(std::begin(y), std::end(y), [&]{ return n++; });
+	std::sort(  std::begin(y), std::end(y),
+		[&](int i1, int i2) { return x[i1*3] < x[i2*3]; } );
+	// So now the y-vector indices sort x.
+	// find slicing bounds within the y for the X
+	int Xbds[nreal*2];
+	#pragma omp parallel for
+	for (int II = 0; II<nreal ; ++II )
+	{
+		int guess = int((x[II*3]-xmn)/(xmx-xmn)*(nx-1));
+		int glb = std::max(guess-1,0); // Guess lower bound index in y
+    int gub = std::min(guess+1,nx-1); // Guess upper bound index y
+		//cout << nx << " " << xmx << " " << x[II*3] << "glb,gub" << glb << " " << gub << endl;
+		while ( !((x[II*3] - x[y[std::max(glb-1,0)]*3] >= Rc && x[II*3] - x[y[glb]*3] <= Rc ) or glb==0) )
+    {
+				//cout << xmx << " " << x[II*3] << "2glb,gub" << glb << " " << gub << endl;
+        if (x[II*3] - x[y[glb]*3] < Rc)
+            glb--;
+        else
+            glb++;
+    }
+    while ( !((x[y[std::min(gub+1,nx-1)]*3] - x[II*3] >= Rc && x[y[gub]*3] - x[II*3] <= Rc ) or gub==(nx-1)) )
+    {
+        if (x[y[glb]*3]-x[II*3] > Rc)
+            gub--;
+        else
+            gub++;
+    }
+		Xbds[II*2] = glb;
+		Xbds[II*2+1] = gub;
+	}
+	// Now at this point for < 10,000 particles, this should
+	// contain a < 100 particles, and are best done with the dense algorithm.
+	// but remapped within the range.
+	// If somehow > 100 particles are still in the range, we should do the same
+	// thing along y here...
+	std::vector< std::vector<int> > tmp(nreal);
+	#pragma omp parallel for
+	for (int i=0; i < nreal; ++i)
+	{
+		for (int j=Xbds[i*2]; j <= Xbds[i*2+1]; ++j)
+		{
+			double xx = (x[i*3+0]-x[y[j]*3+0]);
+			double yy = (x[i*3+1]-x[y[j]*3+1]);
+			double zz = (x[i*3+2]-x[y[j]*3+2]);
+			double dij = sqrt(xx*xx+yy*yy+zz*zz) + 0.00000000001;
+			if (dij < Rc && i<y[j])
+			{
+				tmp[i].push_back(y[j]);
+				// For now we're not doing the permutations...
+			}
+		}
+	}
+ // Avoid stupid python reference counting issues by just using std::vector...
 	PyObject* Tore = PyList_New(nreal);
 	for (int i=0; i < nreal; ++i)
 	{
@@ -1976,6 +2072,8 @@ static PyObject*  Make_Sym(PyObject *self, PyObject  *args) {
 
 static PyMethodDef EmbMethods[] =
 {
+	{"Make_NListLinear", Make_NListLinear, METH_VARARGS,
+	"Make_NListLinear method"},
 	{"Make_NListNaive", Make_NListNaive, METH_VARARGS,
 	"Make_NListNaive method"},
 	{"DipoleAutoCorr", DipoleAutoCorr, METH_VARARGS,
