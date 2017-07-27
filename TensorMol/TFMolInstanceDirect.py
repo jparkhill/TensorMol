@@ -2764,6 +2764,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.NetType = "RawBP_EE"
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE"
+		self.GradScaler = PARAMS["GradScaler"]
 		self.DipoleScaler = PARAMS["DipoleScaler"]
 		self.Ree_on  = PARAMS["EECutoffOn"]
 		self.Ree_off  = PARAMS["EECutoffOff"]
@@ -2772,6 +2773,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.learning_rate_energy = PARAMS["learning_rate_energy"]
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
+		self.Training_Traget = "Dipole"
 		self.SetANI1Param()
 
 	def Clean(self):
@@ -2791,6 +2793,9 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.dipole_wb = None
 		self.dipole_loss = None
 		self.gradient = None
+		self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole = None, None, None, None, None
+		self.train_op_dipole, self.train_op_EandG = None, None
+		self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG = None, None, None, None, None
 		return
 
 	def TrainPrepare(self,  continue_training =False):
@@ -3118,9 +3123,10 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
 			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 			#       f.write(chrome_trace)
+		print ("testing...")
 		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, test_dipole_loss, num_of_mols, duration)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
-		return
+		return test_loss
 
 
 	def train_step_dipole(self, step):
@@ -3162,7 +3168,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
-		return
+		return 
 
 
 	def test_dipole(self, step):
@@ -3198,9 +3204,10 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
 			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 			#       f.write(chrome_trace)
+		print ("testing...")
 		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, test_dipole_loss, num_of_mols, duration)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
-		return
+		return  test_loss
 
 	def train_step_EandG(self, step):
 		"""
@@ -3277,9 +3284,10 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
 			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 			#       f.write(chrome_trace)
+		print ("testing...")
 		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, test_dipole_loss, num_of_mols, duration)
-		#self.print_training(step, train_loss,  num_of_mols, duration)
-		return
+		return  test_loss
+
         def print_training(self, step, loss, energy_loss, grads_loss, dipole_loss, Ncase, duration, Train=True):
                 if Train:
                         LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f  energy_loss: %.10f  grad_loss: %.10f, dipole_loss: %.10f", step, duration, (float(loss)/(Ncase)), (float(energy_loss)/(Ncase)), (float(grads_loss)/(Ncase)), (float(dipole_loss)/(Ncase)))
@@ -3360,21 +3368,34 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		LOGGER.info("running the TFMolInstance.train()")
 		self.TrainPrepare(continue_training)
 		test_freq = PARAMS["test_freq"]
-		mini_test_loss = float('inf') # some big numbers
-		met_mini = False
+		mini_dipole_test_loss = float('inf') # some big numbers
+		mini_energy_test_loss = float('inf')
+		mini_test_loss = float('inf')
 		for step in  range (0, mxsteps):
-			if step > PARAMS["SwitchEpoch"] and met_mini == True:
+			if self.Training_Traget == "EandG":
 				self.train_step_EandG(step)
-				met_mini = True
-			else:
+				if step%test_freq==0 and step!=0 :
+					test_energy_loss = self.test_EandG(step)
+					if test_energy_loss < mini_energy_test_loss:
+						mini_energy_test_loss = test_energy_loss
+						self.save_chk(step)
+			elif self.Training_Traget == "Dipole":
 				self.train_step_dipole(step)
-				met_mini = False
-			if step%test_freq==0 and step!=0 :
-				test_loss = self.test(step)
-				if test_loss < mini_test_loss:
-					mini_test_loss = test_loss
-					self.save_chk(step)
-					met_mini = True
+				if step%test_freq==0 and step!=0 :
+					test_dipole_loss = self.test_dipole(step)
+					if test_dipole_loss < mini_dipole_test_loss:
+						mini_dipole_test_loss = test_dipole_loss
+						self.save_chk(step)
+						if step >= PARAMS["SwitchEpoch"]:
+							self.Training_Traget = "EandG"
+							print ("Switching to Energy and Gradient Learning...")
+			else:
+				self.train_step(step)
+				if step%test_freq==0 and step!=0 :
+					test_loss = self.test(step)
+					if test_loss < mini_test_loss:
+						mini_test_loss = test_loss
+						self.save_chk(step)
 		self.SaveAndClose()
 		return
 
