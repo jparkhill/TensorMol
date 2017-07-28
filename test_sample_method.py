@@ -51,7 +51,7 @@ def TrainPrepare():
 		c.Save()
 
 	if (1):
-		a = MSet("DavidRandom")
+		a = MSet("DavidMD")
 		a.Load()
 		for mol in a.mols:
 			mol.properties["gradients"] = mol.properties["forces"]
@@ -67,7 +67,7 @@ def TrainPrepare():
 		print a.mols[0].properties
 		a.mols[0].WriteXYZfile(fname="test")
 
-def TrainForceField(SetName_ = "DavidRandom"):
+def TrainForceField(SetName_ = "DavidMD"):
 	a = MSet(SetName_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -111,10 +111,10 @@ def TestIRLinearDirect():
 	PARAMS["HiddenLayers"] = [200, 200, 200]
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-	manager= TFMolManage("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1" , tset, False, RandomTData_=False, Trainable_=False)
+	manager= TFMolManage("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1" , tset, False, RandomTData_=False, Trainable_=False)
 	ForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(m.atoms,x),True,False)
 	EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(m.atoms,x))
-	ChargeField = lambda x: np.random.random((m.NAtoms(),3))
+	ChargeField = lambda x: np.random.random((m.NAtoms()))
 	PARAMS["OptMomentum"] = 0.0
 	PARAMS["OptMomentumDecay"] = 0.9
 	PARAMS["OptStepSize"] = 0.02
@@ -124,13 +124,14 @@ def TestIRLinearDirect():
 	PARAMS["MDMaxStep"] = 100
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
-	PARAMS["MDTemp"]= 1.0
+	PARAMS["MDTemp"]= 300.0
 	m = GeomOptimizer(EnergyForceField).Opt(m)
 	annealx_ = Annealer(EnergyForceField, None, m, "Anneal")
 	annealx_.Prop()
 	m.coords = annealx_.Minx.copy()
 	# now actually collect the IR.
 	PARAMS["MDMaxStep"] = 40000
+	PARAMS["MDTemp"]= 300.0
 	md = IRTrajectory(EnergyForceField, ChargeField, m,"THP_udp_grad_IR",annealx_.v.copy())
 	md.Prop()
 	WriteDerDipoleCorrelationFunction(md.mu_his,"THP_udp_grad_IR.txt")

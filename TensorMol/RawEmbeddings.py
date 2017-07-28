@@ -1356,7 +1356,7 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
 	nelemp = tf.shape(ElemPairs_)[0]
-	RMatrix = tf.divide(TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat),5.0)
+	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
 	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
 	# tf.nn.top_k is slow, next lines faster for sorting nx2 array of atomic Zs
 	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))

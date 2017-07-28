@@ -1,6 +1,5 @@
 from TensorMol import *
-import time, os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+import time
 
 #jeherr tests
 
@@ -31,9 +30,9 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 200
-PARAMS["test_freq"] = 10
-PARAMS["batch_size"] = 8000
+PARAMS["max_steps"] = 100
+PARAMS["test_freq"] = 5
+PARAMS["batch_size"] = 1000
 PARAMS["NeuronType"] = "relu"
 # PARAMS["Profiling"] = True
 
@@ -53,7 +52,7 @@ PARAMS["NeuronType"] = "relu"
 # PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
 # PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
 
-#os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
 # Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
@@ -71,7 +70,7 @@ def InterpolateGeometries():
 	mol1.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_pb_tess_goopt', mode='w')
 	# mol2.WriteXYZfile(fpath='./results/cspbbr3_tess', fname='cspbbr3_6sc_ortho_rot', mode='w')
 
-def ReadSmallMols(set_="MDMols", dir_="/media/sdb1/dtoth/sampling_mols/qchem_data/*/*", energy=False, forces=False, charges=False, mmff94=False):
+def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset/*/*/", energy=False, forces=False, charges=False, mmff94=False):
 	import glob
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
@@ -295,11 +294,22 @@ def MakeTestSet():
 	# test_set = TensorData_TFRecords(c,d, test_=True)
 	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
+
+def BIMNN_NEq():
+	a=MSet("gdb9_cleaned")
+	a.Load()
+	print "Number of train Mols: ", len(a.mols)
+	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
+	tset = TensorMolData_BPBond_Direct(a,d)
+	# tset.BuildTrain("gdb9")
+	# manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
+	# manager.Train(maxstep=500)
+
 def TestMetadynamics():
-	a = MSet("sampling_mols")
+	a = MSet("MDTrajectoryMetaMD")
 	a.ReadXYZ()
-	m = a.mols[4]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='hexanol', path_='./qchem/', threads=24)
+	m = a.mols[0]
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 2.0
@@ -307,11 +317,11 @@ def TestMetadynamics():
 	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 600.0
-	meta = MetaDynamics(ForceField, m, 'hexanol')
+	meta = MetaDynamics(ForceField, m)
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("SmallMols_rand")
+	a=MSet("o2")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
@@ -328,17 +338,36 @@ def TestTFBond():
 	# 	for j in range(i, len(eles)):
 	# 		eles_pairs.append([eles[i], eles[j]])
 	# eles_pairs_np = np.asarray(eles_pairs)
-	# Ele = tf.constant(eles_np, dtype = tf.int32)
-	# Elep = tf.constant(eles_pairs_np, dtype = tf.int32)
+	# Ele = tf.constant(eles_np, dtype = tf.int64)
+	# Elep = tf.constant(eles_pairs_np, dtype = tf.int64)
 	# sess=tf.Session()
 	# init = tf.global_variables_initializer()
 	# sess.run(init)
-	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Elep)))
-	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_DirectQueue")
+	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
+
+def GetPairPotential():
+	a=MSet("o2")
+	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	a.Save()
+	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
+	tset = TensorMolData_BPBond_Direct(a,d)
+	batchdata=tset.RawBatch()
+	# Zxyzs = tf.Variable(batchdata[0], dtype=tf.float32)
+	# BondIdxMatrix = tf.Variable(batchdata[1], dtype=tf.int32)
+	# labels = tf.Variable(batchdata[2], dtype=tf.float32)
+	manager=TFMolManage("Mol_o2_CZ_fc_sqdiff_BPBond_Direct_1", tset, Trainable_ = False)
+	PairPotVals = manager.EvalBPPairPotential(batchdata)
+	print PairPotVals
+	for i in range(len(PairPotVals)):
+		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
+
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
-ReadSmallMols(set_="DavidMetaMD", dir_="/media/sdb1/dtoth/TensorMol/qchem/MetaMD/xyz/*/", energy=True, forces=True)
+# ReadSmallMols(set_="o2", dir_="/media/sdb2/jeherr/TensorMol/datasets/o2_data/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 50000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -351,9 +380,11 @@ ReadSmallMols(set_="DavidMetaMD", dir_="/media/sdb1/dtoth/TensorMol/qchem/MetaMD
 # QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
+# BIMNN_NEq()
 # TestMetadynamics()
 # TestMD()
 # TestTFBond()
+GetPairPotential()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()

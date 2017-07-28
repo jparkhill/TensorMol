@@ -1054,6 +1054,10 @@ class TFMolManage(TFManage):
 		#return	diff / nmols
 		return
 
+	def EvalBPPairPotential(self, batch_data):
+		return self.Instances.evaluate(batch_data)
+
+
 	def Eval_Mol(self, mol):
 		total_case = len(mol.mbe_frags[self.TData.order])
 		if total_case == 0:
@@ -1183,10 +1187,12 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
 			self.Instances = MolInstance_DirectBP_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BPBond_Direct"):
+			self.Instances = MolInstance_DirectBPBond_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
-                        self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+			self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):

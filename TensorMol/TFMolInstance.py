@@ -98,8 +98,6 @@ class MolInstance(Instance):
 		return
 
 	def save_chk(self, step):  # We need to merge this with the one in TFInstance
-		cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
-		os.system(cmd)
 		self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
 		print("Saving Checkpoint file, in the TFMoInstance", self.chk_file)
 		self.saver.save(self.sess,  self.chk_file)

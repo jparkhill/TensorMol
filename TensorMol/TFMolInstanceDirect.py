@@ -983,14 +983,10 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
 		"""
-		self.NetType = "RawBP_noGrad"
+		self.NetType = "BPPairPotential"
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
-		#if (Name_ != None):
-		#	return
-		# self.SFPa = None
-		# self.SFPr = None
-		# self.Ra_cut = None
-		# self.Rr_cut = None
+		# if (Name_ != None):
+			# return
 		self.MaxNAtoms = self.TData.MaxNAtoms
 		self.eles = self.TData.eles
 		self.n_eles = len(self.eles)
@@ -1000,7 +996,6 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			for j in range(i, len(self.eles)):
 				self.eles_pairs.append([self.eles[i], self.eles[j]])
 		self.eles_pairs_np = np.asarray(self.eles_pairs)
-		# self.SetANI1Param()
 		self.batch_size = PARAMS["batch_size"]
 		self.NetType = "RawBPBond_noGrad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
@@ -1020,48 +1015,12 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.summary_writer = None
 		self.profiling = PARAMS["Profiling"]
 
-	# def SetANI1Param(self, prec=np.float64):
-	# 	self.Ra_cut = PARAMS["AN1_a_Rc"]
-	# 	self.Rr_cut = PARAMS["AN1_r_Rc"]
-	# 	zetas = np.array([[PARAMS["AN1_zeta"]]], dtype = prec)
-	# 	etas = np.array([[PARAMS["AN1_eta"]]], dtype = prec)
-	# 	AN1_num_a_As = PARAMS["AN1_num_a_As"]
-	# 	AN1_num_a_Rs = PARAMS["AN1_num_a_Rs"]
-	# 	thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = prec)
-	# 	rs =  np.array([ self.Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = prec)
-	# 	# Create a parameter tensor. 4 x nzeta X neta X ntheta X nr
-	# 	p1 = np.tile(np.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
-	# 	p2 = np.tile(np.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
-	# 	p3 = np.tile(np.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_a_Rs,1])
-	# 	p4 = np.tile(np.reshape(rs,[1,1,1,AN1_num_a_Rs,1]),[1,1,AN1_num_a_As,1,1])
-	# 	SFPa = np.concatenate([p1,p2,p3,p4],axis=4)
-	# 	self.SFPa = np.transpose(SFPa, [4,0,1,2,3])
-	# 	etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = prec)
-	# 	AN1_num_r_Rs = PARAMS["AN1_num_r_Rs"]
-	# 	rs_R =  np.array([ self.Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = prec)
-	# 	# Create a parameter tensor. 2 x  neta X nr
-	# 	p1_R = np.tile(np.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
-	# 	p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
-	# 	SFPr = np.concatenate([p1_R,p2_R],axis=2)
-	# 	self.SFPr = np.transpose(SFPr, [2,0,1])
-	# 	self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
-	#
-	# 	p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
-	# 	p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
-	# 	SFPa2 = np.concatenate([p1,p2],axis=2)
-	# 	self.SFPa2 = np.transpose(SFPa2, [2,0,1])
-	# 	p1_new = np.reshape(rs_R,[AN1_num_r_Rs,1])
-	# 	self.SFPr2 = np.transpose(p1_new, [1,0])
-	# 	self.zeta = PARAMS["AN1_zeta"]
-	# 	self.eta = PARAMS["AN1_eta"]
-	#
-	# 	print ("self.inshape:", self.inshape)
-
 	def Clean(self):
 		Instance.Clean(self)
 		self.Zxyzs_pl=None
 		self.check = None
 		self.BondIdxMatrix_pl=None
+		self.RList=None
 		self.label_pl=None
 		self.atom_outputs = None
 		self.Scatter_Sym = None
@@ -1084,20 +1043,9 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
 			ElemPairs = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
-			RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, ElemPairs)
-			# SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
-			# SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
-			# self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2, self.Rr_cut, Elep, self.SFPa2,self.zeta, self.eta, self.Ra_cut)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
-			#self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
-			# tf.verify_tensor_all_finite(RList[0], "Nan in output!!! 0 ")
-			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
-			self.output, self.atom_outputs = self.inference(RList, MolIdxList)
+			self.RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, ElemPairs)
+			self.output, self.atom_outputs = self.inference(self.RList, MolIdxList)
 			self.check = tf.add_check_numerics_ops()
-			# self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -1227,10 +1175,6 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
 			else:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			#print ("gradient:", gradient[0][:4])
-			#print ("gradient:", np.sum(gradient[0]))
-			#print ("gradient:", np.sum(np.isinf(gradient[0])))
-			#print ("gradient:", np.where(np.isinf(gradient[0]) == True))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
@@ -1239,8 +1183,6 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 				chrome_trace = fetched_timeline.generate_chrome_trace_format()
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
-		#print ("gradients:", gradients)
-		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.PrintTrain(step, train_loss, num_of_mols, duration)
 		return
 
@@ -1264,6 +1206,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			# preds, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
+			print(atom_outputs)
 		duration = time.time() - start_time
 		self.PrintTest(mol_output, labels, test_loss, num_of_mols, duration)
 		return test_loss
@@ -1278,10 +1221,35 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f", step, duration, (float(loss)/(Ncase)))
 		return
 
-	def evaluate(self, batch_data, IfGrad=True):   #this need to be modified
+	def Evaluate(self):   #this need to be modified
+		print(self.chk_file)
+		if not self.sess:
+			print("loading the session..")
+			self.EvalPrepare()
+		self.TData.raw_it = iter(self.TData.set.mols)
+		Ncase_train = self.TData.NTrain
+		AtomOutputs = []
+		for ministep in xrange(0, int(Ncase_train/self.batch_size)):
+			batch_data = self.TData.RawBatch(nmol=self.batch_size)
+			feed_dict=self.fill_feed_dict(batch_data)
+			actual_mols  = self.batch_size
+			_, mol_output, atom_outputs, RList = self.sess.run([self.check, self.output, self.atom_outputs, self.RList], feed_dict=feed_dict)
+			energy_distance = []
+			# print(atom_outputs)
+			for i in range(len(atom_outputs)):
+				energy_distance.append(np.stack([atom_outputs[i][0,:], RList[i]], axis=1))
+			if ministep == 0:
+				AtomOutputs = energy_distance
+			else:
+				for i in range(len(AtomOutputs)):
+					AtomOutputs[i] = np.append(AtomOutputs[i], energy_distance[i],axis=0)
+		# print(AtomOutputs)
+		return AtomOutputs
+
+	def evaluate(self, batch_data, IfGrad=False):   #this need to be modified
 		# Check sanity of input
-		nmol = batch_data[2].shape[0]
-		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
+		nmol = batch_data[0].shape[0]
+		LOGGER.debug("nmol: %i", nmol)
 		self.batch_size = nmol
 		if not self.sess:
 			print ("loading the session..")
@@ -1303,29 +1271,20 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			return mol_output, atom_outputs, gradient
 		else:
 			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
+			print(mol_output)
 			return mol_output, atom_outputs
 
 	def EvalPrepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
+		with tf.Graph().as_default():
+			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
-			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
-			SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
-			SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update2(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2, self.Rr_cut, Elep, self.SFPa2,self.zeta, self.eta, self.Ra_cut)
-			#elf.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Update(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut, Elep, self.SFPa, self.Ra_cut)
-			#self.Rr_cut_tf = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
-			#self.Ra_cut_tf = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr, self.Rr_cut_tf, Elep, self.SFPa, self.Ra_cut_tf)
-			#tf.verify_tensor_all_finite(self.Scatter_Sym[0], "Nan in output!!! 0 ")
-			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
-			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
+			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
+			ElemPairs = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+			self.RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, ElemPairs)
+			self.output, self.atom_outputs = self.inference(self.RList, MolIdxList)
+			tf.Print(self.atom_outputs, [self.atom_outputs])
 			self.check = tf.add_check_numerics_ops()
-			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -1334,8 +1293,10 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.saver = tf.train.Saver()
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			#self.run_metadata = tf.RunMetadata()
+			self.sess.run(init)
+			# if self.profiling:
+				# self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+				# self.run_metadata = tf.RunMetadata()
 		return
 
 	def continue_training(self, mxsteps):
@@ -3215,7 +3176,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
-		return 
+		return
 
 
 	def test_dipole(self, step):

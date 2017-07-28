@@ -4,7 +4,8 @@ Many of these tests take a pretty significant amount of time and memory to compl
 """
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+import numpy as np
+#os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
 def TestBPDirect():
 	"""
@@ -460,7 +461,6 @@ def TestIndoIR():
 	#md0.Prop()
 	#WriteDerDipoleCorrelationFunction(md0.mu_his,"indo.txt")
 	return
-
 def david_testIR():
 	"""
 	Try to model the IR spectra of Johnson's peptides...
@@ -829,6 +829,40 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 	optimizer.Opt(test_mol)
 	return
 
+def PullFreqData():
+	a = open("/media/sdb1/dtoth/qchem_jobs/thp.out", "r+") #Change file name
+	# each time to read correct output file
+	f=open("thp_freq.dat", "w") #Change file name to whatever you want --
+	# make sure it's different each time
+	lines = a.readlines()
+	#print "funcking print it ",lines
+	data = []
+	ip = 0
+	for i, line in enumerate(lines):
+		if "Molecular Point Group" in line:
+			atoms = int(lines[i-2].split()[0])
+			break
+	nm = np.zeros((3*atoms-6, atoms, 3))
+	for i, line in enumerate(lines):
+		if "Frequency:" in line:
+			freq = [line.split()[1], line.split()[2],line.split()[3]]
+			intens = [lines[i+4].split()[2], lines[i+4].split()[3],lines[i+4].split()[4]]
+			f.write(freq[0] + "   " + intens[0] + "\n")
+			f.write(freq[1] + "   " + intens[1] + "\n")
+			f.write(freq[2] + "   " + intens[2] + "\n")
+		if "Raman Active" in line:
+			for j in range(atoms):
+				it = 0
+				for k in range(3):
+					for l in range(3):
+						nm[it+ip,j,l] = float(lines[i+j+2].split()[k*3+l+1])
+					it += 1
+			ip += 3
+			# f.write(nm[0] + "  " + nm)
+	np.save("morphine_nm.npy", nm)
+	f.close()
+
+
 def TestPotential():
 	"""
 	Makes volumetric data for looking at how potentials behave near and far from equilibrium.
@@ -1186,11 +1220,43 @@ def TestNeighborList():
 	nmol = 30
 	maxnatom = 40
 	nnz = 39
-	nreplica = 100
+	nreplica = 10
+	talg0 = 0.0
+	talg1 = 0.0
+	DoTriples=False
+	for i in range(5):
+		x = np.random.random((8000,3))*200.0
+		t0 = time.time()
+		nl0 = Make_NListNaive(x,10.0,4000);
+		talg0+=time.time() - t0
+		print 0,talg0, time.time() - t0
+		t1 = time.time()
+		nl1 = Make_NListLinear(x,10.0,8000);
+		talg1+=time.time() - t1
+		print 1,talg1, time.time() - t1
+		# Compare the two lists.
+	for i in range(nreplica):
+		x = np.random.random((nmol,maxnatom,3))*30.0
+		nnzl = np.array([nnz for i in range(nmol)])
+		t0 = time.time()
+		nl0 = NeighborListSet(x,nnzl,DoTriples,False,None,0)
+		nl0.Update(x,10.0,9.0)
+		talg0+=time.time() - t0
+		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape
+		t1 = time.time()
+		nl1 = NeighborListSet(x,nnzl,DoTriples,False,None,1)
+		nl1.Update(x,10.0,9.0)
+		talg1+=time.time() - t1
+		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape
+		# Compare the two lists.
+	nmol = 1
+	maxnatom = 3000
+	nnz = 2998
+	nreplica = 3
 	talg0 = 0.0
 	talg1 = 0.0
 	for i in range(nreplica):
-		x = np.random.random((nmol,maxnatom,3))*30.0
+		x = np.random.random((nmol,maxnatom,3))*45.0
 		nnzl = np.array([nnz for i in range(nmol)])
 		t0 = time.time()
 		nl0 = NeighborListSet(x,nnzl,True,False,None,0)
@@ -1198,11 +1264,10 @@ def TestNeighborList():
 		talg0+=time.time() - t0
 		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape, nl0.triples.shape
 		t1 = time.time()
-		talg1+=time.time() - t1
 		nl1 = NeighborListSet(x,nnzl,True,False,None,1)
 		nl1.Update(x,10.0,9.0)
+		talg1+=time.time() - t1
 		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape, nl1.triples.shape
-		# Compare the two lists.
 
 
 #
@@ -1221,14 +1286,15 @@ def TestNeighborList():
 # david_testIR()
 #david_HarmonicAnalysis()
 #TestMetadynamics()
-Test_Periodic_LJMD()
+PullFreqData()
+# Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
 #TestIpecac()
 #TestHerrNet1()
 #TestOCSDB()
-#TestNeighborList()
+TestNeighborList()
 #TestNeb()
 #TestMD()
 #TestRandom()
