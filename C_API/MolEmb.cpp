@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <map>
+#include <set>
 #include "SH.hpp"
 
 // So that parameters can be dealt with elsewhere.
@@ -1112,7 +1114,7 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
 // Avoid stupid python reference counting issues by just using std::vector...
-std::vector< std::vector<int> > tmp(nat);
+std::vector< std::vector<int> > tmp(nreal);
 #pragma omp parallel for
 	for (int i=0; i < nreal; ++i)
 	{
@@ -1126,6 +1128,137 @@ std::vector< std::vector<int> > tmp(nat);
 			}
 		}
 	}
+	PyObject* Tore = PyList_New(nreal);
+	for (int i=0; i < nreal; ++i)
+	{
+		PyObject* tl = PyList_New(tmp[i].size());
+		for (int j=0; j<tmp[i].size();++j)
+		{
+			PyObject* ti = PyInt_FromLong(tmp[i][j]);
+			PyList_SetItem(tl,j,ti);
+		}
+		PyList_SetItem(Tore,i,tl);
+	}
+	return Tore;
+}
+
+//
+// Linear scaling version of the above routine.
+// This should NOT be used for training.
+//
+static PyObject* Make_NListLinear(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	double Rc;
+	double SkinDepth = 0.0;
+	// This is used to avoid recomputation.
+	int nreal;
+	if (!PyArg_ParseTuple(args, "O!di", &PyArray_Type, &xyz, &Rc, &nreal))
+		return NULL;
+	double *x;
+	x = (double*) ((PyArrayObject*) xyz)->data;
+	const int nat = (xyz->dimensions)[0];
+	const int nx = nat;
+	double xmx = x[0];
+	double xmn = x[0];
+	double ymx = x[1];
+	double ymn = x[1];
+	double zmx = x[2];
+	double zmn = x[2];
+	for (int II = 0; II<nat ; ++II )
+	{
+		if (x[II*3]<xmn)
+			xmn = x[II*3];
+		if (x[II*3]>xmx)
+			xmx = x[II*3];
+		if (x[II*3+1]<ymn)
+			ymn = x[II*3+1];
+		if (x[II*3+1]>ymx)
+			ymx = x[II*3+1];
+		if (x[II*3+2]<zmn)
+			zmn = x[II*3+2];
+		if (x[II*3+2]>zmx)
+			zmx = x[II*3+2];
+	}
+	double lx = xmx-xmn;
+	double ly = ymx-ymn;
+	double lz = zmx-zmn;
+	double dx = lx/Rc;
+	double dy = ly/Rc;
+	double dz = lz/Rc;
+	//double rho = nx/(lx*ly*lz);
+	// divide space into overlapping cubic prisms of size
+	// Rc+SkinDepth in raster order.
+	int NII = (int(lx/dx)+1);
+	int NJJ = (int(ly/dy)+1);
+	int NKK = (int(lz/dz)+1);
+	int NCubes = NII*NJJ*NKK;
+	int ndist = 0;
+	std::vector< std::vector<int> > tmp(nreal);
+	for (int II=0; II < NII ; ++II)
+	{
+		for (int JJ=0; JJ < NJJ ; ++JJ)
+		{
+			for (int KK=0; KK < NKK ; ++KK)
+			{
+				int tmpcube[nx];
+				int NInCube = 0;
+				// The cube's center is at
+				double Cx = xmn+dx*II;
+				double Cy = ymn+dy*JJ;
+				double Cz = zmn+dz*KK;
+				double xlb =  Cx-Rc-SkinDepth;
+				double xub =  Cx+Rc+SkinDepth;
+				double ylb =  Cy-Rc-SkinDepth;
+				double yub =  Cy+Rc+SkinDepth;
+				double zlb =  Cz-Rc-SkinDepth;
+				double zub =  Cz+Rc+SkinDepth;
+				/*cout << xmn << " X " << xmx << endl;
+				cout << ymn << " X " << ymx << endl;
+				cout << zmn << " X " << zmx << endl;
+				cout << xlb << " x " << xub << endl;
+				cout << ylb << " x " << yub << endl;
+				cout << zlb << " x " << zub << endl;*/
+				// Now assign cube lists.
+				for (int i=0; i<nx;++i)
+				{
+					if (xlb < x[i*3+0] && x[i*3+0] < xub)
+					{
+						if (ylb < x[i*3+1] && x[i*3+1] < yub)
+						{
+							if (zlb < x[i*3+2] && x[i*3+2] < zub)
+							{
+								tmpcube[NInCube] = i;
+								NInCube++;
+							}
+						}
+					}
+				}
+				for (int i=0; i<NInCube; ++i)
+				{
+					int I = tmpcube[i];
+					if (I>=nreal)
+						continue;
+					for (int j=i+1; j<NInCube; ++j)
+					{
+						int J = tmpcube[j];
+						if (std::count(tmp[I].begin(),tmp[I].end(),J)==0)
+						{
+							ndist++;
+							double xx = (x[I*3+0]-x[J*3+0]);
+							double yy = (x[I*3+1]-x[J*3+1]);
+							double zz = (x[I*3+2]-x[J*3+2]);
+							double dij = sqrt(xx*xx+yy*yy+zz*zz) + 0.00000000001;
+							//dists[std::make_pair(i,y[j])] = dij;
+							if (dij < Rc)
+								tmp[I].push_back(J);
+						}
+					}
+				}
+			}
+		}
+	}
+	// Avoid stupid python reference counting issues by just using std::vector...
 	PyObject* Tore = PyList_New(nreal);
 	for (int i=0; i < nreal; ++i)
 	{
@@ -1564,7 +1697,7 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 				//           std::cout<<disp<<"  "<<dist<<std::endl;
 				//     std::cout<<" "<<m<<"  "<<k<<"  "<<1/dist*(1 - erf(4*(dist-dist_cut)))/2<<"  "<<1/dist<<std::endl;
 				if (dist > 0.5)
-				ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
+				ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf functtion with 1/x
 				else
 				ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
 			}
@@ -1976,6 +2109,8 @@ static PyObject*  Make_Sym(PyObject *self, PyObject  *args) {
 
 static PyMethodDef EmbMethods[] =
 {
+	{"Make_NListLinear", Make_NListLinear, METH_VARARGS,
+	"Make_NListLinear method"},
 	{"Make_NListNaive", Make_NListNaive, METH_VARARGS,
 	"Make_NListNaive method"},
 	{"DipoleAutoCorr", DipoleAutoCorr, METH_VARARGS,

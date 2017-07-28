@@ -44,22 +44,22 @@ def Dimer_ChargeCharge(m_):
 
 
 def Dimer_Replusive(m_):
-        """calculate the charge-charge interaction between two monomer in a dimer"""
-        replu_energy = 0.0
+	"""calculate the charge-charge interaction between two monomer in a dimer"""
+	replu_energy = 0.0
 	if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
-        seperate_index = m_.properties["natom_each_mono"][0]
-        if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
-        for i in range (0, seperate_index):
-                for j in range (seperate_index, m_.NAtoms()):
-                        replu_energy += 0.1/(m_.DistMatrix[i][j])**12
-        return replu_energy
+		m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+	seperate_index = m_.properties["natom_each_mono"][0]
+	if type(m_.DistMatrix) is not np.ndarray:
+		m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+	for i in range (0, seperate_index):
+		for j in range (seperate_index, m_.NAtoms()):
+			replu_energy += 0.1/(m_.DistMatrix[i][j])**12
+	return replu_energy
 
 def Dimer_ChargeCharge_Grad(m_):
 	"""calculate the gradient of charge-charge interaction between two monomer in a dimer"""
 	if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+		m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
 	cc_energy_grad = np.zeros((m_.NAtoms(), 3))
 	seperate_index = m_.properties["natom_each_mono"][0]
 	for i in range (0, m_.NAtoms()):
@@ -77,7 +77,7 @@ def Dimer_ChargeCharge_Grad(m_):
 def Dimer_Cutoff_Grad(m_, dist_, cutoff_, cutoff_width_):
 	"""calculate the gradient of cutoff function: (1+tanh((dist-cutoff)/cutoff_width))/2.0, where dist is the distance between the COM of two monoers"""
 	if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+		m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
 	cutoff_grad = np.zeros((m_.NAtoms(), 3))
 	seperate_index = m_.properties["natom_each_mono"][0]
 	mass = np.array(map(lambda x: ATOMICMASSES[x-1],m_.atoms))
@@ -93,21 +93,21 @@ def Dimer_Cutoff_Grad(m_, dist_, cutoff_, cutoff_width_):
 	return cutoff_grad
 
 def Dimer_Replusive_Grad(m_):
-        if type(m_.DistMatrix) is not np.ndarray:
-                m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
-        replu_energy_grad = np.zeros((m_.NAtoms(), 3))
-        seperate_index = m_.properties["natom_each_mono"][0]
+	if type(m_.DistMatrix) is not np.ndarray:
+		m_.DistMatrix = MolEmb.Make_DistMat(m_.coords)
+	replu_energy_grad = np.zeros((m_.NAtoms(), 3))
+	seperate_index = m_.properties["natom_each_mono"][0]
 	for i in range (0, m_.NAtoms()):
-                for j in range (0, seperate_index):
-                        for k in range (seperate_index, m_.NAtoms()):
-                                for q in range (0, 3):
-                                        if j == i:
-                                                replu_energy_grad[i][q] +=  - 0.1*(m_.coords[j][q]-m_.coords[k][q])/(m_.DistMatrix[j][k]**14)
-                                        elif k == i:
+		for j in range (0, seperate_index):
+			for k in range (seperate_index, m_.NAtoms()):
+				for q in range (0, 3):
+					if j == i:
+						replu_energy_grad[i][q] +=  - 0.1*(m_.coords[j][q]-m_.coords[k][q])/(m_.DistMatrix[j][k]**14)
+					elif k == i:
 						replu_energy_grad[i][q] +=  - 0.1*(m_.coords[k][q]-m_.coords[j][q])/(m_.DistMatrix[j][k]**14)
-                                        else:
+					else:
 						continue
-        return replu_energy_grad
+	return replu_energy_grad
 
 def ElectricFieldForce(q_,E_):
 	"""
@@ -185,7 +185,6 @@ def WriteVelocityAutocorrelations(muhis,vhis):
 			tore[i,1] /= 3.*float(n-i)
 		np.savetxt("./results/"+"VtV0_"+str(atom)+".txt",tore)
 	return
-
 
 def WriteDipoleCorrelationFunction(t0,t1,t2):
 	"""
