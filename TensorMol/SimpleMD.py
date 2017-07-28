@@ -536,7 +536,8 @@ class Annealer(IRTrajectory):
 				self.qs = self.q0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
 			# avoid the thermostat blowing up.
-			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
+			AnnealFrac = float(self.AnnealSteps - step)/self.AnnealSteps
+			self.Tstat.T = self.AnnealT0*AnnealFrac + PARAMS["MDAnnealTF"]*(1.0-AnnealFrac) + pow(10.0,-10.0)
 			# First 50 steps without any thermostat.
 			self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 
