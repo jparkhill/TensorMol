@@ -7,7 +7,7 @@ for data tables and figures
 from TensorMol import *
 import os
 import numpy as np
-
+from math import *
 # Dataset retrieval and information
 a = MSet("sampling_mols")
 a.ReadXYZ()
@@ -42,3 +42,6 @@ def GetForceEnergy():
 
 # Gather statistics
 def GetStats(GetForceEnergy):
+    Energy =
+    Force = 
+    rms_force = sqrt(np.mean(()))
