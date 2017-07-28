@@ -1108,14 +1108,14 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	PyArrayObject *xyz;
 	double rng;
 	int nreal;
-	if (!PyArg_ParseTuple(args, "O!di", &PyArray_Type, &xyz, &rng, &nreal))
+	int DoPerms;
+	if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &rng, &nreal,&DoPerms))
 		return NULL;
 	double *xyz_data;
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
-// Avoid stupid python reference counting issues by just using std::vector...
-std::vector< std::vector<int> > tmp(nreal);
-#pragma omp parallel for
+	// Avoid stupid python reference counting issues by just using std::vector...
+	std::vector< std::vector<int> > tmp(nreal);
 	for (int i=0; i < nreal; ++i)
 	{
 		for (int j=i+1; j < nat; ++j)
@@ -1124,7 +1124,7 @@ std::vector< std::vector<int> > tmp(nreal);
 			if (dij < rng)
 			{
 				tmp[i].push_back(j);
-				if (j<nreal)
+				if (j<nreal && DoPerms==1)
 					tmp[j].push_back(i);
 			}
 		}
@@ -1154,7 +1154,8 @@ static PyObject* Make_NListLinear(PyObject *self, PyObject  *args)
 	double SkinDepth = 0.0;
 	// This is used to avoid recomputation.
 	int nreal;
-	if (!PyArg_ParseTuple(args, "O!di", &PyArray_Type, &xyz, &Rc, &nreal))
+	int DoPerms;
+	if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &Rc, &nreal,&DoPerms))
 		return NULL;
 	double *x;
 	x = (double*) ((PyArrayObject*) xyz)->data;
@@ -1254,7 +1255,7 @@ static PyObject* Make_NListLinear(PyObject *self, PyObject  *args)
 							if (dij < Rc)
 							{
 								tmp[I].push_back(J);
-								if (J<nreal)
+								if (J<nreal && DoPerms==1)
 									tmp[J].push_back(I);
 							}
 						}
