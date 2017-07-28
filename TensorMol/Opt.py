@@ -335,47 +335,46 @@ class Optimizer:
 		print "Final Energy:", Energy(prev_m.coords)
 		return prev_m
 
+	def OptANI1Direct(self,m, filename="OptLog",Debug=False):
+		"""
+		Optimize using force output of an atomwise network.
+		now also averages over rotations...
 
-        def OptANI1Direct(self,m, filename="OptLog",Debug=False):
-                """
-                Optimize using force output of an atomwise network.
-                now also averages over rotations...
-                
-                Args:
-                        m: A distorted molecule to optimize
-                """
-                # Sweeps one at a time
-                rmsdisp = 10.0
-                maxdisp = 10.0
-                rmsgrad = 10.0
-                maxgrad = 10.0
-                step=0
-                mol_hist = []
-                prev_m = Mol(m.atoms, m.coords)
-                diis = DIIS()
-                print "Orig Coords", m.coords
-                #print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
-                veloc=np.zeros(m.coords.shape)
-                old_veloc=np.zeros(m.coords.shape)
-                Energy =  lambda x_: self.tfm.Eval_BPEnergy_Direct_Grad(Mol(m.atoms, x_), False)
-                EnergyAndForce =  lambda x_: self.tfm.Eval_BPEnergy_Direct_Grad(Mol(m.atoms, x_))
-                #EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
-                while( step < self.max_opt_step and rmsgrad > 0.001):
-                        prev_m = Mol(m.atoms, m.coords)
-                        energy, frc = EnergyAndForce(m.coords)
-                        frc = RemoveInvariantForce(m.coords, frc, m.atoms)
-                        frc /= JOULEPERKCAL
-                        rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
-                        m.coords = LineSearch(Energy, m.coords, frc)
-                        rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
-                        print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
-                        mol_hist.append(prev_m)
-                        prev_m.WriteXYZfile("./results/", filename)
-                        step+=1
-                # Checks stability in each cartesian direction.
-                #prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-                print "Final Energy:", Energy(prev_m.coords)
-                return prev_m
+		Args:
+		        m: A distorted molecule to optimize
+		"""
+		# Sweeps one at a time
+		rmsdisp = 10.0
+		maxdisp = 10.0
+		rmsgrad = 10.0
+		maxgrad = 10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		diis = DIIS()
+		print "Orig Coords", m.coords
+		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
+		Energy =  lambda x_: self.tfm.Eval_BPEnergy_Direct_Grad(Mol(m.atoms, x_), False)
+		EnergyAndForce =  lambda x_: self.tfm.Eval_BPEnergy_Direct_Grad(Mol(m.atoms, x_))
+		#EnergyFunction2 =  lambda x_: -627.509*self.tfm.Eval_BPForce(Mol(m.atoms, x_),total_energy=True)[0]
+		while( step < self.max_opt_step and rmsgrad > 0.001):
+			prev_m = Mol(m.atoms, m.coords)
+			energy, frc = EnergyAndForce(m.coords)
+			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
+			frc /= JOULEPERKCAL
+			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
+			m.coords = LineSearch(Energy, m.coords, frc)
+			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
+			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./results/", filename)
+			step+=1
+		# Checks stability in each cartesian direction.
+		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
+		print "Final Energy:", Energy(prev_m.coords)
+		return prev_m
 
 	def OptTFRealForceLBFGS(self,m, filename="OptLog",Debug=False):
 		"""
@@ -655,45 +654,6 @@ class Optimizer:
                         print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
 			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
-
-	def GoOpt_ScanForce(self,m):
-                # Sweeps one at a time
-                err=10.0
-                lasterr=10.0
-                step=0
-                mol_hist = []
-                new_m = Mol()
-                new_m = m
-                print "Orig Coords", new_m.coords
-                old_veloc=np.zeros(new_m.coords.shape)
-                while(err>self.thresh and step < self.max_opt_step):
-                        coords=np.array(new_m.coords,copy=True)
-                        tmp_m = Mol(new_m.atoms, coords)
-
-                        new_coords = new_m.GoForce_Scan(self.maxstep, self.ngrid)
-			veloc = new_coords - tmp_m.coords
-                        # Remove average torque
-                        #veloc = self.RemoveAverageTorque(new_m.coords,veloc)
-                        #TODO remove rotation.
-                        c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
-                        # Remove translation.
-                        c_veloc = c_veloc - np.average(c_veloc,axis=0)
-
-                        new_m.coords = tmp_m.coords + c_veloc
-                        old_veloc = self.momentum_decay*c_veloc
-
-                        err = new_m.rms(tmp_m)
-                        mol_hist.append(tmp_m)
-                        tmp_m.WriteXYZfile("./datasets/", "OptLog")
-                        if (0): # Prints density along the optimization.
-                                xs,ps = self.tfm.EvalAllAtoms(tmp_m)
-                                grids = tmp_m.MolDots()
-                                grids = tmp_m.AddPointstoMolDots(grids, xs, ps)
-                                GridstoRaw(grids,250,str(step))
-                        step+=1
-			Energy = new_m.GoPotential()
-                        print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
-                return
 
 	def Interpolate_OptForce(self,m1,m2):
 		# Interpolates between lattices of two stoichiometric molecules from the center outwards
