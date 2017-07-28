@@ -264,11 +264,11 @@ def TestBP_WithGrad():
 	return
 
 def TestMetadynamics():
-	a = MSet("johnsonmols")
-	a.ReadXYZ("johnsonmols")
+	a = MSet("david_test")
+	a.ReadXYZ("david_test")
 	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	PARAMS["NeuronType"]="softplus"
-	m = a.mols[2]
+	m = a.mols[3]
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),False)
@@ -405,66 +405,62 @@ def IRProtocol(mol_, ForceField_, ChargeField_, name_= "IR"):
 	return
 
 def TestIndoIR():
-        """
-        Try to model the IR spectra of Johnson's peptides...
-        Optimize, then get charges, then do an isotropic IR spectrum.
-        """
-        a = MSet("johnsonmols")
-        a.ReadXYZ("johnsonmols")
-        manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-        PARAMS["OptMomentum"] = 0.0
-        PARAMS["OptMomentumDecay"] = 0.9
-        PARAMS["OptStepSize"] = 0.02
-        PARAMS["OptMaxCycles"]=200
-        indo = a.mols[0]
+	"""
+	Try to model the IR spectra of Johnson's peptides...
+	Optimize, then get charges, then do an isotropic IR spectrum.
+	"""
+	a = MSet("johnsonmols")
+	a.ReadXYZ("johnsonmols")
+	manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	PARAMS["OptMomentum"] = 0.0
+	PARAMS["OptMomentumDecay"] = 0.9
+	PARAMS["OptStepSize"] = 0.02
+	PARAMS["OptMaxCycles"]=200
+	indo = a.mols[0]
 	print "number of atoms in indo", indo.NAtoms()
-        #optimizer = Optimizer(manager)
-        #optimizer.OptANI1(indo)
-        qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
-        ForceField = lambda x: manager.Eval_BPForceSingle(Mol(indo.atoms,x),True)
-        ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(indo.atoms,x),False)[2][0]
-        PARAMS["MDdt"] = 0.2
-        PARAMS["RemoveInvariant"]=True
-        PARAMS["MDMaxStep"] = 10000
-        PARAMS["MDThermostat"] = "Nose"
-        PARAMS["MDV0"] = None
-        PARAMS["MDTemp"]= 1.0
-        annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
-        annealIndo.Prop()
-        indo.coords = annealIndo.Minx.copy()
+	#optimizer = Optimizer(manager)
+	#optimizer.OptANI1(indo)
+	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
+	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(indo.atoms,x),True)
+	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(indo.atoms,x),False)[2][0]
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 10000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDV0"] = None
+	PARAMS["MDTemp"]= 1.0
+	annealIndo = Annealer(ForceField, ChargeField, indo, "Anneal")
+	annealIndo.Prop()
+	indo.coords = annealIndo.Minx.copy()
 	indo.WriteXYZfile("./results/", "indo_opt")
+	PARAMS["MDFieldAmp"] = 0.0 #0.00000001
+	PARAMS["MDFieldTau"] = 0.4
+	PARAMS["MDFieldFreq"] = 0.8
+	PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDTemp"] = 30
+	PARAMS["MDdt"] = 0.1
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDV0"] = None
+	PARAMS["MDMaxStep"] = 10000
+	warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
+	warm.Prop()
+	indo.coords = warm.x.copy()
+	PARAMS["MDMaxStep"] = 40000
+	md = IRTrajectory(ForceField, ChargeField, indo,"indo_IR_30K",warm.v.copy(),)
+	md.Prop()
+	WriteDerDipoleCorrelationFunction(md.mu_his,"indo_IR_30K.txt")
+	#PARAMS["MDTemp"]= 0.0
+	#PARAMS["MDThermostat"] = None
+	#PARAMS["MDFieldAmp"] = 20.0 #0.00000001
+	#PARAMS["MDFieldTau"] = 0.4
+	#PARAMS["MDFieldFreq"] = 0.8
+	#PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
+	#md0 = IRTrajectory(ForceField, ChargeField, indo, "indo")
+	#md0.Prop()
+	#WriteDerDipoleCorrelationFunction(md0.mu_his,"indo.txt")
+	return
 
-        PARAMS["MDFieldAmp"] = 0.0 #0.00000001
-        PARAMS["MDFieldTau"] = 0.4
-        PARAMS["MDFieldFreq"] = 0.8
-        PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-        PARAMS["MDThermostat"] = "Nose"
-        PARAMS["MDTemp"] = 30
-        PARAMS["MDdt"] = 0.1
-        PARAMS["RemoveInvariant"]=True
-        PARAMS["MDV0"] = None
-
-        PARAMS["MDMaxStep"] = 10000
-        warm = VelocityVerlet(ForceField, indo, "warm", ForceField)
-        warm.Prop()
-        indo.coords = warm.x.copy()
-
-        PARAMS["MDMaxStep"] = 40000
-        md = IRTrajectory(ForceField, ChargeField, indo,"indo_IR_30K",warm.v.copy(),)
-        md.Prop()
-        WriteDerDipoleCorrelationFunction(md.mu_his,"indo_IR_30K.txt")
-
-
-        #PARAMS["MDTemp"]= 0.0
-        #PARAMS["MDThermostat"] = None
-        #PARAMS["MDFieldAmp"] = 20.0 #0.00000001
-        #PARAMS["MDFieldTau"] = 0.4
-        #PARAMS["MDFieldFreq"] = 0.8
-        #PARAMS["MDFieldVec"] = np.array([1.0,0.0,0.0])
-        #md0 = IRTrajectory(ForceField, ChargeField, indo, "indo")
-        #md0.Prop()
-        #WriteDerDipoleCorrelationFunction(md0.mu_his,"indo.txt")
-        return
 def david_testIR():
 	"""
 	Try to model the IR spectra of Johnson's peptides...
@@ -626,6 +622,7 @@ def david_AnnealHarmonic(set_ = "david_test", Anneal = True, WriteNM_ = False):
 		x_.coords = annealx_.Minx.copy()
 		x_.WriteXYZfile("./results/", "davidIR_opt")
 	HarmonicSpectra(EnergyField, x_.coords, masses, x_.atoms, WriteNM_ = True, Mu_ = DipoleField)
+
 def TestIR():
 	"""
 	Runs a ton of Infrared Spectra.
@@ -955,8 +952,8 @@ def Test_Periodic_LJMD():
 	This version also tests linear-scaling-ness of the neighbor list
 	"""
 	a=MSet("Test")
-	ParticlesPerEdge = 6
-	EdgeSize = 6
+	ParticlesPerEdge = 7
+	EdgeSize = 7
 	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
 	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
@@ -1189,11 +1186,43 @@ def TestNeighborList():
 	nmol = 30
 	maxnatom = 40
 	nnz = 39
-	nreplica = 100
+	nreplica = 10
+	talg0 = 0.0
+	talg1 = 0.0
+	DoTriples=False
+	for i in range(5):
+		x = np.random.random((8000,3))*200.0
+		t0 = time.time()
+		nl0 = Make_NListNaive(x,10.0,4000);
+		talg0+=time.time() - t0
+		print 0,talg0, time.time() - t0
+		t1 = time.time()
+		nl1 = Make_NListLinear(x,10.0,8000);
+		talg1+=time.time() - t1
+		print 1,talg1, time.time() - t1
+		# Compare the two lists.
+	for i in range(nreplica):
+		x = np.random.random((nmol,maxnatom,3))*30.0
+		nnzl = np.array([nnz for i in range(nmol)])
+		t0 = time.time()
+		nl0 = NeighborListSet(x,nnzl,DoTriples,False,None,0)
+		nl0.Update(x,10.0,9.0)
+		talg0+=time.time() - t0
+		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape
+		t1 = time.time()
+		nl1 = NeighborListSet(x,nnzl,DoTriples,False,None,1)
+		nl1.Update(x,10.0,9.0)
+		talg1+=time.time() - t1
+		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape
+		# Compare the two lists.
+	nmol = 1
+	maxnatom = 3000
+	nnz = 2998
+	nreplica = 3
 	talg0 = 0.0
 	talg1 = 0.0
 	for i in range(nreplica):
-		x = np.random.random((nmol,maxnatom,3))*30.0
+		x = np.random.random((nmol,maxnatom,3))*45.0
 		nnzl = np.array([nnz for i in range(nmol)])
 		t0 = time.time()
 		nl0 = NeighborListSet(x,nnzl,True,False,None,0)
@@ -1201,12 +1230,11 @@ def TestNeighborList():
 		talg0+=time.time() - t0
 		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape, nl0.triples.shape
 		t1 = time.time()
-		talg1+=time.time() - t1
 		nl1 = NeighborListSet(x,nnzl,True,False,None,1)
 		nl1.Update(x,10.0,9.0)
+		talg1+=time.time() - t1
 		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape, nl1.triples.shape
-		# Compare the two lists.
-		
+
 
 #
 # Tests to run.

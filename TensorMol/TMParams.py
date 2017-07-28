@@ -32,7 +32,8 @@ class TMParams(dict):
 		self["AN1_r_Rs"] = np.array([ self["AN1_r_Rc"]*i/self["AN1_num_r_Rs"] for i in range (0, self["AN1_num_r_Rs"])])
 		self["AN1_a_Rs"] = np.array([ self["AN1_a_Rc"]*i/self["AN1_num_a_Rs"] for i in range (0, self["AN1_num_a_Rs"])])
 		self["AN1_a_As"] = np.array([ 2.0*Pi*i/self["AN1_num_a_As"] for i in range (0, self["AN1_num_a_As"])])
-		self["GradScaler"] = 1.0
+		self["GradScalar"] = 1.0
+		self["DipoleScalar"] = 1.0
 		# SET GENERATION parameters
 		self["RotateSet"] = 0
 		self["TransformSet"] = 1
@@ -106,11 +107,15 @@ class TMParams(dict):
 		self["MDFieldT0"] = 3.0
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
-		self["EESwitchFunc"] = "Cos" # options are Cosine, and Tanh.
+		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEOrder"] = 2 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
 		self["EEdr"] = 1.0 # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
-		self["EECutoff"] = 5.0 # switch between 0 and 1/r occurs at Angstroms.
+		self["EECutoff"] = 5.0 #switch between 0 and 1/r occurs at Angstroms.
+		self["EECutoffOn"] = 4.4 # switch on between 0 and 1/r occurs at Angstroms.
+		self["EECutoffOff"] = 15.0 # switch off between 0 and 1/r occurs at Angstroms.
+		self["Erf_Width"] = 0.2
+		self["DSFAlpha"] = 0.15
 		#paths
 		self["results_dir"] = "./results/"
 		self["dens_dir"] = "./densities/"

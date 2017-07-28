@@ -6,121 +6,20 @@ Depending on cutoffs and density these scale to >20,000 atoms
 
 import numpy as np
 from PairProviderTF import *
+from MolEmb import Make_NListNaive, Make_NListLinear
 
-def kdtree( data_, leafsize=10 ):
-	"""
-	build a kd-tree for O(n log n) nearest neighbour search
-
-	input:
-		data:       2D ndarray, shape =(ndim,ndata), preferentially C order
-		leafsize:   max. number of data points to leave in a leaf
-
-	output:
-		kd-tree:    list of tuples
-	"""
-	data = data_.copy()
-	ndim = data.shape[0]
-	ndata = data.shape[1]
-	# find bounding hyper-rectangle
-	hrect = np.zeros((2,data.shape[0]))
-	hrect[0,:] = data.min(axis=1)
-	hrect[1,:] = data.max(axis=1)
-	# create root of kd-tree
-	idx = np.argsort(data[0,:], kind='mergesort')
-	data[:,:] = data[:,idx]
-	splitval = data[0,ndata/2]
-	left_hrect = hrect.copy()
-	right_hrect = hrect.copy()
-	left_hrect[1, 0] = splitval
-	right_hrect[0, 0] = splitval
-	tree = [(None, None, left_hrect, right_hrect, None, None)]
-	stack = [(data[:,:ndata/2], idx[:ndata/2], 1, 0, True),
-		(data[:,ndata/2:], idx[ndata/2:], 1, 0, False)]
-
-	# recursively split data in halves using hyper-rectangles:
-	while stack:
-		# pop data off stack
-		data, didx, depth, parent, leftbranch = stack.pop()
-		ndata = data.shape[1]
-		nodeptr = len(tree)
-
-		# update parent node
-		_didx, _data, _left_hrect, _right_hrect, left, right = tree[parent]
-		tree[parent] = (_didx, _data, _left_hrect, _right_hrect, nodeptr, right) if leftbranch \
-			else (_didx, _data, _left_hrect, _right_hrect, left, nodeptr)
-		# insert node in kd-tree
-
-		# leaf node?
-		if ndata <= leafsize:
-			_didx = didx.copy()
-			_data = data.copy()
-			leaf = (_didx, _data, None, None, 0, 0)
-			tree.append(leaf)
-
-		# not a leaf, split the data in two
-		else:
-			splitdim = depth % ndim
-			idx = np.argsort(data[splitdim,:], kind='mergesort')
-			data[:,:] = data[:,idx]
-			didx = didx[idx]
-			nodeptr = len(tree)
-			stack.append((data[:,:ndata/2], didx[:ndata/2], depth+1, nodeptr, True))
-			stack.append((data[:,ndata/2:], didx[ndata/2:], depth+1, nodeptr, False))
-			splitval = data[splitdim,ndata/2]
-			if leftbranch:
-				left_hrect = _left_hrect.copy()
-				right_hrect = _left_hrect.copy()
-			else:
-				left_hrect = _right_hrect.copy()
-				right_hrect = _right_hrect.copy()
-			left_hrect[1, splitdim] = splitval
-			right_hrect[0, splitdim] = splitval
-			# append node to tree
-			tree.append((None, None, left_hrect, right_hrect, None, None))
-	return tree
-
-def intersect(hrect, r2, centroid):
-	"""
-	checks if the hyperrectangle hrect intersects with the
-	hypersphere defined by centroid and r2
-	"""
-	maxval = hrect[1,:]
-	minval = hrect[0,:]
-	p = centroid.copy()
-	idx = p < minval
-	p[idx] = minval[idx]
-	idx = p > maxval
-	p[idx] = maxval[idx]
-	return ((p-centroid)**2).sum() < r2
-
-def radius_search(tree, datapoint, radius):
-	""" find all points within radius of datapoint """
-	stack = [tree[0]]
-	inside = []
-	while stack:
-		leaf_idx, leaf_data, left_hrect, \
-			right_hrect, left, right = stack.pop()
-		# leaf
-		if leaf_idx is not None:
-			param=leaf_data.shape[0]
-			distance = np.sqrt(((leaf_data - datapoint.reshape((param,1)))**2).sum(axis=0))
-			near = np.where(distance<=radius)
-			if len(near[0]):
-				idx = leaf_idx[near]
-				inside += idx.tolist()
-		else:
-			if intersect(left_hrect, radius, datapoint):
-				stack.append(tree[left])
-
-			if intersect(right_hrect, radius, datapoint):
-				stack.append(tree[right])
-	return inside
+#
+# I excised the K-D tree because it had some weird bugs.
+# we will have to do our own Octree implementation sometime.
+# for now I just coded the naive (quadratic) thing in C++ and seems fast enough IMHO.
+# JAP
+#
 
 class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
 	"""
-	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False, ele_ = None):
+	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False, ele_ = None, alg_ = None):
 		"""
 		Builds or updates a neighbor list of atoms within rcut_
 		using n*Log(n) kd-tree.
@@ -130,7 +29,7 @@ class NeighborList:
 			rcut_: distance cutoff.
 		"""
 		self.natom = x_.shape[0] # includes periodic images.
-		self.x = x_.copy()
+		self.x = x_.T.copy()
 		self.pairs = None
 		self.triples = None
 		self.DoTriples = DoTriples_
@@ -138,6 +37,7 @@ class NeighborList:
 		self.ele = ele_
 		self.npairs = None
 		self.ntriples = None
+		self.alg = alg_
 		return
 
 	def Update(self, x_, rcut_pairs=5.0, rcut_triples=5.0, molind_ = None, nreal_ = None):
@@ -171,16 +71,15 @@ class NeighborList:
 			pair matrix (npair X 2)
 			triples matrix (ntrip X 3)
 		"""
-		tree = kdtree(self.x.T)
 		pair = []
 		ntodo = self.natom
 		if (nreal_ != None):
 			ntodo = nreal_
-		for i in range(ntodo):
-			if (self.DoPerms):
-				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i != k]]
-			else:
-				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut) if i < k]]
+		pair = None
+		if (self.alg==0):
+			pair = Make_NListNaive(self.x,rcut,ntodo)
+		else:
+			pair = Make_NListLinear(self.x,rcut,ntodo)
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		p = None
@@ -199,6 +98,7 @@ class NeighborList:
 					p[pp,0]=i
 					p[pp,1]=j
 				pp = pp+1
+		del pair
 		return p
 
 	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0, molind_=None, nreal_=None):
@@ -212,23 +112,32 @@ class NeighborList:
 			pair matrix (npair X 2)
 			triples matrix (ntrip X 3)
 		"""
-		tree = kdtree(self.x.T)
+		if (self.ele is None):
+			print "WARNING... need self.ele for angular SymFunc triples... "
 		pair = []
 		tpair = [] # since these may have different cutoff
 		ntodo = self.natom
 		if (nreal_ != None):
 			ntodo = nreal_
-		for i in range(ntodo):
-			#pair = None
-			if (self.DoPerms):
-				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut_pairs) if i != k]]
-				tpair = tpair+[[k for k in radius_search(tree,self.x[i],rcut_triples) if i != k]]
-			else:
-				pair = pair+[[k for k in radius_search(tree,self.x[i],rcut_pairs) if i < k]]
-				tpair = tpair+[[k for k in radius_search(tree,self.x[i],rcut_triples) if i < k]]
+		pair = None
+		tpair = None
+
+		# this works...
+		#print "TEST"
+		#pair = Make_NListNaive(self.x,rcut_pairs,ntodo)
+		#print pair
+		#pair = Make_NListLinear(self.x,rcut_pairs,ntodo)
+		#print pair
+		#print "~~TEST"
+
+		if (self.alg==0):
+			pair = Make_NListNaive(self.x,rcut_pairs,ntodo)
+			tpair = Make_NListNaive(self.x,rcut_triples,ntodo)
+		else:
+			pair = Make_NListLinear(self.x,rcut_pairs,ntodo)
+			tpair = Make_NListLinear(self.x,rcut_triples,ntodo)
 		npairi = map(len,pair)
 		npair = sum(npairi)
-
 		npairi = map(len,tpair)
 		ntrip = sum(map(lambda x: x*(x-1)/2 if x>0 else 0, npairi))
 		p = None
@@ -273,6 +182,8 @@ class NeighborList:
 								t[tp,1]=j
 								t[tp,2]=k
 						tp=tp+1
+		del pair
+		del tpair
 		return p,t
 
 class NeighborListSet:
@@ -287,12 +198,12 @@ class NeighborListSet:
 		self.nlist = []
 		self.nmol = x_.shape[0]
 		self.maxnatom = x_.shape[1]
-#		self.alg = 0 if self.maxnatom < 100 else 1
-#		if (alg_ != None):
-#			self.alg = alg_
-		self.alg = 1
+		self.alg = 0 if self.maxnatom < 500 else 1
+		if (alg_ != None):
+			self.alg = alg_
 		# alg=0 naive quadratic.
-		# alg=1 linear scaling kdtree
+		# alg=1 linear scaling
+		# alg=2 PairProvider.
 		self.x = x_
 		self.nnz = nnz_
 		self.ele = ele_
@@ -300,16 +211,16 @@ class NeighborListSet:
 		self.DoTriples = DoTriples_
 		self.DoPerms = DoPerms_
 		self.triples = None
-		self.UpdateInterval = 15
+		self.UpdateInterval = 1
 		self.UpdateCounter = 0
 		self.PairMaker=None
-		if (self.alg==1):
+		if (self.alg<2):
 			if self.ele is None:
 				for i in range(self.nmol):
-					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, None))
+					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, None,self.alg))
 			else:
 				for i in range(self.nmol):
-					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]]))
+					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]],self.alg))
 		else:
 			self.PairMaker = PairProvider(self.nmol,self.maxnatom)
 		return
@@ -336,7 +247,7 @@ class NeighborListSet:
 		Returns:
 			(nnzero pairs X 3 pair tensor) (mol , I , J)
 		"""
-		if self.alg == 1:
+		if self.alg < 2:
 			for i,mol in enumerate(self.nlist):
 				mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i)
 		else:
@@ -359,7 +270,7 @@ class NeighborListSet:
 			(nnzero pairs X 3 pair tensor) (mol , I , J)
 			(nnzero X 4 triples tensor) (mol , I , J , K)
 		"""
-		if (self.alg==0):
+		if (self.alg==2):
 			trp = self.PairMaker(self.x,rcut_pairs,self.nnz)
 			trtmp = self.PairMaker(self.x,rcut_triples,self.nnz)
 			hack=[[[] for j in range(self.maxnatom)] for i in range(self.nmol)]
