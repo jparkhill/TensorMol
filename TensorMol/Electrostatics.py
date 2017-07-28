@@ -12,7 +12,7 @@ def WeightedCoordAverage(x_, q_, center_=None):
 	""" Dipole relative to center of x_ """
 	if (center_== None):
 		center_ = np.average(x_,axis=0)
-	return np.einsum("ax,a", x_-center_ , q_)
+	return np.einsum("ax,a...", x_-center_ , q_)
 
 def DipoleDebug(m_):
 		if ("dipole" in m_.properties and "charges" in m_.properties):
