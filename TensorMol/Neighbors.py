@@ -198,8 +198,7 @@ class NeighborListSet:
 		self.nlist = []
 		self.nmol = x_.shape[0]
 		self.maxnatom = x_.shape[1]
-#		self.alg = 0 if self.maxnatom < 100 else 1
-		self.alg=0
+		self.alg = 0 if self.maxnatom < 500 else 1
 		if (alg_ != None):
 			self.alg = alg_
 		# alg=0 naive quadratic.

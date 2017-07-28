@@ -1189,19 +1189,31 @@ def TestNeighborList():
 	nreplica = 10
 	talg0 = 0.0
 	talg1 = 0.0
+	DoTriples=False
+	for i in range(5):
+		x = np.random.random((8000,3))*200.0
+		t0 = time.time()
+		nl0 = Make_NListNaive(x,10.0,4000);
+		talg0+=time.time() - t0
+		print 0,talg0, time.time() - t0
+		t1 = time.time()
+		nl1 = Make_NListLinear(x,10.0,8000);
+		talg1+=time.time() - t1
+		print 1,talg1, time.time() - t1
+		# Compare the two lists.
 	for i in range(nreplica):
 		x = np.random.random((nmol,maxnatom,3))*30.0
 		nnzl = np.array([nnz for i in range(nmol)])
 		t0 = time.time()
-		nl0 = NeighborListSet(x,nnzl,True,False,None,0)
+		nl0 = NeighborListSet(x,nnzl,DoTriples,False,None,0)
 		nl0.Update(x,10.0,9.0)
 		talg0+=time.time() - t0
-		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape, nl0.triples.shape
+		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape
 		t1 = time.time()
-		nl1 = NeighborListSet(x,nnzl,True,False,None,1)
+		nl1 = NeighborListSet(x,nnzl,DoTriples,False,None,1)
 		nl1.Update(x,10.0,9.0)
 		talg1+=time.time() - t1
-		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape, nl1.triples.shape
+		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape
 		# Compare the two lists.
 	nmol = 1
 	maxnatom = 3000

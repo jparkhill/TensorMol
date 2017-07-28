@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <map>
+#include <set>
 #include "SH.hpp"
 
 // So that parameters can be dealt with elsewhere.
@@ -1142,14 +1144,14 @@ std::vector< std::vector<int> > tmp(nreal);
 
 //
 // Linear scaling version of the above routine.
-// Has sorting overhead, and not yet optimized in any way.
-// Skectches out a prism around each point then uses the
-// Dense algorithm there. Can be improved... but why.
+// This should NOT be used for training.
 //
 static PyObject* Make_NListLinear(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz;
 	double Rc;
+	double SkinDepth = 0.0;
+	// This is used to avoid recomputation.
 	int nreal;
 	if (!PyArg_ParseTuple(args, "O!di", &PyArray_Type, &xyz, &Rc, &nreal))
 		return NULL;
@@ -1159,69 +1161,104 @@ static PyObject* Make_NListLinear(PyObject *self, PyObject  *args)
 	const int nx = nat;
 	double xmx = x[0];
 	double xmn = x[0];
+	double ymx = x[1];
+	double ymn = x[1];
+	double zmx = x[2];
+	double zmn = x[2];
 	for (int II = 0; II<nat ; ++II )
 	{
 		if (x[II*3]<xmn)
 			xmn = x[II*3];
 		if (x[II*3]>xmx)
 			xmx = x[II*3];
+		if (x[II*3+1]<ymn)
+			ymn = x[II*3+1];
+		if (x[II*3+1]>ymx)
+			ymx = x[II*3+1];
+		if (x[II*3+2]<zmn)
+			zmn = x[II*3+2];
+		if (x[II*3+2]>zmx)
+			zmx = x[II*3+2];
 	}
-	std::vector<int> y(nx);
-	std::size_t n(0);
-	std::generate(std::begin(y), std::end(y), [&]{ return n++; });
-	std::sort(  std::begin(y), std::end(y),
-		[&](int i1, int i2) { return x[i1*3] < x[i2*3]; } );
-	// So now the y-vector indices sort x.
-	// find slicing bounds within the y for the X
-	int Xbds[nreal*2];
-	#pragma omp parallel for
-	for (int II = 0; II<nreal ; ++II )
-	{
-		int guess = int((x[II*3]-xmn)/(xmx-xmn)*(nx-1));
-		int glb = std::max(guess-1,0); // Guess lower bound index in y
-    int gub = std::min(guess+1,nx-1); // Guess upper bound index y
-		//cout << nx << " " << xmx << " " << x[II*3] << "glb,gub" << glb << " " << gub << endl;
-		while ( !((x[II*3] - x[y[std::max(glb-1,0)]*3] >= Rc && x[II*3] - x[y[glb]*3] <= Rc ) or glb==0) )
-    {
-				//cout << xmx << " " << x[II*3] << "2glb,gub" << glb << " " << gub << endl;
-        if (x[II*3] - x[y[glb]*3] < Rc)
-            glb--;
-        else
-            glb++;
-    }
-    while ( !((x[y[std::min(gub+1,nx-1)]*3] - x[II*3] >= Rc && x[y[gub]*3] - x[II*3] <= Rc ) or gub==(nx-1)) )
-    {
-        if (x[y[glb]*3]-x[II*3] > Rc)
-            gub--;
-        else
-            gub++;
-    }
-		Xbds[II*2] = glb;
-		Xbds[II*2+1] = gub;
-	}
-	// Now at this point for < 10,000 particles, this should
-	// contain a < 100 particles, and are best done with the dense algorithm.
-	// but remapped within the range.
-	// If somehow > 100 particles are still in the range, we should do the same
-	// thing along y here...
+	double lx = xmx-xmn;
+	double ly = ymx-ymn;
+	double lz = zmx-zmn;
+	double dx = lx/Rc;
+	double dy = ly/Rc;
+	double dz = lz/Rc;
+	//double rho = nx/(lx*ly*lz);
+	// divide space into overlapping cubic prisms of size
+	// Rc+SkinDepth in raster order.
+	int NII = (int(lx/dx)+1);
+	int NJJ = (int(ly/dy)+1);
+	int NKK = (int(lz/dz)+1);
+	int NCubes = NII*NJJ*NKK;
+	int ndist = 0;
 	std::vector< std::vector<int> > tmp(nreal);
-	#pragma omp parallel for
-	for (int i=0; i < nreal; ++i)
+	for (int II=0; II < NII ; ++II)
 	{
-		for (int j=Xbds[i*2]; j <= Xbds[i*2+1]; ++j)
+		for (int JJ=0; JJ < NJJ ; ++JJ)
 		{
-			double xx = (x[i*3+0]-x[y[j]*3+0]);
-			double yy = (x[i*3+1]-x[y[j]*3+1]);
-			double zz = (x[i*3+2]-x[y[j]*3+2]);
-			double dij = sqrt(xx*xx+yy*yy+zz*zz) + 0.00000000001;
-			if (dij < Rc && i<y[j])
+			for (int KK=0; KK < NKK ; ++KK)
 			{
-				tmp[i].push_back(y[j]);
-				// For now we're not doing the permutations...
+				int tmpcube[nx];
+				int NInCube = 0;
+				// The cube's center is at
+				double Cx = xmn+dx*II;
+				double Cy = ymn+dy*JJ;
+				double Cz = zmn+dz*KK;
+				double xlb =  Cx-Rc-SkinDepth;
+				double xub =  Cx+Rc+SkinDepth;
+				double ylb =  Cy-Rc-SkinDepth;
+				double yub =  Cy+Rc+SkinDepth;
+				double zlb =  Cz-Rc-SkinDepth;
+				double zub =  Cz+Rc+SkinDepth;
+				/*cout << xmn << " X " << xmx << endl;
+				cout << ymn << " X " << ymx << endl;
+				cout << zmn << " X " << zmx << endl;
+				cout << xlb << " x " << xub << endl;
+				cout << ylb << " x " << yub << endl;
+				cout << zlb << " x " << zub << endl;*/
+				// Now assign cube lists.
+				for (int i=0; i<nx;++i)
+				{
+					if (xlb < x[i*3+0] && x[i*3+0] < xub)
+					{
+						if (ylb < x[i*3+1] && x[i*3+1] < yub)
+						{
+							if (zlb < x[i*3+2] && x[i*3+2] < zub)
+							{
+								tmpcube[NInCube] = i;
+								NInCube++;
+							}
+						}
+					}
+				}
+				for (int i=0; i<NInCube; ++i)
+				{
+					int I = tmpcube[i];
+					if (I>=nreal)
+						continue;
+					for (int j=i+1; j<NInCube; ++j)
+					{
+						int J = tmpcube[j];
+						if (std::count(tmp[I].begin(),tmp[I].end(),J)==0)
+						{
+							ndist++;
+							double xx = (x[I*3+0]-x[J*3+0]);
+							double yy = (x[I*3+1]-x[J*3+1]);
+							double zz = (x[I*3+2]-x[J*3+2]);
+							double dij = sqrt(xx*xx+yy*yy+zz*zz) + 0.00000000001;
+							//dists[std::make_pair(i,y[j])] = dij;
+							if (dij < Rc)
+								tmp[I].push_back(J);
+						}
+					}
+				}
 			}
 		}
 	}
- // Avoid stupid python reference counting issues by just using std::vector...
+	// Avoid stupid python reference counting issues by just using std::vector...
 	PyObject* Tore = PyList_New(nreal);
 	for (int i=0; i < nreal; ++i)
 	{
@@ -1660,7 +1697,7 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 				//           std::cout<<disp<<"  "<<dist<<std::endl;
 				//     std::cout<<" "<<m<<"  "<<k<<"  "<<1/dist*(1 - erf(4*(dist-dist_cut)))/2<<"  "<<1/dist<<std::endl;
 				if (dist > 0.5)
-				ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf function with 1/x
+				ele_dist[m].push_back(1/dist*(1 - erf(4*(dist-dist_cut)))/2);    // add a smooth cut erf functtion with 1/x
 				else
 				ele_dist[m].push_back(-4*dist*dist+3);  // when dist< 0.5, replace 1/x with -4x^2+3 to ensure converge
 			}
