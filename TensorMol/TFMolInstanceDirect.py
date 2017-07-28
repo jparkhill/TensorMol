@@ -1840,6 +1840,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		self.summary_op = None
 		self.saver = None
 		self.summary_writer = None
+		print ("self.hidden1:",self.hidden1, " self.hidden2:", self.hidden2, " self.hidden3:", self.hidden3)
 
 	def SetANI1Param(self, prec=np.float64):
 		self.Ra_cut = PARAMS["AN1_a_Rc"]
@@ -2015,7 +2016,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "\n self.SFPr2_vary :", SFPr2_vary )
 			#print ("all time:", time.time() - t0, " get batch time:", batchtime)
-			print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
+			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
 			#print ("SFPr2:", SFPr2_vary, "\n SFPa2:", SFPa2_vary)
 			train_loss = train_loss + loss_value
 			train_energy_loss += energy_loss
@@ -2773,7 +2774,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.learning_rate_energy = PARAMS["learning_rate_energy"]
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.Training_Traget = "Dipole"
+		self.Training_Traget = "EandG"
 		self.SetANI1Param()
 
 	def Clean(self):
@@ -2830,18 +2831,21 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
+			#self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
+			self.Etotal,  self.energy_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
 
-			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			#self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
+			#self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 
-			self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole = self.loss_op_dipole(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.train_op_dipole = self.training(self.total_loss_dipole, self.learning_rate_dipole, self.momentum, self.dipole_wb)
+			#self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole = self.loss_op_dipole(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
+			#self.train_op_dipole = self.training(self.total_loss_dipole, self.learning_rate_dipole, self.momentum, self.dipole_wb)
 
-			self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG = self.loss_op_EandG(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum, self.energy_wb)
+			#self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG = self.loss_op_EandG(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
+			#self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum, self.energy_wb)
+			self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG = self.loss_op_EandG_test(self.Etotal, self.gradient, self.Elabel_pl, self.grads_pl)
+			self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum)	
 
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -2896,10 +2900,20 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
 		#loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScaler))
 		loss = tf.identity(EandG_loss)
+		#loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
 
 
+	def loss_op_EandG_test(self, energy, energy_grads, Elabels, grads):
+		energy_diff  = tf.subtract(energy, Elabels)
+		energy_loss = tf.nn.l2_loss(energy_diff)
+		grads_diff = tf.subtract(energy_grads, grads)
+		grads_loss = tf.nn.l2_loss(grads_diff)
+		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
+		loss = tf.identity(EandG_loss)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
 
 	def inference(self, inp, indexs, xyzs, natom, EE_cuton, EE_cutoff, Reep):
 		"""
@@ -2915,97 +2929,130 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		Ebranches=[]
 		xyzsInBohr = tf.multiply(xyzs,BOHRPERA)
 		output = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
-		energy_wb = []
+		#energy_wb = []
 		atom_outputs = []
-		for e in range(len(self.eles)):
-			Ebranches.append([])
-			inputs = inp[e]
-			shp_in = tf.shape(inputs)
-			index = tf.cast(indexs[e], tf.int64)
-			for i in range(len(self.HiddenLayers)):
-				if i == 0:
-					with tf.name_scope(str(self.eles[e])+'_hidden1'):
-						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
-						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-						Ebranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
-						energy_wb.append(weights)
-						energy_wb.append(biases)
-				else:
-					with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
-						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
-						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-						Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
-						energy_wb.append(weights)
-						energy_wb.append(biases)
-			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
-				shp = tf.shape(inputs)
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
-				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-				Ebranches[-1].append(tf.matmul(Ebranches[-1][-1], weights) + biases)
-				energy_wb.append(weights)
-				energy_wb.append(biases)
-				shp_out = tf.shape(Ebranches[-1][-1])
-				cut = tf.slice(Ebranches[-1][-1],[0,0],[shp_out[0],1])
-				rshp = tf.reshape(cut,[1,shp_out[0]])
-				atom_outputs.append(rshp)
-				rshpflat = tf.reshape(cut,[shp_out[0]])
-				atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
-				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
-				output = tf.add(output, ToAdd)
-			tf.verify_tensor_all_finite(output,"Nan in output!!!")
+		with tf.name_scope("EnergyNet"):
+			for e in range(len(self.eles)):
+				Ebranches.append([])
+				inputs = inp[e]
+				shp_in = tf.shape(inputs)
+				index = tf.cast(indexs[e], tf.int64)
+				for i in range(len(self.HiddenLayers)):
+					if i == 0:
+						with tf.name_scope(str(self.eles[e])+'_hidden1'):
+							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
+							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							Ebranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+					else:
+						with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
+							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
+				with tf.name_scope(str(self.eles[e])+'_regression_linear'):
+					shp = tf.shape(inputs)
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+					biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
+					Ebranches[-1].append(tf.matmul(Ebranches[-1][-1], weights) + biases)
+					shp_out = tf.shape(Ebranches[-1][-1])
+					cut = tf.slice(Ebranches[-1][-1],[0,0],[shp_out[0],1])
+					rshp = tf.reshape(cut,[1,shp_out[0]])
+					atom_outputs.append(rshp)
+					rshpflat = tf.reshape(cut,[shp_out[0]])
+					atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
+					ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
+					output = tf.add(output, ToAdd)
 		bp_energy = tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
+			#for e in range(len(self.eles)):
+			#	Ebranches.append([])
+			#	inputs = inp[e]
+			#	shp_in = tf.shape(inputs)
+			#	index = tf.cast(indexs[e], tf.int64)
+			#	for i in range(len(self.HiddenLayers)):
+			#		if i == 0:
+			#			with tf.name_scope(str(self.eles[e])+'_hidden1'):
+			#				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
+			#				biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+			#				Ebranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+			#				#energy_wb.append(weights)
+			#				#energy_wb.append(biases)
+			#		else:
+			#			with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
+			#				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+			#				biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+			#				Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
+			#				#energy_wb.append(weights)
+			#				#energy_wb.append(biases)
+			#	with tf.name_scope(str(self.eles[e])+'_regression_linear'):
+			#		shp = tf.shape(inputs)
+			#		weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+			#		biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
+			#		Ebranches[-1].append(tf.matmul(Ebranches[-1][-1], weights) + biases)
+			#		#energy_wb.append(weights)
+			#		#energy_wb.append(biases)
+			#		shp_out = tf.shape(Ebranches[-1][-1])
+			#		cut = tf.slice(Ebranches[-1][-1],[0,0],[shp_out[0],1])
+			#		rshp = tf.reshape(cut,[1,shp_out[0]])
+			#		atom_outputs.append(rshp)
+			#		rshpflat = tf.reshape(cut,[shp_out[0]])
+			#		atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
+			#		ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
+			#		output = tf.add(output, ToAdd)
+			#	tf.verify_tensor_all_finite(output,"Nan in output!!!")
+			#bp_energy = tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
+		energy_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+		#Dbranches=[]
+		#atom_outputs_charge = []
+		#dipole_wb = []
+		#output_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
+		#for e in range(len(self.eles)):
+		#	Dbranches.append([])
+		#	charge_inputs = inp[e]
+		#	charge_shp_in = tf.shape(charge_inputs)
+		#	charge_index = tf.cast(indexs[e], tf.int64)
+		#	for i in range(len(self.HiddenLayers)):
+		#		if i == 0:
+		#			with tf.name_scope(str(self.eles[e])+'_hidden1_charge'):
+		#				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
+		#				biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+		#				Dbranches[-1].append(self.activation_function(tf.matmul(charge_inputs, weights) + biases))
+		#				dipole_wb.append(weights)
+		#				dipole_wb.append(biases)
+		#		else:
+		#			with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)+"_charge"):
+		#				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+		#				biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+		#				Dbranches[-1].append(self.activation_function(tf.matmul(Dbranches[-1][-1], weights) + biases))
+		#				dipole_wb.append(weights)
+		#				dipole_wb.append(biases)
+		#	with tf.name_scope(str(self.eles[e])+'_regression_linear_charge'):
+		#		charge_shp = tf.shape(charge_inputs)
+		#		weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+		#		biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
+		#		dipole_wb.append(weights)
+		#		dipole_wb.append(biases)
+		#		Dbranches[-1].append(tf.matmul(Dbranches[-1][-1], weights) + biases)
+		#		shp_out = tf.shape(Dbranches[-1][-1])
+		#		cut = tf.slice(Dbranches[-1][-1],[0,0],[shp_out[0],1])
+		#		rshp = tf.reshape(cut,[1,shp_out[0]])
+		#		atom_outputs_charge.append(rshp)
+		#		rshpflat = tf.reshape(cut,[shp_out[0]])
+		#		atom_indice = tf.slice(charge_index, [0,1], [shp_out[0],1])
+		#		ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
+		#		output_charge = tf.add(output_charge, ToAdd)
+		#	tf.verify_tensor_all_finite(output_charge,"Nan in output!!!")
+		#	netcharge = tf.reshape(tf.reduce_sum(output_charge, axis=1), [self.batch_size])
+		#	delta_charge = tf.multiply(netcharge, natom)
+		#	delta_charge_tile = tf.tile(tf.reshape(delta_charge,[self.batch_size,1]),[1, self.MaxNAtoms])
+		#	scaled_charge =  tf.subtract(output_charge, delta_charge_tile)
+		#	flat_dipole = tf.multiply(tf.reshape(xyzsInBohr,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(scaled_charge,[self.batch_size*self.MaxNAtoms, 1]))
+		#	dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
 
-		Dbranches=[]
-		atom_outputs_charge = []
-		dipole_wb = []
-		output_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
-		for e in range(len(self.eles)):
-			Dbranches.append([])
-			charge_inputs = inp[e]
-			charge_shp_in = tf.shape(charge_inputs)
-			charge_index = tf.cast(indexs[e], tf.int64)
-			for i in range(len(self.HiddenLayers)):
-				if i == 0:
-					with tf.name_scope(str(self.eles[e])+'_hidden1_charge'):
-						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
-						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-						Dbranches[-1].append(self.activation_function(tf.matmul(charge_inputs, weights) + biases))
-						dipole_wb.append(weights)
-						dipole_wb.append(biases)
-				else:
-					with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)+"_charge"):
-						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
-						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-						Dbranches[-1].append(self.activation_function(tf.matmul(Dbranches[-1][-1], weights) + biases))
-						dipole_wb.append(weights)
-						dipole_wb.append(biases)
-			with tf.name_scope(str(self.eles[e])+'_regression_linear_charge'):
-				charge_shp = tf.shape(charge_inputs)
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
-				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-				dipole_wb.append(weights)
-				dipole_wb.append(biases)
-				Dbranches[-1].append(tf.matmul(Dbranches[-1][-1], weights) + biases)
-				shp_out = tf.shape(Dbranches[-1][-1])
-				cut = tf.slice(Dbranches[-1][-1],[0,0],[shp_out[0],1])
-				rshp = tf.reshape(cut,[1,shp_out[0]])
-				atom_outputs_charge.append(rshp)
-				rshpflat = tf.reshape(cut,[shp_out[0]])
-				atom_indice = tf.slice(charge_index, [0,1], [shp_out[0],1])
-				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
-				output_charge = tf.add(output_charge, ToAdd)
-			tf.verify_tensor_all_finite(output_charge,"Nan in output!!!")
-			netcharge = tf.reshape(tf.reduce_sum(output_charge, axis=1), [self.batch_size])
-			delta_charge = tf.multiply(netcharge, natom)
-			delta_charge_tile = tf.tile(tf.reshape(delta_charge,[self.batch_size,1]),[1, self.MaxNAtoms])
-			scaled_charge =  tf.subtract(output_charge, delta_charge_tile)
-			flat_dipole = tf.multiply(tf.reshape(xyzsInBohr,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(scaled_charge,[self.batch_size*self.MaxNAtoms, 1]))
-			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
-
-		#cc_energy_nodsf = TFCoulombErfLR(xyzsInBohr, scaled_charge, EE_cuton, Reep)
-		cc_energy = TFCoulombErfSRDSFLR(xyzsInBohr, scaled_charge, EE_cuton, EE_cutoff, Reep, self.DSFAlpha) 
-		total_energy = tf.add(bp_energy, cc_energy)
-		return total_energy, bp_energy, cc_energy, dipole, scaled_charge, energy_wb, dipole_wb
+		##cc_energy_nodsf = TFCoulombErfLR(xyzsInBohr, scaled_charge, EE_cuton, Reep)
+		#cc_energy = TFCoulombErfSRDSFLR(xyzsInBohr, scaled_charge, EE_cuton, EE_cutoff, Reep, self.DSFAlpha) 
+		#total_energy = tf.add(bp_energy, cc_energy)
+		##total_energy = tf.identity(bp_energy)
+		#return total_energy, bp_energy, cc_energy, dipole, scaled_charge, energy_wb, dipole_wb
+		return  bp_energy, energy_vars
 
 
 	def training(self, loss, learning_rate, momentum, update_var=None):
@@ -3251,6 +3298,50 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		return
 
 
+
+	def train_step_EandG_test(self, step):
+		"""
+		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		train_energy_loss = 0.0
+		train_grads_loss = 0.0
+		train_dipole_loss = 0.0
+		num_of_mols = 0
+		pre_output = np.zeros((self.batch_size),dtype=np.float64)
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep:", ministep)
+			batch_data = self.TData.GetTrainBatch(self.batch_size)
+			actual_mols  = self.batch_size
+			t = time.time()
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,   Etotal, energy_wb = self.sess.run([self.check, self.train_op_EandG, self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.Etotal, self.energy_wb], feed_dict=self.fill_feed_dict(batch_data))
+			#print ("length of energy_wb:", len(energy_wb))
+			#for wb in energy_wb:
+			#	print (wb.shape, wb.reshape(-1)[:10])
+			#print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss)
+			#print ("Etotal:", Etotal, " Ecc:", Ecc)
+			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
+			#print ("charge:", atom_charge )
+			train_loss = train_loss + loss_value
+			train_energy_loss += energy_loss
+			train_grads_loss += grads_loss
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+			#       f.write(chrome_trace)
+		#print ("gradients:", gradients)
+		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
+		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
+		return
+
 	def test_EandG(self, step):
 		"""
 		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
@@ -3373,7 +3464,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		mini_test_loss = float('inf')
 		for step in  range (0, mxsteps):
 			if self.Training_Traget == "EandG":
-				self.train_step_EandG(step)
+				self.train_step_EandG_test(step)
 				if step%test_freq==0 and step!=0 :
 					test_energy_loss = self.test_EandG(step)
 					if test_energy_loss < mini_energy_test_loss:

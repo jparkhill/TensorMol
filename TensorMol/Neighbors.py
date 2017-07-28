@@ -5,7 +5,7 @@ Depending on cutoffs and density these scale to >20,000 atoms
 """
 
 import numpy as np
-from PairProviderTF import *
+#from PairProviderTF import *
 from MolEmb import Make_NListNaive
 
 #

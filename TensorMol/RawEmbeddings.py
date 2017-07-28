@@ -679,7 +679,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nelep,natom2,nsym], dtype=tf.int64))
 	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
-	return tf.reduce_sum(to_reduce2, axis=3)
+	return tf.reduce_sum(to_reduce2, axis=3), GoodInds2
 
 
 
@@ -858,7 +858,7 @@ def TFSymASet_Linear(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Angtri, prec=tf.flo
 	p6_2 = tf.tile(p3_2,[nnzt,1,1]) # should be nnz X nsym
 	ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnzt*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
 	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nelep,natom2,nsym], dtype=tf.int64))
-	return tf.reduce_sum(to_reduce2, axis=3)
+	return tf.reduce_sum(to_reduce2, axis=3), GoodInds2
 
 def TFCoulomb(R, Qs, R_cut, Radpair, prec=tf.float64):
 	"""
@@ -1249,7 +1249,8 @@ def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
 	nele = tf.shape(eles_)[0]
 	nelep = tf.shape(eleps_)[0]
 	GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
-	GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+	TMP, NZT = TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut)
+	GMA = tf.reshape(TMP, [nmol, natom, -1])
 	GM = tf.concat([GMR, GMA], axis=2)
 	num_ele, num_dim = eles_.get_shape().as_list()
 	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
@@ -1266,7 +1267,7 @@ def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
 		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
 		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
 		IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
-	return SymList, IndexList
+	return SymList, IndexList, NZT
 
 def TFSymSet_Scattered_Linear(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, Radp, Angt):
 	"""
@@ -1289,7 +1290,8 @@ def TFSymSet_Scattered_Linear(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zet
 	nele = tf.shape(eles_)[0]
 	nelep = tf.shape(eleps_)[0]
 	GMR = tf.reshape(TFSymRSet_Linear(R, Zs, eles_, SFPsR_, eta, Rr_cut, Radp),[nmol, natom,-1])
-	GMA = tf.reshape(TFSymASet_Linear(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  Angt),[nmol, natom,-1])
+	TMP, NZT = TFSymASet_Linear(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  Angt)
+	GMA = tf.reshape(TMP, [nmol, natom,-1])
 	GM = tf.concat([GMR, GMA], axis=2)
 	#GM = tf.identity(GMA)
 	num_ele, num_dim = eles_.get_shape().as_list()
@@ -1307,7 +1309,7 @@ def TFSymSet_Scattered_Linear(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zet
 		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
 		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
 		IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
-	return SymList, IndexList
+	return SymList, IndexList, NZT
 
 
 def NNInterface(R, Zs, eles_, GM):
@@ -1456,9 +1458,9 @@ class ANISym:
 			#self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
-			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
-			self.Scatter_Sym_Linear, self.Sym_Index_Linear = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Eee, self.Kern, self.index = TFCoulombCosLR(self.xyz_pl, tf.cast(self.Z_pl, dtype=tf.float64), Rr_cut, self.Radp_pl)
+			self.Scatter_Sym_Update, self.Sym_Index_Update, self.NZT = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
+			self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.NZT_Linear = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angt_pl)
+			#self.Eee, self.Kern, self.index = TFCoulombCosLR(self.xyz_pl, tf.cast(self.Z_pl, dtype=tf.float64), Rr_cut, self.Radp_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)
 			#self.gradient_update2 = tf.gradients(self.Scatter_Sym_Update2, self.xyz_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym_Update, self.xyz_pl)
@@ -1499,8 +1501,8 @@ class ANISym:
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym_Update2, self.Sym_Index_Update2], feed_dict = feed_dict)
 			#sym_output, sym_index  = self.sess.run([self.Scatter_Sym, self.Sym_Index], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			#A, B  = self.sess.run([self.Scatter_Sym_Update, self.Sym_Index_Update], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			A, B, C, D, E  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Eee, self.Kern, self.index], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			print ("C:", C, " D:", D[:50], " E:", E[:50])
+			A, B, C, D, E, F  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Update, self.Sym_Index_Update, self.NZT, self.NZT_Linear], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			print ("E:\n", E[:50], "\nF:\n", F[:50])
 			#print ("i: ", i,  "sym_ouotput: ", len(sym_output)," time:", time.time() - t, " second", "gpu time:", time.time()-t1, sym_index)
 			#print ("sym_output_update:", np.array_equal(sym_output_update2[0], sym_output[0]))
 			#print ("sym_output_update:", np.sum(np.abs(sym_output_update2[0]-sym_output[0])))
