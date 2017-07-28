@@ -312,49 +312,6 @@ class TensorData():
 		self.Save() #write a convenience pickle.
 		return
 
-	def BuildSamples(self,name_="gdb9", atypes=[],uniform=False):
-		"""
-		Generates sampled data set without preparing the probabilities or embedding
-		if uniform is true, it generate a grid of uniform samples up to 4 angstrom away from
-		the central atom to generate known-good validation data.
-		"""
-		self.name=name_
-		print "Sampling set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
-		if (uniform):
-			print "sampling uniformily"
-		Cache=MSet(self.name)
-		print "Will store completed PES samples in ./datasets/"+self.name
-		if (len(atypes)==0):
-			atypes = self.set.AtomTypes()
-		print "Will sample atoms: ", atypes
-		# Determine the size of the training set that will be made.
-		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
-		for element in atypes:
-			for m in self.set.mols:
-				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
-		if (uniform):
-			for element in atypes:
-				print "AN: ", element, " contributes ", nofe[element]*20*20*20 , " samples "
-		else:
-			for element in atypes:
-				print "AN: ", element, " contributes ", nofe[element]*self.dig.NTrainSamples , " samples "
-		t0 = time.time()
-		for element in atypes:
-			print "Digesting atom: ", element
-			casep = 0
-			for mi in range(len(self.set.mols)):
-				m = self.set.mols[mi]
-				if (mi%1000==0):
-					print "Digested ", mi ," of ",len(self.set.mols)
-				self.dig.SampleDigestWPyscf(self.set.mols[mi],element,uniform)
-				Cache.mols.append(self.set.mols[mi])
-				if (mi%10==0 or uniform):
-					Cache.Save()
-				print mi
-		self.Save() #write a convenience pickle.
-		Cache.Save()
-		return
-
 	def GetTrainBatch(self,ele,ncases=2000,random=True):
 		if (self.ScratchState != ele):
 			self.LoadElementToScratch(ele,random)
@@ -766,4 +723,3 @@ class TensorData_TFRecords(TensorData):
 		self.PrintSampleInformation()
 		self.dig.Print()
 		return
-

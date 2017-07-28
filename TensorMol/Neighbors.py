@@ -5,7 +5,7 @@ Depending on cutoffs and density these scale to >20,000 atoms
 """
 
 import numpy as np
-from PairProviderTF import *
+#from PairProviderTF import *
 from MolEmb import Make_NListNaive, Make_NListLinear
 
 #
@@ -77,9 +77,9 @@ class NeighborList:
 			ntodo = nreal_
 		pair = None
 		if (self.alg==0):
-			pair = Make_NListNaive(self.x,rcut,ntodo)
+			pair = Make_NListNaive(self.x,rcut,ntodo,int(self.DoPerms))
 		else:
-			pair = Make_NListLinear(self.x,rcut,ntodo)
+			pair = Make_NListLinear(self.x,rcut,ntodo,int(self.DoPerms))
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		p = None
@@ -131,11 +131,11 @@ class NeighborList:
 		#print "~~TEST"
 
 		if (self.alg==0):
-			pair = Make_NListNaive(self.x,rcut_pairs,ntodo)
-			tpair = Make_NListNaive(self.x,rcut_triples,ntodo)
+			pair = Make_NListNaive(self.x,rcut_pairs,ntodo,int(self.DoPerms))
+			tpair = Make_NListNaive(self.x,rcut_triples,ntodo,int(self.DoPerms))
 		else:
-			pair = Make_NListLinear(self.x,rcut_pairs,ntodo)
-			tpair = Make_NListLinear(self.x,rcut_triples,ntodo)
+			pair = Make_NListLinear(self.x,rcut_pairs,ntodo,int(self.DoPerms))
+			tpair = Make_NListLinear(self.x,rcut_triples,ntodo,int(self.DoPerms))
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		npairi = map(len,tpair)

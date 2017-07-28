@@ -1227,11 +1227,11 @@ def TestNeighborList():
 	for i in range(5):
 		x = np.random.random((8000,3))*200.0
 		t0 = time.time()
-		nl0 = Make_NListNaive(x,10.0,4000);
+		nl0 = Make_NListNaive(x,10.0,4000,True);
 		talg0+=time.time() - t0
 		print 0,talg0, time.time() - t0
 		t1 = time.time()
-		nl1 = Make_NListLinear(x,10.0,8000);
+		nl1 = Make_NListLinear(x,10.0,8000,True);
 		talg1+=time.time() - t1
 		print 1,talg1, time.time() - t1
 		# Compare the two lists.
@@ -1286,7 +1286,7 @@ def TestNeighborList():
 # david_testIR()
 #david_HarmonicAnalysis()
 #TestMetadynamics()
-PullFreqData()
+#PullFreqData()
 # Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
