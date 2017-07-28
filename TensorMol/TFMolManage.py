@@ -1052,6 +1052,10 @@ class TFMolManage(TFManage):
 		#return	diff / nmols
 		return
 
+	def EvalBPPairPotential(self, batch_data):
+		return self.Instances.evaluate(batch_data)
+
+
 	def Eval_Mol(self, mol):
 		total_case = len(mol.mbe_frags[self.TData.order])
 		if total_case == 0:
@@ -1083,23 +1087,23 @@ class TFMolManage(TFManage):
 		return mol_out, atom_out, gradient
 
 
-        def Eval_BPEnergy_Direct_Grad(self, mol, Grad=True, Energy=True):
-                mol_set = MSet()
-                mol_set.mols.append(mol)
-                nmols = len(mol_set.mols)
+	def Eval_BPEnergy_Direct_Grad(self, mol, Grad=True, Energy=True):
+		mol_set = MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
 		self.TData.MaxNAtoms = mol.NAtoms()
-                dummy_outputs = np.zeros((nmols))
-                xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-                dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-                Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
-                for i, mol in enumerate(mol_set.mols):
-                        xyzs[i][:mol.NAtoms()] = mol.coords
-                        Zs[i][:mol.NAtoms()] = mol.atoms
-                mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
-                if Grad and Energy:
-                        return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
+		dummy_outputs = np.zeros((nmols))
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+		mol_out, atom_out,gradient = self.Instances.evaluate([xyzs, Zs, dummy_outputs, dummy_grads], True)
+		if Grad and Energy:
+			return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
 		elif Energy and not Grad:
-                        return mol_out[0]
+			return mol_out[0]
 		else:
 			return -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
 
@@ -1135,10 +1139,12 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff_BP_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct"):
 			self.Instances = MolInstance_DirectBP_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BPBond_Direct"):
+			self.Instances = MolInstance_DirectBPBond_NoGrad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad"):
 			self.Instances = MolInstance_DirectBP_Grad(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_noGradTrain"):
-                        self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+			self.Instances = MolInstance_DirectBP_Grad_noGradTrain(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_NewIndex"):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):

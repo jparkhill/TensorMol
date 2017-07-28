@@ -30,9 +30,9 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 200
-PARAMS["test_freq"] = 10
-PARAMS["batch_size"] = 8000
+PARAMS["max_steps"] = 100
+PARAMS["test_freq"] = 5
+PARAMS["batch_size"] = 1000
 PARAMS["NeuronType"] = "relu"
 # PARAMS["Profiling"] = True
 
@@ -321,10 +321,11 @@ def TestMetadynamics():
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("SmallMols_rand")
+	a=MSet("o2")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
+	a.Save()
 	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
 	tset = TensorMolData_BPBond_Direct(a,d)
 	# batchdata=tset.RawBatch()
@@ -343,11 +344,30 @@ def TestTFBond():
 	# init = tf.global_variables_initializer()
 	# sess.run(init)
 	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
-	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_DirectQueue")
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
+
+def GetPairPotential():
+	a=MSet("o2")
+	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	a.Save()
+	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
+	tset = TensorMolData_BPBond_Direct(a,d)
+	batchdata=tset.RawBatch()
+	# Zxyzs = tf.Variable(batchdata[0], dtype=tf.float32)
+	# BondIdxMatrix = tf.Variable(batchdata[1], dtype=tf.int32)
+	# labels = tf.Variable(batchdata[2], dtype=tf.float32)
+	manager=TFMolManage("Mol_o2_CZ_fc_sqdiff_BPBond_Direct_1", tset, Trainable_ = False)
+	PairPotVals = manager.EvalBPPairPotential(batchdata)
+	print PairPotVals
+	for i in range(len(PairPotVals)):
+		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
+
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
-# ReadSmallMols(set_="SmallMols_opt", dir_="/media/sdb2/jeherr/TensorMol/datasets/small_mol_dataset_opt/*/*/", energy=True, forces=True)
+# ReadSmallMols(set_="o2", dir_="/media/sdb2/jeherr/TensorMol/datasets/o2_data/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 50000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
@@ -363,7 +383,8 @@ def TestTFBond():
 # BIMNN_NEq()
 # TestMetadynamics()
 # TestMD()
-TestTFBond()
+# TestTFBond()
+GetPairPotential()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()
