@@ -1124,7 +1124,8 @@ std::vector< std::vector<int> > tmp(nreal);
 			if (dij < rng)
 			{
 				tmp[i].push_back(j);
-				// For now we're not doing the permutations...
+				if (j<nreal)
+					tmp[j].push_back(i);
 			}
 		}
 	}
@@ -1251,7 +1252,11 @@ static PyObject* Make_NListLinear(PyObject *self, PyObject  *args)
 							double dij = sqrt(xx*xx+yy*yy+zz*zz) + 0.00000000001;
 							//dists[std::make_pair(i,y[j])] = dij;
 							if (dij < Rc)
+							{
 								tmp[I].push_back(J);
+								if (J<nreal)
+									tmp[J].push_back(I);
+							}
 						}
 					}
 				}
