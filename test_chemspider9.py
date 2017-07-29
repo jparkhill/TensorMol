@@ -112,7 +112,7 @@ def TrainForceField():
                 a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.0001
+                PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 1200
                 PARAMS["batch_size"] = 1000
@@ -121,13 +121,13 @@ def TrainForceField():
 		PARAMS["GradScaler"] = 1.0
 		PARAMS["DipoleScaler"]=1.0
                 PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
+                PARAMS["HiddenLayers"] = [512, 512, 512]
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 4.4
 		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.00001
+		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 200
+		PARAMS["SwitchEpoch"] = 20
                 d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
                 tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
                 #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)

@@ -212,15 +212,6 @@ class Digester:
 				E0=np.min(ens_)
 				Es=ens_-E0
 				Outs = Es
-			# elif (self.OType=="Force"):
-			# 	ens_ = mol_.ForcesAfterAtomMove(xyz_,at_)
-			# 	if (ens_==None):
-			# 		raise Exception("Empty energies...")
-			elif (self.OType=="GoForce_old_version"): # python version is fine for here
-				ens_ = mol_.SoftCutGoForceOneAtom(at_)
-				Outs = ens_
-				if (ens_==None):
-					raise Exception("Empty energies...")
 			else:
 				raise Exception("Unknown Digester Output Type.")
 			#self.outtime += (time.time() - start)
@@ -289,17 +280,6 @@ class Digester:
 			return ins,outs,dbg
 		else:
 			return ins,outs
-
-	def SampleDigestWPyscf(self, mol_, ele_,uniform=False):
-		''' Runs PySCF calculations for each sample without generating embeddings and probabilities '''
-		for i in range(len(mol_.atoms)):
-			if (mol_.atoms[i]==ele_):
-				samps=None
-				if (not uniform):
-					samps=self.MakeSamples(mol_.coords[i])
-				else:
-					samps=MakeUniform(mol_.coords[i],4.0,20)
-				energies=mol_.RunPySCFWithCoords(samps,i)
 
 	def UniformDigest(self, mol_, at_, mxstep, num):
 		""" Returns list of inputs sampled on a uniform cubic grid around at """

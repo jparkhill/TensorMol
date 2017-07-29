@@ -53,8 +53,23 @@ if (0):
 	        GM = session.run(tf.gradients(TFSymSet(xyz, Z, eles, SFPr, Rr_cut, eleps, SFPa, Ra_cut), xyz))
 	        print (GM, GM[0].shape)
 
-if (1):
+if (0):
 	mset = MSet("H2O_augmented_more_cutoff5")
         mset.Load()
 	SymMaker = ANISym(mset)
-	SymMaker.Generate_ANISYM()	
+	SymMaker.Generate_ANISYM()
+
+if (1):
+	mset = MSet("Neigbor_test")	
+	mset.ReadXYZ("Neigbor_test")
+	xyzs = np.zeros((1, 6, 3),dtype=np.float64)
+	Zs = np.zeros((1, 6), dtype=np.int64)
+	nnz_atom = np.zeros((1), dtype=np.int64)
+	for i, mol in enumerate(mset.mols):
+                xyzs[i][:mol.NAtoms()] = mol.coords
+                Zs[i][:mol.NAtoms()] = mol.atoms
+		nnz_atom[i] = mol.NAtoms()
+	print xyzs, nnz_atom, Zs
+	NL = NeighborListSet(xyzs, nnz_atom, True, True, Zs)
+	rad_p, ang_t = NL.buildPairsAndTriples(4.6, 3.1)
+	print ("rad_p:", rad_p, " ang_t:", ang_t)

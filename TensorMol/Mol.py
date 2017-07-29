@@ -22,6 +22,21 @@ class Mol:
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
 		return
 
+	def ToFragSet(self,frags):
+		"""
+		Divides this molecule into a set of molecules
+		based on fragments
+
+		Args:
+			frags: list of integer lists
+		Returns:
+			An MSet with many mols in it divided by frags.
+		"""
+		mset = MSet("Fset",PARAMS["sets_dir"],False)
+		for frag in frags:
+			mset.mols.append(Mol(self.atoms[frags],self.coords[frags]))
+		return mset
+
 	def AtomTypes(self):
 		return np.unique(self.atoms)
 
@@ -436,7 +451,7 @@ class Mol:
 
 	def GoEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
-		if (self.DistMatrix==None):
+		if (self.DistMatrix is None):
 			print "Build DistMatrix"
 			raise Exception("dmat")
 		xmat = np.array(x).reshape(self.NAtoms(),3)
@@ -527,20 +542,6 @@ class Mol:
 			forces[i]=self.SoftCutGoForceOneAtom(i, cutdist)
 		return forces
 
-	def SoftCutGoForceOneAtom(self, at_, cutdist=6):
-		if (self.DistMatrix==None):
-			print "Build DistMatrix"
-			raise Exception("dmat")
-		forces = np.zeros(3)
-		for j in range (len(self.coords)):
-			u = self.coords[j]-self.coords[at_]
-			dj = np.linalg.norm(u)
-			if (dj != 0.0):
-				u = u/np.linalg.norm(u)
-				forces += (0.5*(dj-self.DistMatrix[at_,j])*u)*ErfSoftCut(cutdist-1, 0.5,dj)
-				print j,forces
-		return forces
-
 	def GoForce_Scan(self, maxstep, ngrid):
 		#scan near by regime and return the samllest force
 		forces = np.zeros((self.NAtoms(),3))
@@ -551,13 +552,13 @@ class Mol:
 			samps=MakeUniform(self.coords[i],maxstep,ngrid)
 			for m in range (0, samps.shape[0]):
 				self.coords[i] = samps[m].copy()
-	        	        for j in range(len(self.coords)):
-                                # compute force on i due to all j's
-                	                u = self.coords[j]-samps[m]
-                        	        dij = np.linalg.norm(u)
-                                	if (dij != 0.0):
-                                        	u = u/np.linalg.norm(u)
-                               		TmpForce[i][m] += 0.5*(dij-self.DistMatrix[i,j])*u
+				for j in range(len(self.coords)):
+					# compute force on i due to all j's
+					u = self.coords[j]-samps[m]
+					dij = np.linalg.norm(u)
+					if (dij != 0.0):
+						u = u/np.linalg.norm(u)
+					TmpForce[i][m] += 0.5*(dij-self.DistMatrix[i,j])*u
 			self.coords[i] = save_i.copy()
 			TmpAbsForce = (TmpForce[i,:,0]**2+TmpForce[i,:,1]**2+TmpForce[i,:,2]**2)**0.5
 			forces[i] = samps[np.argmin(TmpAbsForce)]
@@ -570,41 +571,6 @@ class Mol:
 			return out
 		else:
 			raise Exception("Unknown Energy")
-
-	def PySCFEnergyAfterAtomMove(self,s,i):
-		disp = np.linalg.norm(s-self.coords[i])
-		mol = gto.Mole()
-		pyscfatomstring=""
-		for j in range(len(self.atoms)):
-			if(i==j):
-				pyscfatomstring=pyscfatomstring+str(self.atoms[j])+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(self.atoms)-1 else "")
-			else:
-				pyscfatomstring=pyscfatomstring+str(self.atoms[j])+" "+str(self.coords[j,0])+" "+str(self.coords[j,1])+" "+str(self.coords[j,2])+(";" if j!= len(self.atoms)-1 else "")
-		mol.atom = pyscfatomstring
-		mol.basis = '6-31G'
-		mol.verbose = 0
-		try:
-			mol.build()
-			en=0.0
-			if (disp>0.08 or (np.sum(self.atoms))%2 == 1):
-				mf = dft.UKS(mol)
-				mf.xc = 'PBE'
-				en=mf.kernel()
-				#en=scf.UHF(mol).scf()
-			else:
-				mf = dft.RKS(mol)
-				mf.xc = 'PBE'
-				en=mf.kernel()
-				#en=scf.RHF(mol).scf()
-			self.PESSamples.append([i,s,en])
-			return en
-		except Exception as Ex:
-			print "PYSCF Calculation error... :",Ex
-			print "Mol.atom:", mol.atom
-			print "Pyscf string:", pyscfatomstring
-			return 10.0
-			#raise Ex
-		return 0.0
 
 	#Most parameters are unneccesary.
 	def OverlapEmbeddings(self, d1, coords, d2 , d3 ,  d4 , d5, i, d6):#(self,coord,i):
@@ -632,13 +598,6 @@ class Mol:
 		'''
 		pdisp=inputs[-3:]
 		return pdisp
-
-	def RunPySCFWithCoords(self,samps,i):
-		# The samps are new xyz coords for atom i
-		# do some fast model chemistry... gah they aren't fast enough.
-		if (len(samps)>40):
-			print "sampling ",len(samps)," points about atom ",i,"..."
-		return np.array([self.PySCFEnergyAfterAtomMove(s,i) for s in samps])
 
 	def EnergiesOfAtomMoves(self,samps,i):
 		return np.array([self.energyAfterAtomMove(s,i) for s in samps])

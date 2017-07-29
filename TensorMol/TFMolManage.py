@@ -1110,6 +1110,7 @@ class TFMolManage(TFManage):
 
 	def Eval_BPEnergy_Direct_Grad_Linear(self, mol, Grad=True, Energy=True):
 		"""
+		THIS IS THE only working LINEAR evaluate routine, so far.
 		Also generates angular pairs, triples. etc.
 		"""
 		mol_set = MSet()

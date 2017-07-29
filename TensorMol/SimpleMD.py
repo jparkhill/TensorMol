@@ -389,7 +389,7 @@ class IRTrajectory(VelocityVerlet):
 			PARAMS["MDFieldFreq"] = 1/1.2 # 700nm light is about 1/1.2 fs.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, f_)
-		if (v0_!=None):
+		if (v0_ is not None):
 			self.v = v0_.copy()
 		self.EField = np.zeros(3)
 		self.IsOn = False
@@ -467,6 +467,8 @@ class IRTrajectory(VelocityVerlet):
 				self.qs = self.ChargeFunction(self.x)
 			else:
 				self.qs = self.q0
+			print Dipole(self.x, self.qs)
+			print self.Mu0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
 			self.mu_his[step,0] = self.t
 			self.mu_his[step,1:4] = self.Mu.copy()
@@ -534,7 +536,8 @@ class Annealer(IRTrajectory):
 				self.qs = self.q0
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
 			# avoid the thermostat blowing up.
-			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
+			AnnealFrac = float(self.AnnealSteps - step)/self.AnnealSteps
+			self.Tstat.T = self.AnnealT0*AnnealFrac + PARAMS["MDAnnealTF"]*(1.0-AnnealFrac) + pow(10.0,-10.0)
 			# First 50 steps without any thermostat.
 			self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 

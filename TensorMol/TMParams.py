@@ -98,7 +98,8 @@ class TMParams(dict):
 		self["MDUpdateCharges"] = True
 		self["MDIrForceMin"] = False
 		self["MDAnnealT0"] = 20.0
-		self["MDAnnealSteps"] = 500
+		self["MDAnnealTF"] = 300.0
+		self["MDAnnealSteps"] = 20000
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
 		self["MDFieldAmp"] = 0.0
@@ -117,6 +118,7 @@ class TMParams(dict):
 		self["Erf_Width"] = 0.2
 		self["DSFAlpha"] = 0.15
 		#paths
+		self["sets_dir"] = "./datasets/"
 		self["results_dir"] = "./results/"
 		self["dens_dir"] = "./densities/"
 		self["log_dir"] = "./logs/"
