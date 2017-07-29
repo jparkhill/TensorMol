@@ -1270,6 +1270,8 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 				Outs: output of the digester
 				Keys: (nmol)X(MaxNAtoms) tensor listing each molecule's place in the input.
 		"""
+		if self.set == None:
+			self.ReloadSet()
 		ndone = 0
 		natdone = 0
 		self.MaxNAtoms = self.set.MaxNAtoms()
