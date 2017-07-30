@@ -1269,7 +1269,21 @@ def TestNeighborList():
 		talg1+=time.time() - t1
 		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape, nl1.triples.shape
 
-
+def TestMBNeighborList():
+	"""
+	Test generation of an MBset of inputs using MBNeighbors.
+	"""
+	x = np.zeros((3200,3))
+	z = np.zeros((3200,1))
+	xprim=np.array([[0.,0.,0.],[0.,1.,0.],[0.,0.,1.]])
+	zprim=np.array([8,1,1],dtype=np.int32)
+	frags = []
+	for i in range(800):
+		x[i*3:i*3+3,:] = xprim+np.random.random((3)).reshape((1,3))*45.0
+		z[i*3:i*3+3,:] = zprim.reshape((3,1))
+		frags.append(range(i*3,(1+i)*3))
+	MBN=MBNeighbors(x,z,frags)
+	MBN.Update(x)
 #
 # Tests to run.
 #
@@ -1294,7 +1308,8 @@ def TestNeighborList():
 #TestIpecac()
 #TestHerrNet1()
 #TestOCSDB()
-TestNeighborList()
+#TestNeighborList()
+TestMBNeighborList()
 #TestNeb()
 #TestMD()
 #TestRandom()
