@@ -139,6 +139,7 @@ class NeighborList:
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		npairi = map(len,tpair)
+		#ntrip = sum(map(lambda x: x*x if x>0 else 0, npairi))
 		ntrip = sum(map(lambda x: x*(x-1)/2 if x>0 else 0, npairi))
 		p = None
 		t = None
@@ -162,6 +163,7 @@ class NeighborList:
 				pp = pp+1
 			for j in tpair[i]:
 				for k in tpair[i]:
+					#if True:
 					if (k > j): # do not do ijk, ikj permutation
 					#if (k!=j):
 						if (molind_!=None):
