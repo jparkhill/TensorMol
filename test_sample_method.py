@@ -131,7 +131,7 @@ def TestIRLinearDirect():
 	m.coords = annealx_.Minx.copy()
 	# now actually collect the IR.
 	PARAMS["MDMaxStep"] = 40000
-	PARAMS["MDTemp"]= 300.0
+	PARAMS["MDThermostat"] = None
 	md = IRTrajectory(EnergyForceField, ChargeField, m,"THP_udp_grad_IR",annealx_.v.copy())
 	md.Prop()
 	WriteDerDipoleCorrelationFunction(md.mu_his,"THP_udp_grad_IR.txt")
