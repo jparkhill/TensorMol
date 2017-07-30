@@ -56,6 +56,7 @@ class Instance:
 		self.momentum = PARAMS["momentum"]
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
+		self.max_checkpoints = PARAMS["max_checkpoints"]
 		self.activation_function_type = PARAMS["NeuronType"]
 		self.activation_function = None
 		self.AssignActivation()
@@ -139,7 +140,7 @@ class Instance:
 		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.placeholder_inputs(Ncase)
 			self.output = self.inference(self.embeds_placeholder)
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 			if (len(metafiles)>0):
@@ -161,7 +162,7 @@ class Instance:
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			try:
@@ -221,10 +222,7 @@ class Instance:
 			tf.summary.scalar('min', tf.reduce_min(var))
 			tf.summary.histogram('histogram', var)
 
-	# one of these two routines need to be removed I think. -JAP
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
-		#cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
-		#os.system(cmd)
 		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
 		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)
@@ -438,7 +436,7 @@ class Instance:
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			try: # I think this may be broken
@@ -526,7 +524,7 @@ class Instance_fc_classify(Instance):
 			self.correct = self.n_correct(self.output, self.labels_placeholder)
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 			if (len(chkfiles)>0):
 				most_recent_chk_file=chkfiles[0]
@@ -1305,7 +1303,7 @@ class Queue_Instance:
 		with tf.Graph().as_default():
 			self.embeds_placeholder, self.labels_placeholder = self.inputs()
 			self.output = self.inference(self.embeds_placeholder)
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 			if (len(metafiles)>0):
@@ -1361,10 +1359,7 @@ class Queue_Instance:
 			tf.summary.scalar('min', tf.reduce_min(var))
 			tf.summary.histogram('histogram', var)
 
-	# one of these two routines need to be removed I think. -JAP
 	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
-		#cmd="rm  "+self.train_dir+"/"+self.name+"-chk-*"
-		#os.system(cmd)
 		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
 		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)
@@ -1550,7 +1545,7 @@ class Queue_Instance:
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.group(tf.global_variables_initializer(),tf.local_variables_initializer())
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
 			try: # I think this may be broken
