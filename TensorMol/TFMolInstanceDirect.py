@@ -305,7 +305,7 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 				self.energiesLinear, self.forcesLinear = self.LJFrcsLinear(self.inp_pl,self.nzp_pl)
 				self.total_loss, self.loss = self.loss_op(self.forces, self.frce_pl)
 				self.train_op = self.training(self.total_loss, PARAMS["learning_rate"], PARAMS["momentum"])
-				self.saver = tf.train.Saver()
+				self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			elif (self.ForceType=="Harm"):
 				self.energies, self.forces = self.HarmFrc(self.inp_pl)
 			else:
@@ -724,7 +724,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -949,7 +949,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -1051,7 +1051,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 			if self.profiling:
@@ -1234,7 +1234,6 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			actual_mols  = self.batch_size
 			_, mol_output, atom_outputs, RList = self.sess.run([self.check, self.output, self.atom_outputs, self.RList], feed_dict=feed_dict)
 			energy_distance = []
-			# print(atom_outputs)
 			for i in range(len(atom_outputs)):
 				energy_distance.append(np.stack([atom_outputs[i][0,:], RList[i]], axis=1))
 			if ministep == 0:
@@ -1242,57 +1241,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			else:
 				for i in range(len(AtomOutputs)):
 					AtomOutputs[i] = np.append(AtomOutputs[i], energy_distance[i],axis=0)
-		# print(AtomOutputs)
 		return AtomOutputs
-
-	def evaluate(self, batch_data, IfGrad=False):   #this need to be modified
-		# Check sanity of input
-		nmol = batch_data[0].shape[0]
-		LOGGER.debug("nmol: %i", nmol)
-		self.batch_size = nmol
-		if not self.sess:
-			print ("loading the session..")
-			self.EvalPrepare()
-		feed_dict=self.fill_feed_dict(batch_data)
-		#mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-		#for i in range (0, batch_data[0][-1][-1].shape[0]):
-		#        print("i:", i)
-		#        import copy
-		#        new_batch_data=copy.deepcopy(batch_data)
-		#        #new_batch_data = list(batch_data)
-		#        new_batch_data[0][-1][-1][i] += 0.01
-		#        feed_dict=self.fill_feed_dict(new_batch_data)
-		#       new_mol_output, total_loss_value, loss_value, new_atom_outputs, new_gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-		#        print ("new_charge_gradient: ", gradient[-1][-1][i],  new_gradient[-1][-1][i], " numerical: ", (new_atom_outputs[-1][-1][-1]- atom_outputs[-1][-1][-1])/0.01)
-		if (IfGrad):
-			mol_output, total_loss_value, loss_value, atom_outputs, gradient = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-			#print ("atom_outputs:", atom_outputs)
-			return mol_output, atom_outputs, gradient
-		else:
-			mol_output, total_loss_value, loss_value, atom_outputs = self.sess.run([self.output,self.total_loss, self.loss, self.atom_outputs],  feed_dict=feed_dict)
-			return atom_outputs
-
-	# def EvalPrepare(self):
-	# 	#eval_labels = np.zeros(Ncase)  # dummy labels
-	# 	with tf.Graph().as_default():
-	# 		self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
-	# 		self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-	# 		self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
-	# 		ElemPairs = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
-	# 		self.RList, MolIdxList = TFBond(self.Zxyzs_pl, self.BondIdxMatrix_pl, ElemPairs)
-	# 		self.output, self.atom_outputs = self.inference(self.RList, MolIdxList)
-	# 		tf.Print(self.atom_outputs, [self.atom_outputs])
-	# 		self.check = tf.add_check_numerics_ops()
-	# 		self.total_loss, self.loss = self.loss_op(self.output, self.label_pl)
-	# 		self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-	# 		self.summary_op = tf.summary.merge_all()
-	# 		init = tf.global_variables_initializer()
-	# 		self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-	# 		self.saver = tf.train.Saver()
-	# 		self.saver.restore(self.sess, self.chk_file)
-	# 		self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-	# 		self.sess.run(init)
-	# 	return
 
 	def EvalPrepare(self):
 		#eval_labels = np.zeros(Ncase)  # dummy labels
@@ -1309,26 +1258,11 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 			#self.run_metadata = tf.RunMetadata()
-		return
-
-	def continue_training(self, mxsteps):
-		self.EvalPrepare()
-		test_loss = self.test(-1)
-		test_freq = 1
-		mini_test_loss = test_loss
-		for step in  range (0, mxsteps+1):
-			self.train_step(step)
-			if step%test_freq==0 and step!=0 :
-				test_loss = self.test(step)
-				if test_loss < mini_test_loss:
-					mini_test_loss = test_loss
-					self.save_chk(step)
-		self.SaveAndClose()
 		return
 
 
@@ -1674,7 +1608,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -1705,7 +1639,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		print("Prepared for Evaluation...")
@@ -1869,7 +1803,7 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -2013,7 +1947,7 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		return
@@ -2053,7 +1987,7 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
@@ -2189,7 +2123,7 @@ class MolInstance_DirectBP_Grad_Linear_Queue(MolInstance_DirectBP_Grad):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 			self.coord = tf.train.Coordinator()
@@ -2390,12 +2324,12 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			#self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG = self.loss_op_EandG(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
 			#self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum, self.energy_wb)
 			self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG = self.loss_op_EandG_test(self.Etotal, self.gradient, self.Elabel_pl, self.grads_pl)
-			self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum)	
+			self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum)
 
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -2593,7 +2527,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		#	dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
 
 		##cc_energy_nodsf = TFCoulombErfLR(xyzsInBohr, scaled_charge, EE_cuton, Reep)
-		#cc_energy = TFCoulombErfSRDSFLR(xyzsInBohr, scaled_charge, EE_cuton, EE_cutoff, Reep, self.DSFAlpha) 
+		#cc_energy = TFCoulombErfSRDSFLR(xyzsInBohr, scaled_charge, EE_cuton, EE_cutoff, Reep, self.DSFAlpha)
 		#total_energy = tf.add(bp_energy, cc_energy)
 		##total_energy = tf.identity(bp_energy)
 		#return total_energy, bp_energy, cc_energy, dipole, scaled_charge, energy_wb, dipole_wb
@@ -2975,7 +2909,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		print("Prepared for Evaluation...")

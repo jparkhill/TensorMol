@@ -184,7 +184,7 @@ class MolInstance_fc_classify(MolInstance):
 			self.correct = self.n_correct(self.output, self.labels_placeholder)
 			self.prob = self.justpreds(self.output)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
 		self.PreparedFor = Ncase
 		return
@@ -263,7 +263,7 @@ class MolInstance_fc_classify(MolInstance):
 			self.summary_op = tf.merge_all_summaries()
 			init = tf.initialize_all_variables()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			try: # I think this may be broken
 				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 				if (len(metafiles)>0):
@@ -343,7 +343,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 				self.output = self.inference(self.embeds_placeholder, self.hidden1, self.hidden2, self.hidden3)
 				print ("type of self.embeds_placeholder:", type(self.embeds_placeholder))
 				self.gradient = tf.gradients(self.output, self.embeds_placeholder)[0]
-				self.saver = tf.train.Saver()
+				self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 				self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 				self.saver.restore(self.sess, self.chk_file)
 		self.PreparedFor = Ncase
@@ -408,7 +408,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 			self.summary_op = tf.merge_all_summaries()
 			init = tf.initialize_all_variables()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			try: # I think this may be broken
 				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 				if (len(metafiles)>0):
@@ -524,7 +524,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			try: # I think this may be broken
 				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 				if (len(metafiles)>0):
@@ -819,7 +819,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
@@ -842,7 +842,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
@@ -933,7 +933,7 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 			#self.summary_op = tf.summary.merge_all()
 			#init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			try: # I think this may be broken
 				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
 				if (len(metafiles)>0):
@@ -1157,7 +1157,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
@@ -1440,7 +1440,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
@@ -1463,7 +1463,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.saver = tf.train.Saver()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver.restore(self.sess, self.chk_file)
 		return
