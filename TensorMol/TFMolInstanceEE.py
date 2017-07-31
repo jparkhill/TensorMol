@@ -1034,7 +1034,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value,  dipole_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.dipole_output, self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "\n self.SFPr2_vary :", SFPr2_vary )
-			print ("loss_value:", loss_value)
+			#print ("loss_value:", loss_value)
 			#print (" dipole_output:", dipole_output, " atom_outputs:", list(atom_outputs[:5]))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
