@@ -1290,7 +1290,7 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 				natdone += n
 			except StopIteration:
 				self.raw_it = iter(self.set.mols)
-		NL = NeighborListSet(Ins[:,:,1:],NAtomsVec)
+		NL = NeighborListSet(Ins[:,:,1:],NAtomsVec, alg_=0)
 		BondIdxMatrix = NL.buildPairs()
 		return Ins,BondIdxMatrix,Outs
 
