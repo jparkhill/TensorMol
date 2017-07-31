@@ -2860,9 +2860,9 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		if not self.sess:
 			print ("loading the session..")
 			self.EvalPrepare()
-		feed_dict=self.fill_feed_dict(batch_data)
-		Etotal, Ecc, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ecc, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
-		return Etotal, Ecc, mol_dipole, atom_charge, gradient
+		feed_dict=self.fill_feed_dict(batch_data+[True])
+		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
+		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
 
 
 
