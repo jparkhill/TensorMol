@@ -992,7 +992,7 @@ def TFCoulombErfSRDSFLR(R, Qs, R_srcut, R_lrcut, Radpair, alpha, prec=tf.float64
 		Radpair: None zero pairs X 3 tensor (mol, i, j)
 		alpha: DSF alpha parameter (~0.2)
 	Returns
-		Energy of  Mols 
+		Energy of  Mols
 	"""
 	R_width = PARAMS["Erf_Width"]*BOHRPERA
 	inp_shp = tf.shape(R)
@@ -1020,7 +1020,7 @@ def TFCoulombErfSRDSFLR(R, Qs, R_srcut, R_lrcut, Radpair, alpha, prec=tf.float64
 	K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
 	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
 	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
-	sparse_index = tf.stack([mol_index, range_index], axis=1) 
+	sparse_index = tf.stack([mol_index, range_index], axis=1)
 	sp_atomoutputs = tf.SparseTensor(sparse_index, K, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
 	# Now use the sparse reduce sum trick to scatter this into mols.
 	return tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
@@ -1354,7 +1354,7 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
 	nelemp = tf.shape(ElemPairs_)[0]
-	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
+	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)/5
 	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
 	# tf.nn.top_k is slow, next lines faster for sorting nx2 array of atomic Zs
 	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))
