@@ -1270,6 +1270,8 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 				Outs: output of the digester
 				Keys: (nmol)X(MaxNAtoms) tensor listing each molecule's place in the input.
 		"""
+		if self.set == None:
+			self.ReloadSet()
 		ndone = 0
 		natdone = 0
 		self.MaxNAtoms = self.set.MaxNAtoms()
@@ -1412,7 +1414,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 
 	def LoadData(self):
 		self.ReloadSet()
-		#random.shuffle(self.set.mols)
+		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
 		natom = np.zeros((self.Nmols), dtype = np.int64)
@@ -1531,7 +1533,7 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 
 	def LoadData(self):
 		self.ReloadSet()
-		#random.shuffle(self.set.mols)
+		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
 		natom = np.zeros((self.Nmols), dtype = np.int32)
@@ -1610,7 +1612,6 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		NL = NeighborListSet(xyzs, natom, True, True, Zs)
 		rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
 		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
-		#print "Rad_p:", rad_p[:20]
 		rad_eep = NLEE.buildPairs(self.Ree_cut)
 		if (self.HasGrad):
 			return [xyzs, Zs, Elabels, Dlabels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer], rad_p, ang_t, rad_eep, 1.0/natom]

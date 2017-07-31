@@ -1054,8 +1054,8 @@ class TFMolManage(TFManage):
 		#return	diff / nmols
 		return
 
-	def EvalBPPairPotential(self, batch_data):
-		return self.Instances.evaluate(batch_data)
+	def EvalBPPairPotential(self):
+		return self.Instances.Evaluate()
 
 
 	def Eval_Mol(self, mol):

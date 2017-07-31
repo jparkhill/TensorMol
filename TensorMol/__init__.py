@@ -41,6 +41,7 @@ from TensorMol.Basis import *
 from TensorMol.AbInitio import *
 from TensorMol.DIIS import *
 from TensorMol.BFGS import *
+from TensorMol.NeighborsMB import *
 from TensorMol.Electrostatics import *
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.SimpleMD import *

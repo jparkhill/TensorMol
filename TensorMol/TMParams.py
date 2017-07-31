@@ -62,6 +62,7 @@ class TMParams(dict):
 		self["GradWeight"] = 0.01
 		self["TestRatio"] = 0.2
 		self["Profiling"] = False
+		self["max_checkpoints"] = 1
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None

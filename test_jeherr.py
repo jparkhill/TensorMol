@@ -19,9 +19,9 @@ PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [
 PARAMS["ANES"] = np.array([[1.02539286, 1., 1., 1., 1., 2.18925953, 2.71734044, 3.03417733]])
 PARAMS["SH_NRAD"] = 14
 PARAMS["SH_LMAX"] = 4
-PARAMS["hidden1"] = 100
-PARAMS["hidden2"] = 100
-PARAMS["hidden3"] = 100
+PARAMS["hidden1"] = 500
+PARAMS["hidden2"] = 500
+PARAMS["hidden3"] = 500
 
 S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
@@ -30,9 +30,9 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 100
+PARAMS["max_steps"] = 1000
 PARAMS["test_freq"] = 5
-PARAMS["batch_size"] = 1000
+PARAMS["batch_size"] = 2000
 PARAMS["NeuronType"] = "relu"
 # PARAMS["Profiling"] = True
 
@@ -321,45 +321,15 @@ def TestMetadynamics():
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("o2")
+	a=MSet("SmallMols")
 	a.Load()
-	for mol in a.mols:
-		mol.CalculateAtomization()
-	a.Save()
 	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
 	tset = TensorMolData_BPBond_Direct(a,d)
-	# batchdata=tset.RawBatch()
-	# Zxyzs = tf.Variable(batchdata[0], dtype=tf.float32)
-	# BondIdxMatrix = tf.Variable(batchdata[1], dtype=tf.int64)
-	# eles = [1,6,7,8]
-	# eles_np = np.asarray(eles).reshape(4,1)
-	# eles_pairs = []
-	# for i in range (len(eles)):
-	# 	for j in range(i, len(eles)):
-	# 		eles_pairs.append([eles[i], eles[j]])
-	# eles_pairs_np = np.asarray(eles_pairs)
-	# Ele = tf.constant(eles_np, dtype = tf.int64)
-	# Elep = tf.constant(eles_pairs_np, dtype = tf.int64)
-	# sess=tf.Session()
-	# init = tf.global_variables_initializer()
-	# sess.run(init)
-	# print(sess.run(TFBond(Zxyzs, BondIdxMatrix, Ele, Elep)))
 	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
 
 def GetPairPotential():
-	a=MSet("o2")
-	a.Load()
-	for mol in a.mols:
-		mol.CalculateAtomization()
-	a.Save()
-	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
-	tset = TensorMolData_BPBond_Direct(a,d)
-	batchdata=tset.RawBatch()
-	# Zxyzs = tf.Variable(batchdata[0], dtype=tf.float32)
-	# BondIdxMatrix = tf.Variable(batchdata[1], dtype=tf.int32)
-	# labels = tf.Variable(batchdata[2], dtype=tf.float32)
-	manager=TFMolManage("Mol_o2_CZ_fc_sqdiff_BPBond_Direct_1", tset, Trainable_ = False)
-	PairPotVals = manager.EvalBPPairPotential(batchdata)
+	manager=TFMolManage("Mol_o2_CZ_fc_sqdiff_BPBond_Direct_1", Trainable_ = False)
+	PairPotVals = manager.EvalBPPairPotential()
 	print PairPotVals
 	for i in range(len(PairPotVals)):
 		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
@@ -383,8 +353,8 @@ def GetPairPotential():
 # BIMNN_NEq()
 # TestMetadynamics()
 # TestMD()
-# TestTFBond()
-GetPairPotential()
+TestTFBond()
+# GetPairPotential()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()

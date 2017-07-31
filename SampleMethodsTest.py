@@ -9,40 +9,35 @@ import os
 import numpy as np
 from math import *
 
-# Dataset retrieval and information
-a = MSet("sampling_mols")
-a.ReadXYZ()
-TreatedAtoms = a.AtomTypes()
-# m = a.mols[] # Only need this if evaluating an individual molecule
+def GetEnergyAndForceFromManager(MName_):
+	a = MSet("sampling_mols")
+	a.ReadXYZ()
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
+	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	PARAMS["hidden1"] = 512
+	PARAMS["hidden2"] = 512
+	PARAMS["hidden3"] = 512
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["GradScalar"] = 1
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["HiddenLayers"] = [512,512,512]
+	manager = TFMolManage(MName_ , tset, False, RandomTData_=False, Trainable_=False)
+	energies=[]
+	gradients=[]
+	for mol in a.mols:
+		en,grad=manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(mol.atoms))
+		energies.append(en)
+		gradients.append(grad)
+	return energies,gradients
 
-# Digester and TensorMol training data set loader
-d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
-tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+def GetForceEnergies():
+	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+	results={}
+	for i in managers:
+		ens,grads = GetEnergyAndForceFromManager(i)
+		results[i] = (ens,grads)
+	print results
 
-# Managers for trained networks
-MD_manager = TFMolManage("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1" , tset, False, RandomTData_=False, Trainable_=False)
-Metadynamics_manager = TFMolManage("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1" , tset, False, RandomTData_=False, Trainable_=False)
-NM_manager = TFMolManage("Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1" , tset, False, RandomTData_=False, Trainable_=False)
-Random_manager = TFMolManage("Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1" , tset, False, RandomTData_=False, Trainable_=False)
-
-# Network parameters
-PARAMS["hidden1"] = 200
-PARAMS["hidden2"] = 200
-PARAMS["hidden3"] = 200
-PARAMS["tf_prec"] = "tf.float64"
-PARAMS["GradScalar"] = 1
-PARAMS["NeuronType"] = "relu"
-PARAMS["HiddenLayers"] = [200,200,200]
-
-# Develop energies and forces
-def GetForceEnergy():
-    managers = [Metadynamics_manager, MD_manager, Random_manager, NM_manager]
-    for i in managers:
-        for mol in a.mols:
-            i.Eval_BPEnergy_Direct_Grad_Linear(Mol(mol.atoms))
-
-# Gather statistics
-def GetStats(GetForceEnergy):
-    Energy =
-    Force =
-    rms_force = sqrt(np.mean(()))
+# GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1)
+# GetForceEnergies()
