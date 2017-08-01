@@ -15,13 +15,13 @@ def GetEnergyAndForceFromManager(MName_):
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	PARAMS["hidden1"] = 512
-	PARAMS["hidden2"] = 512
-	PARAMS["hidden3"] = 512
+	PARAMS["hidden1"] = 200
+	PARAMS["hidden2"] = 200
+	PARAMS["hidden3"] = 200
 	PARAMS["tf_prec"] = "tf.float64"
 	PARAMS["GradScalar"] = 1
 	PARAMS["NeuronType"] = "relu"
-	PARAMS["HiddenLayers"] = [512,512,512]
+	PARAMS["HiddenLayers"] = [200,200,200]
 	manager = TFMolManage(MName_ , tset, False, RandomTData_=False, Trainable_=False)
 	energies=[]
 	gradients=[]
@@ -39,5 +39,5 @@ def GetForceEnergies():
 		results[i] = (ens,grads)
 	print results
 
-# GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1)
+GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
 # GetForceEnergies()

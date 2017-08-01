@@ -19,9 +19,9 @@ PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [
 PARAMS["ANES"] = np.array([[1.02539286, 1., 1., 1., 1., 2.18925953, 2.71734044, 3.03417733]])
 PARAMS["SH_NRAD"] = 14
 PARAMS["SH_LMAX"] = 4
-PARAMS["hidden1"] = 500
-PARAMS["hidden2"] = 500
-PARAMS["hidden3"] = 500
+PARAMS["hidden1"] = 100
+PARAMS["hidden2"] = 100
+PARAMS["hidden3"] = 100
 
 S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
@@ -30,7 +30,7 @@ PARAMS["RandomizeData"] = True
 # PARAMS["InNormRoutine"] = "MeanStd"
 # PARAMS["OutNormRoutine"] = "MeanStd"
 PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 1000
+PARAMS["max_steps"] = 2000
 PARAMS["test_freq"] = 5
 PARAMS["batch_size"] = 2000
 PARAMS["NeuronType"] = "relu"
@@ -75,7 +75,7 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
 		a.ReadXYZUnpacked(dir, has_force=forces, has_energy=energy, has_charge=charges, has_mmff94=mmff94)
-	print len(a.mols)
+	print len(a.mols), " Molecules"
 	a.Save()
 
 
@@ -321,23 +321,22 @@ def TestMetadynamics():
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("SmallMols")
+	a=MSet("o2")
 	a.Load()
 	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
 	tset = TensorMolData_BPBond_Direct(a,d)
 	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
 
 def GetPairPotential():
-	manager=TFMolManage("Mol_o2_CZ_fc_sqdiff_BPBond_Direct_1", Trainable_ = False)
+	manager=TFMolManage("Mol_SmallMols_CZ_fc_sqdiff_BPBond_Direct_1", Trainable_ = False)
 	PairPotVals = manager.EvalBPPairPotential()
 	print PairPotVals
 	for i in range(len(PairPotVals)):
 		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
 
-
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
-# ReadSmallMols(set_="o2", dir_="/media/sdb2/jeherr/TensorMol/datasets/o2_data/", energy=True, forces=True)
+# ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
 # RandomSmallSet("SmallMols", 50000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
