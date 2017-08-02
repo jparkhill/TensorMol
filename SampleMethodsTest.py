@@ -15,9 +15,6 @@ def GetEnergyAndForceFromManager(MName_):
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	# PARAMS["hidden1"] = 200
-	# PARAMS["hidden2"] = 200
-	# PARAMS["hidden3"] = 200
 	PARAMS["tf_prec"] = "tf.float64"
 	PARAMS["GradScalar"] = 1
 	PARAMS["NeuronType"] = "relu"
@@ -35,7 +32,7 @@ def GetEnergyAndForceFromManager(MName_):
 	return energies,gradients
 
 def GetForceEnergies():
-	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"] #, "Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
 	results={}
 	for i in managers:
 		ens,grads = GetEnergyAndForceFromManager(i)
@@ -43,6 +40,19 @@ def GetForceEnergies():
 	print results
 
 def TestOptimization(MName_):
+	"""
+	Distorts a set of molecules from their equilibrium geometries,
+	then optimizes the distorted geometries using a trained network.
+
+	Args:
+
+		MName_: Trained network
+
+	Returns:
+
+		np.mean(rms_list): Average value of all of the RMS errors for all molecules
+	"""
+
 	a = MSet("sampling_mols")
 	a.ReadXYZ()
 	TreatedAtoms = a.AtomTypes()
@@ -57,7 +67,9 @@ def TestOptimization(MName_):
 		tmp_rms = mol.rms_inv(molp)
 		rms_list.append(tmp_rms)
 		print "RMS:", tmp_rms
-	return rms_list
+	return np.mean(rms_list)
+
+
 # GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
-# GetForceEnergies()
-print TestOptimization("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
+GetForceEnergies()
+# print TestOptimization("Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
