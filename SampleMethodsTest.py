@@ -82,6 +82,11 @@ def TestOptimization(MName_):
 	return np.mean(rms_list)
 
 
+<<<<<<< HEAD
 GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "DavidMetaMD")
 # GetForceEnergies()
+=======
+# GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
+GetForceEnergies()
+>>>>>>> 3886a1c0efb96f70a95c499e3d823a1ae6886729
 # print TestOptimization("Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")

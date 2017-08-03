@@ -24,7 +24,35 @@ def TrainPrepare():
                 a.Save()
 
 
-        if (1):
+	if (1):
+		B3LYP631GstarAtom={}
+		B3LYP631GstarAtom[1]=-0.5002727827
+		B3LYP631GstarAtom[6]=-37.8462793509
+		B3LYP631GstarAtom[7]=-54.5844908554
+		B3LYP631GstarAtom[8]=-75.0606111011
+                a = MSet("chemspider9_metady_force")
+                dic_list = pickle.load(open("./datasets/chemspider9_metady_force.dat", "rb"))
+                for dic in dic_list:
+                        atoms = []
+                        for atom in dic['atoms']:
+                                atoms.append(AtomicNumber(atom))
+                        atoms = np.asarray(atoms, dtype=np.uint8)
+                        mol = Mol(atoms, dic['xyz'])
+                        mol.properties['charges'] = dic['charges']
+                        mol.properties['dipole'] = np.asarray(dic['dipole'])
+                        mol.properties['quadropole'] = dic['quad']
+                        mol.properties['energy'] = dic['scf_energy']
+                        mol.properties['gradients'] = dic['gradients']
+			mol.properties['atomization'] = dic['scf_energy']
+			for i in range (0, mol.NAtoms()):
+				mol.properties['atomization'] -= B3LYP631GstarAtom[mol.atoms[i]]
+                        a.mols.append(mol)
+		a.mols[100].WriteXYZfile(fname="metady_test")
+		print a.mols[100].properties
+                a.Save()
+
+
+        if (0):
 		RIMP2Atom={}
 		RIMP2Atom[1]=-0.4998098112
 		RIMP2Atom[8]=-74.9659650581
@@ -194,7 +222,7 @@ def TrainForceField():
 
 
 	# With Charge Encode
-        if (1):
+        if (0):
                 a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
@@ -217,6 +245,38 @@ def TrainForceField():
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
 		PARAMS["SwitchEpoch"] = 100
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode") # Initialzie a manager than manage the training of neural network.
+                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+                manager.Train()
+
+
+	# With Chemspider9 Metadyn
+        if (1):
+                a = MSet("chemspider9_metady_force")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 101
+                PARAMS["batch_size"] = 35
+                PARAMS["test_freq"] = 2
+                PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScaler"] = 1.0
+		PARAMS["DipoleScaler"]=1.0
+                PARAMS["NeuronType"] = "relu"
+                PARAMS["HiddenLayers"] = [1000, 1000, 1000]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 7.0
+		PARAMS["Erf_Width"] = 0.4
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 10
                 d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
                 tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
                 #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
@@ -255,6 +315,6 @@ def EvalForceField():
 
 
 #TestCoulomb()
-#TrainPrepare()
+TrainPrepare()
 TrainForceField()
 #EvalForceField()
