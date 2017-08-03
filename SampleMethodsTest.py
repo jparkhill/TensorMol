@@ -77,7 +77,6 @@ def TestOptimization(MName_):
 
 	a = MSet("sampling_mols")
 	a.ReadXYZ()
-	mol = a.mols[0]
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)

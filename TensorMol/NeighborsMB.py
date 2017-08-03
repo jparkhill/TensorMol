@@ -49,10 +49,10 @@ class MBNeighbors:
 		self.npair = 0
 		self.maxnatom = 3*max(map(len,frags_))
 		self.sings = np.zeros((self.nf,self.maxnatom,3))
-		self.singz = np.zeros((self.nf,self.maxnatom,1))
+		self.singz = np.zeros((self.nf,self.maxnatom))
 		for i in range(self.nf):
 			self.sings[i,:len(self.frags[i]),:] = self.x[self.frags[i]].copy()
-			self.singz[i,:len(self.frags[i]),:] = self.z[self.frags[i]].copy()
+			self.singz[i,:len(self.frags[i])] = self.z[self.frags[i]].copy()
 
 	def Update(self,x_, R2=10.0, R3=5.0):
 		"""
@@ -71,13 +71,13 @@ class MBNeighbors:
 			centers[i] = np.average(self.x[self.frags[i]],axis=0)
 		TwoBodyPairs=None
 		ThreeBodyPairs=None
-		print "Number of Frags",self.nf
+		#print "Number of Frags",self.nf
 		if (self.nf < 500):
-			TwoBodyPairs = Make_NListNaive(centers,R2,self.nf,int(True))
-			ThreeBodyPairs = Make_NListNaive(centers,R3,self.nf,int(True))
+			TwoBodyPairs = Make_NListNaive(centers,R2,self.nf,int(False))
+			ThreeBodyPairs = Make_NListNaive(centers,R3,self.nf,int(False))
 		else:
-			TwoBodyPairs = Make_NListLinear(centers,R2,self.nf,int(True))
-			ThreeBodyPairs = Make_NListLinear(centers,R3,self.nf,int(True))
+			TwoBodyPairs = Make_NListLinear(centers,R2,self.nf,int(False))
+			ThreeBodyPairs = Make_NListLinear(centers,R3,self.nf,int(False))
 		self.pairi = set()
 		self.tripi = set()
 		#print TwoBodyPairs
@@ -89,7 +89,7 @@ class MBNeighbors:
 				for j in range(nnp):
 					if (j != None):
 						self.pairi.add(tuple(sorted([i,TwoBodyPairs[i][j]])))
-			if (nnt>2):
+			if (nnt>=2):
 				for j in range(nnt):
 					if (j != None):
 						for k in range(j+1,nnt):
@@ -107,32 +107,32 @@ class MBNeighbors:
 		self.singC = np.ones(self.nf)
 		self.pairC = np.ones(self.npair)
 		self.tripC = np.ones(self.ntrip)
-		self.pairs = np.zeros((self.nf,self.maxnatom,3))
-		self.trips = np.zeros((self.nf,self.maxnatom,3))
-		self.pairz = np.zeros((self.nf,self.maxnatom,1))
-		self.tripz = np.zeros((self.nf,self.maxnatom,1))
-		for trip in self.tripi:
+		self.pairs = np.zeros((self.npair,self.maxnatom,3))
+		self.trips = np.zeros((self.ntrip,self.maxnatom,3))
+		self.pairz = np.zeros((self.npair,self.maxnatom))
+		self.tripz = np.zeros((self.ntrip,self.maxnatom))
+		for trip_index, trip in enumerate(self.tripi):
 			i,j,k = trip[0],trip[1],trip[2]
 			ni,nj,nk = len(self.frags[i]),len(self.frags[j]),len(self.frags[k])
-			self.trips[i,:ni,:] = self.x[self.frags[i]].copy()
-			self.trips[i,ni:(ni+nj),:] = self.x[self.frags[j]].copy()
-			self.trips[i,(ni+nj):(ni+nj+nk),:] = self.x[self.frags[j]].copy()
-			self.tripz[i,:ni,:] = self.z[self.frags[i]].copy()
-			self.tripz[i,ni:(ni+nj),:] = self.z[self.frags[j]].copy()
-			self.tripz[i,(ni+nj):(ni+nj+nk),:] = self.z[self.frags[j]].copy()
+			self.trips[trip_index,:ni,:] = self.x[self.frags[i]].copy()
+			self.trips[trip_index,ni:(ni+nj),:] = self.x[self.frags[j]].copy()
+			self.trips[trip_index,(ni+nj):(ni+nj+nk),:] = self.x[self.frags[k]].copy()
+			self.tripz[trip_index,:ni] = self.z[self.frags[i]].copy()
+			self.tripz[trip_index,ni:(ni+nj)] = self.z[self.frags[j]].copy()
+			self.tripz[trip_index,(ni+nj):(ni+nj+nk)] = self.z[self.frags[k]].copy()
 			self.pairC[self.pairi.index(sorted([i,j]))] -= 1
 			self.pairC[self.pairi.index(sorted([j,k]))] -= 1
 			self.pairC[self.pairi.index(sorted([k,i]))] -= 1
 			self.singC[i] += 1
 			self.singC[j] += 1
 			self.singC[k] += 1
-		for pair in self.pairi:
+		for pair_index, pair in enumerate(self.pairi):
 			i,j = pair[0],pair[1]
 			ni,nj = len(self.frags[i]),len(self.frags[j])
-			self.pairs[i,:ni,:] = self.x[self.frags[i]].copy()
-			self.pairs[i,ni:(ni+nj),:] = self.x[self.frags[j]].copy()
-			self.pairz[i,:ni,:] = self.z[self.frags[i]].copy()
-			self.pairz[i,ni:(ni+nj),:] = self.z[self.frags[j]].copy()
+			self.pairs[pair_index,:ni,:] = self.x[self.frags[i]].copy()
+			self.pairs[pair_index,ni:(ni+nj),:] = self.x[self.frags[j]].copy()
+			self.pairz[pair_index,:ni] = self.z[self.frags[i]].copy()
+			self.pairz[pair_index,ni:(ni+nj)] = self.z[self.frags[j]].copy()
 			self.singC[i] -= 1
 			self.singC[j] -= 1
 		return

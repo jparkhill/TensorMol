@@ -17,7 +17,7 @@ class GeomOptimizer:
 		Geometry optimizations based on NN-PES's etc.
 
 		Args:
-			tfm_: a TFManage or TFMolManage instance to use as a molecular model.
+			f_: An EnergyForce routine 
 		"""
 		self.thresh = PARAMS["OptThresh"]
 		self.maxstep = PARAMS["OptMaxStep"]
