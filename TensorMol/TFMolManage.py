@@ -81,6 +81,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1122,8 +1124,10 @@ class TFMolManage(TFManage):
 		for i, mol in enumerate(mol_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
-		NLs = NeighborListSet(xyzs, np.array([mol.NAtoms()]), True, False, Zs)
+		NLs = NeighborListSet(xyzs, np.array([mol.NAtoms()]), True, True, Zs)
 		NLs.Update(xyzs,PARAMS["AN1_r_Rc"],PARAMS["AN1_a_Rc"])
+		#print NLs.pairs 
+		#print NLs.triples 
 		mol_out, atom_out, gradient = self.Instances.evaluate([xyzs, Zs, NLs.pairs, NLs.triples])
 		if Grad and Energy:
 			return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
@@ -1172,8 +1176,32 @@ class TFMolManage(TFManage):
 		rad_p, ang_t = NL.buildPairsAndTriples(Rr_cut, Ra_cut)
 		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
 		rad_eep = NLEE.buildPairs(Ree_cut)
-		Etotal, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
-		return Etotal, Ecc, mol_dipole, atom_charge, gradient
+		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
+		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
+
+
+	def EvalBPDirectEESet(self, mol_set, Rr_cut, Ra_cut, Ree_cut):
+		"""
+		The energy, force and dipole routine for BPs_EE.
+		"""
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		dummy_dipole = np.zeros((nmols, 3))
+		self.TData.MaxNAtoms = mol_set.MaxNAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSet(xyzs, natom, True, True, Zs)
+		rad_p, ang_t = NL.buildPairsAndTriples(Rr_cut, Ra_cut)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
+		rad_eep = NLEE.buildPairs(Ree_cut)
+		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
+		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
 
 	def Prepare(self):
 		self.Load()
@@ -1202,6 +1230,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):

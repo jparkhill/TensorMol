@@ -228,6 +228,15 @@ class Instance:
 		self.saver.save(self.sess, checkpoint_file_mini)
 		return
 
+	def FindLastCheckpoint(self):
+		chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')>0)]
+		if (len(chkfiles)==0):
+			return False
+		chknums = sorted([int(chkfile.replace(self.name+'-chk-','').replace('.meta','')) for chkfile in chkfiles])
+		lastchkfile = os.path.join(self.train_dir,self.name+'-chk-'+str(chknums[-1]))
+		print("Found Last Checkpoint file: ",lastchkfile)
+		return lastchkfile
+
 	#this isn't really the correct way to load()
 	# only the local class members (not any TF objects should be unpickled.)
 	def Load(self):
