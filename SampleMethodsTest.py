@@ -82,6 +82,8 @@ def TestOptimization(MName_):
 	print "RMS:", tmp_rms
 	return np.mean(rms_list)
 
+def ContinueTrainingFromSaved(MName_, ASet_):
+	return
 
 #GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "DavidMetaMD")
 # GetForceEnergies()
