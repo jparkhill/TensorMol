@@ -8,6 +8,7 @@ from TensorMol import *
 import os
 import numpy as np
 from math import *
+from random import *
 from TensorMol.ElectrostaticsTF import *
 
 def GetEnergyAndForceFromManager(MName_, set_):
@@ -75,8 +76,9 @@ def TestOptimization(MName_):
 		np.mean(rms_list): Average value of all of the RMS errors for all molecules
 	"""
 
-	a = MSet("sampling_mols")
-	a.ReadXYZ()
+	a = MSet("DavidMetaMD")
+	a.Load()
+	shuffle(a.mols)
 	mol = a.mols[0]
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
