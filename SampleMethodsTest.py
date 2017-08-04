@@ -67,21 +67,22 @@ def TestOptimization(MName_):
 
 	a = MSet("sampling_mols")
 	a.ReadXYZ()
+	mol = a.mols[0]
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 	manager = TFMolManage(MName_ , tset, False, RandomTData_=False, Trainable_=False)
 	rms_list = []
-	for mol in a.mols:
-		EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(mol.atoms,x))
-		mol.Distort(0.2)
-		molp = GeomOptimizer(EnergyForceField).Opt(mol)
-		tmp_rms = mol.rms_inv(molp)
-		rms_list.append(tmp_rms)
-		print "RMS:", tmp_rms
+	#for mol in a.mols:
+	EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(mol.atoms,x))
+	mol.Distort(0.2)
+	molp = GeomOptimizer(EnergyForceField).Opt(mol)
+	tmp_rms = mol.rms_inv(molp)
+	rms_list.append(tmp_rms)
+	print "RMS:", tmp_rms
 	return np.mean(rms_list)
 
 
-GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "DavidMetaMD")
+#GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "DavidMetaMD")
 # GetForceEnergies()
-# print TestOptimization("Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
+print TestOptimization("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
