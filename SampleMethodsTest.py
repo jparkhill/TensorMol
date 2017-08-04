@@ -13,10 +13,11 @@ from TensorMol.ElectrostaticsTF import *
 def GetEnergyAndForceFromManager(MName_, set_):
 	"""
 	MName: name of the manager. (specifies sampling method.)
+	set_: name of dataset
 	"""
 	# If you wanna do eq.
-	a = MSet("sampling_mols")
-	a.ReadXYZ()
+	# a = MSet("sampling_mols")
+	# a.ReadXYZ()
 	#
 	a = MSet(set_)
 	a.Load()
@@ -28,19 +29,28 @@ def GetEnergyAndForceFromManager(MName_, set_):
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["HiddenLayers"] = [512,512,512]
 	manager = TFMolManage(MName_ , tset, False, RandomTData_=False, Trainable_=False)
-	EnergyError=[]
-	ForceError=[]
-	for mol in b.mols:
+	nmols = len(a.mols)
+	EErr = np.zeros(nmols)
+	FErr = np.zeros(nmols)
+	for i, mol in enumerate(a.mols):
 		mol.properties["atomization"] = mol.properties["energy"]
-		for i in range(0, mol.NAtoms()):
-			mol.properties["atomization"] -= ele_E_david[mol.atoms[i]]
+		mol.properties["gradients"] = mol.properties["forces"]
+		for j in range(0, mol.NAtoms()):
+			mol.properties["atomization"] -= ele_E_david[mol.atoms[j]]
 		q_en = mol.properties["atomization"]
+		q_f = mol.properties["gradients"]
 		#qchem_energies.append(q_en)
 		en,grad=manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(mol.atoms, mol.coords))
-		#tm_energies.append(en)
-		#tm_gradients.append(grad/-JOULEPERHARTREE)
-		# Subtract square, sqrt. add to EnergyError List.
-	# rms_energy = np.sqrt(np.sum()/())
+		new_grad = grad/-JOULEPERHARTREE
+		#print "new_grad:", new_grad
+		#print "q_f:", q_f
+		EErr[i] = (en - q_en)
+		F_diff = new_grad - q_f
+		FErr[i] = np.sqrt(np.sum(F_diff*F_diff)/mol.NAtoms())
+		#print "FErr[i]", FErr[i]
+	print np.sum(FErr,axis=0), nmols
+	print "RMS energy error: ", np.sqrt(np.sum(EErr*EErr)/nmols)
+	print "<|F_err|> error: ", (np.sum(FErr)/nmols)
 	return EnergyError,ForceError
 
 def GetForceEnergies():
@@ -87,4 +97,4 @@ def ContinueTrainingFromSaved(MName_, ASet_):
 
 #GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "DavidMetaMD")
 # GetForceEnergies()
-print TestOptimization("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
+# print TestOptimization("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
