@@ -51,7 +51,7 @@ def TrainPrepare():
 		c.Save()
 
 	if (1):
-		a = MSet("DavidMD")
+		a = MSet("DavidMetaMD")
 		a.Load()
 		for mol in a.mols:
 			mol.properties["gradients"] = mol.properties["forces"]
@@ -67,7 +67,7 @@ def TrainPrepare():
 		print a.mols[0].properties
 		a.mols[0].WriteXYZfile(fname="test")
 
-def TrainForceField(SetName_ = "DavidMD"):
+def TrainForceField(SetName_ = "DavidMetaMD"):
 	a = MSet(SetName_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -76,13 +76,13 @@ def TrainForceField(SetName_ = "DavidMD"):
 	# PARAMS["hidden3"] = 512
 	PARAMS["learning_rate"] = 0.00001
 	PARAMS["momentum"] = 0.95
-	PARAMS["max_steps"] = 101
+	PARAMS["max_steps"] = 201
 	PARAMS["batch_size"] = 100
-	PARAMS["test_freq"] = 2
+	PARAMS["test_freq"] = 5
 	PARAMS["tf_prec"] = "tf.float64"
 	PARAMS["GradScalar"] = 1
 	PARAMS["NeuronType"] = "relu"
-	PARAMS["HiddenLayers"] = [512,512,512]
+	PARAMS["HiddenLayers"] = [200,200,200]
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
 	manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_Grad_Linear") # Initialzie a manager than manage the training of neural network.
@@ -137,6 +137,6 @@ def TestIRLinearDirect():
 	WriteDerDipoleCorrelationFunction(md.mu_his,"THP_udp_grad_IR.txt")
 
 #TestCoulomb()
-# TrainPrepare()
+#TrainPrepare()
 TrainForceField()
 # TestIRLinearDirect()
