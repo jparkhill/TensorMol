@@ -1178,7 +1178,7 @@ class TFMolManage(TFManage):
 		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
 
 
-	def EvalBPDirectEESet(self, mol_set, Rr_cut, Ra_cut, Ree_cut):
+	def EvalBPDirectEESet(self, mol_set, Rr_cut=PARAMS["AN1_r_Rc"], Ra_cut=PARAMS["AN1_a_Rc"], Ree_cut=PARAMS["EECutoffOff"]):
 		"""
 		The energy, force and dipole routine for BPs_EE.
 		"""

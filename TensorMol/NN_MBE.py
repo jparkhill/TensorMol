@@ -30,6 +30,34 @@ class NN_MBE:
 		return 
 
 
+class NN_MBE_Linear:
+	def __init__(self,tfm_=None):
+		self.mbe_order = PARAMS["MBE_ORDER"]
+		self.nn_mbe = tfm_
+		return
+
+	def EnergyForceDipole(self, N_MB):
+		eval_set = MSet("TmpMBESet")
+		MBE_C = []
+		if self.mbe_order >= 1:
+			for i in range (N_MB.nf):
+				eval_set.mols.append(Mol(N_MB.sings[i], N_MB.singz[i]))
+				MBE_C.append(N_MB.singC[i])
+		if self.mbe_order >= 2:
+			for i in range (N_MB.npair):
+				eval_set.mols.append(Mol(N_MB.pairs[i], N_MB.pairz[i]))
+				MBE_C.append(N_MB.pairC[i])
+		
+		if self.mbe_order >= 3:
+			for i in range (N_MB.npair):
+				eval_set.mols.append(Mol(N_MB.pairs[i], N_MB.pairz[i]))
+				MBE_C.append(N_MB.pairC[i])
+		if  self.mbe_order >= 4:
+			raise Exception("Linear MBE only implemented up to order 3")
+		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = self.nn_mbe.EvalBPDirectEESet(eval_set)
+				
+		
+
 class NN_MBE_BF:
         def __init__(self,tfm_=None, dipole_tfm_=None):
 		self.mbe_order = PARAMS["MBE_ORDER"]
