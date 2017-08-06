@@ -2,6 +2,8 @@ from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from TensorMol.ElectrostaticsTF import *
+from TensorMol.NN_MBE import *
+
 
 def TrainPrepare():
 
@@ -289,6 +291,7 @@ def EvalForceField():
 		a=MSet("H2O_force_test", center_=False)
 		a.ReadXYZ("H2O_force_test")
 		TreatedAtoms = a.AtomTypes()
+		print ("old type:", TreatedAtoms)
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 300
@@ -327,14 +330,27 @@ def EvalForceField():
 
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(m)
-                PARAMS["MDThermostat"] = "Nose"
-                PARAMS["MDTemp"] = 30
-                PARAMS["MDdt"] = 0.1
-                PARAMS["RemoveInvariant"]=True
-                PARAMS["MDV0"] = None
-                PARAMS["MDMaxStep"] = 10000
-                md = VelocityVerlet(None, m, "11OO",EnergyForceField)
-                md.Prop()
+                #PARAMS["MDThermostat"] = "Nose"
+                #PARAMS["MDTemp"] = 30
+                #PARAMS["MDdt"] = 0.1
+                #PARAMS["RemoveInvariant"]=True
+                #PARAMS["MDV0"] = None
+                #PARAMS["MDMaxStep"] = 10000
+                #md = VelocityVerlet(None, m, "11OO",EnergyForceField)
+                #md.Prop()
+
+		mset=MSet("NeigborMB_test")
+		mset.ReadXYZ("NeigborMB_test")
+		MBEterms = MBNeighbors(mset.mols[0].coords, mset.mols[0].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
+		MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
+		mbe =  NN_MBE_Linear(manager)
+		mbe.EnergyForceDipole(MBEterms)
+		
+		
+		MBEterms = MBNeighbors(mset.mols[1].coords, mset.mols[1].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
+		MBEterms.Update(mset.mols[1].coords, 10.0, 10.0)
+		mbe =  NN_MBE_Linear(manager)
+		mbe.EnergyForceDipole(MBEterms)
 
 	if (0):
 		os.environ["CUDA_VISIBLE_DEVICES"]=""
