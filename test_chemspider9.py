@@ -291,7 +291,6 @@ def EvalForceField():
 		a=MSet("H2O_force_test", center_=False)
 		a.ReadXYZ("H2O_force_test")
 		TreatedAtoms = a.AtomTypes()
-		print ("old type:", TreatedAtoms)
                 PARAMS["learning_rate"] = 0.00001
                 PARAMS["momentum"] = 0.95
                 PARAMS["max_steps"] = 300
@@ -318,7 +317,7 @@ def EvalForceField():
 		#print out_list
 		#print "gradient: ", out_list[-1]/BOHRPERA
 		#print manager.EvalBPDirectEESingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-		m = a.mols[2]
+		m = a.mols[1]
 		def EnAndForce(x_):
                         m.coords = x_
                         Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
@@ -328,30 +327,38 @@ def EvalForceField():
                 ForceField = lambda x: EnAndForce(x)[-1]
                 EnergyForceField = lambda x: EnAndForce(x)
 
+		Opt = GeomOptimizer(EnergyForceField)
+		Opt.Opt(m)
+                PARAMS["MDThermostat"] = "Nose"
+                PARAMS["MDTemp"] = 30
+                PARAMS["MDdt"] = 0.1
+                PARAMS["RemoveInvariant"]=True
+                PARAMS["MDV0"] = None
+                PARAMS["MDMaxStep"] = 10000
+                md = VelocityVerlet(None, m, "11OO",EnergyForceField)
+                md.Prop()
+
+		#mset=MSet("NeigborMB_test")
+		#mset.ReadXYZ("NeigborMB_test")
+		#MBEterms = MBNeighbors(mset.mols[0].coords, mset.mols[0].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
+		#mbe =  NN_MBE_Linear(manager)
+		#def EnAndForce(x_):
+                #        mset.mols[0].coords = x_
+		#	MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
+                #        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(b.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+		#	mbe.EnergyForceDipole(MBEterms)
+                #        energy = Etotal[0]
+                #        force = gradient[0]
+                #        return energy, force
+                #EnergyForceField = lambda x: EnAndForce(x)
+
 		#Opt = GeomOptimizer(EnergyForceField)
-		#Opt.Opt(m)
-                #PARAMS["MDThermostat"] = "Nose"
-                #PARAMS["MDTemp"] = 30
-                #PARAMS["MDdt"] = 0.1
-                #PARAMS["RemoveInvariant"]=True
-                #PARAMS["MDV0"] = None
-                #PARAMS["MDMaxStep"] = 10000
-                #md = VelocityVerlet(None, m, "11OO",EnergyForceField)
-                #md.Prop()
-
-		mset=MSet("NeigborMB_test")
-		mset.ReadXYZ("NeigborMB_test")
-		MBEterms = MBNeighbors(mset.mols[0].coords, mset.mols[0].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
-		MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
-		mbe =  NN_MBE_Linear(manager)
-		mbe.EnergyForceDipole(MBEterms)
+		#Opt.Opt(b.mols[0])
+		#MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
+		#mbe =  NN_MBE_Linear(manager)
+		#mbe.EnergyForceDipole(MBEterms)
 		
 		
-		MBEterms = MBNeighbors(mset.mols[1].coords, mset.mols[1].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
-		MBEterms.Update(mset.mols[1].coords, 10.0, 10.0)
-		mbe =  NN_MBE_Linear(manager)
-		mbe.EnergyForceDipole(MBEterms)
-
 	if (0):
 		os.environ["CUDA_VISIBLE_DEVICES"]=""
 		a = MSet("chemspider9_metady_force")
