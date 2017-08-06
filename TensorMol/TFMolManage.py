@@ -1177,7 +1177,7 @@ class TFMolManage(TFManage):
 		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
 		rad_eep = NLEE.buildPairs(Ree_cut)
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
-		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
+		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERKCAL*gradient[0]
 
 
 	def EvalBPDirectEESet(self, mol_set, Rr_cut=PARAMS["AN1_r_Rc"], Ra_cut=PARAMS["AN1_a_Rc"], Ree_cut=PARAMS["EECutoffOff"]):
@@ -1201,7 +1201,7 @@ class TFMolManage(TFManage):
 		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
 		rad_eep = NLEE.buildPairs(Ree_cut)
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
-		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
+		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient[0]
 
 	def Prepare(self):
 		self.Load()

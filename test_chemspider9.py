@@ -300,21 +300,101 @@ def EvalForceField():
                 PARAMS["NeuronType"] = "relu"
                 PARAMS["HiddenLayers"] = [200, 200, 200]
 		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 4.6
-		PARAMS["EECutoffOff"] = 15.0
+                PARAMS["EECutoffOn"] = 7.0
+                PARAMS["AN1_r_Rc"] = 8.0
+                PARAMS["AN1_num_r_Rs"] = 64
+                PARAMS["Erf_Width"] = 0.4
+                PARAMS["EECutoffOff"] = 15.0
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
 		PARAMS["SwitchEpoch"] = 100
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 		tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_rimp2_force_dipole_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_1",tset,False,"fc_sqdiff_BP_Direct_EE",False,False)
-		print manager.EvalBPDirectEESet(a, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+		#out_list = manager.EvalBPDirectEESet(a, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+		#print out_list
+		#print "gradient: ", out_list[-1]/BOHRPERA
 		#print manager.EvalBPDirectEESingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-		#print manager.EvalBPDirectEESingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-		#print manager.EvalBPDirectEESingle(a.mols[2], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+		m = a.mols[2]
+		def EnAndForce(x_):
+                        m.coords = x_
+                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+                        energy = Etotal[0]
+                        force = gradient[0]
+                        return energy, force
+                ForceField = lambda x: EnAndForce(x)[-1]
+                EnergyForceField = lambda x: EnAndForce(x)
 
+		#Opt = GeomOptimizer(EnergyForceField)
+		#Opt.Opt(m)
+                PARAMS["MDThermostat"] = "Nose"
+                PARAMS["MDTemp"] = 30
+                PARAMS["MDdt"] = 0.1
+                PARAMS["RemoveInvariant"]=True
+                PARAMS["MDV0"] = None
+                PARAMS["MDMaxStep"] = 10000
+                md = VelocityVerlet(None, m, "11OO",EnergyForceField)
+                md.Prop()
+
+	if (0):
+		os.environ["CUDA_VISIBLE_DEVICES"]=""
+		a = MSet("chemspider9_metady_force")
+		a.Load()
+		b = MSet("1_1_Ostrech_opt")
+		b.ReadXYZ("1_1_Ostrech_opt")
+		TreatedAtoms = a.AtomTypes()	
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 101
+            	PARAMS["batch_size"] = 35
+                PARAMS["test_freq"] = 2
+                PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScaler"] = 1.0
+		PARAMS["DipoleScaler"]=1.0
+                PARAMS["NeuronType"] = "relu"
+                PARAMS["HiddenLayers"] = [1000, 1000, 1000]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 7.0
+		PARAMS["Erf_Width"] = 0.4
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 10
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                manager=TFMolManage("Mol_chemspider9_metady_force_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode", False, False) # Initialzie a manager than manage the training of neural network.
+		#print manager.EvalBPDirectEESet(b, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+		#print manager.EvalBPDirectEESingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+		#print a.mols[1].properties, "Dipole in a.u.:",a.mols[1].properties["dipole"]*0.393456
+
+
+		def EnAndForce(x_):
+                        b.mols[0].coords = x_
+                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(b.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+                        energy = Etotal[0]
+                        force = gradient[0]
+                        return energy, force
+                ForceField = lambda x: EnAndForce(x)[-1]
+                EnergyForceField = lambda x: EnAndForce(x)
+
+		#Opt = GeomOptimizer(EnergyForceField)
+		#Opt.Opt(b.mols[0])
+
+       	 	#anneal = Annealer(EnergyForceField, None, b.mols[0], "Anneal")
+       	 	#anneal.Prop()
+       	 	#a.mols[0].coords = anneal.Minx.copy()
+       	 	#a.mols[0].WriteXYZfile("./results/", "Anneal_opt")
+	        PARAMS["MDThermostat"] = "Nose"
+	        PARAMS["MDTemp"] = 30
+	        PARAMS["MDdt"] = 0.1
+	        PARAMS["RemoveInvariant"]=True
+	        PARAMS["MDV0"] = None
+	        PARAMS["MDMaxStep"] = 10000
+	        md = VelocityVerlet(None, b.mols[0],"11OO",EnergyForceField)
+	        md.Prop()
+	
 
 #TestCoulomb()
-TrainPrepare()
-TrainForceField()
-#EvalForceField()
+#TrainPrepare()
+#TrainForceField()
+EvalForceField()
