@@ -287,7 +287,8 @@ def TrainForceField():
                 manager.Train()
 
 def EvalForceField():
-	if (0):
+	if (1):
+		os.environ["CUDA_VISIBLE_DEVICES"]=""
 		a=MSet("H2O_force_test", center_=False)
 		a.ReadXYZ("H2O_force_test")
 		TreatedAtoms = a.AtomTypes()
@@ -359,7 +360,7 @@ def EvalForceField():
 		#mbe.EnergyForceDipole(MBEterms)
 		
 		
-	if (1):
+	if (0):
 		os.environ["CUDA_VISIBLE_DEVICES"]=""
 		a = MSet("chemspider9_metady_force")
 		a.Load()
@@ -426,7 +427,7 @@ def EvalForceField():
         	PARAMS["MDThermostat"] = "Nose"
         	PARAMS["MDV0"] = None
 		PARAMS["MDAnnealTF"] = 300.0
-                PARAMS["MDAnnealT0"] = 0.0
+                PARAMS["MDAnnealT0"] = 0.1
 		PARAMS["MDAnnealSteps"] = 10000	
        	 	anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	anneal.Prop()
@@ -436,9 +437,10 @@ def EvalForceField():
 	        PARAMS["MDTemp"] = 0
 	        PARAMS["MDdt"] = 0.1
 	        PARAMS["MDV0"] = None
-	        PARAMS["MDMaxStep"] = 10000
-	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
+	        PARAMS["MDMaxStep"] = 40000
+	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR", anneal.v)
 	        md.Prop()
+		WriteDerDipoleCorrelationFunction(md.mu_his)
 	
 
 #TestCoulomb()
