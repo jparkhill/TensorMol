@@ -1,0 +1,27 @@
+<html>
+<head><title>welcome</title></head>
+<body>
+
+    <h1>Django Distrct</h1>
+    <h2><span id="user-count">{{ connected }}</span>
+        users are on this page right now.</h2>
+
+    <script type="text/javascript"
+                src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function() {
+            var url = "http://" + document.domain + ":" + location.port;
+            var socket = io.connect(url + "/tms");
+            socket.on('msg', function(msg) {
+                $("#user-count").html(msg.count);
+            });
+        });
+    </script>
+
+ <h1> Welcome </h1>
+ <br>
+ <h2> {{ counter }} have seen this page </h2>
+ </body>
+<html>
