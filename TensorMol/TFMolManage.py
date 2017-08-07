@@ -1126,8 +1126,8 @@ class TFMolManage(TFManage):
 			Zs[i][:mol.NAtoms()] = mol.atoms
 		NLs = NeighborListSet(xyzs, np.array([mol.NAtoms()]), True, True, Zs)
 		NLs.Update(xyzs,PARAMS["AN1_r_Rc"],PARAMS["AN1_a_Rc"])
-		#print NLs.pairs 
-		#print NLs.triples 
+		#print NLs.pairs
+		#print NLs.triples
 		mol_out, atom_out, gradient = self.Instances.evaluate([xyzs, Zs, NLs.pairs, NLs.triples])
 		if Grad and Energy:
 			return mol_out[0], -JOULEPERHARTREE*gradient[0][0][:mol.NAtoms()]
@@ -1179,10 +1179,12 @@ class TFMolManage(TFManage):
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
 		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
 
-
 	def EvalBPDirectEESet(self, mol_set, Rr_cut, Ra_cut, Ree_cut):
 		"""
 		The energy, force and dipole routine for BPs_EE.
+
+		Returns:
+			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
 		"""
 		nmols = len(mol_set.mols)
 		dummy_energy = np.zeros((nmols))
