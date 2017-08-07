@@ -77,7 +77,7 @@ if (0):
 if (1):
 	mset=MSet("NeigborMB_test")
 	mset.ReadXYZ("NeigborMB_test")
-	MBEterms = MBNeighbors(mset.mols[0].coords, mset.mols[0].atoms, [[0,1,2],[3,4,5],[6,7,8]])
+	MBEterms = MBNeighbors(mset.mols[0].coords, mset.mols[0].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
 	MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
 	print MBEterms.singC
 	print MBEterms.pairC

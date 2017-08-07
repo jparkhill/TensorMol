@@ -49,7 +49,7 @@ class MBNeighbors:
 		self.npair = 0
 		self.maxnatom = 3*max(map(len,frags_))
 		self.sings = np.zeros((self.nf,self.maxnatom,3))
-		self.singz = np.zeros((self.nf,self.maxnatom))
+		self.singz = np.zeros((self.nf,self.maxnatom), dtype=np.uint8)
 		for i in range(self.nf):
 			self.sings[i,:len(self.frags[i]),:] = self.x[self.frags[i]].copy()
 			self.singz[i,:len(self.frags[i])] = self.z[self.frags[i]].copy()
@@ -107,12 +107,16 @@ class MBNeighbors:
 		self.singC = np.ones(self.nf)
 		self.pairC = np.ones(self.npair)
 		self.tripC = np.ones(self.ntrip)
+		self.singI = self.frags
+		self.pairI = []
+		self.tripI = [] 
 		self.pairs = np.zeros((self.npair,self.maxnatom,3))
 		self.trips = np.zeros((self.ntrip,self.maxnatom,3))
-		self.pairz = np.zeros((self.npair,self.maxnatom))
-		self.tripz = np.zeros((self.ntrip,self.maxnatom))
+		self.pairz = np.zeros((self.npair,self.maxnatom), dtype=np.uint8)
+		self.tripz = np.zeros((self.ntrip,self.maxnatom), dtype=np.uint8)
 		for trip_index, trip in enumerate(self.tripi):
 			i,j,k = trip[0],trip[1],trip[2]
+			self.tripI.append([self.frags[i]+self.frags[j]+self.frags[k]])
 			ni,nj,nk = len(self.frags[i]),len(self.frags[j]),len(self.frags[k])
 			self.trips[trip_index,:ni,:] = self.x[self.frags[i]].copy()
 			self.trips[trip_index,ni:(ni+nj),:] = self.x[self.frags[j]].copy()
@@ -128,6 +132,7 @@ class MBNeighbors:
 			self.singC[k] += 1
 		for pair_index, pair in enumerate(self.pairi):
 			i,j = pair[0],pair[1]
+			self.pairI.append([self.frags[i]+self.frags[j]])
 			ni,nj = len(self.frags[i]),len(self.frags[j])
 			self.pairs[pair_index,:ni,:] = self.x[self.frags[i]].copy()
 			self.pairs[pair_index,ni:(ni+nj),:] = self.x[self.frags[j]].copy()

@@ -30,6 +30,52 @@ class NN_MBE:
 		return 
 
 
+class NN_MBE_Linear:
+	def __init__(self,tfm_=None):
+		self.mbe_order = PARAMS["MBE_ORDER"]
+		self.nn_mbe = tfm_
+		return
+
+	def EnergyForceDipole(self, N_MB):
+		eval_set = MSet("TmpMBESet")
+		MBE_C = []
+		MBE_Index = []
+		NAtom = []
+		if self.mbe_order >= 1:
+			for i in range (N_MB.nf):
+				natom = np.count_nonzero(N_MB.singz[i])
+				NAtom.append(natom)
+				eval_set.mols.append(Mol(N_MB.singz[i][:natom], N_MB.sings[i][:natom]))
+				MBE_C.append(N_MB.singC[i])
+				MBE_Index.append(N_MB.singI[i])
+		if self.mbe_order >= 2:
+			for i in range (N_MB.npair):
+				natom = np.count_nonzero(N_MB.pairz[i])
+				NAtom.append(natom)
+				eval_set.mols.append(Mol(N_MB.pairz[i][:natom], N_MB.pairs[i][:natom]))
+				MBE_C.append(N_MB.pairC[i])
+				MBE_Index.append(N_MB.pairI[i])	
+		if self.mbe_order >= 3:
+			for i in range (N_MB.ntrip):
+				natom = np.count_nonzero(N_MB.tripz[i])
+				NAtom.append(natom)
+				eval_set.mols.append(Mol(N_MB.tripz[i][:natom], N_MB.trips[i][:natom]))
+				MBE_C.append(N_MB.tripC[i])
+				MBE_Index.append(N_MB.tripI[i])
+		if  self.mbe_order >= 4:
+			raise Exception("Linear MBE only implemented up to order 3")
+		MBE_C = np.asarray(MBE_C)
+		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = self.nn_mbe.EvalBPDirectEESet(eval_set, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+		E_mbe = np.sum(Etotal*MBE_C)
+		gradient_mbe = np.zeros((N_MB.nt,3))
+		atom_charge_mbe = np.zeros((N_MB.nt))
+		for i, index in enumerate(MBE_Index):
+			gradient_mbe[index] += gradient[i][:NAtom[i]]*MBE_C[i]
+			atom_charge_mbe[index] += atom_charge[i][:NAtom[i]]*MBE_C[i]
+		print E_mbe, gradient_mbe, atom_charge_mbe, np.sum(atom_charge_mbe)
+				
+		
+
 class NN_MBE_BF:
         def __init__(self,tfm_=None, dipole_tfm_=None):
 		self.mbe_order = PARAMS["MBE_ORDER"]
