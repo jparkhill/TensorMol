@@ -287,7 +287,7 @@ def TrainForceField():
                 manager.Train()
 
 def EvalForceField():
-	if (1):
+	if (0):
 		a=MSet("H2O_force_test", center_=False)
 		a.ReadXYZ("H2O_force_test")
 		TreatedAtoms = a.AtomTypes()
@@ -359,7 +359,7 @@ def EvalForceField():
 		#mbe.EnergyForceDipole(MBEterms)
 		
 		
-	if (0):
+	if (1):
 		os.environ["CUDA_VISIBLE_DEVICES"]=""
 		a = MSet("chemspider9_metady_force")
 		a.Load()
@@ -390,30 +390,54 @@ def EvalForceField():
 		#print manager.EvalBPDirectEESingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		#print a.mols[1].properties, "Dipole in a.u.:",a.mols[1].properties["dipole"]*0.393456
 
-
+		m = b.mols[3]
 		def EnAndForce(x_):
-                        b.mols[0].coords = x_
-                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(b.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+                        m.coords = x_
+                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
                         energy = Etotal[0]
                         force = gradient[0]
                         return energy, force
+
+		def EnForceCharge(x_):
+                        m.coords = x_
+                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+                        energy = Etotal[0]
+                        force = gradient[0]
+                        return energy, force, atom_charge
+
+		def ChargeField(x_):
+                        m.coords = x_
+                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+                        energy = Etotal[0]
+                        force = gradient[0]
+                        return atom_charge[0]
+
                 ForceField = lambda x: EnAndForce(x)[-1]
+		EnergyField = lambda x: EnAndForce(x)[0]
                 EnergyForceField = lambda x: EnAndForce(x)
 
-		#Opt = GeomOptimizer(EnergyForceField)
-		#Opt.Opt(b.mols[0])
+		PARAMS["OptMaxCycles"]=200
+		Opt = GeomOptimizer(EnergyForceField)
+		m=Opt.Opt(m)
 
-       	 	#anneal = Annealer(EnergyForceField, None, b.mols[0], "Anneal")
-       	 	#anneal.Prop()
-       	 	#a.mols[0].coords = anneal.Minx.copy()
-       	 	#a.mols[0].WriteXYZfile("./results/", "Anneal_opt")
-	        PARAMS["MDThermostat"] = "Nose"
-	        PARAMS["MDTemp"] = 30
+		PARAMS["MDdt"] = 0.2
+        	PARAMS["RemoveInvariant"]=True
+        	PARAMS["MDMaxStep"] = 10000
+        	PARAMS["MDThermostat"] = "Nose"
+        	PARAMS["MDV0"] = None
+		PARAMS["MDAnnealTF"] = 300.0
+                PARAMS["MDAnnealT0"] = 0.0
+		PARAMS["MDAnnealSteps"] = 10000	
+       	 	anneal = Annealer(EnergyForceField, None, m, "Anneal")
+       	 	anneal.Prop()
+       	 	m.coords = anneal.Minx.copy()
+       	 	m.WriteXYZfile("./results/", "Anneal_opt")
+	        PARAMS["MDThermostat"] = None
+	        PARAMS["MDTemp"] = 0
 	        PARAMS["MDdt"] = 0.1
-	        PARAMS["RemoveInvariant"]=True
 	        PARAMS["MDV0"] = None
 	        PARAMS["MDMaxStep"] = 10000
-	        md = VelocityVerlet(None, b.mols[0],"11OO",EnergyForceField)
+	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
 	        md.Prop()
 	
 
