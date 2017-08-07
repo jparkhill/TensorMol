@@ -7,6 +7,31 @@ import os
 import numpy as np
 #os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
+def TestBPDirectWater():
+	a=MSet("H2O_force_test", center_=False)
+	a.ReadXYZ("H2O_force_test")
+	TreatedAtoms = a.AtomTypes()
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 300
+	PARAMS["batch_size"] = 1000
+	PARAMS["test_freq"] = 10
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["GradScaler"] = 1.0
+	PARAMS["DipoleScaler"]=1.0
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["HiddenLayers"] = [200, 200, 200]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 4.6
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["learning_rate_dipole"] = 0.0001
+	PARAMS["learning_rate_energy"] = 0.00001
+	PARAMS["SwitchEpoch"] = 100
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_rimp2_force_dipole_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_1",tset,False,"fc_sqdiff_BP_Direct_EE",False,False)
+	print manager.EvalBPDirectEESet(a, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+
 def TestBPDirect():
 	"""
 	Test Behler-Parrinello with gradient learning and direct descriptor.
