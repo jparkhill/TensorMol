@@ -28,7 +28,7 @@ def GetEnergyAndForceFromManager(MName_, set_):
 	PARAMS["tf_prec"] = "tf.float64"
 	PARAMS["GradScalar"] = 1
 	PARAMS["NeuronType"] = "relu"
-	PARAMS["HiddenLayers"] = [512,512,512]
+	PARAMS["HiddenLayers"] = [200,200,200]
 	manager = TFMolManage(MName_ , tset, False, RandomTData_=False, Trainable_=False)
 	nmols = len(a.mols)
 	EErr = np.zeros(nmols)
@@ -49,18 +49,46 @@ def GetEnergyAndForceFromManager(MName_, set_):
 		F_diff = new_grad - q_f
 		FErr[i] = np.sqrt(np.sum(F_diff*F_diff)/mol.NAtoms())
 		#print "FErr[i]", FErr[i]
+	final_E_err = (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE
+	final_F_err = (np.sum(FErr)/nmols)*KCALPERHARTREE
 	print np.sum(FErr,axis=0), nmols
-	print "RMS energy error: ", np.sqrt(np.sum(EErr*EErr)/nmols)
-	print "<|F_err|> error: ", (np.sum(FErr)/nmols)
-	return EnergyError,ForceError
+	print "RMS energy error: ", (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE
+	print "<|F_err|> error: ", (np.sum(FErr)/nmols)*KCALPERHARTREE
+	return final_E_err, final_F_err
 
-def GetForceEnergies():
-	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"] #, "Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
-	results={}
-	for i in managers:
-		ens,grads = GetEnergyAndForceFromManager(i)
-		results[i] = (ens,grads)
-	print results
+	def CompareAllData():
+		"""
+		Compares all errors from every network tested against every dataset.
+		Results are stored in a dictionary; the keys for the dictionary are
+		the managers.
+		"""
+		
+		managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+
+		md = MSet("DavidMD")
+		meta = MSet("DavidMetaMD")
+		nm = MSet("DavidNM")
+		rnd = MSet("DavidRandom")
+		hyb = MSet("Hybrid")
+		gold = MSet("GoldStd")
+
+		md.Load()
+		meta.Load()
+		nm.Load()
+		rnd.Load()
+		hyb.Load()
+		gold.Load()
+
+		sets = [md, meta, nm, rnd, hyb, gold]
+
+		results = {}
+
+		for i in managers:
+			for j in sets:
+				en, f = GetEnergyAndForceFromManager(i,j)
+				results[i] = (en, f)
+		print results
+
 
 def TestOptimization(MName_):
 	"""
@@ -76,10 +104,11 @@ def TestOptimization(MName_):
 		np.mean(rms_list): Average value of all of the RMS errors for all molecules
 	"""
 
-	a = MSet("DavidMetaMD")
+	a = MSet("DavidMD")
 	a.Load()
 	shuffle(a.mols)
 	mol = a.mols[0]
+	PARAMS["Hidden layers"] = [200,200,200]
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
@@ -88,15 +117,14 @@ def TestOptimization(MName_):
 	#for mol in a.mols:
 	EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad_Linear(Mol(mol.atoms,x))
 	mol.Distort(0.2)
+	PARAMS["OptMaxCycles"] = 2000
 	molp = GeomOptimizer(EnergyForceField).Opt(mol)
 	tmp_rms = mol.rms_inv(molp)
 	rms_list.append(tmp_rms)
 	print "RMS:", tmp_rms
 	return np.mean(rms_list)
 
-def ContinueTrainingFromSaved(MName_, ASet_):
-	return
 
-#GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "DavidMetaMD")
-# GetForceEnergies()
-print TestOptimization("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
+GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Hybrid")
+# CompareAllData()
+# print TestOptimization("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
