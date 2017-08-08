@@ -53,7 +53,7 @@ class GeomOptimizer:
 			prev_m = Mol(m.atoms, m.coords)
 			energy, frc = self.EnergyAndForce(m.coords)
 			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
-			frc /= JOULEPERKCAL
+			frc /= JOULEPERHARTREE
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			m.coords = LineSearch(Energy, m.coords, frc)
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
@@ -65,6 +65,49 @@ class GeomOptimizer:
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
 		print "Final Energy:", Energy(prev_m.coords)
 		return prev_m
+
+	def Opt_GD(self,m, filename="OptLog",Debug=False):
+		"""
+		Optimize using An EnergyAndForce Function.
+
+		Args:
+		        m: A distorted molecule to optimize
+		"""
+		# Sweeps one at a time
+		rmsdisp = 10.0
+		maxdisp = 10.0
+		rmsgrad = 10.0
+		maxgrad = 10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		print "Orig Coords", m.coords
+		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
+		energy, frc  = self.EnergyAndForce(m.coords)
+		frc = RemoveInvariantForce(m.coords, frc, m.atoms)
+		frc /= JOULEPERKCAL
+		while( step < self.max_opt_step and rmsgrad > self.thresh):
+			prev_m = Mol(m.atoms, m.coords)
+			if step == 0:
+				old_frc = frc 
+			energy, frc = self.EnergyAndForce(m.coords)
+			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
+			frc /= JOULEPERHARTREE
+			print ("force:", frc)
+			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
+			frc = (1-self.momentum)*frc + self.momentum*old_frc
+			m.coords = m.coords + self.fscale*frc
+			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
+			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
+			mol_hist.append(prev_m)
+			prev_m.WriteXYZfile("./results/", filename)
+			step+=1
+		# Checks stability in each cartesian direction.
+		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
+		return prev_m
+
 
 class Optimizer:
 	def __init__(self,tfm_):
