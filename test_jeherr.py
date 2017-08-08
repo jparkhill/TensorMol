@@ -16,7 +16,7 @@ PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [
  							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
 							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
 							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-PARAMS["ANES"] = np.array([[1.02539286, 1., 1., 1., 1., 2.18925953, 2.71734044, 3.03417733]])
+PARAMS["ANES"] = np.array([0.0, 1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
 PARAMS["SH_NRAD"] = 14
 PARAMS["SH_LMAX"] = 4
 PARAMS["hidden1"] = 100
@@ -32,7 +32,7 @@ PARAMS["RandomizeData"] = True
 PARAMS["TestRatio"] = 0.2
 PARAMS["max_steps"] = 2000
 PARAMS["test_freq"] = 5
-PARAMS["batch_size"] = 2000
+PARAMS["batch_size"] = 3000
 PARAMS["NeuronType"] = "relu"
 # PARAMS["Profiling"] = True
 
@@ -321,7 +321,7 @@ def TestMetadynamics():
 	meta.Prop()
 
 def TestTFBond():
-	a=MSet("o2")
+	a=MSet("chemspider_all_rand")
 	a.Load()
 	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
 	tset = TensorMolData_BPBond_Direct(a,d)
@@ -334,11 +334,34 @@ def GetPairPotential():
 	for i in range(len(PairPotVals)):
 		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
 
+def TestTFGauSH():
+	a=MSet("SmallMols_rand")
+	a.Load()
+	maxnatoms = a.MaxNAtoms()
+	zlist = []
+	xyzlist = []
+	for i, mol in enumerate(a.mols):
+		paddedz = np.zeros(maxnatoms,dtype=np.int32)
+		paddedz[:mol.atoms.shape[0]] = mol.atoms
+		paddedxyz = np.zeros((maxnatoms,3))
+		paddedxyz[:mol.atoms.shape[0]] = mol.coords
+		zlist.append(paddedz)
+		xyzlist.append(paddedxyz)
+		if i > 3:
+			break
+	zstack = tf.stack(zlist)
+	xyzstack = tf.stack(xyzlist)
+	bool = TF_gaussian_spherical_harmonics(xyzstack, zstack, 6)
+	x = tf.Print(bool, [bool], summarize=1000)
+	sess = tf.InteractiveSession()
+	sess.run(x)
+
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 50000)
+# RandomSmallSet("SmallMols", 10000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -352,8 +375,9 @@ def GetPairPotential():
 # BIMNN_NEq()
 # TestMetadynamics()
 # TestMD()
-TestTFBond()
+# TestTFBond()
 # GetPairPotential()
+TestTFGauSH()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()

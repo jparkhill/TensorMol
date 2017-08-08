@@ -1140,7 +1140,7 @@ def TFSymRSet_Linear_Qs(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, Qs, prec=tf.fl
 	Qi = tf.gather_nd(Qs,Qii)
 	Qj = tf.gather_nd(Qs,Qji)
 	Qit = tf.tile(tf.reshape(Qi,[nnz,1]),[1, nr])
-	Qjt = tf.tile(tf.reshape(Qj,[nnz,1]),[1, nr])	
+	Qjt = tf.tile(tf.reshape(Qj,[nnz,1]),[1, nr])
 
 	rtmp = tf.cast(tf.reshape(SFPs_[0],[1,nr]),prec) # ijk X zeta X eta ....
 	tet = tf.tile(tf.reshape(RijRij2,[nnz,1]),[1,nr]) - rtmp
@@ -1484,6 +1484,41 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 		rlist.append(tf.boolean_mask(RMatrix,BondTypeMask[:,e]))
 		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
+
+def TF_gaussian(r, r_nought, sigma, Zs, atomic_number_params):
+	exponent = ((r - r_nought[:])**2.0)/(-2.0*(sigma[:]**2))
+	exponent_mask = tf.greater(exponent, -25.0)
+	gaussian_embed = tf.where(exponent_mask, tf.exp(exponent), tf.zeros_like(exponent))
+	element_embed_factor = tf.expand_dims(tf.tile(tf.reshape(tf.gather(atomic_number_params, Zs),
+										[tf.shape(Zs)[0], tf.shape(Zs)[1], 1]),[1,1,59]), axis=-1)
+	element_scaled_gaussians = tf.reduce_sum(gaussian_embed * element_embed_factor, axis=2)
+	return element_scaled_gaussians
+
+def TF_spherical_harmonics_0(xyzs):
+	return tf.fill(tf.shape(xyzs)[:2], 0.28209479177387814)
+
+# def TF_spherical_harmonics_1(xyzs, rs):
+
+
+def TF_spherical_harmonics(xyzs, r, max_l):
+	return TF_spherical_harmonics_0(xyzs)
+
+def TF_gaussian_spherical_harmonics(xyzs, Zs, element):
+	number_molecules = tf.shape(Zs)[0]
+	max_number_atoms = tf.shape(Zs)[1]
+	distance_tensor = TFDistances(xyzs)
+	element_mask = tf.tile(tf.reshape(tf.equal(Zs, element),[number_molecules, max_number_atoms,1]),[1,1,59])
+	element_mask_distances = tf.expand_dims(tf.where(element_mask, distance_tensor, tf.zeros_like(distance_tensor)),axis=-1)
+	# element_mask_distances = tf.expand_dims(tf.boolean_mask(distance_tensor, element_mask), axis=-1)
+	gaussian_params = tf.stack(PARAMS["RBFS"])
+	atomic_number_params = tf.stack(PARAMS["ANES"])
+	r_nought = tf.expand_dims(gaussian_params[:,0],0)
+	sigma = tf.expand_dims(gaussian_params[:,1],0)
+	atom_scaled_gaussians = TF_gaussian(element_mask_distances, r_nought, sigma, Zs, atomic_number_params)
+	return TF_spherical_harmonics_0(xyzs)
+
+
+
 
 class ANISym:
 	def __init__(self, mset_):
