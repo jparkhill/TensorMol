@@ -343,7 +343,7 @@ def TestTFGauSH():
 	for i, mol in enumerate(a.mols):
 		paddedz = np.zeros(maxnatoms,dtype=np.int32)
 		paddedz[:mol.atoms.shape[0]] = mol.atoms
-		paddedxyz = np.zeros((maxnatoms,3))
+		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
 		zlist.append(paddedz)
 		xyzlist.append(paddedxyz)
