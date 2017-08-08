@@ -76,7 +76,7 @@ class TMParams(dict):
 		self["OptMaxCycles"]=10000
 		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
-		self["OptStepSize"] = 0.0005
+		self["OptStepSize"] = 0.1
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
