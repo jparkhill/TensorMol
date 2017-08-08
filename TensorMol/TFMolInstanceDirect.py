@@ -1909,16 +1909,26 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 			XYZ,Z,radial pairs, angular triples (all set format Mol X MaxNAtoms... )
 		"""
 		# Check sanity of input
+		xf = batch_data[0].copy()
+		zf = batch_data[1].copy()
 		MustPrepare = not self.sess
-		if (batch_data[0].shape[1] != self.MaxNAtoms or self.batch_size != batch_data[0].shape[0]):
+		if (batch_data[0].shape[1] > self.MaxNAtoms or self.batch_size > batch_data[0].shape[0]):
+			print("Natoms Match?", batch_data[0].shape[1] , self.MaxNAtoms)
+			print("BatchSizes Match?", self.batch_size , batch_data[0].shape[0])
 			self.batch_size = batch_data[0].shape[0]
 			self.MaxNAtoms = batch_data[0].shape[1]
 			MustPrepare = True
+			# Create tensors with the right shape, and sub-fill them.
+		elif (batch_data[0].shape[1] != self.MaxNAtoms or self.batch_size != batch_data[0].shape[0]):
+			xf = np.zeros((self.batch_size,self.MaxNAtoms,3))
+			zf = np.zeros((self.batch_size,self.MaxNAtoms))
+			xf[:batch_data[0].shape[0],:batch_data[0].shape[1],:] = batch_data[0]
+			zf[:batch_data[1].shape[0],:batch_data[1].shape[1]] = batch_data[1]
 		LOGGER.debug("Batch_Size: %i", self.batch_size)
 		if MustPrepare:
 			print ("loading the session..")
 			self.EvalPrepare()
-		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Radp_pl]+[self.Angt_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]]+[batch_data[3]])}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Radp_pl]+[self.Angt_pl], [xf]+[zf]+[batch_data[2]]+[batch_data[3]])}
 		mol_output, atom_outputs, gradient = self.sess.run([self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
 		return mol_output, atom_outputs, gradient
 
