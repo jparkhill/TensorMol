@@ -1306,6 +1306,10 @@ def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, ze
 def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
 	"""
 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
+	This also selects out which of the atoms will contribute to the BP energy on the
+	basis of whether the atomic number is treated in the 'element types to do list.'
+	according to kun? (Trusted source?)
+
 	Args:
 	        R: a nmol X maxnatom X 3 tensor of coordinates.
 	        Zs : nmol X maxnatom X 1 tensor of atomic numbers.
