@@ -56,39 +56,30 @@ def GetEnergyAndForceFromManager(MName_, set_):
 	print "<|F_err|> error: ", (np.sum(FErr)/nmols)*KCALPERHARTREE
 	return final_E_err, final_F_err
 
-	def CompareAllData():
-		"""
-		Compares all errors from every network tested against every dataset.
-		Results are stored in a dictionary; the keys for the dictionary are
-		the managers.
-		"""
-		
-		managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+def CompareAllData():
+	"""
+	Compares all errors from every network tested against every dataset.
+	Results are stored in a dictionary; the keys for the dictionary are
+	the managers.
+	"""
 
-		md = MSet("DavidMD")
-		meta = MSet("DavidMetaMD")
-		nm = MSet("DavidNM")
-		rnd = MSet("DavidRandom")
-		hyb = MSet("Hybrid")
-		gold = MSet("GoldStd")
-
-		md.Load()
-		meta.Load()
-		nm.Load()
-		rnd.Load()
-		hyb.Load()
-		gold.Load()
-
-		sets = [md, meta, nm, rnd, hyb, gold]
-
-		results = {}
-
-		for i in managers:
-			for j in sets:
-				en, f = GetEnergyAndForceFromManager(i,j)
-				results[i] = (en, f)
-		print results
-
+	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+	SetNames=["DavidMD","DavidMetaMD"]
+	nm = MSet("DavidNM")
+	rnd = MSet("DavidRandom")
+	hyb = MSet("Hybrid")
+	gold = MSet("GoldStd")
+	MSets = map(MSet,SetNames)
+	for aset in MSets:
+		aset.Load()
+	results = {}
+	print "Loaded Sets... "
+	
+	for i in managers:
+		for j in range(len(MSets)):
+			en, f = GetEnergyAndForceFromManager(i,MSets[j])
+			results[(i,SetNames[j])] = (en, f)
+	print results
 
 def TestOptimization(MName_):
 	"""
