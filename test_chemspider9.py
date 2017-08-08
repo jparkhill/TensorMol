@@ -439,16 +439,17 @@ def EvalForceField():
 		PARAMS["MDAnnealSteps"] = 10000	
        	 	anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	anneal.Prop()
-       	 	m.coords = anneal.Minx.copy()
+       	 	m.coords = anneal.x.copy()
        	 	m.WriteXYZfile("./results/", "Anneal_opt")
 	        PARAMS["MDThermostat"] = None
 	        PARAMS["MDTemp"] = 0
 	        PARAMS["MDdt"] = 0.1
 	        PARAMS["MDV0"] = None
-	        PARAMS["MDMaxStep"] = 100000
+	        PARAMS["MDMaxStep"] = 40000
 	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
 	        md.Prop()
-		
+		WriteDerDipoleCorrelationFunction(md.mu_his)		
+	
 	if (0):
 		os.environ["CUDA_VISIBLE_DEVICES"]=""
 		a = MSet("chemspider9_metady_force")
@@ -515,12 +516,12 @@ def EvalForceField():
 		PARAMS["MDMaxStep"] = 10000
 		PARAMS["MDThermostat"] = "Nose"
 		PARAMS["MDV0"] = None
-		PARAMS["MDAnnealTF"] = 300.0
+		PARAMS["MDAnnealTF"] = 200.0
 		PARAMS["MDAnnealT0"] = 0.1
 		PARAMS["MDAnnealSteps"] = 10000
 		anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		anneal.Prop()
-		m.coords = anneal.Minx.copy()
+		m.coords = anneal.x.copy()
 		m.WriteXYZfile("./results/", "Anneal_opt")
 		PARAMS["MDThermostat"] = None
 		PARAMS["MDTemp"] = 0
