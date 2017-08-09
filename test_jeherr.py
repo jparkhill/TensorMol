@@ -343,18 +343,23 @@ def TestTFGauSH():
 	for i, mol in enumerate(a.mols):
 		paddedz = np.zeros(maxnatoms,dtype=np.int32)
 		paddedz[:mol.atoms.shape[0]] = mol.atoms
-		paddedxyz = np.zeros((maxnatoms,3))
+		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
 		zlist.append(paddedz)
 		xyzlist.append(paddedxyz)
-		if i > 3:
+		if i == 1:
 			break
 	zstack = tf.stack(zlist)
 	xyzstack = tf.stack(xyzlist)
+	# zstack = tf.stack([a.mols[0].atoms, a.mols[1].atoms])
+	# xyzstack = tf.stack([a.mols[0].coords, a.mols[1].coords])
 	bool = TF_gaussian_spherical_harmonics(xyzstack, zstack, 6)
-	x = tf.Print(bool, [bool], summarize=1000)
 	sess = tf.InteractiveSession()
-	sess.run(x)
+	tf_embedding = sess.run(bool)
+	np.set_printoptions(threshold=10000)
+	print tf_embedding[0,:14].reshape(14,350)
+	dig = Digester([1,6,7,8], OType_ = "Force")
+	print dig.Emb(a.mols[0], -1, a.mols[0].coords, MakeOutputs=False)
 
 
 # InterpoleGeometries()

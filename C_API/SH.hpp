@@ -483,7 +483,7 @@ double CartSphericalHarmonic(int& l, int& m, double& x, double& y, double& z ,do
 			case -3:
 			return (-0.5900435899266435*y*(-3.*x_[0] + y_[0]))*r_[1];
 			case -2:
-			return (-2.890611442640554*x*y*z)*r_[1];
+			return (2.890611442640554*x*y*z)*r_[1];
 			case -1:
 			return (-0.4570457994644658*y*(x_[0] + y_[0] - 4.*z_[0]))*r_[1];
 			case 0:
