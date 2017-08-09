@@ -741,6 +741,7 @@ static PyObject* Make_SH(PyObject *self, PyObject  *args)
 		int i = theatom;
 		int ai=0;
 
+
 		double xc = xyz_data[i*3];
 		double yc = xyz_data[i*3+1];
 		double zc = xyz_data[i*3+2];
