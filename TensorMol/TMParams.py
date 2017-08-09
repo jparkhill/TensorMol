@@ -81,7 +81,7 @@ class TMParams(dict):
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
 		self["OptMaxBFGS"] = 7
-		self["GSSearchAlpha"] = 0.005
+		self["GSSearchAlpha"] = 0.001
 		self["NebNumBeads"] = 10
 		self["NebK"] = 0.01
 		self["NebMaxBFGS"] = 12
@@ -100,7 +100,8 @@ class TMParams(dict):
 		self["MDIrForceMin"] = False
 		self["MDAnnealT0"] = 20.0
 		self["MDAnnealTF"] = 300.0
-		self["MDAnnealSteps"] = 20000
+		self["MDAnnealKickBack"] = 1.0
+		self["MDAnnealSteps"] = 2000
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
 		self["MDFieldAmp"] = 0.0
