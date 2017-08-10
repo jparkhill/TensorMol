@@ -111,6 +111,20 @@ def BumpEnergy(h,w,xyz,x,nbump):
 	ToSum = -1.0*h*tf.exp(-0.5*ToExp/w2)
 	return tf.reduce_sum(ToSum,axis=0)
 
+def BowlEnergy(BowlK,x):
+	"""
+	A bowl which attracts everything to 0,0,0
+	with the energy tf.sqrt(x.x)
+
+	Args:
+		BowlK: the bowl force constant.
+		x: (n X 3) tensor representing the point at which the energy is sampled.
+	"""
+	xshp = tf.shape(x)
+	nx = xshp[0]
+	Ds = tf.einsum('ij,ij->i',x,x)
+	return tf.reduce_sum(-1*BowlK*((Ds)+1e-26),axis=0)
+
 def MorseKernel(D,Z,Ae,De,Re):
 	"""
 	Args:
