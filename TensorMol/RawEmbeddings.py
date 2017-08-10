@@ -1474,7 +1474,7 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
 	nelemp = tf.shape(ElemPairs_)[0]
-	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)/5
+	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
 	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
 	# tf.nn.top_k is slow, next lines faster for sorting nx2 array of atomic Zs
 	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))
@@ -1489,14 +1489,16 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
 
-def TF_gaussian(r, r_nought, sigma, Zs, atomic_number_params):
+def TF_gaussian(r, Zs, gaussian_params, atomic_embed_factors):
+	# gaussian_params = tf.stack(PARAMS["RBFS"][:PARAMS["SH_NRAD"]])
+	# atomic_number_params = tf.stack(PARAMS["ANES"])
+	r_nought = tf.expand_dims(gaussian_params[:,0], axis=0)
+	sigma = tf.expand_dims(gaussian_params[:,1], axis=0)
 	exponent = ((r - r_nought) ** 2.0) / (-2.0 * (sigma ** 2))
-	exponent_mask = tf.greater(exponent, -25.0)
-	zero_element_mask = tf.tile(tf.not_equal(r, 0), [1,1,1,PARAMS["SH_NRAD"]])
-	gaussian_embed = tf.where(exponent_mask, tf.exp(exponent), tf.zeros_like(exponent))
-	gaussian_embed = tf.where(zero_element_mask, gaussian_embed, tf.zeros_like(gaussian_embed))
-	element_embed_factor = tf.tile(tf.expand_dims(tf.gather(atomic_number_params, tf.tile(tf.expand_dims(Zs, axis=1),
-							[1,tf.shape(Zs)[1],1])), axis=-1), [1,1,1,PARAMS["SH_NRAD"]])
+	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
+	gaussian_embed = tf.where(tf.tile(tf.not_equal(r, 0), [1,1,1,tf.shape(gaussian_params)[0]]), gaussian_embed, tf.zeros_like(gaussian_embed))
+	element_embed_factor = tf.tile(tf.expand_dims(tf.gather(atomic_embed_factors, tf.tile(tf.expand_dims(Zs, axis=1),
+							[1,tf.shape(Zs)[1],1])), axis=-1), [1,1,1,tf.shape(gaussian_params)[0]])
 	element_scaled_gaussians = gaussian_embed * element_embed_factor
 	return element_scaled_gaussians
 
@@ -1557,30 +1559,30 @@ def TF_spherical_harmonics_4(del_xyzs, del_xyzs_squared, inverse_distance_tensor
 							axis=-1) * tf.expand_dims(inverse_distance_to_fourth, axis=-1)
 	return tf.concat([lower_order_harmonics, l4_harmonics], axis=-1)
 
-def TF_spherical_harmonics(del_xyzs, del_xyzs_squared, inverse_distance_tensor, max_l):
-	harmonics = TF_spherical_harmonics_4(del_xyzs, del_xyzs_squared, inverse_distance_tensor)
+def TF_spherical_harmonics(delta_xyzs, distance_tensor, max_l):
+	delta_xyzs_squared = tf.square(delta_xyzs)
+	inverse_distance_tensor = tf.where(tf.greater(distance_tensor, 1.e-9), tf.reciprocal(distance_tensor), tf.zeros_like(distance_tensor))
+	harmonics = TF_spherical_harmonics_4(delta_xyzs, delta_xyzs_squared, inverse_distance_tensor)
 	return harmonics
 
-def TF_gaussian_spherical_harmonics(xyzs, Zs, element):
-	jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
-	number_molecules = tf.shape(Zs)[0]
-	max_number_atoms = tf.shape(Zs)[1]
-	with jit_scope():
-		del_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
-		del_xyzs_squared = tf.square(del_xyzs)
-		distance_tensor = tf.norm(del_xyzs,axis=3)
-		inverse_distance_tensor = tf.reciprocal(distance_tensor)
-		inverse_distance_tensor = tf.where(tf.greater(distance_tensor, 1.e-9), tf.reciprocal(distance_tensor), tf.zeros_like(distance_tensor))
-		element_mask = tf.greater(tf.tile(tf.expand_dims(Zs, axis=1), [1,max_number_atoms,1]), 0)
-		element_mask_distances = tf.expand_dims(tf.where(element_mask, distance_tensor, tf.zeros_like(distance_tensor)),axis=-1)
-		gaussian_params = tf.stack(PARAMS["RBFS"][:PARAMS["SH_NRAD"]])
-		atomic_number_params = tf.stack(PARAMS["ANES"])
-		r_nought = tf.expand_dims(gaussian_params[:,0],0)
-		sigma = tf.expand_dims(gaussian_params[:,1],0)
-		atom_scaled_gaussians = TF_gaussian(element_mask_distances, r_nought, sigma, Zs, atomic_number_params)
-		spherical_harmonics = TF_spherical_harmonics(del_xyzs, del_xyzs_squared, inverse_distance_tensor, 0)
-	embedding = tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics)
-	return embedding
+def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params, atomic_embed_factors, l_max):
+	# jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
+	# with jit_scope():
+	num_mols = tf.shape(Zs)[0]
+	max_num_atoms = tf.shape(Zs)[1]
+	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
+	distance_tensor = tf.norm(delta_xyzs,axis=3)
+	atom_scaled_gaussians = TF_gaussian(tf.expand_dims(distance_tensor, axis=-1), Zs)
+	spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
+	embedding = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
+							[num_mols * max_num_atoms, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
+	embedding_list = []
+	labels_list = []
+	for element in elements:
+		element_mask = tf.equal(tf.reshape(Zs, [num_mols * max_num_atoms]), element)
+		embedding_list.append(tf.boolean_mask(embedding, element_mask))
+		labels_list.append(tf.boolean_mask(tf.reshape(labels, [num_mols * max_num_atoms, tf.shape(labels)[2]]), element_mask))
+	return embedding_list, labels_list
 
 
 class ANISym:

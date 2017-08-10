@@ -735,16 +735,26 @@ class Instance_fc_sqdiff(Instance):
 		return batch_data
 
 class Instance_fc_sqdiff_GauSH_direct(Instance):
-	def __init__(self, TData_, ele_ = 1 , Name_=None):
-		Instance.__init__(self, TData_, ele_, Name_)
+	def __init__(self, TData_, elements_ , Name_=None):
+		Instance.__init__(self, TData_, elements_, Name_)
 		self.NetType = "fc_sqdiff_GauSH_direct"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
+		self.gaussians_params = PARAMS["RBFS"][:PARAMS["SH_NMAX"]]
+		self.atom_embedding_factors = PARAMS["ANES"]
+		self.l_max = PARAMS["SH_LMAX"]
+		self.elements = elements_
+
 
 	def TrainPrepare(self,  continue_training =False):
 		""" Builds the graphs by calling inference """
 		with tf.Graph().as_default():
-			self.xyzs_placeholder, self.Zs_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.xyzs, self.Zs, self.labels = self.placeholder_inputs(self.batch_size)
+			gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=tf.float32)
+			atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=tf.float32)
+			l_max = tf.Variable(self.l_max, trainable=False, dtype=tf.uint8)
+			embedding_list, labels_list = TF_gaussian_spherical_harmonics(self.xyzs, self.Zs, self.labels,
+													self.elements, gaussian_params, atomic_embed_factors, l_max)
 			self.output = self.inference(self.embeds_placeholder)
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -768,6 +778,52 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 				pass
 			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			return
+
+	def inference(self, inp, indexs):
+		"""
+		Builds a Behler-Parinello graph
+
+		Args:
+			inp: a list of (num_of atom type X flattened input shape) matrix of input cases.
+			index: a list of (num_of atom type X batchsize) array which linearly combines the elements
+		Returns:
+			The BP graph output
+		"""
+		# convert the index matrix from bool to float
+		branches=[]
+		output = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
+		atom_outputs = []
+		for e in range(len(self.eles)):
+			branches.append([])
+			inputs = inp[e]
+			shp_in = tf.shape(inputs)
+			index = tf.cast(indexs[e], tf.int64)
+			for i in range(len(self.HiddenLayers)):
+				if i == 0:
+					with tf.name_scope(str(self.eles[e])+'_hidden1'):
+						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
+						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+						branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+				else:
+					with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
+						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+						branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
+				shp = tf.shape(inputs)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
+				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
+				shp_out = tf.shape(branches[-1][-1])
+				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
+				rshp = tf.reshape(cut,[1,shp_out[0]])
+				atom_outputs.append(rshp)
+				rshpflat = tf.reshape(cut,[shp_out[0]])
+				atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
+				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
+				output = tf.add(output, ToAdd)
+			tf.verify_tensor_all_finite(output,"Nan in output!!!")
+		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), atom_outputs
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
