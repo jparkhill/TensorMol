@@ -51,6 +51,8 @@ class TMParams(dict):
 		self["NeuronType"] = "relu"
 		self["tf_prec"] = "tf.float32"
 		self["learning_rate"] = 0.001
+		self["learning_rate_dipole"] = 0.0001
+		self["learning_rate_energy"] = 0.00001
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001
 		self["batch_size"] = 1000
@@ -107,6 +109,9 @@ class TMParams(dict):
 		self["MDFieldFreq"] = 1.0/1.2
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
+		# Metadynamics parameters
+		self["MetaBowlK"] = 1.0
+		self["MetaMaxBumps"] = 2500
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
