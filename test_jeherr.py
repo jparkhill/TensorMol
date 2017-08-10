@@ -335,9 +335,10 @@ def GetPairPotential():
 		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
 
 def TestTFGauSH():
+	np.set_printoptions(threshold=100000)
 	a=MSet("SmallMols_rand")
 	a.Load()
-	maxnatoms = a.MaxNAtoms()
+	maxnatoms = a.mols[0].atoms.shape[0]
 	zlist = []
 	xyzlist = []
 	for i, mol in enumerate(a.mols):
@@ -347,26 +348,27 @@ def TestTFGauSH():
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
 		zlist.append(paddedz)
 		xyzlist.append(paddedxyz)
-		if i == 1:
+		if i == 0:
 			break
 	zstack = tf.stack(zlist)
 	xyzstack = tf.stack(xyzlist)
-	# zstack = tf.stack([a.mols[0].atoms, a.mols[1].atoms])
-	# xyzstack = tf.stack([a.mols[0].coords, a.mols[1].coords])
+	PARAMS["ANES"] = np.array([0.0, 1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
 	bool = TF_gaussian_spherical_harmonics(xyzstack, zstack, 6)
 	sess = tf.InteractiveSession()
 	tf_embedding = sess.run(bool)
 	np.set_printoptions(threshold=10000)
-	print tf_embedding[0,:14].reshape(14,350)
+	tmp = np.abs(tf_embedding[0].reshape(11,350)[0])
+	PARAMS["ANES"] = np.array([1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
 	dig = Digester([1,6,7,8], OType_ = "Force")
-	print dig.Emb(a.mols[0], -1, a.mols[0].coords, MakeOutputs=False)
+	tmp2 = np.abs(dig.Emb(a.mols[0], -1, a.mols[0].coords, MakeOutputs=False)[0])
+	print np.isclose(tmp, tmp2)
 
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 10000)
+RandomSmallSet("SmallMols", 1000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -382,7 +384,7 @@ def TestTFGauSH():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
+# TestTFGauSH()
 
 # a=MSet("OptMols")
 # a.ReadXYZ()

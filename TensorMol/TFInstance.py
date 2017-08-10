@@ -734,6 +734,177 @@ class Instance_fc_sqdiff(Instance):
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
 
+class Instance_fc_sqdiff_GauSH_direct(Instance):
+	def __init__(self, TData_, ele_ = 1 , Name_=None):
+		Instance.__init__(self, TData_, ele_, Name_)
+		self.NetType = "fc_sqdiff_GauSH_direct"
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.train_dir = './networks/'+self.name
+
+	def TrainPrepare(self,  continue_training =False):
+		""" Builds the graphs by calling inference """
+		with tf.Graph().as_default():
+			self.xyzs_placeholder, self.Zs_placeholder, self.labels_placeholder = self.placeholder_inputs(self.batch_size)
+			self.output = self.inference(self.embeds_placeholder)
+			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.sess.run(init)
+			try:
+				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
+				if (len(metafiles)>0):
+					most_recent_meta_file=metafiles[0]
+					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
+					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
+					config = tf.ConfigProto(allow_soft_placement=True)
+					self.sess = tf.Session(config=config)
+					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
+					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
+			except Exception as Ex:
+				LOGGER.error("Restore Failed")
+				pass
+			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			return
+
+	def evaluate(self, eval_input):
+		# Check sanity of input
+		Instance.evaluate(self, eval_input)
+		given_cases = eval_input.shape[0]
+		#print("given_cases:", given_cases)
+		eis = list(eval_input.shape)
+		eval_input_ = eval_input.copy()
+		if (self.PreparedFor > given_cases):
+			eval_input_.resize(([self.PreparedFor]+eis[1:]))
+			# pad with zeros
+		eval_labels = np.zeros(tuple([self.PreparedFor]+list(self.outshape)))  # dummy labels
+		batch_data = [eval_input_, eval_labels]
+		#embeds_placeholder, labels_placeholder = self.placeholder_inputs(Ncase) Made by Prepare()
+		feed_dict = self.fill_feed_dict(batch_data,self.embeds_placeholder, self.labels_placeholder)
+		tmp = np.array(self.sess.run([self.output], feed_dict=feed_dict))
+		if (not np.all(np.isfinite(tmp))):
+			LOGGER.error("TFsession returned garbage")
+			LOGGER.error("TFInputs"+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
+		return tmp[0,:given_cases]
+
+	def Save(self):
+		self.summary_op =None
+		self.summary_writer=None
+		Instance.Save(self)
+		return
+
+	def placeholder_inputs(self, batch_size):
+		"""Generate placeholder variables to represent the input tensors.
+		These placeholders are used as inputs by the rest of the model building
+		code and will be fed from the downloaded data in the .run() loop, below.
+		Args:
+		batch_size: The batch size will be baked into both placeholders.
+		Returns:
+		embeds_placeholder: Images placeholder.
+		labels_placeholder: Labels placeholder.
+		"""
+		# Note that the shapes of the placeholders match the shapes of the full
+		# image and label tensors, except the first dimension is now batch_size
+		# rather than the full size of the train or test data sets.
+		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.inshape)))
+		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.outshape)))
+		return inputs_pl, outputs_pl
+
+	def loss_op(self, output, labels):
+		try:
+			diff  = tf.subtract(output, labels)
+		except:
+			print("tf.sub() is deprecated in tensorflow 1.0 in favor of tf.subtract(). Please upgrade soon.")
+			diff  = tf.sub(output, labels)
+		loss = tf.nn.l2_loss(diff)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
+
+	def train_step(self,step):
+		Ncase_train = self.TData.NTrainCasesInScratch()
+		start_time = time.time()
+		train_loss =  0.0
+		total_correct = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			batch_data=self.TData.GetTrainBatch(self.element,  self.batch_size) #advances the case pointer in TData...
+			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+			_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
+			train_loss = train_loss + loss_value
+		duration = time.time() - start_time
+		#self.print_training(step, train_loss, total_correct, Ncase_train, duration)
+		self.print_training(step, train_loss, Ncase_train, duration)
+		return
+
+	def train_step(self, step):
+		"""
+		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		train_energy_loss = 0.0
+		train_dipole_loss = 0.0
+		train_grads_loss = 0.0
+		num_of_mols = 0
+		pre_output = np.zeros((self.batch_size),dtype=np.float64)
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep:", ministep)
+			batch_data = self.TData.GetTrainBatch(self.batch_size)+[True]
+			actual_mols  = self.batch_size
+			t = time.time()
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			#print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			#print ("Etotal:", Etotal, " Ecc:", Ecc)
+			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
+			#print ("charge:", atom_charge )
+			train_loss = train_loss + loss_value
+			train_energy_loss += energy_loss
+			train_grads_loss += grads_loss
+			train_dipole_loss += dipole_loss
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+			#       f.write(chrome_trace)
+		#print ("gradients:", gradients)
+		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
+		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
+		return
+
+	def test(self, step):
+		Ncase_test = self.TData.NTestCasesInScratch()
+		test_loss =  0.0
+		test_start_time = time.time()
+		#for ministep in range (0, int(Ncase_test/self.batch_size)):
+		batch_data=self.TData.GetTestBatch(self.element,  self.batch_size)#, ministep)
+		feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
+		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
+		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
+		test_loss = test_loss + loss_value
+		duration = time.time() - test_start_time
+		print("testing...")
+		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
+		return test_loss, feed_dict
+
+	def PrepareData(self, batch_data):
+		if (batch_data[0].shape[0]==self.batch_size):
+			batch_data=[batch_data[0], batch_data[1].reshape((batch_data[1].shape[0],1))]
+		elif (batch_data[0].shape[0] < self.batch_size):
+			batch_data=[batch_data[0], batch_data[1].reshape((batch_data[1].shape[0],1))]
+			tmp_input = np.copy(batch_data[0])
+			tmp_output = np.copy(batch_data[1])
+			tmp_input.resize((self.batch_size,  batch_data[0].shape[1]))
+			tmp_output.resize((self.batch_size,  batch_data[1].shape[1]))
+			batch_data=[ tmp_input, tmp_output]
+		return batch_data
+
 
 class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 	def __init__(self, TData_, ele_=1, Name_=None):

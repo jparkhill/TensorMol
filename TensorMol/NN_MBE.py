@@ -72,7 +72,8 @@ class NN_MBE_Linear:
 		for i, index in enumerate(MBE_Index):
 			gradient_mbe[index] += gradient[i][:NAtom[i]]*MBE_C[i]
 			atom_charge_mbe[index] += atom_charge[i][:NAtom[i]]*MBE_C[i]
-		print E_mbe, gradient_mbe, atom_charge_mbe, np.sum(atom_charge_mbe)
+		#print ("gradient_mbe:", gradient_mbe/-JOULEPERHARTREE)
+		return E_mbe, gradient_mbe, atom_charge_mbe
 				
 		
 

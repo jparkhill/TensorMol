@@ -66,6 +66,9 @@ class MBNeighbors:
 		if (R2<R3):
 			raise Exception("R3<R2 Assumption Violated.")
 		self.x = x_.copy()
+		for i in range(self.nf):
+			self.sings[i,:len(self.frags[i]),:] = self.x[self.frags[i]].copy()
+			self.singz[i,:len(self.frags[i])] = self.z[self.frags[i]].copy()
 		centers = np.zeros((self.nf,3))
 		for i in range(self.nf):
 			centers[i] = np.average(self.x[self.frags[i]],axis=0)
