@@ -45,6 +45,7 @@ from TensorMol.NeighborsMB import *
 from TensorMol.Electrostatics import *
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.SimpleMD import *
+from TensorMol.InfraredMD import *
 from TensorMol.MetaDynamics import *
 from TensorMol.PeriodicMD import *
 from TensorMol.LinearOperations import *

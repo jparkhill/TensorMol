@@ -75,7 +75,7 @@ class TMParams(dict):
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
-		self["OptMaxCycles"]=10000
+		self["OptMaxCycles"]=20
 		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.1
@@ -103,7 +103,7 @@ class TMParams(dict):
 		self["MDAnnealT0"] = 20.0
 		self["MDAnnealTF"] = 300.0
 		self["MDAnnealKickBack"] = 1.0
-		self["MDAnnealSteps"] = 2000
+		self["MDAnnealSteps"] = 1000
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
 		self["MDFieldAmp"] = 0.0
