@@ -19,10 +19,11 @@ import threading
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 class BumpHolder:
-	def __init__(self,natom_,maxbump_):
+	def __init__(self,natom_,maxbump_,bowlk_=0.0):
 		"""
 		Holds a bump-function graph to allow for rapid
-		metadynamics.
+		metadynamics. Can also hold an attractive bump which draws
+		atoms towards 0,0,0
 
 		Args:
 			m: a molecule.
@@ -35,6 +36,7 @@ class BumpHolder:
 		self.nb_pl = None
 		self.h = None
 		self.w = None
+		self.BowlK = bowlk_
 		self.Prepare()
 		return
 
@@ -45,9 +47,12 @@ class BumpHolder:
 			self.nb_pl=tf.placeholder(tf.int32)
 			self.h = tf.Variable(0.5,dtype = tf.float64)
 			self.w = tf.Variable(1.0,dtype = tf.float64)
+			self.BowlK = tf.Variable(1.0,dtype = tf.float64)
 			init = tf.global_variables_initializer()
 			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
+			self.BowlE = BowlEnergy(self.BowlK, self.x_pl)
+			self.BowlF = tf.gradients(BowlEnergy(self.BowlK, self.x_pl), self.x_pl)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
@@ -55,9 +60,20 @@ class BumpHolder:
 
 	def Bump(self, BumpCoords, x_, NBump_):
 		"""
-		Returns the Bump force.
+		Returns the Bump energy force.
 		"""
-		return self.sess.run([self.BE,self.BF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
+		if (self.BowlK == 0.0):
+			return self.sess.run([self.BE,self.BF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
+		else:
+			e,f,we,wf = self.sess.run([self.BE,self.BF,self.BowlE,self.BowlF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
+			return (e+we), ([f[0]+wf[0]])
+
+	def Bowl(self, x_):
+		"""
+		Returns the Bowl force.
+		which is a linear attraction to 0.0.0
+		"""
+		return self.sess.run([self.BowlE,self.BowlF], feed_dict = {self.x_pl:x_})
 
 class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 	"""
@@ -1244,9 +1260,8 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		return AtomOutputs
 
 	def EvalPrepare(self):
-		#eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,4]))
+			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.TData.set.MaxNAtoms(),4]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
 			ElemPairs = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
@@ -2256,8 +2271,8 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.NetType = "RawBP_EE"
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE"
-		self.GradScaler = PARAMS["GradScaler"]
-		self.DipoleScaler = PARAMS["DipoleScaler"]
+		self.GradScalar = PARAMS["GradScalar"]
+		self.DipoleScalar = PARAMS["DipoleScalar"]
 		self.Ree_on  = PARAMS["EECutoffOn"]
 		self.Ree_off  = PARAMS["EECutoffOff"]
 		self.DSFAlpha = PARAMS["DSFAlpha"]
@@ -2363,7 +2378,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
 		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
-		loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScaler))
+		loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScalar))
 		#loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
@@ -2377,7 +2392,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		dipole_diff = tf.subtract(dipole, Dlabels)
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
+		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
 		loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
@@ -2391,8 +2406,8 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		dipole_diff = tf.subtract(dipole, Dlabels)
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
-		#loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScaler))
+		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
+		#loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScalar))
 		loss = tf.identity(EandG_loss)
 		#loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
@@ -2404,7 +2419,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		energy_loss = tf.nn.l2_loss(energy_diff)
 		grads_diff = tf.subtract(energy_grads, grads)
 		grads_loss = tf.nn.l2_loss(grads_diff)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScaler))
+		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
 		loss = tf.identity(EandG_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss

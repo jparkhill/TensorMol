@@ -921,7 +921,7 @@ void RadSHProjection(SHParams* Prm, double x, double y, double z, double* output
 	// double theta = acos(z/r);
 	// double theta = acos(z*r);
 	// double phi = atan2(y,x);
-	#pragma omp parallel for
+	// #pragma omp parallel for
 	for (int i=0; i<Prm->SH_NRAD ; ++i)
 	{
 		//cout << "Num Thread: " << omp_get_num_threads() << endl;
