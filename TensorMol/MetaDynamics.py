@@ -14,7 +14,7 @@ class MetaDynamics(VelocityVerlet):
 		Requires a thermostat currently uses Nose.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
-		self.BumpTime = 8.0 # Fs
+		self.BumpTime = 4.0 # Fs
 		self.MaxBumps = 2500
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
 		self.NBump = 0

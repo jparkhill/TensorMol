@@ -326,7 +326,7 @@ def TrainForceField():
 		PARAMS["GradScaler"] = 1.0
 		PARAMS["DipoleScaler"]=1.0
                 PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
+                PARAMS["HiddenLayers"] = [512, 512, 512]
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 7.0
 		PARAMS["AN1_r_Rc"] = 8.0
@@ -511,7 +511,7 @@ def EvalForceField():
 
 
 
-	if (1):
+	if (0):
 		a=MSet("NeigborMB_test", center_=False)
 		a.ReadXYZ("NeigborMB_test")
 		TreatedAtoms = a.AtomTypes()
@@ -542,7 +542,6 @@ def EvalForceField():
 		#print "gradient: ", out_list[-1]/BOHRPERA
 		#print manager.EvalBPDirectEESingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		m = a.mols[5]
-
 		#PARAMS["MDdt"] = 0.2
         	#PARAMS["RemoveInvariant"]=True
         	#PARAMS["MDMaxStep"] = 2000
@@ -563,7 +562,7 @@ def EvalForceField():
 		mbe =  NN_MBE_Linear(manager)
 		def EnAndForce(x_):
                         m.coords = x_
-			MBEterms.Update(m.coords, 15.0, 15.0)
+			MBEterms.Update(m.coords, 20.0, 20.0)
                         Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
                         energy = Etotal
                         force = gradient
@@ -580,7 +579,7 @@ def EvalForceField():
         	#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 0.0
                 #PARAMS["MDAnnealT0"] = 100.0
-		#PARAMS["MDAnnealSteps"] = 500	
+		#PARAMS["MDAnnealSteps"] = 200	
        	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	#anneal.Prop()
        	 	#m.coords = anneal.Minx.copy()
@@ -588,7 +587,7 @@ def EvalForceField():
 	
 		def ChargeField(x_):
 			m.coords = x_
-                        MBEterms.Update(m.coords, 15.0, 15.0)
+                        MBEterms.Update(m.coords, 20.0, 20.0)
                         Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
 			return charge
 
@@ -596,8 +595,7 @@ def EvalForceField():
 		EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
 
-
-		#PARAMS["MDdt"] = 0.2
+		#PARAMS["MDdt"] = 0.1
 		#PARAMS["RemoveInvariant"]=True
 		#PARAMS["MDMaxStep"] = 10000
 		#PARAMS["MDThermostat"] = "Nose"
@@ -608,7 +606,6 @@ def EvalForceField():
 		#anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		#anneal.Prop()
 		#m.coords = anneal.x.copy()
-		#m.WriteXYZfile("./results/", "Anneal_opt")
 
 	
                 PARAMS["MDThermostat"] = "Nose"
@@ -630,11 +627,12 @@ def EvalForceField():
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
-	if (0):
-		os.environ["CUDA_VISIBLE_DEVICES"]=""
+	if (1):
+		os.environ["CUDA_VISIBLE_DEVICES"]="0"
 		a = MSet("chemspider9_metady_force")
 		a.Load()
-		b = MSet("david_test")
+		b = MSet("chemspider9_IR_test")
+		#b = MSet("david_test")
 		b.ReadXYZ()
 		TreatedAtoms = a.AtomTypes()
 		PARAMS["learning_rate"] = 0.00001
@@ -661,7 +659,7 @@ def EvalForceField():
 		#print manager.EvalBPDirectEESingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		#print a.mols[1].properties, "Dipole in a.u.:",a.mols[1].properties["dipole"]*0.393456
 
-		m = b.mols[3]
+		m = b.mols[2]
 		def EnAndForce(x_):
 			m.coords = x_
 			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
@@ -713,7 +711,23 @@ def EvalForceField():
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
 
+def TestMetadynamics(mset_name_):
+	a = MSet(mset_name_)
+	a.ReadXYZ()
+	m = a.mols[0]
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='metady_test', path_='./qchem/', threads=12)
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	print "Masses:", masses
+	PARAMS["MDdt"] = 2.0
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 1000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDTemp"]= 600.0
+	meta = MetaDynamics(ForceField, m)
+	meta.Prop()
+
 #TestCoulomb()
 #TrainPrepare()
 #TrainForceField()
-EvalForceField()
+#EvalForceField()
+TestMetadynamics("chemspider_metady_test")
