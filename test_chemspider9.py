@@ -711,11 +711,13 @@ def EvalForceField():
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
 
-def TestMetadynamics(mset_name_):
+def TestMetadynamics(mset_name_, name_, threads_):
 	a = MSet(mset_name_)
 	a.ReadXYZ()
 	m = a.mols[0]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='metady_test', path_='./qchem/', threads=12)
+	#ForceField = lambda x: QchemRIMP2(Mol(m.atoms,x), jobtype_='force', filename_='H2O_Trimer_BowlP', path_='./qchem/', threads=12)
+	#ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='metady_test', path_='./qchem/', threads=12)
+	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='H2O_BowlP_'+name_, path_='./qchem/', threads=threads_)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 2.0
@@ -723,6 +725,7 @@ def TestMetadynamics(mset_name_):
 	PARAMS["MDMaxStep"] = 1000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 600.0
+	PARAMS["MetaBowlK"] = 0.2
 	meta = MetaDynamics(ForceField, m)
 	meta.Prop()
 
@@ -730,4 +733,4 @@ def TestMetadynamics(mset_name_):
 #TrainPrepare()
 #TrainForceField()
 #EvalForceField()
-TestMetadynamics("chemspider_metady_test")
+TestMetadynamics("H2O_Trimer")

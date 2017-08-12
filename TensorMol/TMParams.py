@@ -111,7 +111,7 @@ class TMParams(dict):
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
 		# Metadynamics parameters
-		self["MetaBowlK"] = 1.0
+		self["MetaBowlK"] = 0.0
 		self["MetaMaxBumps"] = 2500
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
