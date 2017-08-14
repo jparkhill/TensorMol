@@ -23,6 +23,8 @@ PARAMS["hidden1"] = 100
 PARAMS["hidden2"] = 100
 PARAMS["hidden3"] = 100
 
+PARAMS["max_checkpoints"] = 3
+
 S_Rad = MolEmb.Overlap_RBF(PARAMS)
 S_RadOrth = MatrixPower(S_Rad,-1./2)
 PARAMS["SRBF"] = S_RadOrth
@@ -294,17 +296,6 @@ def MakeTestSet():
 	# test_set = TensorData_TFRecords(c,d, test_=True)
 	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
-
-def BIMNN_NEq():
-	a=MSet("gdb9_cleaned")
-	a.Load()
-	print "Number of train Mols: ", len(a.mols)
-	d = MolDigester(a.BondTypes(), name_="CZ", OType_="AtomizationEnergy")
-	tset = TensorMolData_BPBond_Direct(a,d)
-	# tset.BuildTrain("gdb9")
-	# manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
-	# manager.Train(maxstep=500)
-
 def TestMetadynamics():
 	a = MSet("MDTrajectoryMetaMD")
 	a.ReadXYZ()
@@ -328,40 +319,50 @@ def TestTFBond():
 	manager=TFMolManage("",tset,True,"fc_sqdiff_BPBond_Direct")
 
 def GetPairPotential():
-	manager=TFMolManage("Mol_SmallMols_CZ_fc_sqdiff_BPBond_Direct_1", Trainable_ = False)
+	manager=TFMolManage("Mol_SmallMols_rand_CZ_fc_sqdiff_BPBond_Direct_1", Trainable_ = False)
 	PairPotVals = manager.EvalBPPairPotential()
-	print PairPotVals
 	for i in range(len(PairPotVals)):
 		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
 
 def TestTFGauSH():
+	np.set_printoptions(threshold=100000)
 	a=MSet("SmallMols_rand")
 	a.Load()
 	maxnatoms = a.MaxNAtoms()
 	zlist = []
 	xyzlist = []
+	labelslist = []
 	for i, mol in enumerate(a.mols):
 		paddedz = np.zeros(maxnatoms,dtype=np.int32)
 		paddedz[:mol.atoms.shape[0]] = mol.atoms
-		paddedxyz = np.zeros((maxnatoms,3))
+		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
+		paddedlabels = np.zeros((maxnatoms, 3), dtype=np.float64)
+		paddedlabels[:mol.atoms.shape[0]] = mol.properties["forces"]
 		zlist.append(paddedz)
 		xyzlist.append(paddedxyz)
-		if i > 3:
+		labelslist.append(paddedlabels)
+		if i == 1:
 			break
 	zstack = tf.stack(zlist)
 	xyzstack = tf.stack(xyzlist)
-	bool = TF_gaussian_spherical_harmonics(xyzstack, zstack, 6)
-	x = tf.Print(bool, [bool], summarize=1000)
+	labelstack = tf.stack(labelslist)
+	PARAMS["ANES"] = np.array([0.0, 1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
+	bool = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8])
 	sess = tf.InteractiveSession()
-	sess.run(x)
+	tmp = np.abs(sess.run(bool))
+	PARAMS["ANES"] = np.array([1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
+	dig = Digester([1,6,7,8], OType_ = "Force")
+	tmp2 = np.abs(dig.Emb(a.mols[0], -1, a.mols[0].coords, MakeOutputs=False)[0])
+	print np.isclose(tmp, tmp2)
+
 
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 10000)
+# RandomSmallSet("chemspider_all", 100000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -376,9 +377,5 @@ def TestTFGauSH():
 # TestMetadynamics()
 # TestMD()
 # TestTFBond()
-# GetPairPotential()
-TestTFGauSH()
-
-# a=MSet("OptMols")
-# a.ReadXYZ()
-# print QchemDFT(a.mols[0],basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='optmols0', path_='./qchem/', threads=2)
+GetPairPotential()
+# TestTFGauSH()

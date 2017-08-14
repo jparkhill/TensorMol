@@ -1474,7 +1474,7 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
 	nelemp = tf.shape(ElemPairs_)[0]
-	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)/5
+	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
 	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
 	# tf.nn.top_k is slow, next lines faster for sorting nx2 array of atomic Zs
 	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))
@@ -1489,39 +1489,100 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
 
-def TF_gaussian(r, r_nought, sigma, Zs, atomic_number_params):
-	exponent = ((r - r_nought[:])**2.0)/(-2.0*(sigma[:]**2))
-	exponent_mask = tf.greater(exponent, -25.0)
-	gaussian_embed = tf.where(exponent_mask, tf.exp(exponent), tf.zeros_like(exponent))
-	element_embed_factor = tf.expand_dims(tf.tile(tf.reshape(tf.gather(atomic_number_params, Zs),
-										[tf.shape(Zs)[0], tf.shape(Zs)[1], 1]),[1,1,59]), axis=-1)
-	element_scaled_gaussians = tf.reduce_sum(gaussian_embed * element_embed_factor, axis=2)
+def TF_gaussian(r, Zs, gaussian_params, atomic_embed_factors):
+	# gaussian_params = tf.stack(PARAMS["RBFS"][:PARAMS["SH_NRAD"]])
+	# atomic_number_params = tf.stack(PARAMS["ANES"])
+	r_nought = tf.expand_dims(gaussian_params[:,0], axis=0)
+	sigma = tf.expand_dims(gaussian_params[:,1], axis=0)
+	exponent = ((r - r_nought) ** 2.0) / (-2.0 * (sigma ** 2))
+	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
+	gaussian_embed = tf.where(tf.tile(tf.not_equal(r, 0), [1,1,1,tf.shape(gaussian_params)[0]]), gaussian_embed, tf.zeros_like(gaussian_embed))
+	element_embed_factor = tf.tile(tf.expand_dims(tf.gather(atomic_embed_factors, tf.tile(tf.expand_dims(Zs, axis=1),
+							[1,tf.shape(Zs)[1],1])), axis=-1), [1,1,1,tf.shape(gaussian_params)[0]])
+	element_scaled_gaussians = gaussian_embed * element_embed_factor
 	return element_scaled_gaussians
 
-def TF_spherical_harmonics_0(xyzs):
-	return tf.fill(tf.shape(xyzs)[:2], 0.28209479177387814)
+def TF_spherical_harmonics_0(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
+	return tf.fill(tf.shape(inverse_distance_tensor), tf.constant(0.28209479177387814, dtype=tf.float64))
 
-# def TF_spherical_harmonics_1(xyzs, rs):
+def TF_spherical_harmonics_1(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
+	lower_order_harmonics = tf.expand_dims(TF_spherical_harmonics_0(del_xyzs, del_xyzs_squared, inverse_distance_tensor), axis=-1)
+	l1_harmonics = 0.4886025119029199 * tf.stack([del_xyzs[:,:,:,1], del_xyzs[:,:,:,2], del_xyzs[:,:,:,0]],
+										axis=-1) * tf.expand_dims(inverse_distance_tensor, axis=-1)
+	return tf.concat([lower_order_harmonics, l1_harmonics], axis=-1)
 
+def TF_spherical_harmonics_2(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
+	lower_order_harmonics = TF_spherical_harmonics_1(del_xyzs, del_xyzs_squared, inverse_distance_tensor)
+	coefficients = tf.constant([1.0925484305920792, 1.0925484305920792, 0.31539156525252005,
+									1.0925484305920792, 0.5462742152960396], dtype=tf.float64)
+	l2_harmonics = coefficients * tf.stack([del_xyzs[:,:,:,0] * del_xyzs[:,:,:,1],
+				del_xyzs[:,:,:,1] * del_xyzs[:,:,:,2],
+				(-del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1] + 2.0 * del_xyzs_squared[:,:,:,2]),
+				del_xyzs[:,:,:,0] * del_xyzs[:,:,:,2],
+				(del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1])],
+				axis=-1) * tf.expand_dims(tf.square(inverse_distance_tensor),axis=-1)
+	return tf.concat([lower_order_harmonics, l2_harmonics], axis=-1)
 
-def TF_spherical_harmonics(xyzs, r, max_l):
-	return TF_spherical_harmonics_0(xyzs)
+def TF_spherical_harmonics_3(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
+	lower_order_harmonics = TF_spherical_harmonics_2(del_xyzs, del_xyzs_squared, inverse_distance_tensor)
+	coefficients = tf.constant([0.5900435899266435, 2.890611442640554, 0.4570457994644658,
+								0.3731763325901154, 0.4570457994644658, 1.445305721320277,
+								0.5900435899266435], dtype=tf.float64)
+	l3_harmonics = coefficients * tf.stack([(3.0 * del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]) * del_xyzs[:,:,:,1],
+				del_xyzs[:,:,:,0] * del_xyzs[:,:,:,1] * del_xyzs[:,:,:,2],
+				del_xyzs[:,:,:,1] * (4.0 * del_xyzs_squared[:,:,:,2] - del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]),
+				del_xyzs[:,:,:,2] * (2.0 * del_xyzs_squared[:,:,:,2] - 3.0 * del_xyzs_squared[:,:,:,0] - 3 * del_xyzs_squared[:,:,:,1]),
+				del_xyzs[:,:,:,0] * (4.0 * del_xyzs_squared[:,:,:,2] - del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]),
+				(del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]) * del_xyzs[:,:,:,2],
+				(del_xyzs_squared[:,:,:,0] - 3.0 * del_xyzs_squared[:,:,:,1]) * del_xyzs[:,:,:,0]],
+				axis=-1) * tf.expand_dims(tf.pow(inverse_distance_tensor, [3]),axis=-1)
+	return tf.concat([lower_order_harmonics, l3_harmonics], axis=-1)
 
-def TF_gaussian_spherical_harmonics(xyzs, Zs, element):
-	number_molecules = tf.shape(Zs)[0]
-	max_number_atoms = tf.shape(Zs)[1]
-	distance_tensor = TFDistances(xyzs)
-	element_mask = tf.tile(tf.reshape(tf.equal(Zs, element),[number_molecules, max_number_atoms,1]),[1,1,59])
-	element_mask_distances = tf.expand_dims(tf.where(element_mask, distance_tensor, tf.zeros_like(distance_tensor)),axis=-1)
-	# element_mask_distances = tf.expand_dims(tf.boolean_mask(distance_tensor, element_mask), axis=-1)
-	gaussian_params = tf.stack(PARAMS["RBFS"])
-	atomic_number_params = tf.stack(PARAMS["ANES"])
-	r_nought = tf.expand_dims(gaussian_params[:,0],0)
-	sigma = tf.expand_dims(gaussian_params[:,1],0)
-	atom_scaled_gaussians = TF_gaussian(element_mask_distances, r_nought, sigma, Zs, atomic_number_params)
-	return TF_spherical_harmonics_0(xyzs)
+def TF_spherical_harmonics_4(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
+	lower_order_harmonics = TF_spherical_harmonics_3(del_xyzs, del_xyzs_squared, inverse_distance_tensor)
+	coefficients = tf.constant([2.5033429417967046, 1.7701307697799304, 0.9461746957575601, 0.6690465435572892,
+								0.10578554691520431, 0.6690465435572892, 0.47308734787878004, 1.7701307697799304,
+								0.6258357354491761], dtype=tf.float64)
+	inverse_distance_squared = tf.square(inverse_distance_tensor)
+	inverse_distance_to_fourth = tf.square(inverse_distance_squared)
+	l4_harmonics = coefficients * tf.stack([del_xyzs[:,:,:,0] * del_xyzs[:,:,:,1] * (del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]),
+							(3.0 * del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]) * del_xyzs[:,:,:,1] * del_xyzs[:,:,:,2],
+							del_xyzs[:,:,:,0] * del_xyzs[:,:,:,1] * (6.0 * del_xyzs_squared[:,:,:,2] - del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]),
+							del_xyzs[:,:,:,1] * del_xyzs[:,:,:,2] * (4.0 * del_xyzs_squared[:,:,:,2] - 3.0 * del_xyzs_squared[:,:,:,0] - 3.0 * del_xyzs_squared[:,:,:,1]),
+							3.0 * (tf.square(del_xyzs_squared[:,:,:,0]) + tf.square(del_xyzs_squared[:,:,:,1])) + 8.0 * tf.square(del_xyzs_squared[:,:,:,2]) - \
+ 								24.0 * (del_xyzs_squared[:,:,:,0] + del_xyzs_squared[:,:,:,1]) * del_xyzs_squared[:,:,:,2] + 6.0 * del_xyzs_squared[:,:,:,0] * del_xyzs_squared[:,:,:,1],
+							del_xyzs[:,:,:,0] * del_xyzs[:,:,:,2] * (4.0 * del_xyzs_squared[:,:,:,2] - 3.0 * del_xyzs_squared[:,:,:,0] - 3.0 * del_xyzs_squared[:,:,:,1]),
+							(del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]) * (6.0 * del_xyzs_squared[:,:,:,2] - del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1]),
+							(del_xyzs_squared[:,:,:,0] - 3.0 * del_xyzs_squared[:,:,:,1]) * del_xyzs[:,:,:,0] * del_xyzs[:,:,:,2],
+							del_xyzs_squared[:,:,:,0] * (del_xyzs_squared[:,:,:,0] - 3.0 * del_xyzs_squared[:,:,:,1]) - \
+									del_xyzs_squared[:,:,:,1] * (3.0 * del_xyzs_squared[:,:,:,0] - del_xyzs_squared[:,:,:,1])],
+							axis=-1) * tf.expand_dims(inverse_distance_to_fourth, axis=-1)
+	return tf.concat([lower_order_harmonics, l4_harmonics], axis=-1)
 
+def TF_spherical_harmonics(delta_xyzs, distance_tensor, max_l):
+	delta_xyzs_squared = tf.square(delta_xyzs)
+	inverse_distance_tensor = tf.where(tf.greater(distance_tensor, 1.e-9), tf.reciprocal(distance_tensor), tf.zeros_like(distance_tensor))
+	harmonics = TF_spherical_harmonics_4(delta_xyzs, delta_xyzs_squared, inverse_distance_tensor)
+	return harmonics
 
+def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params, atomic_embed_factors, l_max):
+	# jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
+	# with jit_scope():
+	num_mols = tf.shape(Zs)[0]
+	max_num_atoms = tf.shape(Zs)[1]
+	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
+	distance_tensor = tf.norm(delta_xyzs,axis=3)
+	atom_scaled_gaussians = TF_gaussian(tf.expand_dims(distance_tensor, axis=-1), Zs)
+	spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
+	embedding = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
+							[num_mols * max_num_atoms, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
+	embedding_list = []
+	labels_list = []
+	for element in elements:
+		element_mask = tf.equal(tf.reshape(Zs, [num_mols * max_num_atoms]), element)
+		embedding_list.append(tf.boolean_mask(embedding, element_mask))
+		labels_list.append(tf.boolean_mask(tf.reshape(labels, [num_mols * max_num_atoms, tf.shape(labels)[2]]), element_mask))
+	return embedding_list, labels_list
 
 
 class ANISym:

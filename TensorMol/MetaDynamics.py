@@ -11,15 +11,23 @@ class MetaDynamics(VelocityVerlet):
 		"""
 		A trajectory which explores chemical space more rapidly
 		by droppin' gaussians after a region has been explored for BumpTime
-		Requires a thermostat currently uses Nose.
+		Requires a thermostat and currently uses Nose.
+
+		Args:
+			f_: A routine which returns the force.
+			g0_: an initial molecule.
+			name_: a name for output.
+			EandF_: a routine returning the energy and the force.
+			PARAMS["BowlK"] : a force constant of an attractive potential.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
 		self.BumpTime = 8.0 # Fs
-		self.MaxBumps = 2500
+		self.MaxBumps = PARAMS["MetaMaxBumps"]
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
 		self.NBump = 0
 		self.Tstat = NoseThermostat(self.m,self.v)
-		self.Bumper = TFMolInstanceDirect.BumpHolder(self.natoms, self.MaxBumps)
+		self.BowlK = PARAMS["MetaBowlK"]
+		self.Bumper = TFMolInstanceDirect.BumpHolder(self.natoms, self.MaxBumps, self.BowlK)
 
 	def BumpForce(self,x_):
 		BE = 0.0

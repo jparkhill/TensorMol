@@ -544,7 +544,8 @@ class Annealer(IRTrajectory):
 				self.Minx = self.x.copy()
 				self.MinS = step
 				LOGGER.info("   -- cycling annealer -- ")
-				self.AnnealT0 = self.Tstat.T+3.0
+				if (PARAMS["MDAnnealT0"] > PARAMS["MDAnnealTF"]):
+					self.AnnealT0 = self.Tstat.T+PARAMS["MDAnnealKickBack"]
 				print self.x
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
@@ -553,7 +554,7 @@ class Annealer(IRTrajectory):
 				self.WriteTrajectory()
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
-		self.x = self.Minx.copy()
+		#self.x = self.Minx.copy()
 		print "Achieved Minimum energy ", self.MinE, " at step ", step
 		return
 

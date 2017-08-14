@@ -17,7 +17,7 @@ class TMParams(dict):
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=4
 		self["SH_NRAD"]=7
-		self["SH_ORTH"]=1
+		self["SH_ORTH"]=0
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
@@ -51,6 +51,8 @@ class TMParams(dict):
 		self["NeuronType"] = "relu"
 		self["tf_prec"] = "tf.float32"
 		self["learning_rate"] = 0.001
+		self["learning_rate_dipole"] = 0.0001
+		self["learning_rate_energy"] = 0.00001
 		self["momentum"] = 0.9
 		self["max_steps"] = 1001
 		self["batch_size"] = 1000
@@ -73,7 +75,7 @@ class TMParams(dict):
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		# Opt Parameters
-		self["OptMaxCycles"]=10000
+		self["OptMaxCycles"]=20
 		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.1
@@ -81,7 +83,7 @@ class TMParams(dict):
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
 		self["OptMaxBFGS"] = 7
-		self["GSSearchAlpha"] = 0.005
+		self["GSSearchAlpha"] = 0.001
 		self["NebNumBeads"] = 10
 		self["NebK"] = 0.01
 		self["NebMaxBFGS"] = 12
@@ -100,13 +102,17 @@ class TMParams(dict):
 		self["MDIrForceMin"] = False
 		self["MDAnnealT0"] = 20.0
 		self["MDAnnealTF"] = 300.0
-		self["MDAnnealSteps"] = 20000
+		self["MDAnnealKickBack"] = 1.0
+		self["MDAnnealSteps"] = 1000
 		# MD applied pulse parameters
 		self["MDFieldVec"] = np.array([1.0,0.0,0.0])
 		self["MDFieldAmp"] = 0.0
 		self["MDFieldFreq"] = 1.0/1.2
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
+		# Metadynamics parameters
+		self["MetaBowlK"] = 0.0
+		self["MetaMaxBumps"] = 2500
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
