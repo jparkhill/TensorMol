@@ -222,7 +222,7 @@ def TrainForceField():
                 #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
                 manager.Train()
 
-	#New radius: 5 A 
+	#New radius: 5 A
         if (1):
                 a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
                 a.Load()
@@ -240,7 +240,7 @@ def TrainForceField():
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 7.0
 		PARAMS["AN1_r_Rc"] = 5.0
-		PARAMS["Erf_Width"] = 0.4 
+		PARAMS["Erf_Width"] = 0.4
 		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
@@ -316,7 +316,7 @@ def TrainForceField():
                 manager.Train()
 
 def EvalForceField():
-	if (1):
+	if (0):
 		a=MSet("H2O_force_test", center_=False)
 		a.ReadXYZ("H2O_force_test")
 		TreatedAtoms = a.AtomTypes()
@@ -363,7 +363,7 @@ def EvalForceField():
         	#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 300.0
                 #PARAMS["MDAnnealT0"] = 0.0
-		#PARAMS["MDAnnealSteps"] = 2000	
+		#PARAMS["MDAnnealSteps"] = 2000
        	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	#anneal.Prop()
        	 	#m.coords = anneal.Minx.copy()
@@ -399,7 +399,7 @@ def EvalForceField():
 		#MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
 		#mbe =  NN_MBE_Linear(manager)
 		#mbe.EnergyForceDipole(MBEterms)
-		
+
 		def EnAndForce(x_):
                         m.coords = x_
                         Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
@@ -436,7 +436,7 @@ def EvalForceField():
         	PARAMS["MDV0"] = None
 		PARAMS["MDAnnealTF"] = 300.0
                 PARAMS["MDAnnealT0"] = 0.0
-		PARAMS["MDAnnealSteps"] = 10000	
+		PARAMS["MDAnnealSteps"] = 10000
        	 	anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	anneal.Prop()
        	 	m.coords = anneal.Minx.copy()
@@ -448,8 +448,8 @@ def EvalForceField():
 	        PARAMS["MDMaxStep"] = 100000
 	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
 	        md.Prop()
-		
-	if (0):
+
+	if (1):
 		os.environ["CUDA_VISIBLE_DEVICES"]=""
 		a = MSet("chemspider9_metady_force")
 		a.Load()
@@ -480,7 +480,7 @@ def EvalForceField():
 		#print manager.EvalBPDirectEESingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		#print a.mols[1].properties, "Dipole in a.u.:",a.mols[1].properties["dipole"]*0.393456
 
-		m = b.mols[3]
+		m = b.mols[7]
 		def EnAndForce(x_):
 			m.coords = x_
 			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])

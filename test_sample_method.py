@@ -1,6 +1,6 @@
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from TensorMol.ElectrostaticsTF import *
 
 def TrainPrepare():
@@ -67,7 +67,7 @@ def TrainPrepare():
 		print a.mols[0].properties
 		a.mols[0].WriteXYZfile(fname="test")
 
-def TrainForceField(SetName_ = "DavidMetaMD"):
+def TrainForceField(SetName_ = "GoldStd"):
 	a = MSet(SetName_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -137,6 +137,6 @@ def TestIRLinearDirect():
 	WriteDerDipoleCorrelationFunction(md.mu_his,"THP_udp_grad_IR.txt")
 
 #TestCoulomb()
-TrainPrepare()
-# TrainForceField()
+#FTrainPrepare()
+TrainForceField()
 # TestIRLinearDirect()
