@@ -1431,7 +1431,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 			if (self.dig.OType  == "AtomizationEnergy"):
 				labels[i] = mol.properties["atomization"]
 			else:
-                        	raise Exception("Output Type is not implemented yet")
+				raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
 				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
@@ -1466,7 +1466,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
 		self.NTrain = self.LastTrainMol
-                self.NTest = self.NTestMols
+		self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
 		self.ScratchState = 1

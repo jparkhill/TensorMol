@@ -53,8 +53,12 @@ class TFManage:
 
 	def Train(self):
 		print "Will train a NNetwork for each element in: ", self.TData.name
-		for i in range(len(self.TData.AvailableElements)):
-			self.TrainElement(self.TData.AvailableElements[i])
+		if (self.NetType == "fc_sqdiff_GauSH_direct"):
+			self.Instances = Instance_fc_sqdiff_GauSH_direct(self.TData, self.TData.AvailableElements, True)
+			self.Instances.train(self.n_train)
+		else:
+			for i in range(len(self.TData.AvailableElements)):
+				self.TrainElement(self.TData.AvailableElements[i])
 		return
 
 	def Save(self):
@@ -85,8 +89,8 @@ class TFManage:
 			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None)
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
-		elif (self.NetType == "fc_sqdiff_BP_pair"):
-			self.Instances[ele] = Instance_fc_sqdiff_BP_pair(self.TData, ele, None)
+		elif (self.NetType == "fc_sqdiff_GauSH_direct"):
+			self.Instances[ele] = Instance_fc_sqdiff_GauSH_direct(self.TData, ele, None)
 		elif (self.NetType == "del_fc_sqdiff"):
 			self.Instances[ele] = Instance_del_fc_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "3conv_sqdiff"):

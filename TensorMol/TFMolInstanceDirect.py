@@ -1189,16 +1189,15 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			t = time.time()
 			if self.profiling:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
+				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+				chrome_trace = fetched_timeline.generate_chrome_trace_format()
+				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+					f.write(chrome_trace)
 			else:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
-			if self.profiling:
-				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-				chrome_trace = fetched_timeline.generate_chrome_trace_format()
-				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-					f.write(chrome_trace)
 		self.PrintTrain(step, train_loss, num_of_mols, duration)
 		return
 
@@ -1287,7 +1286,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
-	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+	def __init__(self, TData_, Name_=None, Trainable_=True, ForceType_="LJ"):
 		"""
 		Args:
 			TData_: A TensorMolData instance.
