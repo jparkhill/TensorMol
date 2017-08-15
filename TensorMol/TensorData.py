@@ -354,7 +354,7 @@ class TensorData():
 			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
 				err = predicted-desired
 				ders = np.linalg.norm(err, axis=1)
-				for i in range(100):
+				for i in range(50):
 					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
