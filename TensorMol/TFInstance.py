@@ -9,9 +9,12 @@ from __future__ import print_function
 from TensorMol.TensorData import *
 from TensorMol.RawEmbeddings import *
 import numpy as np
-import cPickle as pickle
 import math
 import time, os, sys, numbers
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
 import os.path
 if (HAS_TF):
 	import tensorflow as tf

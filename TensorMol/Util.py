@@ -3,8 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import cPickle as pickle
 import gc, random, os, sys, re, atexit
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
 import math, time, itertools, warnings
 from math import pi as Pi
 import scipy.special

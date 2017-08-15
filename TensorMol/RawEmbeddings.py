@@ -15,8 +15,11 @@ from TensorMol.TensorData import *
 from TensorMol.ElectrostaticsTF import *
 from tensorflow.python.client import timeline
 import numpy as np
-import cPickle as pickle
 import math, time, os, sys, os.path
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
 if (HAS_TF):
 	import tensorflow as tf
 

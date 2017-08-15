@@ -8,7 +8,7 @@ from __future__ import print_function
 from .Util import *
 import numpy as np
 import random, math
-import PhysicalData, MolEmb
+import TensorMol.PhysicalData, MolEmb
 
 def WeightedCoordAverage(x_, q_, center_=None):
 	""" Dipole relative to center of x_ """

@@ -9,8 +9,11 @@ from .Util import *
 from .MolFrag import *
 import numpy as np
 import os,sys,re,copy,time
-import cPickle as pickle
-
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
+	
 class MSet:
 	""" A molecular database which
 		provides structures """

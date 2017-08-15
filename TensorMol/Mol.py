@@ -3,7 +3,7 @@ from __future__ import print_function
 from .Util import *
 import numpy as np
 import random, math
-import MolEmb, Electrostatics
+import MolEmb, TensorMol.Electrostatics
 from .LinearOperations import *
 
 class Mol:

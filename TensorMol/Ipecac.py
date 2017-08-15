@@ -10,7 +10,10 @@ from .Mol import *
 from .Util import *
 import os, sys, re, random, math, copy, itertools
 import numpy as np
-import cPickle as pickle
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
 from . import LinearOperations, DigestMol, Digest, Opt
 from scipy import optimize
 
