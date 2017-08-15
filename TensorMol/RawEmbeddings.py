@@ -1498,7 +1498,7 @@ def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors):
 	exponent = ((r - r_nought) ** 2.0) / (-2.0 * (sigma ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
 	gaussian_embed = tf.where(tf.tile(tf.not_equal(r, 0), [1,1,1,tf.shape(gaussian_params)[0]]), gaussian_embed, tf.zeros_like(gaussian_embed))
-	atomic_embed_factor = tf.concat([[0.0], atomic_embed_factors], axis=0)
+	atomic_embed_factor = tf.concat([tf.constant([0.0], dtype=eval(PARAMS["tf_prec"])), atomic_embed_factors], axis=0)
 	element_embed_factor = tf.tile(tf.expand_dims(tf.gather(atomic_embed_factor, tf.tile(tf.expand_dims(Zs, axis=1),
 							[1,tf.shape(Zs)[1],1])), axis=-1), [1,1,1,tf.shape(gaussian_params)[0]])
 	element_scaled_gaussians = gaussian_embed * element_embed_factor

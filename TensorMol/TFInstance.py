@@ -761,8 +761,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		xyzs, Zs, labels = tf.stack(batch_data[0]), tf.stack(batch_data[1]), tf.stack(batch_data[2])
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
 		embedding_list, labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, Zs, rotated_labels,
-											self.element, tf.Variable(self.gaussian_params, dtype=tf.float32),
-											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=tf.float32),
+											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
+											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
 											tf.Variable(self.l_max, trainable=False, dtype=tf.int32))
 		with tf.Session() as sess:
 			sess.run(tf.global_variables_initializer())
