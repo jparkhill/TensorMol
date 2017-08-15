@@ -1189,16 +1189,15 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			t = time.time()
 			if self.profiling:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
+				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+				chrome_trace = fetched_timeline.generate_chrome_trace_format()
+				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+					f.write(chrome_trace)
 			else:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
-			if self.profiling:
-				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-				chrome_trace = fetched_timeline.generate_chrome_trace_format()
-				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-					f.write(chrome_trace)
 		self.PrintTrain(step, train_loss, num_of_mols, duration)
 		return
 
@@ -1287,7 +1286,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
-	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+	def __init__(self, TData_, Name_=None, Trainable_=True, ForceType_="LJ"):
 		"""
 		Args:
 			TData_: A TensorMolData instance.
@@ -2674,6 +2673,9 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_dipole, self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
 			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			max_index = np.argmax(np.sum(abs(batch_data[3]-mol_dipole),axis=1))
+			print ("real dipole:\n", batch_data[3][max_index], "\nmol_dipole:\n", mol_dipole[max_index], "\n xyz:", batch_data[0][max_index], batch_data[1][max_index])
+			
 			#print ("Etotal:", Etotal[:20], " Ecc:", Ecc[:20])
 			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
 			#print ("charge:", atom_charge )

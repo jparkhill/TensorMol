@@ -118,21 +118,12 @@ class MSet:
 		for j in ord:
 			self.mols[j].coords -= self.mols[j].Center()
 
-	def SplitTest(self):
-		"""
-		Split the set into a train and test set based on PARAMS["test_ratio"].
-		"""
-		b=MSet(self.name+"_train")
-		c=MSet(self.name+"_test")
-		mols = random.sample(range(len(self.mols)), int(len(self.mols)*PARAMS["TestRatio"]))
-		for i in xrange(len(self.mols)):
-			if i in mols:
-				c.mols.append(self.mols[i])
-			else:
-				b.mols.append(self.mols[i])
-		b.Save()
-		c.Save()
-		return b, c
+	def cut_max_n_atoms(self, max_n_atoms):
+		cut_down_mols = []
+		for mol in self.mols:
+			if mol.atoms.shape[0] <= max_n_atoms:
+				cut_down_mols.append(mol)
+		self.mols = cut_down_mols
 
 	def NAtoms(self):
 		nat=0

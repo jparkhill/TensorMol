@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from TensorMol.TensorData import *
+from TensorMol.RawEmbeddings import *
 import numpy as np
 import cPickle as pickle
 import math
@@ -59,6 +60,7 @@ class Instance:
 		self.max_checkpoints = PARAMS["max_checkpoints"]
 		self.activation_function_type = PARAMS["NeuronType"]
 		self.activation_function = None
+		self.profiling = PARAMS["Profiling"]
 		self.AssignActivation()
 
 		self.path='./networks/'
@@ -83,12 +85,12 @@ class Instance:
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		if (self.element != 0):
-			self.TData.LoadElementToScratch(self.element, self.tformer)
-			self.tformer.Print()
-			self.TData.PrintStatus()
-			self.inshape = self.TData.dig.eshape
-			self.outshape = self.TData.dig.lshape
+		# if (self.element != 0):
+			# self.TData.LoadElementToScratch(self.element, self.tformer)
+			# self.tformer.Print()
+			# self.TData.PrintStatus()
+			# self.inshape = self.TData.dig.eshape
+			# self.outshape = self.TData.dig.lshape
 		return
 
 	def __del__(self):
@@ -222,7 +224,7 @@ class Instance:
 			tf.summary.scalar('min', tf.reduce_min(var))
 			tf.summary.histogram('histogram', var)
 
-	def save_chk(self,  step, feed_dict=None):  # this can be included in the Instance
+	def save_chk(self,  step):  # this can be included in the Instance
 		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
 		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
 		self.saver.save(self.sess, checkpoint_file_mini)
@@ -424,10 +426,10 @@ class Instance:
 		for step in range(1, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss, feed_dict = self.test(step)
+				test_loss = self.test(step)
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
-					self.save_chk(step,feed_dict)
+					self.save_chk(step)
 		self.SaveAndClose()
 		return
 
@@ -735,95 +737,86 @@ class Instance_fc_sqdiff(Instance):
 		return batch_data
 
 class Instance_fc_sqdiff_GauSH_direct(Instance):
-	def __init__(self, TData_, elements_ , Name_=None):
+	def __init__(self, TData_, elements_ , Trainable_ = True, Name_ = None):
 		Instance.__init__(self, TData_, elements_, Name_)
 		self.NetType = "fc_sqdiff_GauSH_direct"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
 		self.train_dir = './networks/'+self.name
-		self.gaussians_params = PARAMS["RBFS"][:PARAMS["SH_NMAX"]]
-		self.atom_embedding_factors = PARAMS["ANES"]
+		self.number_radial = PARAMS["SH_NRAD"]
 		self.l_max = PARAMS["SH_LMAX"]
-		self.elements = elements_
+		self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
+		self.atomic_embed_factors = PARAMS["ANES"]
+		self.MaxNAtoms = self.TData.MaxNAtoms
+		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
+		self.outshape = 3
+		self.Trainable = Trainable_
+		if (self.Trainable):
+			self.TData.LoadDataToScratch(self.tformer)
 
 
 	def TrainPrepare(self,  continue_training =False):
 		""" Builds the graphs by calling inference """
 		with tf.Graph().as_default():
-			self.xyzs, self.Zs, self.labels = self.placeholder_inputs(self.batch_size)
-			gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=tf.float32)
-			atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=tf.float32)
-			l_max = tf.Variable(self.l_max, trainable=False, dtype=tf.uint8)
-			embedding_list, labels_list = TF_gaussian_spherical_harmonics(self.xyzs, self.Zs, self.labels,
-													self.elements, gaussian_params, atomic_embed_factors, l_max)
-			self.output = self.inference(self.embeds_placeholder)
-			self.total_loss, self.loss = self.loss_op(self.output, self.labels_placeholder)
+			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms, 3]))
+			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
+			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms, 3]))
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=tf.float32)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=tf.float32)
+			l_max = tf.Variable(self.l_max, trainable=False, dtype=tf.int32)
+			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
+			embedding_list, self.labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, rotated_labels,
+											self.element, self.gaussian_params, self.atomic_embed_factors, l_max)
+			self.output = self.inference(embedding_list)
+			self.total_loss, self.loss, self.loss_dict = self.loss_op(self.output, self.labels_list)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
-			try:
-				metafiles = [x for x in os.listdir(self.train_dir) if (x.count('meta')>0)]
-				if (len(metafiles)>0):
-					most_recent_meta_file=metafiles[0]
-					LOGGER.info("Restoring training from Metafile: "+most_recent_meta_file)
-					#Set config to allow soft device placement for temporary fix to known issue with Tensorflow up to version 0.12 atleast - JEH
-					config = tf.ConfigProto(allow_soft_placement=True)
-					self.sess = tf.Session(config=config)
-					self.saver = tf.train.import_meta_graph(self.train_dir+'/'+most_recent_meta_file)
-					self.saver.restore(self.sess, tf.train.latest_checkpoint(self.train_dir))
-			except Exception as Ex:
-				LOGGER.error("Restore Failed")
-				pass
 			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			if self.profiling:
+				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+				self.run_metadata = tf.RunMetadata()
 			return
 
-	def inference(self, inp, indexs):
+	def inference(self, inputs):
 		"""
 		Builds a Behler-Parinello graph
 
 		Args:
-			inp: a list of (num_of atom type X flattened input shape) matrix of input cases.
-			index: a list of (num_of atom type X batchsize) array which linearly combines the elements
+			inputs: a list of (num_of atom type X flattened input shape) matrix of input cases.
 		Returns:
 			The BP graph output
 		"""
-		# convert the index matrix from bool to float
 		branches=[]
-		output = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
 		atom_outputs = []
-		for e in range(len(self.eles)):
+		for e in range(len(self.element)):
 			branches.append([])
-			inputs = inp[e]
+			atom_inputs = inputs[e]
 			shp_in = tf.shape(inputs)
-			index = tf.cast(indexs[e], tf.int64)
 			for i in range(len(self.HiddenLayers)):
 				if i == 0:
-					with tf.name_scope(str(self.eles[e])+'_hidden1'):
-						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
+					with tf.name_scope(str(self.element[e])+'_hidden1'):
+						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]],
+																	var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-						branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+						branches[-1].append(self.activation_function(tf.matmul(atom_inputs, weights) + biases))
 				else:
-					with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
-						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+					with tf.name_scope(str(self.element[e])+'_hidden'+str(i+1)):
+						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1],self.HiddenLayers[i]],
+																	var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 						branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
-			with tf.name_scope(str(self.eles[e])+'_regression_linear'):
+			with tf.name_scope(str(self.element[e])+'_regression_linear'):
 				shp = tf.shape(inputs)
-				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape],
+															var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
 				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
-				shp_out = tf.shape(branches[-1][-1])
-				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
-				rshp = tf.reshape(cut,[1,shp_out[0]])
-				atom_outputs.append(rshp)
-				rshpflat = tf.reshape(cut,[shp_out[0]])
-				atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
-				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
-				output = tf.add(output, ToAdd)
-			tf.verify_tensor_all_finite(output,"Nan in output!!!")
-		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), atom_outputs
+				atom_outputs.append(branches[-1][-1])
+			tf.verify_tensor_all_finite(atom_outputs,"Nan in output!!!")
+		return atom_outputs
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
@@ -851,103 +844,81 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		Instance.Save(self)
 		return
 
-	def placeholder_inputs(self, batch_size):
-		"""Generate placeholder variables to represent the input tensors.
-		These placeholders are used as inputs by the rest of the model building
-		code and will be fed from the downloaded data in the .run() loop, below.
-		Args:
-		batch_size: The batch size will be baked into both placeholders.
-		Returns:
-		embeds_placeholder: Images placeholder.
-		labels_placeholder: Labels placeholder.
-		"""
-		# Note that the shapes of the placeholders match the shapes of the full
-		# image and label tensors, except the first dimension is now batch_size
-		# rather than the full size of the train or test data sets.
-		inputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.inshape)))
-		outputs_pl = tf.placeholder(self.tf_prec, shape=tuple([batch_size]+list(self.outshape)))
-		return inputs_pl, outputs_pl
-
 	def loss_op(self, output, labels):
-		try:
-			diff  = tf.subtract(output, labels)
-		except:
-			print("tf.sub() is deprecated in tensorflow 1.0 in favor of tf.subtract(). Please upgrade soon.")
-			diff  = tf.sub(output, labels)
-		loss = tf.nn.l2_loss(diff)
+		loss_dict = {}
+		loss = 0.0
+		for i in range(len(output)):
+			diff = tf.subtract(output[i], labels[i])
+			loss_dict[str(self.element[i])] = tf.reduce_mean(tf.nn.l2_loss(diff))
+			loss += tf.nn.l2_loss(diff)
 		tf.add_to_collection('losses', loss)
-		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, loss_dict
+
+	def fill_feed_dict(self, batch_data):
+		"""
+		Fill the tensorflow feed dictionary.
+
+		Args:
+			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
+			and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
+
+		Returns:
+			Filled feed dictionary.
+		"""
+		# Don't eat shit.
+		if (not np.all(np.isfinite(batch_data[2]))):
+			print("I was fed shit")
+			raise Exception("DontEatShit")
+		feed_dict={i: d for i, d in zip([self.xyzs_pl] + [self.Zs_pl] + [self.labels_pl], [batch_data[0]] + [batch_data[1]] + [batch_data[2]])}
+		return feed_dict
 
 	def train_step(self,step):
-		Ncase_train = self.TData.NTrainCasesInScratch()
-		start_time = time.time()
-		train_loss =  0.0
-		total_correct = 0
-		for ministep in range (0, int(Ncase_train/self.batch_size)):
-			batch_data=self.TData.GetTrainBatch(self.element,  self.batch_size) #advances the case pointer in TData...
-			feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
-			_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-			train_loss = train_loss + loss_value
-		duration = time.time() - start_time
-		#self.print_training(step, train_loss, total_correct, Ncase_train, duration)
-		self.print_training(step, train_loss, Ncase_train, duration)
-		return
-
-	def train_step(self, step):
-		"""
-		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
-
-		Args:
-			step: the index of this step.
-		"""
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
 		train_loss =  0.0
-		train_energy_loss = 0.0
-		train_dipole_loss = 0.0
-		train_grads_loss = 0.0
-		num_of_mols = 0
-		pre_output = np.zeros((self.batch_size),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
-			#print ("ministep:", ministep)
-			batch_data = self.TData.GetTrainBatch(self.batch_size)+[True]
-			actual_mols  = self.batch_size
-			t = time.time()
-			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
-			#print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
-			#print ("Etotal:", Etotal, " Ecc:", Ecc)
-			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
-			#print ("charge:", atom_charge )
+			batch_data = self.TData.GetTrainBatch(self.batch_size) #advances the case pointer in TData...
+			feed_dict = self.fill_feed_dict(batch_data)
+			if self.profiling:
+				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
+				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+				chrome_trace = fetched_timeline.generate_chrome_trace_format()
+				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+					f.write(chrome_trace)
+			else:
+				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
 			train_loss = train_loss + loss_value
-			train_energy_loss += energy_loss
-			train_grads_loss += grads_loss
-			train_dipole_loss += dipole_loss
-			duration = time.time() - start_time
-			num_of_mols += actual_mols
-			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
-			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-			#       f.write(chrome_trace)
-		#print ("gradients:", gradients)
-		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
-		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
-		#self.print_training(step, train_loss,  num_of_mols, duration)
+		duration = time.time() - start_time
+		self.print_training(step, train_loss, Ncase_train, duration)
 		return
 
 	def test(self, step):
-		Ncase_test = self.TData.NTestCasesInScratch()
+		Ncase_test = self.TData.NTest
 		test_loss =  0.0
 		test_start_time = time.time()
-		#for ministep in range (0, int(Ncase_test/self.batch_size)):
-		batch_data=self.TData.GetTestBatch(self.element,  self.batch_size)#, ministep)
-		feed_dict = self.fill_feed_dict(batch_data, self.embeds_placeholder, self.labels_placeholder)
-		preds, total_loss_value, loss_value  = self.sess.run([self.output, self.total_loss,  self.loss],  feed_dict=feed_dict)
-		self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
-		test_loss = test_loss + loss_value
+		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
+			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
+			feed_dict = self.fill_feed_dict(batch_data)
+			preds, labels, total_loss_value, loss_value, loss_dict, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels_list, self.total_loss,  self.loss, self.loss_dict, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
+			test_loss = test_loss + loss_value
+		for i in range(len(self.output)):
+			self.TData.EvaluateTestBatch(labels[i], preds[i], self.tformer)
 		duration = time.time() - test_start_time
 		print("testing...")
-		self.print_training(step, test_loss,  Ncase_test, duration, Train=False)
-		return test_loss, feed_dict
+		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
+		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
+		self.print_testing(step, test_loss, loss_dict, Ncase_test, duration)
+		return test_loss
+
+	def print_training(self, step, loss, Ncase, duration):
+		denom = max((int(Ncase/self.batch_size)),1)
+		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+		return
+
+	def print_testing(self, step, loss, loss_dict, Ncase, duration):
+		denom = max((int(Ncase/self.batch_size)),1)
+		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+		LOGGER.info("Element losses: %s", loss_dict)
 
 	def PrepareData(self, batch_data):
 		if (batch_data[0].shape[0]==self.batch_size):

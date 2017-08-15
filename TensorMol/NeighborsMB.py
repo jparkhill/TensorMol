@@ -5,7 +5,7 @@ TODO: extend to triples.
 """
 
 import numpy as np
-from MolEmb import Make_NListNaive, Make_NListLinear
+from MolEmb import Make_NListNaive, Make_NListLinear, Make_DistMat
 
 class MBNeighbors:
 	"""
@@ -97,7 +97,9 @@ class MBNeighbors:
 					if (j != None):
 						for k in range(j+1,nnt):
 							if (k != None):
-								self.tripi.add(tuple(sorted([i,ThreeBodyPairs[i][j],ThreeBodyPairs[i][k]])))
+								if ThreeBodyPairs[i][k] in ThreeBodyPairs[ThreeBodyPairs[i][j]]:
+									self.tripi.add(tuple(sorted([i,ThreeBodyPairs[i][j],ThreeBodyPairs[i][k]])))
+		DistMatrix = Make_DistMat(self.x)	
 		self.ntrip = len(self.tripi)
 		self.npair = len(self.pairi)
 		#print "num pairs", self.npair
@@ -127,6 +129,7 @@ class MBNeighbors:
 			self.tripz[trip_index,:ni] = self.z[self.frags[i]].copy()
 			self.tripz[trip_index,ni:(ni+nj)] = self.z[self.frags[j]].copy()
 			self.tripz[trip_index,(ni+nj):(ni+nj+nk)] = self.z[self.frags[k]].copy()
+			softcut = 
 			self.pairC[self.pairi.index(sorted([i,j]))] -= 1
 			self.pairC[self.pairi.index(sorted([j,k]))] -= 1
 			self.pairC[self.pairi.index(sorted([k,i]))] -= 1
