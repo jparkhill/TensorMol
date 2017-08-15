@@ -4,6 +4,8 @@ see also: http://scipy-cookbook.readthedocs.io/items/KDTree_example.html
 Depending on cutoffs and density these scale to >20,000 atoms
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 import numpy as np
 #from PairProviderTF import *
 from MolEmb import Make_NListNaive, Make_NListLinear
@@ -113,7 +115,7 @@ class NeighborList:
 			triples matrix (ntrip X 3)
 		"""
 		if (self.ele is None):
-			print "WARNING... need self.ele for angular SymFunc triples... "
+			print("WARNING... need self.ele for angular SymFunc triples... ")
 		pair = []
 		tpair = [] # since these may have different cutoff
 		ntodo = self.natom

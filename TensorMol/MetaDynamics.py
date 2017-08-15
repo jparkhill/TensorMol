@@ -2,9 +2,11 @@
 For enhanced sampling of a PES near its minimum...
 We could even use poorly trained networks for this.
 """
-from SimpleMD import *
-import ElectrostaticsTF
-import TFMolInstanceDirect
+from __future__ import absolute_import
+from __future__ import print_function
+from .SimpleMD import *
+from . import ElectrostaticsTF
+from . import TFMolInstanceDirect
 
 class MetaDynamics(VelocityVerlet):
 	def __init__(self,f_,g0_,name_="MetaMD",EandF_=None):
@@ -82,5 +84,5 @@ class MetaDynamics(VelocityVerlet):
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
-			print ("per step cost:", time.time() -t )
+			print(("per step cost:", time.time() -t ))
 		return

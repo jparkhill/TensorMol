@@ -2,9 +2,11 @@
 Routines which help do differential analysis and Newtonian Mechanics
 """
 
-from Sets import *
-from TFManage import *
-from PhysicalData import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Sets import *
+from .TFManage import *
+from .PhysicalData import *
 
 def RmsForce(f_):
 	return np.mean(np.linalg.norm(f_,axis=1))
@@ -126,7 +128,7 @@ def FdiffHessian(f_, x_, eps_=0.0001, mode_ = "central", grad_ = None):
 			xi_t = x_.copy()
 			xi_t[iti.multi_index] += eps_
 			tmpfs[iti.multi_index]  = f_(xi_t).copy()
-			print iti.multi_index,tmpfs[iti.multi_index]
+			print(iti.multi_index,tmpfs[iti.multi_index])
 			iti.iternext()
 		iti = np.nditer(x_, flags=['multi_index'])
 		while not iti.finished:
@@ -230,7 +232,7 @@ def InternalCoordinates(x_,m):
 			MWC[i*3+j,i*3+j] = np.sqrt(m[i])
 	S = PairOrthogonalize(D,MWC) # Returns normalized Coords.
 	nint = S.shape[0]
-	print "3N, Number of Internal Coordinates: ", n3 , nint
+	print("3N, Number of Internal Coordinates: ", n3 , nint)
 	return S
 
 def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu_ = None):
@@ -256,11 +258,11 @@ def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu
 	Crds = InternalCoordinates(x_,m_) #invbasis X cart
 	#Crds=np.eye(n3).reshape((n3,n,3))
 	Hess = DirectedFdiffHessian(f_, x_, Crds.reshape((len(Crds),n,3)), eps_)
-	print "Hess (Internal):", Hess
+	print("Hess (Internal):", Hess)
 	Hess /= (BOHRPERA*BOHRPERA)
 	# Transform the invariant hessian into cartesian coordinates.
 	cHess = np.dot(Crds.T,np.dot(Hess,Crds))
-	print "Hess (Cart):", cHess
+	print("Hess (Cart):", cHess)
 	# Mass weight the invariant hessian in cartesian coordinate
 	for i,mi in enumerate(m_):
 		cHess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
@@ -270,13 +272,13 @@ def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu
 	# Get the vibrational spectrum and normal modes.
 	u,s,v = np.linalg.svd(cHess)
 	for l in s:
-		print "Central Energy (cm**-1): ", np.sign(l)*np.sqrt(KCONVERT*abs(l))*CMCONVERT*2
-	print "--"
+		print("Central Energy (cm**-1): ", np.sign(l)*np.sqrt(KCONVERT*abs(l))*CMCONVERT*2)
+	print("--")
 	# Get the actual normal modes, for visualization sake.
 	w,v = np.linalg.eigh(cHess)
 	v = v.real
 	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT*2
-	print "N3, shape v",n3,v.shape
+	print("N3, shape v",n3,v.shape)
 	if (WriteNM_):
 		for i in range(3*n):
 			nm = v[:,i].reshape((n,3))
@@ -286,7 +288,7 @@ def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu
 			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
 			step = 0.01
 			dmudq = (Mu_(x_+step*tmp)-Mu_(x_))/step
-			print "|f| (UNITS????) ",np.dot(dmudq,dmudq.T)
+			print("|f| (UNITS????) ",np.dot(dmudq,dmudq.T))
 
 			for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
 				mdisp = Mol(at_, x_+alpha*tmp)
@@ -316,11 +318,11 @@ def LineSearch(f_, x0_, p_, thresh = 0.00001):
 		if (fa < fc and fa < fd and fa < fb):
 			#print fa,fc,fd,fb
 			#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
-			print "Line Search: Overstep"
+			print("Line Search: Overstep")
 			if (PARAMS["GSSearchAlpha"] > 0.00005): 
 				PARAMS["GSSearchAlpha"] /= 1.701
 			else: 
-				print "Keeping step"
+				print("Keeping step")
 			a = x0_
 			b = x0_ + PARAMS["GSSearchAlpha"]*p_
 			c = b - (b - a) / GOLDENRATIO
@@ -332,7 +334,7 @@ def LineSearch(f_, x0_, p_, thresh = 0.00001):
 		elif (fb < fc and fb < fd and fb < fa):
 			#print fa,fc,fd,fb
 			#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
-			print "Line Search: Understep"
+			print("Line Search: Understep")
 			PARAMS["GSSearchAlpha"] *= 1.7
 			a = x0_
 			b = x0_ + PARAMS["GSSearchAlpha"]*p_

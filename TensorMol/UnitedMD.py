@@ -7,12 +7,14 @@ This is a partial re-write of SimpleMD.py, and so some of the functions there
 are repeated here for the sake of independence. Eventually SimpleMD might be depreciated.
 """
 
-from Sets import *
-from TFManage import *
-from Neighbors import *
-from Electrostatics import *
-from QuasiNewtonTools import *
-from SimpleMD import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Sets import *
+from .TFManage import *
+from .Neighbors import *
+from .Electrostatics import *
+from .QuasiNewtonTools import *
+from .SimpleMD import *
 
 class LocalForceField:
 	"""
@@ -63,7 +65,7 @@ class UnitedVelocityVerlet():
 		if (PARAMS["MDThermostat"]=="Nose"):
 			self.Tstat = PeriodicNoseThermostat(self.m,self.v)
 		else:
-			print "Unthermostated Periodic Velocity Verlet."
+			print("Unthermostated Periodic Velocity Verlet.")
 		return
 
 	def Prop(self):
@@ -93,5 +95,5 @@ class UnitedVelocityVerlet():
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
-			print ("per step cost:", time.time() -t )
+			print(("per step cost:", time.time() -t ))
 		return

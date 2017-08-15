@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import numpy as np
 import random
 from pyscf import scf
@@ -168,12 +170,12 @@ class Grids:
 			# print ip
 			# Check that it's an isometry.
 			if (i0 != sorted(self.IsometryRelabelings[i])):
-				print "Not an isometry :( ", i0,self.IsometryRelabelings[i]
+				print("Not an isometry :( ", i0,self.IsometryRelabelings[i])
 				raise Exception("Bad Isometry")
 		return
 
 	def Populate(self):
-		print "Populating Grids... "
+		print("Populating Grids... ")
 		#
 		# Populate output Bases
 		#
@@ -196,7 +198,7 @@ class Grids:
 		try:
 			mol.build()
 		except Exception as Ex:
-			print mol.atom
+			print(mol.atom)
 			raise Ex
 		# All this shit could be Pre-Computed...
 		# Really any grid could be used.
@@ -213,11 +215,11 @@ class Grids:
 		if (0):
 			for i in range(nbas):
 				CM = np.dot(self.Grid.T,orbs[:,i])
-				print "Centers of Mass, i", np.dot(self.Grid.T,orbs[:,i]*orbs[:,i])*self.dx*self.dy*self.dz, self.GauGrid[i]
+				print("Centers of Mass, i", np.dot(self.Grid.T,orbs[:,i]*orbs[:,i])*self.dx*self.dy*self.dz, self.GauGrid[i])
 				Rsq = np.array(map(np.linalg.norm,self.Grid-CM))
-				print "Rsq of Mass, i", np.sqrt(np.dot(Rsq,orbs[:,i]*orbs[:,i]))*self.dx*self.dy*self.dz
+				print("Rsq of Mass, i", np.sqrt(np.dot(Rsq,orbs[:,i]*orbs[:,i]))*self.dx*self.dy*self.dz)
 				for j in range(nbas):
-					print "Normalization of grid i.", np.sum(orbs[:,i]*orbs[:,j])*self.dx*self.dy*self.dz
+					print("Normalization of grid i.", np.sum(orbs[:,i]*orbs[:,j])*self.dx*self.dy*self.dz)
 		self.OBFs = np.zeros(shape=(self.NGau3,self.NPts3))
 		for i in range(nbas):
 			for j in range(nbas):
@@ -226,8 +228,8 @@ class Grids:
 		self.PopulateSense()
 		if (not self.Spherical):
 			self.BuildIsometries()
-			print "Using ", len(self.Isometries), " isometries."
-		print "Grid storage cost: ",self.OBFs.size*64/1024/1024, "Mb"
+			print("Using ", len(self.Isometries), " isometries.")
+		print("Grid storage cost: ",self.OBFs.size*64/1024/1024, "Mb")
 		#for i in range(nbas):
 		#	GridstoRaw(orbs[:,i]*orbs[:,i],self.NPts,"BF"+str(i))
 		#	GridstoRaw(self.OBFs[i,:]*self.OBFs[i,:],self.NPts,"OBF"+str(i))
@@ -258,7 +260,7 @@ class Grids:
 		try:
 			mol.build()
 		except Exception as Ex:
-			print mol.atom, mol.basis
+			print(mol.atom, mol.basis)
 			raise Ex
 		#nbas = gto.nao_nr(mol)
 		#print nbas
@@ -278,23 +280,23 @@ class Grids:
 			self.Populate()
 		CM = np.dot(self.Grid.T,input)
 		if ((self.GridRange-np.max(CM))/self.GridRange < 0.2):
-			print "Warning... GridRange ", ((self.GridRange-np.max(CM))/self.GridRange)
+			print("Warning... GridRange ", ((self.GridRange-np.max(CM))/self.GridRange))
 		output = np.tensordot(self.OBFs,np.power(input,0.5),axes=[[1],[0]])*self.dx*self.dy*self.dz
 		if (QualityOfFit and np.linalg.norm(input)!=0.0):
 			GridstoRaw(input,self.NPts,"Input")
-			print "Coefs", output
+			print("Coefs", output)
 			tmp = self.Rasterize(output)
 			GridstoRaw(tmp,self.NPts,"Output")
-			print "Sum of Input and reconstruction", np.sum(input), np.sum(tmp)
-			print "Average of Input and reconstruction", np.average(input), np.average(tmp)
-			print "Max of Input and reconstruction", np.max(input), np.max(tmp)
-			print "relative norm of difference:", np.linalg.norm(tmp-input)/np.linalg.norm(input)
+			print("Sum of Input and reconstruction", np.sum(input), np.sum(tmp))
+			print("Average of Input and reconstruction", np.average(input), np.average(tmp))
+			print("Max of Input and reconstruction", np.max(input), np.max(tmp))
+			print("relative norm of difference:", np.linalg.norm(tmp-input)/np.linalg.norm(input))
 			GridstoRaw(input-tmp,self.NPts,"Diff")
 			tmp /= np.sum(tmp)
-			print "Centers of Mass, in", np.dot(self.Grid.T,input)," and out ", np.dot(self.Grid.T,tmp)
+			print("Centers of Mass, in", np.dot(self.Grid.T,input)," and out ", np.dot(self.Grid.T,tmp))
 			Rsq = np.array(map(np.linalg.norm,self.Grid-CM))
-			print "Variance of In", np.dot(Rsq.T,input)
-			print "Variance of Out", np.dot(Rsq.T,tmp)
+			print("Variance of In", np.dot(Rsq.T,input))
+			print("Variance of Out", np.dot(Rsq.T,tmp))
 		return output
 
 	def Rasterize(self,inp):
@@ -337,9 +339,9 @@ class Grids:
 
 	def VdwDensity(self,m,p=[0.0, 0.0, 0.0],ngrid=150,Nm_="Atoms",tag=None):
 		samps, vol = m.SpanningGrid(ngrid,2)
-		print "Grid ranges (A):",np.max(samps[:,0]),np.min(samps[:,0])
-		print "Grid ranges (A):",np.max(samps[:,1]),np.min(samps[:,1])
-		print "Grid ranges (A):",np.max(samps[:,2]),np.min(samps[:,2])
+		print("Grid ranges (A):",np.max(samps[:,0]),np.min(samps[:,0]))
+		print("Grid ranges (A):",np.max(samps[:,1]),np.min(samps[:,1]))
+		print("Grid ranges (A):",np.max(samps[:,2]),np.min(samps[:,2]))
 		# Make the atom densities.
 		Ps = self.MolDensity(samps,m,p,tag)
 		GridstoRaw(Ps,ngrid,Nm_)
@@ -355,7 +357,7 @@ class Grids:
 		else:
 			for j in range(len(m.atoms)):
 				if (j == tag):
-					print "Tagging atom", j
+					print("Tagging atom", j)
 					pyscfatomstring=pyscfatomstring+"N@0"+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
 				else:
 					pyscfatomstring=pyscfatomstring+"H@"+str(m.atoms[j])+" "+str(m.coords[j,0])+" "+str(m.coords[j,1])+" "+str(m.coords[j,2])+(";" if j!= len(m.atoms)-1 else "")
@@ -369,7 +371,7 @@ class Grids:
 		try:
 			mol.build()
 		except Exception as Ex:
-			print mol.atom, mol.basis, m.atoms, m.coords
+			print(mol.atom, mol.basis, m.atoms, m.coords)
 			raise Ex
 		return np.sum(gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,samps*1.889725989),axis=1)
 
@@ -401,23 +403,23 @@ class Grids:
 		try:
 			mol.build()
 		except Exception as Ex:
-			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			print(mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p)
 			raise Ex
 		nsaos = gto.nao_nr_range(mol,0,mol.atom_nshells(0))[1]
 		nbas = gto.nao_nr(mol)
-		print "nAtoms: ",m.NAtoms()," nsaos: ", nsaos, " nbas ", nbas
+		print("nAtoms: ",m.NAtoms()," nsaos: ", nsaos, " nbas ", nbas)
 		S = mol.intor('cint1e_ovlp_sph',shls_slice=(0,mol.atom_nshells(0),0,mol.atom_nshells(0)))
 		Sinv = MatrixPower(S,-1.0)
 		SBFs = gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,samps*1.889725989,comp=1,shls_slice=(0,mol.atom_nshells(0)))
-		print "SBFs.shape", SBFs.shape
+		print("SBFs.shape", SBFs.shape)
 		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,mol.atom_nshells(0),mol.atom_nshells(0),mol.nbas))
-		print "Cs.shape", Cs.shape
+		print("Cs.shape", Cs.shape)
 	#	for i in range(len(Cs[0])):
 	#		tmp = np.dot(SBFs,np.dot(Sinv,Cs[:,i]))
 	#		GridstoRaw(tmp*tmp,150,"Atoms"+str(i))
 	#	exit(0)
 		Sd = np.sum(np.dot(SBFs,np.dot(Sinv,Cs)),axis=1)
-		print "Sd.shape", Sd.shape
+		print("Sd.shape", Sd.shape)
 		return Sd
 
 	def TestGridGauEmbedding(self,samps,m,p,i):
@@ -455,20 +457,20 @@ class Grids:
 		try:
 			mol.build()
 		except Exception as Ex:
-			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			print(mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p)
 			raise Ex
 
 		nsaos = len(GauGrid)
 		nbas = gto.nao_nr(mol)
-		print "nAtoms: ",m.NAtoms()," nsaos: ", nsaos, " nbas ", nbas
+		print("nAtoms: ",m.NAtoms()," nsaos: ", nsaos, " nbas ", nbas)
 		S = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,0,nsaos))
 		Sinv = MatrixPower(S,-1.0)
 		SBFs = gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,samps*1.889725989,comp=1,shls_slice=(0,nsaos))
-		print "SBFs.shape", SBFs.shape
+		print("SBFs.shape", SBFs.shape)
 		Cs = mol.intor('cint1e_ovlp_sph',shls_slice=(0,nsaos,nsaos,mol.nbas))
-		print "Cs.shape", Cs.shape
+		print("Cs.shape", Cs.shape)
 		Sd = np.sum(np.dot(SBFs,np.dot(Sinv,Cs)),axis=1)
-		print "Sd.shape", Sd.shape
+		print("Sd.shape", Sd.shape)
 		return Sd
 
 	def EmbedAtom(self,m,p,i=-1):
@@ -509,7 +511,7 @@ class Grids:
 		try:
 			mol.build()
 		except Exception as Ex:
-			print mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p
+			print(mol.atom, mol.basis, m.atoms, m.coords, SensedAtoms, p)
 			raise Ex
 		nsaos = len(self.SenseSinv)
 		if (self.Spherical):
@@ -564,9 +566,9 @@ class Grids:
 		Pe = self.Rasterize(Cs)
 		GridstoRaw(Pe,self.NPts,"Atoms0")
 		CoP=self.CenterOfP(Pe)
-		print "COM:",CoP
+		print("COM:",CoP)
 		for i in range(len(self.IsometryRelabelings)):
 			PCs = self.Rasterize(Cs[self.IsometryRelabelings[i]])
-			print "Transformed",np.dot(self.InvIsometries[i],CoP)
-			print "COM:",self.CenterOfP(PCs)
+			print("Transformed",np.dot(self.InvIsometries[i],CoP))
+			print("COM:",self.CenterOfP(PCs))
 			#GridstoRaw(PCs,self.NPts,"Atoms"+str(i+1))

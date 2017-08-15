@@ -3,6 +3,7 @@ sudo pip install redis flask gevent flask-socketio
 also execute redis-server
 '''
 #from TensorMol import *
+from __future__ import absolute_import
 from gevent import monkey
 monkey.patch_all()
 import redis

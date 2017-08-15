@@ -4,6 +4,7 @@
 #
 # These should be all Caps. etc...
 #
+from __future__ import absolute_import
 import numpy as np
 from math import pi as Pi
 

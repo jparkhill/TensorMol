@@ -1,8 +1,10 @@
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Util import *
 import numpy as np
 import random, math
-from Mol import *
-from PhysicalData import *
+from .Mol import *
+from .PhysicalData import *
 
 def AtomName_From_List(atom_list):
 	name = ""
@@ -148,7 +150,7 @@ class MolGraph(Mol):
 		while (flag == 1):  # finish the easy assigment
 			flag  = self.Define_Easy_Bonds(bond_of_atom, left_connections, left_atoms, left_valance)
 			if (flag == -1):
-				print "error when define bond type.."
+				print("error when define bond type..")
 				self.bond_type = [-1 for i in range (0, self.NBonds())]
 				return
 		save_bond_type = list(self.bond_type)
@@ -176,7 +178,7 @@ class MolGraph(Mol):
 					left_atoms = []
 					break
 		if  left_atoms or flag != 0  :
-			print "error when define bond type.."
+			print("error when define bond type..")
 			self.bond_type = [-1 for i in range (0, self.NBonds())]
 			return
 		return

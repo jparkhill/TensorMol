@@ -1,8 +1,12 @@
-from Mol import *
-from Util import *
-import numpy,os,sys,re
-import cPickle as pickle
-import LinearOperations
+from __future__ import absolute_import
+from .Mol import *
+from .Util import *
+import os,sys,re
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
+from . import LinearOperations
 
 class Transformer:
 	"""

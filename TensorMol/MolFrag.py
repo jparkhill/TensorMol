@@ -1,8 +1,10 @@
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Util import *
 import numpy as np
 import random, math
-from Mol import *
-from Electrostatics import *
+from .Mol import *
+from .Electrostatics import *
 
 def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase = str(0), maxcase = str(1000), name = "MBE", ncore = str(4), queue="long"):
 	lines = "#!/bin/csh\n"+"# Submit a job for 8  processors\n"+"#$ -N "+name+"\n#$ -t "+mincase+"-"+maxcase+":1\n"+"#$ -pe smp "+ncore+"\n"+"#$ -r n\n"+"#$ -q "+queue+"\n\n\n"
@@ -198,13 +200,13 @@ class FragableCluster(Mol):
 		if center_atom == []:
 			center_atom = [0]*len(frag_list)
 		for i in range (1, self.mbe_order+1):
-			print "Generating order", i
+			print("Generating order", i)
 			self.Generate_MBE_term_General(i, cutoff, center_atom)
 		return
 
 	def Generate_MBE_term_General(self, order,  cutoff=10, center_atom=[]):
 		if order in self.mbe_frags.keys():
-			print ("MBE order", order, "already generated..skipping..")
+			print(("MBE order", order, "already generated..skipping.."))
 			return
 		if order==1:
 			self.mbe_frags[order] = []
@@ -262,7 +264,7 @@ class FragableCluster(Mol):
 			ngroup = len(self.mbe_frags[1])	#
 			atomlist=list(range(0,ngroup))
 			time_log = time.time()
-			print ("generating the combinations for order: ", order)
+			print(("generating the combinations for order: ", order))
 			max_case = 5000
 			time_now=time.time()
 			for index_list in tmp_index_list:
@@ -273,7 +275,7 @@ class FragableCluster(Mol):
 				print("begin the most time consuming step: ")
 				tmp_time  = time.time()
 				sub_combinations = list(itertools.product(*sample_index))
-				print ("end of the most time consuming step. time cost:", time.time() - tmp_time)
+				print(("end of the most time consuming step. time cost:", time.time() - tmp_time))
 				#shuffle_time = time.time()
 				#new_begin = random.randint(1,len(sub_combinations)-2)
 				#sub_combinations = sub_combinations[new_begin:]+sub_combinations[:new_begin] # debug, random shuffle the list, so the pairs are chosen randomly, this is not necessary for generate training cases
@@ -304,13 +306,13 @@ class FragableCluster(Mol):
 							break
 					if flag == 1:   # we find a frag
 						if frag_case%100==0:
-							print "working on frag:", frag_case, "frag_type:", index_list, " i:", i
+							print("working on frag:", frag_case, "frag_type:", index_list, " i:", i)
 						frag_case  += 1
 						if  frag_case >=  max_case:   # just for generating training case
 							break;
 						mbe_terms.append(term)
 						mbe_dist.append(dist)
-			print ("finished..takes", time_log-time.time(),"second")
+			print(("finished..takes", time_log-time.time(),"second"))
 			mbe_frags = []
 			for i in range (0, len(mbe_terms)):
 				frag_type = []
@@ -335,7 +337,7 @@ class FragableCluster(Mol):
 
 	def Calculate_Frag_Energy_General(self, order, method="pyscf"):
 		if order in self.mbe_frags_energy.keys():
-			print ("MBE order", order, "already calculated..skipping..")
+			print(("MBE order", order, "already calculated..skipping.."))
 			return 0
 		mbe_frags_energy = 0.0
 		fragnum=0
@@ -349,19 +351,19 @@ class FragableCluster(Mol):
 			for frag in self.mbe_frags[order]:  # just for generating the training set..
 				fragnum += 1
 				if fragnum%100 == 0:
-					print "working on frag:", fragnum
-					print  "total time:", time.time() - time0
+					print("working on frag:", fragnum)
+					print("total time:", time.time() - time0)
 				time0 = time.time()
 				frag.Write_Qchem_Frag_MBE_Input_All_General(fragnum)
 			os.chdir("../../../..")
 		elif method == "pyscf":
 			for frag in self.mbe_frags[order]:
 				fragnum += 1
-				print "doing the ",fragnum
+				print("doing the ",fragnum)
 				frag.PySCF_Frag_MBE_Energy_All()
 				frag.Set_Frag_MBE_Energy()
 				mbe_frags_energy += frag.frag_mbe_energy
-			print "Finished, spent ", time.time()-time_log," seconds"
+			print("Finished, spent ", time.time()-time_log," seconds")
 			time_log = time.time()
 			self.mbe_frags_energy[order] = mbe_frags_energy
 		else:
@@ -375,7 +377,7 @@ class FragableCluster(Mol):
 		for frag in self.mbe_frags[order]:
 			fragnum += 1
 			frag.Get_Qchem_Frag_MBE_Energy_All(fragnum, path)
-			print "working on molecule:", self.name," frag:",fragnum, " order:",order
+			print("working on molecule:", self.name," frag:",fragnum, " order:",order)
 			frag.Set_Frag_MBE_Energy()
 			mbe_frags_energy += frag.frag_mbe_energy
 			#if order==2:
@@ -395,11 +397,11 @@ class FragableCluster(Mol):
 			if not os.path.isdir("./qchem"+"/"+self.properties["set_name"]):
 				os.mkdir("./qchem"+"/"+self.properties["set_name"])
 			self.qchem_data_path="./qchem"+"/"+self.properties["set_name"]+"/"+self.name
-			print "set_name",  self.properties["set_name"], " self.name", self.name
+			print("set_name",  self.properties["set_name"], " self.name", self.name)
 			if not os.path.isdir(self.qchem_data_path):
 				os.mkdir(self.qchem_data_path)
 		for i in range (1, self.mbe_order+1):
-			print "calculating for MBE order", i
+			print("calculating for MBE order", i)
 			self.Calculate_Frag_Energy_General(i, method)
 		if method == "qchem":
 			self.Write_Qchem_Submit_Script()
@@ -574,14 +576,14 @@ class Frag(Mol):
 					rimp2 = float(line.split()[4])
 					continue
 				if "fatal error" in line:
-					print "fata error! file:", path+"/"+outfile_name
+					print("fata error! file:", path+"/"+outfile_name)
 			if nonB_single != 0.0:
-				print "Warning: non-Brillouin singles do not equal to zero, non-Brillouin singles=",nonB_single,path,outfile_name
+				print("Warning: non-Brillouin singles do not equal to zero, non-Brillouin singles=",nonB_single,path,outfile_name)
 			if key!=None and rimp2!=None:
 				#print "key:", key, "length:", len(key)
 				self.frag_mbe_energies[key] = rimp2
 			else:
-				print "Qchem Calculation error on ",path,outfile_name
+				print("Qchem Calculation error on ",path,outfile_name)
 				raise Exception("Qchem Error")
 		return
 
@@ -667,8 +669,8 @@ class Frag(Mol):
 	def Set_Frag_MBE_Energy(self):
 		self.frag_mbe_energy =  self.Frag_MBE_Energy()
 		self.frag_energy = self.frag_mbe_energies[LtoS(self.permute_index)]
-		print "self.frag_type: ", self.frag_type
-		print "self.frag_mbe_energy: ", self.frag_mbe_energy
+		print("self.frag_type: ", self.frag_type)
+		print("self.frag_mbe_energy: ", self.frag_mbe_energy)
 		return
 
 	def Frag_MBE_Energy(self,  index=None):     # Get MBE energy recursively
@@ -684,7 +686,7 @@ class Frag(Mol):
 				try:
 					energy=energy-self.Frag_MBE_Energy( sub_index[j])
 				except Exception as Ex:
-					print "missing frag energy, error", Ex
+					print("missing frag energy, error", Ex)
 		return  energy
 
 	def CopyTo(self, target):
@@ -726,7 +728,7 @@ class FragableClusterBF(Mol):
 	def __init__(self, atoms_ =  None, coords_ = None, center_= "COM", cutoff_ = 4.6, width_ = 0.4):
 		Mol.__init__(self,atoms_,coords_)
 		self.mbe_order = PARAMS["MBE_ORDER"]
-		print "MBE order:", self.mbe_order
+		print("MBE order:", self.mbe_order)
 		self.center = center_
 		self.properties['cutoff'] = cutoff_
 		self.properties['cutoff_width'] = width_
@@ -773,7 +775,7 @@ class FragableClusterBF(Mol):
 	def Generate_All_MBE_term_General(self, frag_list=[]):
 		self.frag_list = frag_list
 		for i in range (1, self.mbe_order+1):
-			print "Generating order", i
+			print("Generating order", i)
 			self.Generate_MBE_term_General(i)
 		return
 
@@ -814,7 +816,7 @@ class FragableClusterBF(Mol):
 						elif self.center == "COP":
 							tmp_mol.properties["center"] = tmp_mol.Center("Atom")
 						else:
-							print "This type of center is not implemented yet, set to COM as center"
+							print("This type of center is not implemented yet, set to COM as center")
 							tmp_mol.properties["center"] = tmp_mol.Center("Mass")
 						self.mbe_frags[order].append(tmp_mol)
 						j += num_frag_atoms
@@ -875,9 +877,9 @@ class FragableClusterBF(Mol):
 				continue
 			for sub_order in range (1, order):
 				self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
-			print "order: ", order, self.mbe_energy[order]
+			print("order: ", order, self.mbe_energy[order])
 			self.nn_energy += self.mbe_energy[order]
-		print self.mbe_energy, self.nn_energy
+		print(self.mbe_energy, self.nn_energy)
 		return
 
 	def MBE_Energy_Embed(self):
@@ -921,7 +923,7 @@ class FragableClusterBF(Mol):
 				self.mbe_energy[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_energy[sub_order]
 			self.properties["mbe_energy_embed"][order]  = self.mbe_energy[order]
 			self.nn_energy += self.properties["mbe_energy_embed"][order]
-		print self.properties["mbe_energy_embed"], self.nn_energy
+		print(self.properties["mbe_energy_embed"], self.nn_energy)
 		return
 
 	def MBE_Dipole(self):
@@ -935,7 +937,7 @@ class FragableClusterBF(Mol):
 			for sub_order in range (1, order):
 				self.mbe_dipole[order] -= nCr(mono_num-sub_order, order-sub_order)*self.mbe_dipole[sub_order]
 			self.nn_dipole += self.mbe_dipole[order]
-		print self.mbe_dipole, self.nn_dipole
+		print(self.mbe_dipole, self.nn_dipole)
 		return
 
 	def MBE_Force(self):

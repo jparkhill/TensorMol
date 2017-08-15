@@ -10,8 +10,10 @@ Usage:
 IRProp(f,m,"TrajectoryName").Prop()
 """
 
-from SimpleMD import *
-from Opt import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .SimpleMD import *
+from .Opt import *
 
 class IRProp(VelocityVerlet):
 	def __init__(self,efq_,g0_,name_=str(0)):
@@ -46,7 +48,7 @@ class IRProp(VelocityVerlet):
 		self.mu_his = None
 		self.qs = self.q0.copy()
 		self.Mu0 = Dipole(self.x, self.qs)
-		print self.qs, self.Mu0
+		print(self.qs, self.Mu0)
 		# This can help in case you had a bad initial geometry
 		self.MinS = 0
 		self.MinE = 0.0
