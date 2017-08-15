@@ -625,6 +625,8 @@ class TensorDataDirect(TensorData):
 		if (self.ScratchState == 1):
 			return
 		self.xyzs, self.Zs, self.labels, self.natom  = self.LoadData()
+		if (tformer.outnorm != None):
+			self.labels = tformer.NormalizeOuts(self.labels)
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
 		self.NTrain = self.LastTrainMol

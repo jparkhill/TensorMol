@@ -86,6 +86,7 @@ class Transformer:
 		return (ins - self.inmin)/(self.inmax-self.inmin)
 
 	def AssignOutMeanStd(self, outs):
+		outs = outs[~np.all(np.equal(a, 0), axis=2)]
 		self.outmean = np.mean(outs)
 		self.outstd = np.std(outs)
 
