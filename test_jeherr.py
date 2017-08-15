@@ -306,12 +306,11 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
+	PARAMS["HiddenLayers"] = [512, 512, 512, 512]
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 2000
 	PARAMS["NeuronType"] = "elu"
-	# PARAMS["InNormRoutine"] = "MeanStd"
-	# PARAMS["OutNormRoutine"] = "MeanStd"
 	a=MSet(set_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -325,7 +324,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 50000)
+# RandomSmallSet("chemspider_all_60", 500000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -342,4 +341,4 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-train_forces_GauSH_direct("SmallMols_rand")
+train_forces_GauSH_direct("chemspider_all_60_rand")
