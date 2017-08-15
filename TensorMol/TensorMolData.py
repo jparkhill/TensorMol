@@ -1117,7 +1117,11 @@ class TensorMolData_BP_Direct(TensorMolData):
 		return
 
 	def LoadData(self):
-		self.ReloadSet()
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
@@ -1413,7 +1417,11 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 		return
 
 	def LoadData(self):
-		self.ReloadSet()
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
@@ -1532,7 +1540,11 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		return
 
 	def LoadData(self):
-		self.ReloadSet()
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print "TData doesn't have a set.", Ex
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
@@ -1545,14 +1557,18 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		if (self.HasGrad):
 			grads = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype=np.float64)
 		for i, mol in enumerate(self.set.mols):
-			xyzs[i][:mol.NAtoms()] = mol.coords
-			Zs[i][:mol.NAtoms()] = mol.atoms
-			natom[i] = mol.NAtoms()
+			try:
+				xyzs[i][:mol.NAtoms()] = mol.coords
+				Zs[i][:mol.NAtoms()] = mol.atoms
+				natom[i] = mol.NAtoms()
+			except Exception as ex:
+				print mol.coords, mol.atoms, mol.coords.shape[0], mol.atoms.shape[0]
+				raise Exception("Bad data2")
 			if (self.dig.OType  == "EnergyAndDipole"):
 				Elabels[i] = mol.properties["atomization"]
 				Dlabels[i] = mol.properties["dipole"]*AUPERDEBYE
 			else:
-                        	raise Exception("Output Type is not implemented yet")
+				raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
 				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
@@ -1587,7 +1603,7 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
 		self.NTrain = self.LastTrainMol
-                self.NTest = self.NTestMols
+		self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
 		self.ScratchState = 1
