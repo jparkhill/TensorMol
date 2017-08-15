@@ -11,17 +11,15 @@ from math import *
 from random import *
 from TensorMol.ElectrostaticsTF import *
 
-def GetEnergyAndForceFromManager(MName_, set_):
+def GetEnergyAndForceFromManager(MName_, a):
 	"""
 	MName: name of the manager. (specifies sampling method.)
-	set_: name of dataset
+	set_: An MSet() dataset which has been loaded. 
 	"""
 	# If you wanna do eq.
 	# a = MSet("sampling_mols")
 	# a.ReadXYZ()
 	#
-	a = MSet(set_)
-	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
@@ -63,18 +61,14 @@ def CompareAllData():
 	the managers.
 	"""
 
-	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
-	SetNames=["DavidMD","DavidMetaMD"]
-	nm = MSet("DavidNM")
-	rnd = MSet("DavidRandom")
-	hyb = MSet("Hybrid")
-	gold = MSet("GoldStd")
-	MSets = map(MSet,SetNames)
+	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_Hybrid_AN1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_GoldStd_AN1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+	SetNames = ["DavidMD","DavidMetaMD","DavidNM","DavidRandom", "Hybrid","GoldStd"]
+	MSets = [MSet(name) for name in SetNames]
 	for aset in MSets:
 		aset.Load()
 	results = {}
 	print "Loaded Sets... "
-	
+
 	for i in managers:
 		for j in range(len(MSets)):
 			en, f = GetEnergyAndForceFromManager(i,MSets[j])
@@ -116,6 +110,6 @@ def TestOptimization(MName_):
 	return np.mean(rms_list)
 
 
-GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Hybrid")
-# CompareAllData()
+# GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Hybrid")
+CompareAllData()
 # print TestOptimization("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")

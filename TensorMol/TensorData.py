@@ -354,7 +354,7 @@ class TensorData():
 			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
 				err = predicted-desired
 				ders = np.linalg.norm(err, axis=1)
-				for i in range(100):
+				for i in range(50):
 					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
@@ -581,6 +581,90 @@ class TensorData():
 			print "AN: ", self.AvailableElements[i], " contributes ", self.SamplesPerElement[i] , " samples "
 			print "From files: ", self.AvailableDataFiles[i]
 		return
+
+class TensorDataDirect(TensorData):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, type_="atom"):
+		TensorData.__init__(self, MSet_, Dig_, Name_, type_)
+		if (MSet_ != None):
+			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
+			self.Nmols = len(self.set.mols)
+			self.AvailableElements = self.set.AtomTypes()
+
+	def LoadData(self):
+		if self.set == None:
+			self.ReloadSet()
+		random.shuffle(self.set.mols)
+		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float32)
+		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((self.Nmols), dtype = np.int32)
+		if (self.dig.OType == "Force"):
+			labels = np.zeros((self.Nmols,self.MaxNAtoms,3), dtype = np.float32)
+		else:
+			raise Exception("Output Type is not implemented yet")
+		for i, mol in enumerate(self.set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			labels[i][:mol.NAtoms()] = mol.properties["forces"]
+			natom[i] = mol.NAtoms()
+		return xyzs, Zs, labels, natom
+
+	def LoadDataToScratch(self, tformer):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+		note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		if (self.ScratchState == 1):
+			return
+		self.xyzs, self.Zs, self.labels, self.natom  = self.LoadData()
+		if (tformer.outnorm != None):
+			self.labels = tformer.NormalizeOuts(self.labels)
+		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
+		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
+		self.NTrain = self.LastTrainMol
+		self.NTest = self.NTestMols
+		self.test_ScratchPointer = self.LastTrainMol
+		self.ScratchPointer = 0
+		self.ScratchState = 1
+		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
+		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
+		return
+
+	def GetTrainBatch(self,ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTrain):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (self.ScratchPointer+ncases >= self.NTrain):
+			self.ScratchPointer = 0
+		self.ScratchPointer += ncases
+		xyzs = self.xyzs[self.ScratchPointer-ncases:self.ScratchPointer]
+		Zs = self.Zs[self.ScratchPointer-ncases:self.ScratchPointer]
+		labels = self.labels[self.ScratchPointer-ncases:self.ScratchPointer]
+		return [xyzs, Zs, labels]
+
+	def GetTestBatch(self,ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTest):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTest)+" vs "+str(ncases))
+		if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
+			self.test_ScratchPointer = self.LastTrainMol
+		self.test_ScratchPointer += ncases
+		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		return [xyzs, Zs, labels]
 
 class TensorData_TFRecords(TensorData):
 	def __init__(self, MSet_=None, Dig_=None, Name_=None, test_=False, type_="atom"):
