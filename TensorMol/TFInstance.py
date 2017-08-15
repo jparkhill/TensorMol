@@ -905,8 +905,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		# self.TData.EvaluateTestBatch(batch_data[1],preds, self.tformer)
 		duration = time.time() - test_start_time
 		print("testing...")
-		print("Gaussian paramaters: ", gaussian_params)
-		print("Atomic embedding factors: ", atomic_embed_factors)
+		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
+		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
 		self.print_testing(step, test_loss, loss_dict, Ncase_test, duration)
 		return test_loss, feed_dict
 
@@ -918,7 +918,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 	def print_testing(self, step, loss, loss_dict, Ncase, duration):
 		denom = max((int(Ncase/self.batch_size)),1)
 		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
-		LOGGER.info("Element losses: ", loss_dict)
+		LOGGER.info("Element losses: %s", loss_dict)
 
 	def PrepareData(self, batch_data):
 		if (batch_data[0].shape[0]==self.batch_size):
