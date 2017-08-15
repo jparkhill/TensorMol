@@ -2,9 +2,11 @@
 Changes that need to be made:
 """
 
-from Sets import *
-from TFManage import *
-from DIIS import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Sets import *
+from .TFManage import *
+from .DIIS import *
 import random
 import time
 
@@ -46,7 +48,7 @@ class NudgedElasticBand:
 			m.WriteXYZfile("./results/", "NebTraj0")
 		if (self.tfm!=None):
 			self.OType = self.tfm.TData.dig.OType
-			print "Optimizer will use ",self.OType, " outputs from tensorflow to optimize."
+			print("Optimizer will use ",self.OType, " outputs from tensorflow to optimize.")
 		return
 
 	def Tangent(self,i):
@@ -185,16 +187,16 @@ class NudgedElasticBand:
 				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
 
 			self.IntegrateEnergy()
-			print "Rexn Profile: ", self.Es
+			print("Rexn Profile: ", self.Es)
 			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
 			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
 			beadRs = [np.linalg.norm(self.beads[x+1]-self.beads[x]) for x in range(self.nbeads-1)]
 			beadCosines = [self.BeadAngleCosine(i) for i in range(1,self.nbeads-1)]
-			print "Frce Profile: ", beadFs
-			print "F_|_ Profile: ", beadFperp
-			print "SFrc Profile: ", beadSfs
-			print "Dist Profile: ", beadRs
-			print "BCos Profile: ", beadCosines
+			print("Frce Profile: ", beadFs)
+			print("F_|_ Profile: ", beadFperp)
+			print("SFrc Profile: ", beadSfs)
+			print("Dist Profile: ", beadRs)
+			print("BCos Profile: ", beadCosines)
 			minforce = np.min(beadFs)
 				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
@@ -259,7 +261,7 @@ class NudgedElasticBand:
 				rmsgrad[i] = np.sum(np.linalg.norm(forces[i],axis=1))/forces[i].shape[0]
 				maxgrad[i] = np.amax(np.linalg.norm(forces[i],axis=1))
 			self.IntegrateEnergy()
-			print "Rexn Profile: ", self.Es
+			print("Rexn Profile: ", self.Es)
 			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
 			#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 			#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))

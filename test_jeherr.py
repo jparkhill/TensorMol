@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 import time
 PARAMS["max_checkpoints"] = 3
@@ -24,7 +26,7 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	a=MSet(set_)
 	for dir in glob.iglob(dir_):
 		a.ReadXYZUnpacked(dir, has_force=forces, has_energy=energy, has_charge=charges, has_mmff94=mmff94)
-	print len(a.mols), " Molecules"
+	print(len(a.mols), " Molecules")
 	a.Save()
 
 
@@ -40,7 +42,7 @@ def TrainKRR(set_ = "SmallMols", dig_ = "GauSH", OType_ ="Force"):
 
 def RandomSmallSet(set_, size_):
 	""" Returns an MSet of random molecules chosen from a larger set """
-	print "Selecting a subset of "+str(set_)+" of size "+str(size_)
+	print("Selecting a subset of "+str(set_)+" of size "+str(size_))
 	a=MSet(set_)
 	a.Load()
 	b=MSet(set_+"_rand")
@@ -64,7 +66,7 @@ def BasisOpt_Ipecac(method_, set_, dig_):
 	""" Optimizes a basis based on Ipecac """
 	a=MSet(set_)
 	a.Load()
-	print "Number of mols: ", len(a.mols)
+	print("Number of mols: ", len(a.mols))
 	TreatedAtoms = a.AtomTypes()
 	dig = MolDigester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
 	eopt = EmbeddingOptimizer("Ipecac", a, dig, "radial")
@@ -76,12 +78,12 @@ def TestIpecac(dig_ = "GauSH"):
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	m = a.mols[1]
-	print m.atoms
+	print(m.atoms)
 	# m.WriteXYZfile("./results/", "Before")
 	goodcrds = m.coords.copy()
 	m.BuildDistanceMatrix()
 	gooddmat = m.DistMatrix
-	print "Good Coordinates", goodcrds
+	print("Good Coordinates", goodcrds)
 	TreatedAtoms = m.AtomTypes()
 	dig = MolDigester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
 	emb = dig.Emb(m, MakeOutputs=False)
@@ -91,7 +93,7 @@ def TestIpecac(dig_ = "GauSH"):
 	bestfit = ip.ReverseAtomwiseEmbedding(emb, atoms_=m.atoms, guess_=m.coords,GdDistMatrix=gooddmat)
 	# bestfit = ReverseAtomwiseEmbedding(dig, emb, atoms_=m.atoms, guess_=None,GdDistMatrix=gooddmat)
 	# print bestfit.atoms
-	print m.atoms
+	print(m.atoms)
 	# bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 
@@ -103,7 +105,7 @@ def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=No
 			a = a.RotatedClone(numrot_)
 			a.Save(a.name+"_"+str(numrot_)+"rot")
 		TreatedAtoms = a.AtomTypes()
-		print "Number of Mols: ", len(a.mols)
+		print("Number of Mols: ", len(a.mols))
 		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
 		tset = TensorData(a,d)
 		tset.BuildTrainMolwise(set_,TreatedAtoms)
@@ -136,18 +138,18 @@ def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	b.mols = copy.deepcopy(a.mols)
 	for m in b.mols:
 		m.Distort(0.1)
-	print "A,B RMS (Angstrom): ",a.rms(b)
+	print("A,B RMS (Angstrom): ",a.rms(b))
 	frcs = np.zeros(shape=(1,3))
 	for m in a.mols:
 		frc = tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
 		frcs=np.append(frcs,frc,axis=0)
-	print "RMS Force of crystal structures:",np.sqrt(np.sum(frcs*frcs,axis=(0,1))/(frcs.shape[0]-1))
+	print("RMS Force of crystal structures:",np.sqrt(np.sum(frcs*frcs,axis=(0,1))/(frcs.shape[0]-1)))
 	b.name = "OCSDB_Dist02_OPTd"
 	optimizer  = Optimizer(tfm)
 	for i,m in enumerate(b.mols):
 		m = optimizer.OptTFRealForce(m,str(i))
 	b.WriteXYZ()
-	print "A,B (optd) RMS (Angstrom): ",a.rms(b)
+	print("A,B (optd) RMS (Angstrom): ",a.rms(b))
 	return
 
 def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
@@ -184,8 +186,8 @@ def Brute_LJParams():
 	import scipy.optimize
 	rranges = (slice(-1000, 1000, 10), slice(0.5, 6, 0.25))
 	resbrute = scipy.optimize.brute(ins.LJFrc, rranges, full_output=True, finish=scipy.optimize.fmin)
-	print resbrute[0]
-	print resbrute[1]
+	print(resbrute[0])
+	print(resbrute[1])
 	# print ins.LJFrc(p)
 
 def QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
@@ -198,7 +200,7 @@ def QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test",
 			a = a.RotatedClone(numrot_)
 			a.Save(a.name+"_"+str(numrot_)+"rot")
 		TreatedAtoms = a.AtomTypes()
-		print "Number of Mols: ", len(a.mols)
+		print("Number of Mols: ", len(a.mols))
 		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
 		tset = TensorData_TFRecords(a,d)
 		tset.BuildTrainMolwise(set_,TreatedAtoms)
@@ -219,14 +221,14 @@ def TestForces():
 		for i, atom in enumerate(mol.atoms):
 			if atom == 7:
 				pforce = manager.evaluate(mol, i)
-				print "True force:", mol.properties["forces"][i], "Predicted force:", pforce
+				print("True force:", mol.properties["forces"][i], "Predicted force:", pforce)
 				err[ntest] = mol.properties["forces"][i] - pforce
 				ntest += 1
 				if ntest == 32000:
 					break
 		if ntest == 32000:
 			break
-	print "MAE:", np.mean(np.abs(err)), " Std:", np.std(np.abs(err))
+	print("MAE:", np.mean(np.abs(err)), " Std:", np.std(np.abs(err)))
 	# print err
 
 def MakeTestSet():
@@ -235,7 +237,7 @@ def MakeTestSet():
 	# c=MSet("SmallMols_test")
 	# c.Load()
 	TreatedAtoms = b.AtomTypes()
-	print "Number of train Mols: ", len(b.mols)
+	print("Number of train Mols: ", len(b.mols))
 	# print "Number of test Mols: ", len(c.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	train_set = TensorData_TFRecords(b,d)
@@ -249,7 +251,7 @@ def TestMetadynamics():
 	m = a.mols[0]
 	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-	print "Masses:", masses
+	print("Masses:", masses)
 	PARAMS["MDdt"] = 2.0
 	PARAMS["RemoveInvariant"]=True
 	PARAMS["MDMaxStep"] = 200
@@ -293,9 +295,9 @@ def TestTFGauSH():
 	tmp = TF_random_rotate(xyzstack, labelstack)
 	sess = tf.Session()
 	for i in range(a.mols[0].atoms.shape[0]):
-		print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
+		print(a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2])
 	new_xyzs, new_labels = sess.run(tmp)
-	print new_xyzs[0]
+	print(new_xyzs[0])
 
 def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
@@ -315,7 +317,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	a=MSet(set_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
-	print "Number of Mols: ", len(a.mols)
+	print("Number of Mols: ", len(a.mols))
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
 	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")

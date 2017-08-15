@@ -3,22 +3,24 @@
  This file contains routines to optimize an embedding
 """
 
-from Mol import *
-from Util import *
-from TensorData import *
-from TFInstance import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Mol import *
+from .Util import *
+from .TensorData import *
+from .TFInstance import *
 from scipy import optimize
 import os, sys, re, random, math, copy
 import numpy as np
 import cPickle as pickle
-import LinearOperations, DigestMol, Digest, Opt, Ipecac
+from . import LinearOperations, DigestMol, Digest, Opt, Ipecac
 
 class EmbeddingOptimizer:
 	"""
 	Provides an objective function to optimize an embedding, maximizing the reversibility of the embedding, and the distance the embedding predicts between molecules which are not equivalent in their geometry or stoiciometry.
 	"""
 	def __init__(self, method_, set_, dig_, OptParam_, OType_ = None, Elements_ = None):
-		print "Will produce an objective function to optimize basis parameters, and then optimize it"
+		print("Will produce an objective function to optimize basis parameters, and then optimize it")
 		self.method = method_
 		self.set = set_
 		self.dig = dig_
@@ -49,7 +51,7 @@ class EmbeddingOptimizer:
 			if self.elements == None:
 				raise Exception("KRR optimization requires setting Elements_ for the EmbeddingOptimizer.")
 			self.TreatedAtoms = self.set.AtomTypes()
-			print "Optimizing based off ", self.OType, " using elements"
+			print("Optimizing based off ", self.OType, " using elements")
 		return
 
 	def SetBasisParams(self,basisParams_):
@@ -62,7 +64,7 @@ class EmbeddingOptimizer:
 			raise Exception("Not yet implemented for ANI1")
 		S_Rad = MolEmb.Overlap_RBF(PARAMS)
 		PARAMS["SRBF"] = MatrixPower(S_Rad,-1./2)
-		print "Eigenvalue Overlap Error: ", (1/np.amin(np.linalg.eigvals(S_Rad)))/1.e6
+		print("Eigenvalue Overlap Error: ", (1/np.amin(np.linalg.eigvals(S_Rad)))/1.e6)
 		return np.abs((1/np.amin(np.linalg.eigvals(S_Rad)))/1.e6)
 		#return 0.0
 
@@ -82,7 +84,7 @@ class EmbeddingOptimizer:
 		OtherDistances = 0.0
 		for i in range(len(self.DistortMols)):
 			SelfDistances += self.Mols[i].rms_inv(resultmols[i])
-			print SelfDistances
+			print(SelfDistances)
 			for j in range(len(self.DistortMols)):
 				if (i != j and len(self.Mols[i].atoms)==len(self.Mols[j].atoms)):
 					OtherDistances += np.exp(-1.0*self.Mols[i].rms_inv(resultmols[j]))
@@ -108,9 +110,9 @@ class EmbeddingOptimizer:
 	def PerformOptimization(self):
 		prm0 = PARAMS["RBFS"][:PARAMS["SH_NRAD"]].flatten()
 		# prm0 = np.array((PARAMS["ANES"][0], PARAMS["ANES"][5], PARAMS["ANES"][6], PARAMS["ANES"][7]))
-		print prm0
+		print(prm0)
 
-		print "Optimizing RBFS."
+		print("Optimizing RBFS.")
 		if (self.method == "Ipecac"):
 			obj = lambda x: self.Ipecac_Objective(x)
 		elif (self.method == "KRR"):
@@ -123,8 +125,8 @@ class EmbeddingOptimizer:
 	def BasinHopping(self):
 		prm0 = PARAMS["RBFS"][:PARAMS["SH_NRAD"]].flatten()
 		# prm0 = np.array((PARAMS["ANES"][0], PARAMS["ANES"][5], PARAMS["ANES"][6], PARAMS["ANES"][7]))
-		print prm0
-		print "Optimizing RBFS."
+		print(prm0)
+		print("Optimizing RBFS.")
 		if (self.method == "Ipecac"):
 			obj = lambda x: self.Ipecac_Objective(x)
 		elif (self.method == "KRR"):

@@ -1,8 +1,10 @@
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Util import *
 import numpy as np
 import random, math
 import MolEmb, Electrostatics
-from LinearOperations import *
+from .LinearOperations import *
 
 class Mol:
 	""" Provides a general purpose molecule"""
@@ -198,7 +200,7 @@ class Mol:
 					self.coords[i,2]=scitodeci(line[3])
 			f.close()
 		except Exception as Ex:
-			print "Read Failed.", Ex
+			print("Read Failed.", Ex)
 			raise Ex
 		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
 			self.CalculateAtomization()
@@ -431,13 +433,13 @@ class Mol:
 						perm[j] = i
 						tmp_coords=tmp_coords[perm]
 						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
-						print np.linalg.norm(self.DistMatrix - tmp_dm)
+						print(np.linalg.norm(self.DistMatrix - tmp_dm))
 						steps = steps+1
-				print i
+				print(i)
 			k+=1
 		m.coords=tmp_coords.copy()
-		print "best",tmp_coords
-		print "self",self.coords
+		print("best",tmp_coords)
+		print("self",self.coords)
 		self.WriteInterpolation(Mol(self.atoms,tmp_coords),9999)
 		return
 
@@ -452,7 +454,7 @@ class Mol:
 	def GoEnergy(self,x):
 		''' The GO potential enforces equilibrium bond lengths. This is the lennard jones soft version'''
 		if (self.DistMatrix is None):
-			print "Build DistMatrix"
+			print("Build DistMatrix")
 			raise Exception("dmat")
 		xmat = np.array(x).reshape(self.NAtoms(),3)
 		newd = MolEmb.Make_DistMat(xmat)
@@ -480,7 +482,7 @@ class Mol:
 
 	def NumericGoHessian(self):
 		if (self.DistMatrix==None):
-			print "Build DistMatrix"
+			print("Build DistMatrix")
 			raise Exception("dmat")
 		disp=0.001
 		hess=np.zeros((self.NAtoms()*3,self.NAtoms()*3))
@@ -535,7 +537,7 @@ class Mol:
 
 	def SoftCutGoForce(self, cutdist=6):
 		if (self.DistMatrix==None):
-			print "Build DistMatrix"
+			print("Build DistMatrix")
 			raise Exception("dmat")
 		forces = np.zeros((self.NAtoms(),3))
 		for i in range(len(self.coords)):
@@ -547,7 +549,7 @@ class Mol:
 		forces = np.zeros((self.NAtoms(),3))
 		TmpForce = np.zeros((self.NAtoms(), ngrid*ngrid*ngrid,3),dtype=np.float)
 		for i in range (0, self.NAtoms()):
-			print "Atom: ", i
+			print("Atom: ", i)
 			save_i = self.coords[i].copy()
 			samps=MakeUniform(self.coords[i],maxstep,ngrid)
 			for m in range (0, samps.shape[0]):
@@ -585,7 +587,7 @@ class Mol:
 		Ps = self.POfAtomMoves(GRIDS.MyGrid(),ii)
 		Pc = np.dot(GRIDS.MyGrid().T,Ps)
 		if (Print):
-			print "Desired Displacement", Pc  # should equal the point for a Go-Model at equilibrium
+			print("Desired Displacement", Pc)  # should equal the point for a Go-Model at equilibrium
 		V=GRIDS.Vectorize(Ps)#,True)
 		out = np.zeros(shape=(1,GRIDS.NGau3+3))
 		out[0,:GRIDS.NGau3]+=V
@@ -633,7 +635,7 @@ class Mol:
 					forces[j,k] = float(read_forces[j*3+k])
 			self.properties['forces'] = forces
 		except Exception as Ex:
-			print "Reading Force Failed.", Ex
+			print("Reading Force Failed.", Ex)
 
 	def MMFF94FromXYZ(self, path):
 		"""
@@ -653,7 +655,7 @@ class Mol:
 					forces[j,k] = float(read_forces[j*3+k])
 			self.properties['mmff94forces'] = forces
 		except Exception as Ex:
-			print "Reading MMFF94 Force Failed.", Ex
+			print("Reading MMFF94 Force Failed.", Ex)
 
 	def ChargeFromXYZ(self, path):
 		"""
@@ -671,7 +673,7 @@ class Mol:
 				charges[j] = float(read_charges[j])
 			self.properties['mulliken'] = charges
 		except Exception as Ex:
-			print "Reading Charges Failed.", Ex
+			print("Reading Charges Failed.", Ex)
 
 
 	def EnergyFromXYZ(self, path):
@@ -685,7 +687,7 @@ class Mol:
 			energy = float((lines[1].strip().split(';'))[0])
 			self.properties['energy'] = energy
 		except Exception as Ex:
-			print "Reading Energy Failed.", Ex
+			print("Reading Energy Failed.", Ex)
 
 	def MakeBonds(self):
 		self.BuildDistanceMatrix()

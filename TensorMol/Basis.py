@@ -2,10 +2,12 @@
 Loads and handles basis sets for embeddings
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os, sys, re, random, math, copy
 import numpy as np
 import cPickle as pickle
-import LinearOperations, DigestMol, Digest, Opt, Ipecac
+from . import LinearOperations, DigestMol, Digest, Opt, Ipecac
 
 class Basis:
 	def __init__(self, Name_ = None):
@@ -14,7 +16,7 @@ class Basis:
 		self.params = None
 
 	def Load(self, filename=None):
-		print "Unpickling Basis Set"
+		print("Unpickling Basis Set")
 		if filename == None:
 			filename = self.name
 		f = open(self.path+filename+".tmb","rb")

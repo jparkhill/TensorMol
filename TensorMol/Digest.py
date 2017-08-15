@@ -1,9 +1,11 @@
-from Mol import *
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Mol import *
+from .Util import *
 import os,sys,re
 import numpy as np
 import cPickle as pickle
-import LinearOperations
+from . import LinearOperations
 if (HAS_EMB):
 	import MolEmb
 
@@ -190,7 +192,7 @@ class Digester:
 				ens_ = mol_.EnergiesOfAtomMoves(xyz_,at_)
 				if (ens_==None):
 					raise Exception("Empty energies...")
-				print ens_.min(), ens_.max()
+				print(ens_.min(), ens_.max())
 				Es=ens_-ens_.min()
 				Boltz=np.exp(-1.0*Es/PARAMS["KAYBEETEE"])
 				rnds = np.random.rand(len(xyz_))

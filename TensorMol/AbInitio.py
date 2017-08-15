@@ -1,14 +1,16 @@
 """
 Routines for running external Ab-Initio packages to get shit out of mol.py
 """
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Util import *
 import numpy as np
 import random, math, subprocess
-import Mol
+from . import Mol
 
 def PyscfDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
 	if (not HAS_PYSCF):
-		print "Missing PYSCF"
+		print("Missing PYSCF")
 		return 0.0
 	mol = gto.Mole()
 	pyscfatomstring=""
@@ -193,9 +195,9 @@ def PullFreqData():
 			m.properties["energy"] = en
 			return en
 		except Exception as Ex:
-			print "PYSCF Calculation error... :",Ex
-			print "Mol.atom:", mol.atom
-			print "Pyscf string:", pyscfatomstring
+			print("PYSCF Calculation error... :",Ex)
+			print("Mol.atom:", mol.atom)
+			print("Pyscf string:", pyscfatomstring)
 			return 0.0
 			#raise Ex
 		return

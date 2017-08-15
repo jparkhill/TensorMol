@@ -5,7 +5,9 @@ Changes that need to be made:
  - This needs to be a child of the ordinary optimizer class.
 """
 
-from NN_MBE import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .NN_MBE import *
 
 class MBE_Optimizer:
     def __init__(self,nn_mbe_):
@@ -34,7 +36,7 @@ class MBE_Optimizer:
     		if step==0:
     			old_force =force
     		force = (1-self.momentum)*force + self.momentum*old_force
-		print "force:", force
+		print("force:", force)
     		old_force =force
     		energy = m.nn_energy
     		energy_his.append(energy)
@@ -47,9 +49,9 @@ class MBE_Optimizer:
     		#self.nn_mbe.NN_Energy(m)
     		energy_err = abs(m.nn_energy - energy)
     		force_err = (np.absolute(force)).max()
-    		print "\n\n"
-    		print "step:", step
-    		print "old_energy:", energy, "new_energy:", m.nn_energy, "energy_err:", energy_err
+    		print("\n\n")
+    		print("step:", step)
+    		print("old_energy:", energy, "new_energy:", m.nn_energy, "energy_err:", energy_err)
     		if (step%10 == 0):
     			m.WriteXYZfile("./results/", "OptLog")
     	np.savetxt("gd_opt_no_momentum.dat", np.asarray(energy_his))
@@ -75,7 +77,7 @@ def MBE_LBFGS_Opt(self, m):
             	force_his.append(force.reshape(force.shape[0]*force.shape[1]))
             	coord_his.pop(0)
             	coord_his.append(coords.reshape(coords.shape[0]*coords.shape[1]))
-		print "force:", force
+		print("force:", force)
 		q = (force.reshape(force.shape[0]*force.shape[1])).copy()
             for i in range (len(force_his)-1, 0, -1):
                 s=coord_his[i] - coord_his[i-1]
@@ -96,7 +98,7 @@ def MBE_LBFGS_Opt(self, m):
                 	beta = rho*(force_his[i] - force_his[i-1]).dot(z)
                		z = z + s*(a -beta)
     		z = z.reshape((m.NAtoms(), -1))
-    		print "z: ",z
+    		print("z: ",z)
             energy = m.nn_energy
             energy_his.append(energy)
             m.coords = m.coords - self.step_size*z
@@ -105,9 +107,9 @@ def MBE_LBFGS_Opt(self, m):
             energy_err = abs(m.nn_energy - energy)
             force_err = (np.absolute(force)).max()
             step += 1
-            print "\n"
-            print "step:", step
-            print "old_energy:", energy, "new_energy:", m.nn_energy, "energy_err:", energy_err
+            print("\n")
+            print("step:", step)
+            print("old_energy:", energy, "new_energy:", m.nn_energy, "energy_err:", energy_err)
             if (step%50 == 0):
                 m.WriteXYZfile("./datasets/", "OptLog")
 		np.savetxt("lbfgs_opt.dat", np.asarray(energy_his))

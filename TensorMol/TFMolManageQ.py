@@ -4,9 +4,11 @@ The manager will now direct the training set to generate batches
 and manage a random queue to accept those batches.
  THIS WHOLE THING IS BASICALLY NOT WORKING AND UNAPPROACHED
 """
-from TFManage import *
-from TensorMolData import *
-from TFMolInstance import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .TFManage import *
+from .TensorMolData import *
+from .TFMolInstance import *
 import numpy as np
 import gc
 
@@ -83,7 +85,7 @@ class TFMolQManage(TFMolManage):
 			cases[casep:casep+1] += ins
 			cases_deri[casep:casep+1]=embed_deri
 			casep += 1
-		print "evaluating order:", self.TData.order
+		print("evaluating order:", self.TData.order)
 		nn, nn_deri=self.Eval(cases)
 		mean, std = self.TData.Get_Mean_Std()
 		nn = nn*std+mean

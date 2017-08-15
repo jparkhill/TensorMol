@@ -1,6 +1,7 @@
 # To make TensorMol available.
 # pip install -e .
 
+from __future__ import absolute_import
 from distutils.core import setup, Extension
 import numpy
 import os

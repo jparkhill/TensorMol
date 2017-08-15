@@ -6,10 +6,12 @@
 # but otherwise the behavior of these is the same as Tensordata etc.
 #
 #
+from __future__ import absolute_import
+from __future__ import print_function
 import os, gc
-from Sets import *
-from DigestMol import *
-from TensorMolData import *
+from .Sets import *
+from .DigestMol import *
+from .TensorMolData import *
 
 
 class TensorMolData_BP_Multipole(TensorMolData_BP):
@@ -149,7 +151,7 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			if not np.all(np.isfinite(ins)):
-				print "find a bad case, writting down xyz.."
+				print("find a bad case, writting down xyz..")
 				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
@@ -540,7 +542,7 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			if not np.all(np.isfinite(ins)):
-				print "find a bad case, writting down xyz.."
+				print("find a bad case, writting down xyz..")
 				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
