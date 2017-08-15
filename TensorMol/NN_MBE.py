@@ -34,6 +34,8 @@ class NN_MBE_Linear:
 	def __init__(self,tfm_=None):
 		self.mbe_order = PARAMS["MBE_ORDER"]
 		self.nn_mbe = tfm_
+		self.max_num_frags = None
+		self.nnz_frags = None
 		return
 
 	def EnergyForceDipole(self, N_MB):
@@ -41,6 +43,7 @@ class NN_MBE_Linear:
 		MBE_C = []
 		MBE_Index = []
 		NAtom = []
+		self.max_num_frags = N_MB.nf + N_MB.nf*(N_MB.nf-1)/2 + N_MB.nf*(N_MB.nf-1)*(N_MB.nf-2)/6  # set the max_frag to include all possible dimers and trimers
 		if self.mbe_order >= 1:
 			for i in range (N_MB.nf):
 				natom = np.count_nonzero(N_MB.singz[i])
@@ -65,8 +68,12 @@ class NN_MBE_Linear:
 		if  self.mbe_order >= 4:
 			raise Exception("Linear MBE only implemented up to order 3")
 		MBE_C = np.asarray(MBE_C)
+		self.nnz_frags = MBE_C.shape[0]
+		for dummy_index in range(self.nnz_frags, self.max_num_frags):
+			eval_set.mols.append(Mol(np.zeros((1), dtype=np.uint8),np.zeros((1,3),dtype=float)))
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = self.nn_mbe.EvalBPDirectEESet(eval_set, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-		E_mbe = np.sum(Etotal*MBE_C)
+		print ("Etotal:", Etotal, " self.nnz_frags:",self.nnz_frags)
+		E_mbe = np.sum(Etotal[:self.nnz_frags]*MBE_C)
 		gradient_mbe = np.zeros((N_MB.nt,3))
 		atom_charge_mbe = np.zeros((N_MB.nt))
 		for i, index in enumerate(MBE_Index):

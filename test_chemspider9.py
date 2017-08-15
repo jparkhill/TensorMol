@@ -82,10 +82,12 @@ def TrainPrepare():
 		RIMP2Atom={}
 		RIMP2Atom[1]=-0.4998098112
 		RIMP2Atom[8]=-74.9659650581
-                a = MSet("H2O_augmented_more_rimp2_force_dipole")
+                a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
                 dic_list_1 = pickle.load(open("./datasets/H2O_augmented_more_cutoff5_rimp2_force_dipole.dat", "rb"))
 		dic_list_2 = pickle.load(open("./datasets/H2O_long_dist_pair.dat", "rb"))
-		dic_list = dic_list_1 + dic_list_2
+		dic_list_3 = pickle.load(open("./datasets/H2O_metady_bowl02.dat", "rb"))
+		dic_list = dic_list_1 + dic_list_2 + dic_list_3
+		random.shuffle(dic_list)
                 for dic in dic_list:
                         atoms = []
                         for atom in dic['atoms']:
@@ -102,8 +104,28 @@ def TrainPrepare():
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
                         a.mols.append(mol)
-		print "number of mols:", len(a.mols)
+
+		b = MSet("H2O_bowl02_rimp2_force_dipole")
+                for dic in dic_list_3:
+                        atoms = []
+                        for atom in dic['atoms']:
+                                atoms.append(AtomicNumber(atom))
+                        atoms = np.asarray(atoms, dtype=np.uint8)
+                        mol = Mol(atoms, dic['xyz'])
+                        mol.properties['mul_charges'] = dic['mul_charges']
+                        mol.properties['dipole'] = dic['dipole']
+			mol.properties['scf_dipole'] = dic['scf_dipole']
+                        mol.properties['energy'] = dic['energy']
+			mol.properties['scf_energy'] = dic['scf_energy']
+                        mol.properties['gradients'] = dic['gradients']
+			mol.properties['atomization'] = dic['energy']
+			for i in range (0, mol.NAtoms()):
+				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
+                        b.mols.append(mol)
+		print "number of a mols:", len(a.mols)
+		print "number of b mols:", len(b.mols)
                 a.Save()
+		b.Save()
 		
 
 	if (0):
@@ -313,7 +335,7 @@ def TrainForceField():
 
 	#New radius: 8 A and long distance pair
 
-        if (1):
+        if (0):
                 a = MSet("H2O_augmented_more_rimp2_force_dipole")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
@@ -342,6 +364,40 @@ def TrainForceField():
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
                 #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
                 manager.Train()
+
+
+        if (1):
+		#New radius: 8 A and long distance pair and bowl potential with K=0.2
+                #a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
+		a =  MSet("H2O_bowl02_rimp2_force_dipole")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 901
+                PARAMS["batch_size"] = 1000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScaler"] = 1.0
+		PARAMS["DipoleScaler"]=1.0
+                PARAMS["NeuronType"] = "relu"
+                PARAMS["HiddenLayers"] = [200, 200, 200]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 7.0
+		PARAMS["AN1_r_Rc"] = 8.0
+		PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["Erf_Width"] = 0.4
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 100
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+                manager.Train()
+
 
 	# With Chemspider9 Metadyn
         if (0):
@@ -511,7 +567,7 @@ def EvalForceField():
 
 
 
-	if (0):
+	if (1):
 		a=MSet("NeigborMB_test", center_=False)
 		a.ReadXYZ("NeigborMB_test")
 		TreatedAtoms = a.AtomTypes()
@@ -562,13 +618,15 @@ def EvalForceField():
 		mbe =  NN_MBE_Linear(manager)
 		def EnAndForce(x_):
                         m.coords = x_
-			MBEterms.Update(m.coords, 20.0, 20.0)
+			MBEterms.Update(m.coords, 10, 10)
                         Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
                         energy = Etotal
                         force = gradient
                         return energy, force
 
                 EnergyForceField = lambda x: EnAndForce(x)
+		print EnergyForceField(m.coords)
+		raise Exception("Stop here for debugging")
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(m)
 
@@ -627,7 +685,7 @@ def EvalForceField():
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
-	if (1):
+	if (0):
 		os.environ["CUDA_VISIBLE_DEVICES"]="0"
 		a = MSet("chemspider9_metady_force")
 		a.Load()
@@ -732,5 +790,5 @@ def TestMetadynamics(mset_name_, name_, threads_):
 #TestCoulomb()
 #TrainPrepare()
 #TrainForceField()
-#EvalForceField()
-TestMetadynamics("H2O_Trimer")
+EvalForceField()
+#TestMetadynamics("H2O_Trimer")
