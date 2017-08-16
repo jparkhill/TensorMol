@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
@@ -51,7 +53,7 @@ if (0):
 	with tf.Session() as session:
 	        session.run(init)
 	        GM = session.run(tf.gradients(TFSymSet(xyz, Z, eles, SFPr, Rr_cut, eleps, SFPa, Ra_cut), xyz))
-	        print (GM, GM[0].shape)
+	        print((GM, GM[0].shape))
 
 if (0):
 	mset = MSet("H2O_augmented_more_cutoff5")
@@ -69,19 +71,19 @@ if (0):
                 xyzs[i][:mol.NAtoms()] = mol.coords
                 Zs[i][:mol.NAtoms()] = mol.atoms
 		nnz_atom[i] = mol.NAtoms()
-	print xyzs, nnz_atom, Zs
+	print(xyzs, nnz_atom, Zs)
 	NL = NeighborListSet(xyzs, nnz_atom, True, True, Zs)
 	rad_p, ang_t = NL.buildPairsAndTriples(4.6, 3.1)
-	print ("rad_p:", rad_p, " ang_t:", ang_t)
+	print(("rad_p:", rad_p, " ang_t:", ang_t))
 
 if (1):
 	mset=MSet("NeigborMB_test")
 	mset.ReadXYZ("NeigborMB_test")
 	MBEterms = MBNeighbors(mset.mols[0].coords, mset.mols[0].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
 	MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
-	print MBEterms.singC
-	print MBEterms.pairC
-	print MBEterms.tripC
+	print(MBEterms.singC)
+	print(MBEterms.pairC)
+	print(MBEterms.tripC)
 	#print MBEterms.pairs
 	#print MBEterms.trips
 	#print MBEterms.pairz

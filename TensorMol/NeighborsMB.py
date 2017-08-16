@@ -4,6 +4,7 @@ Requires a list of atom fragments, prepared by the user or MSet::ToFragments
 TODO: extend to triples.
 """
 
+from __future__ import absolute_import
 import numpy as np
 from MolEmb import Make_NListNaive, Make_NListLinear, Make_DistMat
 
@@ -99,7 +100,7 @@ class MBNeighbors:
 							if (k != None):
 								if ThreeBodyPairs[i][k] in ThreeBodyPairs[ThreeBodyPairs[i][j]]:
 									self.tripi.add(tuple(sorted([i,ThreeBodyPairs[i][j],ThreeBodyPairs[i][k]])))
-		DistMatrix = Make_DistMat(self.x)	
+		DistMatrix = Make_DistMat(self.x)
 		self.ntrip = len(self.tripi)
 		self.npair = len(self.pairi)
 		#print "num pairs", self.npair
@@ -114,7 +115,7 @@ class MBNeighbors:
 		self.tripC = np.ones(self.ntrip)
 		self.singI = self.frags
 		self.pairI = []
-		self.tripI = [] 
+		self.tripI = []
 		self.pairs = np.zeros((self.npair,self.maxnatom,3))
 		self.trips = np.zeros((self.ntrip,self.maxnatom,3))
 		self.pairz = np.zeros((self.npair,self.maxnatom), dtype=np.uint8)

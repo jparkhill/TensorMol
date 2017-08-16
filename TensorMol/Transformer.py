@@ -1,8 +1,12 @@
-from Mol import *
-from Util import *
-import numpy,os,sys,re
-import cPickle as pickle
-import LinearOperations
+from __future__ import absolute_import
+from .Mol import *
+from .Util import *
+import os,sys,re
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
+from . import LinearOperations
 
 class Transformer:
 	"""
@@ -86,7 +90,7 @@ class Transformer:
 		return (ins - self.inmin)/(self.inmax-self.inmin)
 
 	def AssignOutMeanStd(self, outs):
-		outs = outs[~np.all(np.equal(a, 0), axis=2)]
+		outs = outs[~np.all(np.equal(outs, 0), axis=2)]
 		self.outmean = np.mean(outs)
 		self.outstd = np.std(outs)
 

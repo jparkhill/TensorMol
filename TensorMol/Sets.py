@@ -1,14 +1,19 @@
 #
 # A molecule set is not a training set.
 #
-from Mol import *
-from MolGraph import *
-from Util import *
-from MolFrag import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Mol import *
+from .MolGraph import *
+from .Util import *
+from .MolFrag import *
 import numpy as np
 import os,sys,re,copy,time
-import cPickle as pickle
-
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
+	
 class MSet:
 	""" A molecular database which
 		provides structures """
@@ -53,7 +58,7 @@ class MSet:
 		Returns:
 			A set containing distorted versions of the original set.
 		'''
-		print "Making distorted clone of:", self.name
+		print("Making distorted clone of:", self.name)
 		s = MSet(self.name+"_NEQ")
 		ord = range(len(self.mols))
 		if(random):
@@ -72,7 +77,7 @@ class MSet:
 		Rotate every molecule NRots Times.
 		We should toss some reflections in the mix too...
 		"""
-		print "Making Rotated clone of:", self.name
+		print("Making Rotated clone of:", self.name)
 		s = MSet(self.name)
 		ord = range(len(self.mols))
 		if(random):
@@ -87,7 +92,7 @@ class MSet:
 
 	def DistortedClone(self, NDistorts=1, random=True):
 			''' Create a distorted copy of a set'''
-			print "Making distorted clone of:", self.name
+			print("Making distorted clone of:", self.name)
 			s = MSet(self.name+"_NEQ")
 			ord = range(len(self.mols))
 			if(random):
@@ -248,8 +253,8 @@ class MSet:
 
 	def Statistics(self):
 		""" Return some energy information about the samples we have... """
-		print "Set Statistics----"
-		print "Nmol: ", len(self.mols)
+		print("Set Statistics----")
+		print("Nmol: ", len(self.mols))
 		sampfrac = 0.1;
 		np.random.seed(int(time.time()))
 		ord=np.random.permutation(int(len(self.mols)*sampfrac))
@@ -266,9 +271,9 @@ class MSet:
 				tmp = MolEmb.Make_DistMat(self.mols[j].coords) - self.mols[j].DistMatrix
 				rmsd[n] = np.sum(tmp*tmp)/len(self.mols[j].coords)
 				n=n+1
-		print "Mean and Std. Energy", np.average(ens), np.std(ens)
-		print "Energy Histogram", np.histogram(ens, 100)
-		print "RMSD Histogram", np.histogram(rmsd, 100)
+		print("Mean and Std. Energy", np.average(ens), np.std(ens))
+		print("Energy Histogram", np.histogram(ens, 100))
+		print("RMSD Histogram", np.histogram(rmsd, 100))
 		return
 
 	def Clean_GDB9(self):
@@ -276,9 +281,9 @@ class MSet:
 		s.path = self.path
 		for mol in self.mols:
 			if float('inf') in mol.Bonds_Between:
-				print "disconnected atoms in mol.. discard"
+				print("disconnected atoms in mol.. discard")
 			elif -1 in mol.bond_type or 0 in mol.bond_type:
-				print "allowed bond type in mol... discard"
+				print("allowed bond type in mol... discard")
 			else:
 				s.mols.append(mol)
 		return s
@@ -286,7 +291,7 @@ class MSet:
 	def Calculate_vdw(self):
 		for mol in self.mols:
 			mol.Calculate_vdw()
-			print "atomization:", mol.atomization, " vdw:", mol.vdw
+			print("atomization:", mol.atomization, " vdw:", mol.vdw)
 		return
 
 	def WriteSmiles(self):
@@ -486,7 +491,7 @@ class GraphSet(MSet):
 		return
 
 	def Save(self):
-		print "Saving set to: ", self.path+self.name+self.suffix
+		print("Saving set to: ", self.path+self.name+self.suffix)
 		f=open(self.path+self.name+self.suffix,"wb")
 		pickle.dump(self.__dict__, f, protocol=1)
 		f.close()
@@ -497,7 +502,7 @@ class GraphSet(MSet):
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()
-		print "Loaded, ", len(self.mols), " molecules "
-		print self.NAtoms(), " Atoms total"
-		print self.AtomTypes(), " Types "
+		print("Loaded, ", len(self.mols), " molecules ")
+		print(self.NAtoms(), " Atoms total")
+		print(self.AtomTypes(), " Types ")
 		return

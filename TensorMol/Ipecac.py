@@ -4,12 +4,17 @@
  Ie: it's the inverse of Digest.py
 """
 
-from Mol import *
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Mol import *
+from .Util import *
 import os, sys, re, random, math, copy, itertools
 import numpy as np
-import cPickle as pickle
-import LinearOperations, DigestMol, Digest, Opt
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
+from . import LinearOperations, DigestMol, Digest, Opt
 from scipy import optimize
 
 class Ipecac:
@@ -72,7 +77,7 @@ class Ipecac:
 			def callbk(x_):
 				mn = Mol(atoms, x_.reshape(natoms,3))
 				mn.BuildDistanceMatrix()
-				print "Distance error : ", np.sqrt(np.sum((GdDistMatrix-mn.DistMatrix)*(GdDistMatrix-mn.DistMatrix)))
+				print("Distance error : ", np.sqrt(np.sum((GdDistMatrix-mn.DistMatrix)*(GdDistMatrix-mn.DistMatrix))))
 		import scipy.optimize
 		step = 0
 		res=optimize.minimize(objective,coords.reshape(natoms*3),method='L-BFGS-B',tol=1.e-12,options={"maxiter":5000000,"maxfun":10000000},callback=callbk)
@@ -91,7 +96,7 @@ class Ipecac:
 		return mfit
 
 	def BruteForceAtoms(self, mol_, emb_):
-		print "Searching for best atom fit"
+		print("Searching for best atom fit")
 		bestmol = copy.deepcopy(mol_)
 		besterr = 100.0
 		# posib_stoich = [x for x in itertools.product([1,6,7,8], repeat=len(mol_.atoms))]
@@ -102,8 +107,8 @@ class Ipecac:
 			if tmperr < besterr:
 				bestmol = copy.deepcopy(tmpmol)
 				besterr = tmperr
-				print besterr
-		print bestmol.atoms
+				print(besterr)
+		print(bestmol.atoms)
 		return bestmol.atoms
 
 	def EmbAtomwiseErr(self, mol_,emb_):
@@ -114,4 +119,4 @@ class Ipecac:
 
 	def DistanceErr(self, GdDistMatrix_, mol_):
 		mol_.BuildDistanceMatrix()
-		print "Final Distance error : ", np.sqrt(np.sum((GdDistMatrix_-mol_.DistMatrix)*(GdDistMatrix_-mol_.DistMatrix)))
+		print("Final Distance error : ", np.sqrt(np.sum((GdDistMatrix_-mol_.DistMatrix)*(GdDistMatrix_-mol_.DistMatrix))))

@@ -19,6 +19,8 @@
 Violators are subject to having their code and reproductive fitness mocked publically in comments.
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol.Util import *
 from TensorMol.PhysicalData import *
 from TensorMol.Sets import *

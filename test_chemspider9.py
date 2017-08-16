@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
@@ -50,7 +52,7 @@ def TrainPrepare():
 				mol.properties['atomization'] -= B3LYP631GstarAtom[mol.atoms[i]]
                         a.mols.append(mol)
 		a.mols[100].WriteXYZfile(fname="metady_test")
-		print a.mols[100].properties
+		print(a.mols[100].properties)
                 a.Save()
 
 
@@ -122,8 +124,8 @@ def TrainPrepare():
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
                         b.mols.append(mol)
-		print "number of a mols:", len(a.mols)
-		print "number of b mols:", len(b.mols)
+		print("number of a mols:", len(a.mols))
+		print("number of b mols:", len(b.mols))
                 a.Save()
 		b.Save()
 		
@@ -135,13 +137,13 @@ def TrainPrepare():
 		for i, mol in enumerate(a.mols):
 			rmsgrad[i] = (np.sum(np.square(mol.properties['gradients'])))**0.5
 		meangrad = np.mean(rmsgrad)
-		print "mean:", meangrad, "std:", np.std(rmsgrad)
+		print("mean:", meangrad, "std:", np.std(rmsgrad))
 		np.savetxt("chemspider9_force_dist.dat", rmsgrad)
 		for i, mol in enumerate(a.mols):
                         rmsgrad = (np.sum(np.square(mol.properties['gradients'])))**0.5
 			if 2 > rmsgrad > 1.5:
 				mol.WriteXYZfile(fname="large_force")
-				print rmsgrad
+				print(rmsgrad)
 
 	if (0):
 		a = MSet("chemspider9_force")
@@ -159,7 +161,7 @@ def TrainPrepare():
 	if (0):
 		a = MSet("chemspider9_force")
 		a.Load()
-		print a.mols[0].properties
+		print(a.mols[0].properties)
 		a.mols[0].WriteXYZfile(fname="test")
 
 def TrainForceField():
@@ -625,7 +627,7 @@ def EvalForceField():
                         return energy, force
 
                 EnergyForceField = lambda x: EnAndForce(x)
-		print EnergyForceField(m.coords)
+		print(EnergyForceField(m.coords))
 		raise Exception("Stop here for debugging")
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(m)
