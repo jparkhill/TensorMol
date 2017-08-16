@@ -301,8 +301,8 @@ def TestTFGauSH():
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	new_xyzs = sess.run(tmp)
-	print new_xyzs
+	tmp2, tmp3 = sess.run(tmp)
+	print np.allclose(tmp2, tmp3)
 
 def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
@@ -348,5 +348,5 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
-# train_forces_GauSH_direct("SmallMols_rand")
+# TestTFGauSH()
+train_forces_GauSH_direct("chemspider_all_60_rand")

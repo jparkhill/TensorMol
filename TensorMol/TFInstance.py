@@ -757,7 +757,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.TData.LoadDataToScratch(self.tformer)
 
 	def compute_normalization_constants(self):
-		batch_data = self.TData.GetTrainBatch(4*self.batch_size)
+		batch_data = self.TData.GetTrainBatch(self.batch_size)
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
 		embedding_list, labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, Zs, rotated_labels,
@@ -781,7 +781,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
 			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
-			l_max = tf.Variable(self.l_max, trainable=False, dtype=tf.int32)
+			l_max = tf.constant(self.l_max, dtype=tf.int32)
 			embed_stats = []
 			for i in range(len(self.element)):
 				embed_stats.append([tf.stack(self.embed_stats[i][0]), tf.stack(self.embed_stats[i][1])])

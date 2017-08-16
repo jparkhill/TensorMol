@@ -1493,16 +1493,12 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 	return rlist, indexlist
 
 def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors):
-	r_nought = tf.expand_dims(gaussian_params[:,0], axis=0)
-	sigma = tf.expand_dims(gaussian_params[:,1], axis=0)
-	exponent = ((r - r_nought) ** 2.0) / (-2.0 * (sigma ** 2))
+	exponent = ((r - gaussian_params[:,0]) ** 2.0) / (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	gaussian_embed = tf.where(tf.tile(tf.not_equal(r, 0), [1,1,1,tf.shape(gaussian_params)[0]]), gaussian_embed, tf.zeros_like(gaussian_embed))
+	gaussian_embed *= tf.where(tf.not_equal(r, 0), tf.ones_like(r), tf.zeros_like(r))
 	atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=eval(PARAMS["tf_prec"])), atomic_embed_factors], axis=0)
-	element_embed_factor = tf.tile(tf.expand_dims(tf.gather(atomic_embed_factor, tf.tile(tf.expand_dims(Zs, axis=1),
-							[1,tf.shape(Zs)[1],1])), axis=-1), [1,1,1,tf.shape(gaussian_params)[0]])
-	element_scaled_gaussians = gaussian_embed * element_embed_factor
-	return element_scaled_gaussians
+	element_embed_factor = tf.expand_dims(tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=1), axis=-1)
+	return gaussian_embed * element_embed_factor
 
 def TF_spherical_harmonics_0(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
 	return tf.fill(tf.shape(inverse_distance_tensor), tf.constant(0.28209479177387814, dtype=eval(PARAMS["tf_prec"])))
