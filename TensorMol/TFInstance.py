@@ -779,8 +779,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]))
 			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
-			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
 			l_max = tf.Variable(self.l_max, trainable=False, dtype=tf.int32)
 			embed_stats = []
 			for i in range(len(self.element)):
