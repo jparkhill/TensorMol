@@ -1576,7 +1576,6 @@ def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params,
 		distance_tensor = tf.norm(delta_xyzs,axis=3)
 		atom_scaled_gaussians = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors)
 		spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
-	return atom_scaled_gaussians
 	embedding = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_mols * max_num_atoms, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
 	embedding_list = []
