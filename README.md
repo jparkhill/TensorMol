@@ -29,7 +29,10 @@ By using this software you agree to the terms in COPYING
 ```
 git clone https://github.com/jparkhill/TensorMol.git
 cd TensorMol
+# If you are using python2x
 sudo pip install -e .
+# If you are using python3x
+sudo pip3 install -e . 
 python test.py
 ```
 

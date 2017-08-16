@@ -600,7 +600,7 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
 			if (self.dig.OType  == "Multipole2"):
 				labels[i] = mol.properties["dipole"]*AUPERDEBYE
 			else:
-                        	raise Exception("Output Type is not implemented yet")
+				raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
 				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
@@ -635,7 +635,7 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
 		self.NTrain = self.LastTrainMol
-                self.NTest = self.NTestMols
+		self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
 		self.ScratchState = 1
@@ -670,11 +670,11 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
 		if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
 			self.test_ScratchPointer = self.LastTrainMol
 		self.test_ScratchPointer += ncases
-                xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-                Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-                labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		natom = self.natom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-                if (self.HasGrad):
-                        return [xyzs, Zs, labels, 1.0/natom, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer]]
-                else:
-                        return [xyzs, Zs, labels, 1.0/natom]
+		if (self.HasGrad):
+			return [xyzs, Zs, labels, 1.0/natom, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer]]
+		else:
+			return [xyzs, Zs, labels, 1.0/natom]

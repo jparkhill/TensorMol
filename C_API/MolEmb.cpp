@@ -34,10 +34,10 @@ static SHParams ParseParams(PyObject *Pdict)
 		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
 		tore.ANES = (double*)RBFa->data;
 	}
-	tore.SH_LMAX = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
-	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
-	tore.SH_ORTH = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
-	tore.SH_MAXNR = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_MAXNR")));
+	tore.SH_LMAX = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
+	tore.SH_NRAD = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
+	tore.SH_ORTH = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
+	tore.SH_MAXNR = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_MAXNR")));
 	// HACK TO DEBUG>>>>>
 	/*
 	double t[9] = {1.0,0.,0.,0.,1.,0.,0.,0.,1.};
@@ -1487,14 +1487,16 @@ static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
 //
 static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 {
+  //std::cout << "Recompiled... " << endl;
+	//return NULL;
 	PyObject* Prm_;
 	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &Prm_))
-	return NULL;
+		return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	npy_intp outdim[2] = {Nbas,Nbas};
-	std::cout << "NBAS: " << Nbas << endl; 
+	//std::cout << "NBAS: " << Nbas << endl;
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *SH_data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
