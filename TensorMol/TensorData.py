@@ -596,19 +596,17 @@ class TensorDataDirect(TensorData):
 		if self.set == None:
 			self.ReloadSet()
 		random.shuffle(self.set.mols)
-		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float32)
+		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3))
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
-		natom = np.zeros((self.Nmols), dtype = np.int32)
 		if (self.dig.OType == "Force"):
-			labels = np.zeros((self.Nmols,self.MaxNAtoms,3), dtype = np.float32)
+			labels = np.zeros((self.Nmols,self.MaxNAtoms,3))
 		else:
 			raise Exception("Output Type is not implemented yet")
 		for i, mol in enumerate(self.set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
 			labels[i][:mol.NAtoms()] = mol.properties["forces"]
-			natom[i] = mol.NAtoms()
-		return xyzs, Zs, labels, natom
+		return xyzs, Zs, labels
 
 	def LoadDataToScratch(self, tformer):
 		"""
@@ -626,7 +624,7 @@ class TensorDataDirect(TensorData):
 		"""
 		if (self.ScratchState == 1):
 			return
-		self.xyzs, self.Zs, self.labels, self.natom  = self.LoadData()
+		self.xyzs, self.Zs, self.labels = self.LoadData()
 		if (tformer.outnorm != None):
 			self.labels = tformer.NormalizeOuts(self.labels)
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
