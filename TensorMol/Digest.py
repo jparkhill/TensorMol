@@ -325,5 +325,5 @@ class Digester:
 			eta.append(pow(math.e, tmp)*eta_min)
 		PGaussian = MolEmb.Make_PGaussian(coords_, xyz_, ats_, eles_, at_, SensRadius, eta)
 		PGaussian = np.asarray(PGaussian[0], dtype=np.float64)
-                PGaussian = PGaussian.reshape((PGaussian.shape[0]/self.npgaussian, self.npgaussian,  PGaussian.shape[1] *  PGaussian.shape[2]))
-                return PGaussian
+		PGaussian = PGaussian.reshape((PGaussian.shape[0]/self.npgaussian, self.npgaussian,  PGaussian.shape[1] *  PGaussian.shape[2]))
+		return PGaussian

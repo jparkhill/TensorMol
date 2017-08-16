@@ -2,9 +2,9 @@
 
 - USE HARD TABS. configure whatever editor you are using to use hard tabs.
 - UseCapitalizationToSeparateWords in names.
-- Prefer long interperable words to ambiguous abbreviations.
-- Avoid_the_underscore to separate words which takes longer to type than a cap.
-- The underscore is a good way to denote a function argument.
+- Prefer long interperable words to ambiguous abbreviations. MakesDipoleTensor() >> mdt123()
+- Avoid_the_underscore to separate words which takes longer to type than a cap. MakesDipoleTensor() >> Makes_Dipole_Tensor
+- The underscore is a good way to denote a function argument. TakesSet(aset_)
 - Keep functions to fewer than 5 parameters
 - Keep files and classes to < 2000 lines.
 - Keep classes to < 20 member variables.

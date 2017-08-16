@@ -227,7 +227,7 @@ class FragableCluster(Mol):
 						if tmp_list == frag_atoms:
 							self.atoms_of_frags.append([])
 							masked += range (j, j+num_frag_atoms)
-						 	self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
+							self.atoms_of_frags[-1]=range (j, j+num_frag_atoms)
 							self.type_of_frags.append(i)
 							self.type_of_frags_dict[i].append(frag_index)
 							tmp_coord = self.coords[j:j+num_frag_atoms,:].copy()
@@ -734,7 +734,7 @@ class FragableClusterBF(Mol):
 		self.properties['cutoff_width'] = width_
 		self.frag_list = []    # list of [{"atom":.., "charge":..},{"atom":.., "charge":..},{"atom":.., "charge":..}]
 		self.type_of_frags = []  # store the type of frag (1st order) in the self.mbe_frags:  [1,1,1 (H2O), 2,2,2(Na),3,3,3(Cl)]
-                self.type_of_frags_dict = {}
+		self.type_of_frags_dict = {}
 		self.atoms_of_frags = [] # store the index of atoms of each frag
 		self.mbe_frags=dict()    # list of  frag of each order N, dic['N'=list of frags]
 		self.mbe_frags_deri=dict()

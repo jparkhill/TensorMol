@@ -585,7 +585,7 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-        natom = inp_shp[1]
+	natom = inp_shp[1]
 	natom2 = natom*natom
 	natom3 = natom*natom2
 	nelep = tf.shape(eleps_)[0]
@@ -709,7 +709,7 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-        natom = inp_shp[1]
+	natom = inp_shp[1]
 	natom2 = natom*natom
 	nele = tf.shape(eles_)[0]
 	pshape = tf.shape(SFPs_)
@@ -946,13 +946,13 @@ def TFCoulombErfLR(R, Qs, R_cut,  Radpair, prec=tf.float64):
 	Madelung energy build.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Qs : nmol X maxnatom X 1 tensor of atomic charges.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Qs : nmol X maxnatom X 1 tensor of atomic charges.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	R_width = PARAMS["Erf_Width"]*BOHRPERA
 	inp_shp = tf.shape(R)
@@ -1270,41 +1270,41 @@ def TFSymSet_Scattered_Update(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, Ra_
 
 
 def TFSymSet_Scattered_Update2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
-        """
-        A tensorflow implementation of the AN1 symmetry function for a set of molecule.
-        Args:
-                R: a nmol X maxnatom X 3 tensor of coordinates.
-                Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-                eles_: a neles X 1 tensor of elements present in the data.
-                SFPsR_: A symmetry function parameter of radius part
-                Rr_cut: Radial Cutoff of radius part
-                eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
-                SFPsA_: A symmetry function parameter of angular part
-                RA_cut: Radial Cutoff of angular part
+	"""
+	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
+	Args:
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a neles X 1 tensor of elements present in the data.
+		SFPsR_: A symmetry function parameter of radius part
+		Rr_cut: Radial Cutoff of radius part
+		eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+		SFPsA_: A symmetry function parameter of angular part
+		RA_cut: Radial Cutoff of angular part
 
-        Returns:
-                Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
-        """
-        inp_shp = tf.shape(R)
+	Returns:
+		Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+	"""
+	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
-        natom = inp_shp[1]
-        nele = tf.shape(eles_)[0]
-        nelep = tf.shape(eleps_)[0]
-        GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
-        GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
-        GM = tf.concat([GMR, GMA], axis=2)
-        num_ele, num_dim = eles_.get_shape().as_list()
-        MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
-        ToMask = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]),dtype=tf.int64), prec=tf.int64)
-        IndexList = []
-        SymList=[]
-        GatherList = []
-        for e in range(num_ele):
-                GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
-                SymList.append(tf.gather_nd(GM, GatherList[-1]))
-                NAtomOfEle=tf.shape(GatherList[-1])[0]
-                IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
-        return SymList, IndexList
+	natom = inp_shp[1]
+	nele = tf.shape(eles_)[0]
+	nelep = tf.shape(eleps_)[0]
+	GMR = tf.reshape(TFSymRSet_Update2(R, Zs, eles_, SFPsR_, eta, Rr_cut), [nmol, natom, -1])
+	GMA = tf.reshape(TFSymASet_Update2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+	GM = tf.concat([GMR, GMA], axis=2)
+	num_ele, num_dim = eles_.get_shape().as_list()
+	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]))
+	ToMask = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]),dtype=tf.int64), prec=tf.int64)
+	IndexList = []
+	SymList=[]
+	GatherList = []
+	for e in range(num_ele):
+		GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
+		SymList.append(tf.gather_nd(GM, GatherList[-1]))
+		NAtomOfEle=tf.shape(GatherList[-1])[0]
+		IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
+	return SymList, IndexList
 
 def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut):
 	"""

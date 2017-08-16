@@ -22,7 +22,7 @@ def DipoleDebug(m_):
 
 def Dipole(x_, q_):
 	""" Arguments are in A, and elementary charges.  """
- 	return WeightedCoordAverage(x_*BOHRPERA, q_)
+	return WeightedCoordAverage(x_*BOHRPERA, q_)
 
 def ChargeCharge(m1_, m2_):
 	"""calculate  the charge-charge interaction energy between two molecules"""

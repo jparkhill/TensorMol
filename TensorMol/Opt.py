@@ -19,7 +19,7 @@ class GeomOptimizer:
 		Geometry optimizations based on NN-PES's etc.
 
 		Args:
-			f_: An EnergyForce routine 
+			f_: An EnergyForce routine
 		"""
 		self.thresh = PARAMS["OptThresh"]
 		self.maxstep = PARAMS["OptMaxStep"]
@@ -93,7 +93,7 @@ class GeomOptimizer:
 		while( step < self.max_opt_step and rmsgrad > self.thresh):
 			prev_m = Mol(m.atoms, m.coords)
 			if step == 0:
-				old_frc = frc 
+				old_frc = frc
 			energy, frc = self.EnergyAndForce(m.coords)
 			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
 			frc /= JOULEPERHARTREE
@@ -510,7 +510,7 @@ class Optimizer:
 		mol_hist = []
 		new_m = Mol()
 		new_m = m
- 		print("Orig Coords", new_m.coords)
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -537,7 +537,7 @@ class Optimizer:
 				GridstoRaw(grids,250,str(step))
 			step+=1
 			Energy = new_m.EnergyAfterAtomMove(new_m.coords[0],0)
-                        print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
 			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
@@ -630,7 +630,7 @@ class Optimizer:
 		mol_hist = []
 		new_m = Mol()
 		new_m = m
- 		print("Orig Coords", new_m.coords)
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -657,7 +657,7 @@ class Optimizer:
 				GridstoRaw(grids,250,str(step))
 			step+=1
 			Energy = new_m.EnergyAfterAtomMove(new_m.coords[0],0)
-                        print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
 			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
@@ -669,7 +669,7 @@ class Optimizer:
 		mol_hist = []
 		new_m = Mol()
 		new_m = m
- 		print("Orig Coords", new_m.coords)
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -696,7 +696,7 @@ class Optimizer:
 				GridstoRaw(grids,250,str(step))
 			step+=1
 			Energy = new_m.GoPotential()
-                        print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
 			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
