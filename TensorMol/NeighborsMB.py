@@ -129,7 +129,6 @@ class MBNeighbors:
 			self.tripz[trip_index,:ni] = self.z[self.frags[i]].copy()
 			self.tripz[trip_index,ni:(ni+nj)] = self.z[self.frags[j]].copy()
 			self.tripz[trip_index,(ni+nj):(ni+nj+nk)] = self.z[self.frags[k]].copy()
-			softcut = 
 			self.pairC[self.pairi.index(sorted([i,j]))] -= 1
 			self.pairC[self.pairi.index(sorted([j,k]))] -= 1
 			self.pairC[self.pairi.index(sorted([k,i]))] -= 1
@@ -147,3 +146,51 @@ class MBNeighbors:
 			self.singC[i] -= 1
 			self.singC[j] -= 1
 		return
+
+
+
+class MBNeighborsSet:
+	"""
+	The purpose of this class is to provide:
+	self.sings_atom_index, self.pairs_atom_index, self.trips_atom_index: keep record of which atoms the frag contains in the format of: num_of_frags X max_num_atoms_of_frag X 2: (mol_index, atom_index_in_mol) example: [[[0, 0], [0, 1], [0, 2]],[[0, 3], [0, 4], [0, 5]]]
+	self.sings_mol_index, self.pairs_mol_index, self.trips_mol_index: keep record of which mol the frag belongs to in the format of:  num_of_frags: [0, 0]:  
+	"""
+	def __init__(self, x_, nnz_, frags_):
+		"""
+		Initialize a Many-Body Neighbor list which
+		can generate in linear time.
+		terms in a many body expansion up to three.
+
+		Args:
+			x_ : coordinates of all the atoms. 
+			z_ : atomic numbers of all the atoms.
+			frags_: list of lists containing these atoms.
+		"""
+
+		self.nlist = []
+		self.nmol = x_.shape[0]
+		self.maxnatom = x.shape[1]
+		self.x = x_
+		self.maxnatom = 3*max(len(frag) for frag in frags_)
+		self.frags = frags_
+		self.nnz = nnz_
+		self.UpdateInterval = 1
+		self.UpdateCounter = 0
+		self.sings = []
+		for i in range (0, self.nmol):
+			for j in range(0, len(self.frags[i])):
+				self.sings.append(self.x[i, self.frags[i][j]].copy())	
+		return
+
+	def Update(self, x_, R2=10.0, R3=5.0):
+		"""
+		Update...
+		
+		Args:
+			x: A new position vector
+			R2: pair cutoff
+			R3: triples cutoff
+		"""
+		if (R2<R3):
+			raise Exception("R3<R2 Assumption Violated.")
+		
