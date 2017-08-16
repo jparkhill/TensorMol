@@ -10,6 +10,11 @@
 #include <set>
 #include "SH.hpp"
 
+#if PY_MAJOR_VERSION >= 3
+    #define PyInt_FromLong PyLong_FromLong
+		#define PyInt_AS_LONG PyLong_AS_LONG
+#endif
+
 // So that parameters can be dealt with elsewhere.
 static SHParams ParseParams(PyObject *Pdict)
 {
@@ -1489,6 +1494,7 @@ static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	npy_intp outdim[2] = {Nbas,Nbas};
+	std::cout << "NBAS: " << Nbas << endl; 
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *SH_data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
@@ -2105,10 +2111,56 @@ static PyMethodDef EmbMethods[] =
 	{NULL, NULL, 0, NULL}
 };
 
+struct module_state {
+    PyObject *error;
+};
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
+
+static PyObject *
+error_out(PyObject *m) {
+    struct module_state *st = GETSTATE(m);
+    PyErr_SetString(st->error, "something bad happened");
+    return NULL;
+}
+
+#if PY_MAJOR_VERSION >= 3
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "MolEmb",     /* m_name */
+        "A CAPI for TensorMol",  /* m_doc */
+        -1,                  /* m_size */
+        EmbMethods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+
+#pragma message("Compiling MolEmb for Python3x")
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_MolEmb(void)
+{
+PyObject *m = PyModule_Create(&moduledef);
+if (m == NULL)
+		return NULL;
+
+return m;
+}
+#else
+
 PyMODINIT_FUNC
 initMolEmb(void)
 {
 	(void) Py_InitModule("MolEmb", EmbMethods);
 	/* IMPORTANT: this must be called */
 	import_array();
+	return;
 }
+#endif

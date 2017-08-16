@@ -46,6 +46,7 @@ python test.py
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
+- Python3x support coming soon. 
 - Useful Pre-Requisites: CUDA7.5, PySCF
 - To Train Minimally: ~100GB Disk 20GB memory
 - To Train Realistically: 1TB Disk, GTX1070++
