@@ -1,6 +1,7 @@
 # To make TensorMol available.
 # pip install -e .
 
+from __future__ import absolute_import
 from distutils.core import setup, Extension
 import numpy
 import os
@@ -10,7 +11,7 @@ if (not LLVM):
 	MolEmb = Extension(
 	'MolEmb',
 	sources=['./C_API/MolEmb.cpp'],
-	extra_compile_args=['-std=c++0x','-fopenmp','-w'],
+	extra_compile_args=['-std=c++0x','-g','-fopenmp','-w'],
 	extra_link_args=['-lgomp'],
         include_dirs=[numpy.get_include()]+['./C_API/'])
 else:

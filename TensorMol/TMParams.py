@@ -1,4 +1,6 @@
-import logging, time, os
+from __future__ import absolute_import
+from __future__ import print_function
+import logging, time, os, sys
 from math import pi as Pi
 import numpy as np
 import tensorflow as tf
@@ -111,7 +113,7 @@ class TMParams(dict):
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
 		# Metadynamics parameters
-		self["MetaBowlK"] = 1.0
+		self["MetaBowlK"] = 0.0
 		self["MetaMaxBumps"] = 2500
 		# parameters of electrostatic embedding
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
@@ -140,7 +142,10 @@ class TMParams(dict):
 
 def TMBanner():
 	print("--------------------------")
-	print("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.1")
+	if sys.version_info[0] < 3:
+		print(("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.1"))
+	else:
+		print(("    "+chr(0x1350)+chr(0x2107)+chr(0x2115)+chr(0x405)+chr(0x29be)+chr(0x2c64)+'-'+chr(0x164f)+chr(0x29be)+chr(0x2112)+"  0.1"))
 	print("--------------------------")
 	print("By using this software you accept the terms of the GNU public license in ")
 	print("COPYING, and agree to attribute the use of this software in publications as: \n")

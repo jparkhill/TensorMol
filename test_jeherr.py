@@ -1,59 +1,6 @@
 from TensorMol import *
 import time
-
-#jeherr tests
-
-# PARAMS["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
-# 			[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-# PARAMS["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
-# PARAMS["RBFS"] = np.array([[0.1, 0.2], [0.2, 0.3], [0.5, 0.35], [0.9, 0.3], [1.1, 0.3], [1.3, 0.3], [1.6, 0.4], [1.9, 0.5],
-# 				[4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-# PARAMS["ANES"] = np.array([2.20, 1., 1., 1., 1., 2.55, 3.04, 3.98])
-# PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
-#   							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
-# 							[2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
- 							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
-							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
-							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-PARAMS["ANES"] = np.array([0.0, 1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
-PARAMS["SH_NRAD"] = 14
-PARAMS["SH_LMAX"] = 4
-PARAMS["hidden1"] = 100
-PARAMS["hidden2"] = 100
-PARAMS["hidden3"] = 100
-
 PARAMS["max_checkpoints"] = 3
-
-S_Rad = MolEmb.Overlap_RBF(PARAMS)
-S_RadOrth = MatrixPower(S_Rad,-1./2)
-PARAMS["SRBF"] = S_RadOrth
-PARAMS["RandomizeData"] = True
-# PARAMS["InNormRoutine"] = "MeanStd"
-# PARAMS["OutNormRoutine"] = "MeanStd"
-PARAMS["TestRatio"] = 0.2
-PARAMS["max_steps"] = 2000
-PARAMS["test_freq"] = 5
-PARAMS["batch_size"] = 3000
-PARAMS["NeuronType"] = "relu"
-# PARAMS["Profiling"] = True
-
-# PARAMS["AN1_r_Rc"] = 6.
-# PARAMS["AN1_a_Rc"] = 4.
-# PARAMS["AN1_eta"] = 4.0
-# PARAMS["AN1_zeta"] = 8.0
-# PARAMS["AN1_num_r_Rs"] = 16
-# PARAMS["AN1_num_a_Rs"] = 4
-# PARAMS["AN1_num_a_As"] = 8
-# PARAMS["hidden1"] = 64
-# PARAMS["hidden2"] = 128
-# PARAMS["hidden3"] = 64
-# PARAMS["max_steps"] = 1001
-# PARAMS["GradWeight"] = 1.0
-# PARAMS["AN1_r_Rs"] = np.array([ PARAMS["AN1_r_Rc"]*i/PARAMS["AN1_num_r_Rs"] for i in range (0, PARAMS["AN1_num_r_Rs"])])
-# PARAMS["AN1_a_Rs"] = np.array([ PARAMS["AN1_a_Rc"]*i/PARAMS["AN1_num_a_Rs"] for i in range (0, PARAMS["AN1_num_a_Rs"])])
-# PARAMS["AN1_a_As"] = np.array([ 2.0*Pi*i/PARAMS["AN1_num_a_As"] for i in range (0, PARAMS["AN1_num_a_As"])])
-
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
@@ -305,7 +252,7 @@ def TestMetadynamics():
 	print "Masses:", masses
 	PARAMS["MDdt"] = 2.0
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 10000
+	PARAMS["MDMaxStep"] = 200
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 600.0
 	meta = MetaDynamics(ForceField, m)
@@ -333,36 +280,59 @@ def TestTFGauSH():
 	xyzlist = []
 	labelslist = []
 	for i, mol in enumerate(a.mols):
-		paddedz = np.zeros(maxnatoms,dtype=np.int32)
-		paddedz[:mol.atoms.shape[0]] = mol.atoms
-		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
+		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float32)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
-		paddedlabels = np.zeros((maxnatoms, 3), dtype=np.float64)
+		paddedz = np.zeros((maxnatoms), dtype=np.int32)
+		paddedz[:mol.atoms.shape[0]] = mol.atoms
+		paddedlabels = np.zeros((maxnatoms, 3), dtype=np.float32)
 		paddedlabels[:mol.atoms.shape[0]] = mol.properties["forces"]
-		zlist.append(paddedz)
 		xyzlist.append(paddedxyz)
+		zlist.append(paddedz)
 		labelslist.append(paddedlabels)
 		if i == 1:
 			break
-	zstack = tf.stack(zlist)
 	xyzstack = tf.stack(xyzlist)
+	zstack = tf.stack(zlist)
 	labelstack = tf.stack(labelslist)
-	PARAMS["ANES"] = np.array([0.0, 1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
-	bool = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8])
-	sess = tf.InteractiveSession()
-	tmp = np.abs(sess.run(bool))
-	PARAMS["ANES"] = np.array([1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
-	dig = Digester([1,6,7,8], OType_ = "Force")
-	tmp2 = np.abs(dig.Emb(a.mols[0], -1, a.mols[0].coords, MakeOutputs=False)[0])
-	print np.isclose(tmp, tmp2)
+	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
+	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
+	tmp = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8], gaussian_params, atomic_embed_factors, 4)
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+	# for i in range(a.mols[0].atoms.shape[0]):
+	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
+	tmp2, tmp3 = sess.run(tmp)
+	print np.allclose(tmp2, tmp3)
 
+def train_forces_GauSH_direct(set_ = "SmallMols"):
+	PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
+	 							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
+								[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
+								[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+	PARAMS["ANES"] = np.array([1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
+	PARAMS["SH_NRAD"] = 14
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
+	PARAMS["HiddenLayers"] = [512, 512, 512, 512]
+	PARAMS["max_steps"] = 2000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 2000
+	PARAMS["NeuronType"] = "elu"
+	PARAMS["tf_prec"] = "tf.float64"
+	a=MSet(set_)
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	tset = TensorDataDirect(a,d)
+	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
 
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("chemspider_all", 100000)
+# RandomSmallSet("chemspider_all_60", 500000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -377,5 +347,6 @@ def TestTFGauSH():
 # TestMetadynamics()
 # TestMD()
 # TestTFBond()
-GetPairPotential()
+# GetPairPotential()
 # TestTFGauSH()
+train_forces_GauSH_direct("chemspider_all_60_rand")

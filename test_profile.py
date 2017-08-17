@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from Util import *
 from Sets import *
 from TensorData import *
@@ -29,4 +31,4 @@ s = StringIO.StringIO()
 sortby = 'cumulative'
 ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
 ps.print_stats()
-print s.getvalue()
+print(s.getvalue())

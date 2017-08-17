@@ -1,5 +1,7 @@
-from Sets import *
-from TFManage import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Sets import *
+from .TFManage import *
 
 class DIIS:
 	def __init__(self):
@@ -72,7 +74,7 @@ class DIIS:
 				s[i] = 0.0
 		#print "Diis inv: ", (U*s*V)
 		next_coeffs = np.dot(np.dot(np.dot(U,np.diag(s)),V),tmp)
-		print "DIIS COEFFs: ", next_coeffs
+		print("DIIS COEFFs: ", next_coeffs)
 		#next_coeffs = np.dot(np.linalg.inv(self.M[:self.n_now+1,:self.n_now+1]),tmp)
 		#print next_coeffs.shape
 

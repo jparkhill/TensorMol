@@ -2,10 +2,12 @@
  Contains Routines to generate training sets
  Combining a dataset, sampler and an embedding. (CM etc.)
 """
+from __future__ import absolute_import
+from __future__ import print_function
 import os, gc
-from Sets import *
-from Digest import *
-from Transformer import *
+from .Sets import *
+from .Digest import *
+from .Transformer import *
 #import tables should go to hdf5 soon...
 
 class TensorData():
@@ -29,9 +31,9 @@ class TensorData():
 		self.set = MSet_
 		self.set_name = None
 		if (self.set != None):
-			print "loading the set..."
+			print("loading the set...")
 			self.set_name = MSet_.name # Check to make sure the name can recall the set.
-			print "finished loading the set.."
+			print("finished loading the set..")
 		self.dig = Dig_
 		self.type = type_
 		self.CurrentElement = None # This is a mode switch for when TensorData provides training data.
@@ -86,15 +88,15 @@ class TensorData():
 		return
 
 	def PrintStatus(self):
-		print "self.ScratchState",self.ScratchState
-		print "self.ScratchNCase", self.ScratchNCase
-		print "self.NTrainCasesInScratch()", self.NTrainCasesInScratch()
-		print "self.ScratchPointer",self.ScratchPointer
+		print("self.ScratchState",self.ScratchState)
+		print("self.ScratchNCase", self.ScratchNCase)
+		print("self.NTrainCasesInScratch()", self.NTrainCasesInScratch())
+		print("self.ScratchPointer",self.ScratchPointer)
 		if (self.scratch_outputs != None):
-			print "self.scratch_inputs.shape",self.scratch_inputs.shape
-			print "self.scratch_outputs.shape",self.scratch_outputs.shape
-			print "scratch_test_inputs.shape",self.scratch_test_inputs.shape
-			print "scratch_test_outputs.shape",self.scratch_test_outputs.shape
+			print("self.scratch_inputs.shape",self.scratch_inputs.shape)
+			print("self.scratch_outputs.shape",self.scratch_outputs.shape)
+			print("scratch_test_inputs.shape",self.scratch_test_inputs.shape)
+			print("scratch_test_outputs.shape",self.scratch_test_outputs.shape)
 
 	def CheckShapes(self):
 		# Establish case and label shapes.
@@ -102,10 +104,10 @@ class TensorData():
 		test_mol.properties["forces"] = np.zeros((2,3))
 		test_mol.properties["mmff94forces"] = np.zeros((2,3))
 		tins,touts = self.dig.TrainDigest(test_mol, 1)
-		print "self.dig input shape: ", self.dig.eshape
-		print "self.dig output shape: ", self.dig.lshape
-		print "TrainDigest input shape: ", tins.shape
-		print "TrainDigest output shape: ", touts.shape
+		print("self.dig input shape: ", self.dig.eshape)
+		print("self.dig output shape: ", self.dig.lshape)
+		print("TrainDigest input shape: ", tins.shape)
+		print("TrainDigest output shape: ", touts.shape)
 		if (self.dig.eshape == None or self.dig.lshape ==None):
 			raise Exception("Ain't got no fucking shape.")
 
@@ -123,7 +125,7 @@ class TensorData():
 			try:
 				self.ReloadSet()
 			except Exception as Ex:
-				print "TData doesn't have a set.", Ex
+				print("TData doesn't have a set.", Ex)
 		self.CheckShapes()
 		self.name=name_
 		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
@@ -153,12 +155,12 @@ class TensorData():
 					labels_list[ai][casep_list[ai]] = outs[i]
 					casep_list[ai] = casep_list[ai]+1
 				if (mols_done%10000==0 and mols_done>0):
-					print mols_done
+					print(mols_done)
 				if (mols_done==400):
-					print "Seconds to process 400 molecules: ", time.time()-t0
+					print("Seconds to process 400 molecules: ", time.time()-t0)
 				mols_done = mols_done + 1
 		except Exception as Ex:
-				print "Likely you need to re-install MolEmb.", Ex
+				print("Likely you need to re-install MolEmb.", Ex)
 		for element in atypes:
 			# Write the numpy arrays for this element.
 			ai = atypes.tolist().index(element)
@@ -178,7 +180,7 @@ class TensorData():
 					cases = np.concatenate((cases_list[ai][:casep_list[ai]],ti))
 					labels = np.concatenate((labels_list[ai][:casep_list[ai]],to))
 				except Exception as Ex:
-					print "Size mismatch with old training data, clear out trainsets"
+					print("Size mismatch with old training data, clear out trainsets")
 				inf = open(insname,"wb")
 				ouf = open(outsname,"wb")
 				np.save(inf,cases)
@@ -213,13 +215,13 @@ class TensorData():
 			try:
 				self.ReloadSet()
 			except Exception as Ex:
-				print "TData doesn't have a set.", Ex
+				print("TData doesn't have a set.", Ex)
 		self.CheckShapes()
 		self.name=name_
-		print "Generating Train set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules"
+		print("Generating Train set:", self.name, " from mol set ", self.set.name, " of size ", len(self.set.mols)," molecules")
 		if (len(atypes)==0):
 			atypes = self.set.AtomTypes()
-		print "Will train atoms: ", atypes
+		print("Will train atoms: ", atypes)
 		# Determine the size of the training set that will be made.
 		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
 		for element in atypes:
@@ -228,13 +230,13 @@ class TensorData():
 		reqmem = [nofe[element]*self.dig.NTrainSamples*np.prod(self.dig.eshape)*4/1024.0/1024.0 for element in range(MAX_ATOMIC_NUMBER)]
 		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
 		for element in atypes:
-			print "AN: ", element, " contributes ", nofe[element]*self.dig.NTrainSamples , " samples, requiring ", reqmem[element], " MB of in-core memory. "
+			print("AN: ", element, " contributes ", nofe[element]*self.dig.NTrainSamples , " samples, requiring ", reqmem[element], " MB of in-core memory. ")
 			if (reqmem[element]>self.MxMemPerElement):
 				truncto[element]=int(self.MxMemPerElement/reqmem[element]*nofe[element])
-				print "Truncating element ", element, " to ",truncto[element]," Samples"
+				print("Truncating element ", element, " to ",truncto[element]," Samples")
 		for element in atypes:
 			DebugCases=[]
-			print "Digesting atom: ", element
+			print("Digesting atom: ", element)
 			cases = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float64)
 			labels = np.zeros(shape=tuple([truncto[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float64)
 			casep = 0
@@ -242,7 +244,7 @@ class TensorData():
 			for mi in range(len(self.set.mols)):
 				m = self.set.mols[mi]
 				if (mi%100==0):
-					print "Digested ", mi ," of ",len(self.set.mols)
+					print("Digested ", mi ," of ",len(self.set.mols))
 				ins,outs=None,None
 				if (MakeDebug):
 					ins,outs,db = self.dig.TrainDigest(self.set.mols[mi],element,True)
@@ -253,7 +255,7 @@ class TensorData():
 				if (GotOut!=ins.shape[0]):
 					raise Exception("Insane Digest")
 				if (truncto[element]<casep+GotOut):
-					print "Truncating at ", casep, "Samples because ",truncto[element], " is less than ",casep," plus ",GotOut
+					print("Truncating at ", casep, "Samples because ",truncto[element], " is less than ",casep," plus ",GotOut)
 					break
 				else:
 					cases[casep:casep+outs.shape[0]] += ins
@@ -262,14 +264,14 @@ class TensorData():
 				if ((time.time()-t0)>self.MxTimePerElement):
 					break
 				if (mi==40 and casep>=40):
-					print "Seconds to process 40 molecules: ", time.time()-t0
-					print "Average label: ", np.average(labels[:casep])
+					print("Seconds to process 40 molecules: ", time.time()-t0)
+					print("Average label: ", np.average(labels[:casep]))
 					if  (not np.isfinite(np.average(labels[:casep]))):
 						raise Exception("Bad Labels")
 				if (mi%1000):
 					gc.collect()
 				if (mi%1000==0):
-					print mi
+					print(mi)
 			# Write the numpy arrays for this element.
 			insname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_in.npy"
 			outsname = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_out.npy"
@@ -349,13 +351,13 @@ class TensorData():
 			if (tformer.outnorm != None):
 				desired = tformer.UnNormalizeOuts(desired)
 				predicted = tformer.UnNormalizeOuts(predicted)
-			print "Evaluating, ", len(desired), " predictions... "
-			print desired.shape, predicted.shape
+			print("Evaluating, ", len(desired), " predictions... ")
+			print(desired.shape, predicted.shape)
 			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
 				err = predicted-desired
 				ders = np.linalg.norm(err, axis=1)
-				for i in range(100):
-					print "Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:]
+				for i in range(50):
+					print("Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:])
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired,axis=0)),str(np.average(predicted,axis=0)))
@@ -367,7 +369,7 @@ class TensorData():
 				err = predictedc-desiredc
 				ders = np.linalg.norm(err, axis=1)
 				for i in range(100):
-					print "Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:]
+					print("Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:])
 				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
 				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
@@ -375,7 +377,7 @@ class TensorData():
 			elif (self.dig.OType == "ForceMag"):
 				err = predicted-desired
 				for i in range(100):
-					print "Desired: ",i,desired[i]," Predicted: ",predicted[i]
+					print("Desired: ",i,desired[i]," Predicted: ",predicted[i])
 				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
 				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:],axis=0)),str(np.average(predicted[:],axis=0)))
 			elif (self.dig.OType=="SmoothP"):
@@ -391,9 +393,9 @@ class TensorData():
 					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
 					iers[i] = np.linalg.norm(p-desired[i,-3:])
 					comp[i] = np.linalg.norm(p-predicted[i,-3:])
-				print "Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp)
-				print "Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0)
-				print "Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired))
+				print("Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp))
+				print("Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0))
+				print("Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
 			elif (self.dig.OType=="StoP"):
 				raise Exception("Unknown Digester Output Type.")
 			elif (self.dig.OType=="Energy"):
@@ -405,8 +407,8 @@ class TensorData():
 			else:
 				raise Exception("Unknown Digester Output Type.")
 		except Exception as Ex:
-			print "Something went wrong"
-			print Ex
+			print("Something went wrong")
+			print(Ex)
 			pass
 		if (Opt):
 			return np.mean(np.absolute(predicted[:,-3:]-desired[:,-3:]))
@@ -418,7 +420,7 @@ class TensorData():
 		'''
 		self.QueryAvailable()
 		ASet_.QueryAvailable()
-		print "Merging", self.name, " with ", ASet_.name
+		print("Merging", self.name, " with ", ASet_.name)
 		for ele in ASet_.AvailableElements:
 			if (self.AvailableElements.count(ele)==0):
 				raise Exception("WriteME192837129874")
@@ -433,10 +435,10 @@ class TensorData():
 					raise Exception("incompatible")
 				if (self.dig.name != ASet_.dig.name):
 					raise Exception("incompatible")
-				print "Merging ", self.name, " element, ", ele ," with ", ASet_.name
+				print("Merging ", self.name, " element, ", ele ," with ", ASet_.name)
 				mti=np.concatenate((mti,ati),axis=0)
 				mto=np.concatenate((mto,ato),axis=0)
-				print "The new element train set will have", mti.shape[0], " cases in it"
+				print("The new element train set will have", mti.shape[0], " cases in it")
 				insname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_in.npy"
 				outsname = self.path+self.name+"_"+self.dig.name+"_"+str(ele)+"_out.npy"
 				inf = open(insname,"wb")
@@ -454,16 +456,16 @@ class TensorData():
 		return
 
 	def Load(self):
-		print "Unpickling Tensordata"
+		print("Unpickling Tensordata")
 		f = open(self.path+self.name+".tdt","rb")
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()
 		self.CheckShapes()
-		print "Training data manager loaded."
+		print("Training data manager loaded.")
 		if (self.set != None):
-			print "Based on ", len(self.set.mols), " molecules "
-		print "Based on files: ",self.AvailableDataFiles
+			print("Based on ", len(self.set.mols), " molecules ")
+		print("Based on files: ",self.AvailableDataFiles)
 		self.QueryAvailable()
 		self.PrintSampleInformation()
 		self.dig.Print()
@@ -487,7 +489,7 @@ class TensorData():
 				inf.close()
 				ouf.close()
 				if (len(ti)!=len(to)):
-					print "...Retrain element i"
+					print("...Retrain element i")
 				else:
 					if (self.ChopTo!=None):
 						self.SamplesPerElement.append(min(len(ti),self.ChopTo))
@@ -509,7 +511,7 @@ class TensorData():
 			inf.close()
 			ouf.close()
 		except Exception as Ex:
-			print "Failed to read:",insname, " or ",outsname
+			print("Failed to read:",insname, " or ",outsname)
 			raise Ex
 		if (ti.shape[0] != to.shape[0]):
 			raise Exception("Bad Training Data.")
@@ -517,17 +519,17 @@ class TensorData():
 			ti = ti[:self.ChopTo]
 			to = to[:self.ChopTo]
 		if (DebugData_):
-			print "DEBUGGING, ", len(ti), " cases.."
+			print("DEBUGGING, ", len(ti), " cases..")
 			f = open(dbgname,"rb")
 			dbg=pickle.load(f)
 			f.close()
-			print "Found ", len(dbg), " pieces of debug information for this element... "
+			print("Found ", len(dbg), " pieces of debug information for this element... ")
 			for i in range(len(dbg)):
-				print "CASE:", i, " was for ATOM", dbg[i][1], " At Point ", dbg[i][2]
+				print("CASE:", i, " was for ATOM", dbg[i][1], " At Point ", dbg[i][2])
 				ds=GRIDS.Rasterize(ti[i])
 				GridstoRaw(ds, GRIDS.NPts, "InpCASE"+str(i))
-				print dbg[i][0].coords
-				print dbg[i][0].atoms
+				print(dbg[i][0].coords)
+				print(dbg[i][0].atoms)
 		#ti = ti.reshape((ti.shape[0],-1))  # flat data to [ncase, num_per_case]
 		#to = to.reshape((to.shape[0],-1))  # flat labels to [ncase, 1]
 		if (Random):
@@ -550,7 +552,7 @@ class TensorData():
 		"""
 		ti, to = self.LoadElement(ele, self.Random)
 		if (self.dig.name=="SensoryBasis" and self.dig.OType=="Disp" and self.ExpandIsometriesAltogether):
-			print "Expanding the given set over isometries."
+			print("Expanding the given set over isometries.")
 			ti,to = GRIDS.ExpandIsometries(ti,to)
 		if (tformer.outnorm != None):
 			to = tformer.NormalizeOuts(to)
@@ -578,9 +580,91 @@ class TensorData():
 	def PrintSampleInformation(self):
 		lim = min(len(self.AvailableElements),len(self.SamplesPerElement),len(self.AvailableDataFiles))
 		for i in range(lim):
-			print "AN: ", self.AvailableElements[i], " contributes ", self.SamplesPerElement[i] , " samples "
-			print "From files: ", self.AvailableDataFiles[i]
+			print("AN: ", self.AvailableElements[i], " contributes ", self.SamplesPerElement[i] , " samples ")
+			print("From files: ", self.AvailableDataFiles[i])
 		return
+
+class TensorDataDirect(TensorData):
+	def __init__(self, MSet_=None, Dig_=None, Name_=None, type_="atom"):
+		TensorData.__init__(self, MSet_, Dig_, Name_, type_)
+		if (MSet_ != None):
+			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
+			self.Nmols = len(self.set.mols)
+			self.AvailableElements = self.set.AtomTypes()
+
+	def LoadData(self):
+		if self.set == None:
+			self.ReloadSet()
+		random.shuffle(self.set.mols)
+		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3))
+		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
+		if (self.dig.OType == "Force"):
+			labels = np.zeros((self.Nmols,self.MaxNAtoms,3))
+		else:
+			raise Exception("Output Type is not implemented yet")
+		for i, mol in enumerate(self.set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			labels[i][:mol.NAtoms()] = mol.properties["forces"]
+		return xyzs, Zs, labels
+
+	def LoadDataToScratch(self, tformer):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+		note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		if (self.ScratchState == 1):
+			return
+		self.xyzs, self.Zs, self.labels = self.LoadData()
+		if (tformer.outnorm != None):
+			self.labels = tformer.NormalizeOuts(self.labels)
+		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
+		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
+		self.NTrain = self.LastTrainMol
+		self.NTest = self.NTestMols
+		self.test_ScratchPointer = self.LastTrainMol
+		self.ScratchPointer = 0
+		self.ScratchState = 1
+		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
+		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
+		return
+
+	def GetTrainBatch(self,ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTrain):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (self.ScratchPointer+ncases >= self.NTrain):
+			self.ScratchPointer = 0
+		self.ScratchPointer += ncases
+		xyzs = self.xyzs[self.ScratchPointer-ncases:self.ScratchPointer]
+		Zs = self.Zs[self.ScratchPointer-ncases:self.ScratchPointer]
+		labels = self.labels[self.ScratchPointer-ncases:self.ScratchPointer]
+		return [xyzs, Zs, labels]
+
+	def GetTestBatch(self,ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTest):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTest)+" vs "+str(ncases))
+		if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
+			self.test_ScratchPointer = self.LastTrainMol
+		self.test_ScratchPointer += ncases
+		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		return [xyzs, Zs, labels]
 
 class TensorData_TFRecords(TensorData):
 	def __init__(self, MSet_=None, Dig_=None, Name_=None, test_=False, type_="atom"):
@@ -602,7 +686,7 @@ class TensorData_TFRecords(TensorData):
 		if inputs.shape[0] != num_examples:
 			raise ValueError('Input size %d does not match label size %d.', inputs.shape[0], num_examples)
 		filename = name
-		print('Writing', filename)
+		print(('Writing', filename))
 		writer = tf.python_io.TFRecordWriter(filename)
 		for index in range(num_examples):
 			input_raw = inputs[index].tostring()
@@ -627,7 +711,7 @@ class TensorData_TFRecords(TensorData):
 			try:
 				self.ReloadSet()
 			except Exception as Ex:
-				print "TData doesn't have a set.", Ex
+				print("TData doesn't have a set.", Ex)
 		self.CheckShapes()
 		self.name=name_
 		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
@@ -672,14 +756,14 @@ class TensorData_TFRecords(TensorData):
 					# labels_list[ai][casep_list[ai]] = outs[i]
 					casep_list[ai] = casep_list[ai]+1
 				if (mols_done%10000==0 and mols_done>0):
-					print mols_done
+					print(mols_done)
 				if (mols_done==400):
-					print "Seconds to process 400 molecules: ", time.time()-t0
+					print("Seconds to process 400 molecules: ", time.time()-t0)
 				mols_done = mols_done + 1
 			for writer in self.writers:
 				writer.close()
 		except Exception as Ex:
-				print "Likely you need to re-install MolEmb.", Ex
+				print("Likely you need to re-install MolEmb.", Ex)
 		for element in atypes:
 			# Write the tfrecords file for this element.
 			ai = atypes.tolist().index(element)
@@ -692,9 +776,9 @@ class TensorData_TFRecords(TensorData):
 			self.AvailableElements.append(element)
 			self.AvailableDataFiles[element] = data_names[ai]
 			self.SamplesPerElement[element] = casep_list[ai]*self.dig.NTrainSamples
-		print self.AvailableElements
-		print self.AvailableDataFiles
-		print self.SamplesPerElement
+		print(self.AvailableElements)
+		print(self.AvailableDataFiles)
+		print(self.SamplesPerElement)
 		self.Save() #write a convenience pickle.
 		return
 
@@ -710,16 +794,16 @@ class TensorData_TFRecords(TensorData):
 		return
 
 	def Load(self):
-		print "Unpickling Tensordata"
+		print("Unpickling Tensordata")
 		f = open(self.path+self.name+".tdt","rb")
 		tmp=pickle.load(f)
 		self.__dict__.update(tmp)
 		f.close()
 		self.CheckShapes()
-		print "Training data manager loaded."
+		print("Training data manager loaded.")
 		if (self.set != None):
-			print "Based on ", len(self.set.mols), " molecules "
-		print "Based on files: ",self.AvailableDataFiles
+			print("Based on ", len(self.set.mols), " molecules ")
+		print("Based on files: ",self.AvailableDataFiles)
 		self.PrintSampleInformation()
 		self.dig.Print()
 		return

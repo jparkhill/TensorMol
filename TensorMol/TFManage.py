@@ -1,8 +1,10 @@
 """
  Either trains, tests, evaluates or provides an interface for optimization.
 """
-from TensorData import *
-from TFInstance import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .TensorData import *
+from .TFInstance import *
 import numpy as np
 import gc
 
@@ -34,11 +36,11 @@ class TFManage:
 		if (RandomTData_==False):
 			self.TData.Randomize=False
 		# All done if you're doing molecular calculations
-		print self.TData.AvailableElements
-		print self.TData.AvailableDataFiles
-		print self.TData.SamplesPerElement
+		print(self.TData.AvailableElements)
+		print(self.TData.AvailableDataFiles)
+		print(self.TData.SamplesPerElement)
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		print "--- TF will be fed by ---", self.TData.name
+		print("--- TF will be fed by ---", self.TData.name)
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=[None for i in range(MAX_ATOMIC_NUMBER)] # In order of the elements in TData
@@ -48,17 +50,21 @@ class TFManage:
 		return
 
 	def Print(self):
-		print "-- TensorMol, Tensorflow Manager Status--"
+		print("-- TensorMol, Tensorflow Manager Status--")
 		return
 
 	def Train(self):
-		print "Will train a NNetwork for each element in: ", self.TData.name
-		for i in range(len(self.TData.AvailableElements)):
-			self.TrainElement(self.TData.AvailableElements[i])
+		print("Will train a NNetwork for each element in: ", self.TData.name)
+		if (self.NetType == "fc_sqdiff_GauSH_direct"):
+			self.Instances = Instance_fc_sqdiff_GauSH_direct(self.TData, self.TData.AvailableElements, True)
+			self.Instances.train(self.n_train)
+		else:
+			for i in range(len(self.TData.AvailableElements)):
+				self.TrainElement(self.TData.AvailableElements[i])
 		return
 
 	def Save(self):
-		print "Saving TFManager:",self.path+self.name+".tfm"
+		print("Saving TFManager:",self.path+self.name+".tfm")
 		self.TData.CleanScratch()
 		f=open(self.path+self.name+".tfm","wb")
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -66,18 +72,18 @@ class TFManage:
 		return
 
 	def Load(self):
-		print "Unpickling TFManager..."
+		print("Unpickling TFManager...")
 		f = open(self.path+self.name+".tfm","rb")
 		import TensorMol.PickleTM
 		tmp = TensorMol.PickleTM.UnPickleTM(f)
 		self.__dict__.update(tmp)
 		f.close()
-		print "TFManager Metadata Loaded, Reviving Networks."
+		print("TFManager Metadata Loaded, Reviving Networks.")
 		self.Print()
 		return
 
 	def TrainElement(self, ele):
-		print "Training Element:", ele
+		print("Training Element:", ele)
 		if (self.TData.dig.eshape==None):
 			raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.
@@ -85,8 +91,8 @@ class TFManage:
 			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None)
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
-		elif (self.NetType == "fc_sqdiff_BP_pair"):
-			self.Instances[ele] = Instance_fc_sqdiff_BP_pair(self.TData, ele, None)
+		elif (self.NetType == "fc_sqdiff_GauSH_direct"):
+			self.Instances[ele] = Instance_fc_sqdiff_GauSH_direct(self.TData, ele, None)
 		elif (self.NetType == "del_fc_sqdiff"):
 			self.Instances[ele] = Instance_del_fc_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "3conv_sqdiff"):
@@ -137,7 +143,7 @@ class TFManage:
 		inputs = self.TData.dig.Emb(mol_, atom_, [mol_.coords[atom_]],False)
 		output = self.Instances[mol_.atoms[atom_]].evaluate(inputs)[0,0]
 		if(not np.all(np.isfinite(output))):
-			print output
+			print(output)
 			raise Exception("BadTFOutput")
 		p = mol_.UseGoProb(atom_, output)
 		return p
@@ -169,12 +175,12 @@ class TFManage:
 					pi[ax,i,atom] = np.dot(RotationMatrix(axis, -1.0*theta),outs[0,ax*RotAv+i].T).reshape(3)
 		p[atom] += pi[ax,i,atom]
 		if (Debug):
-			print "Checking Rotations... "
+			print("Checking Rotations... ")
 			for atom in range(mol.NAtoms()):
-				print "Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1))
+				print("Atom ", atom, " mean: ", np.mean(pi[:,:,atom],axis=(0,1)), " std ",np.std(pi[:,:,atom],axis=(0,1)))
 				for ax in range(3):
 					for i, theta in enumerate(np.linspace(-Pi, Pi, RotAv)):
-						print atom,ax,theta,":",pi[ax,i,atom]
+						print(atom,ax,theta,":",pi[ax,i,atom])
 		return p/(3.0*RotAv)
 
 	def EvalRotAvForce(self, mol, RotAv=10, Debug=False):
@@ -231,17 +237,17 @@ class TFManage:
 				mol_t.Transform(op, mol.coords[atom])
 				inputs[i] = self.TData.dig.Emb(mol_t, atom, mol_t.coords[atom],False)
 				if (Debug):
-					print inputs[i]
+					print(inputs[i])
 			outs = self.Instances[mol_t.atoms[atom]].evaluate(inputs)[0]
 			for i in range(len(ops)):
 				pi[atom,i] = np.dot(invops[i],outs[i].T).reshape(3)
 				p[atom] += np.sum(pi[atom,i], axis=0)
 		if (Debug):
-			print "Checking Rotations... "
+			print("Checking Rotations... ")
 			for atom in range(mol.NAtoms()):
-				print "Atom ", atom, " mean: ", np.mean(pi[atom,:],axis=0), " std ",np.std(pi[atom,:],axis=0)
+				print("Atom ", atom, " mean: ", np.mean(pi[atom,:],axis=0), " std ",np.std(pi[atom,:],axis=0))
 				for i in range(len(ops)):
-					print atom, i, pi[atom,i]
+					print(atom, i, pi[atom,i])
 		return p/(len(ops))
 
 	def evaluate(self, mol, atom):
@@ -262,7 +268,7 @@ class TFManage:
 			p.fill(1.0)
 		#Check finite-ness or throw
 		if(not np.all(np.isfinite(p))):
-			print p
+			print(p)
 			raise Exception("BadTFOutput")
 		return xyz, p
 
@@ -270,7 +276,7 @@ class TFManage:
 		XYZ=[]
 		P=[]
 		for i in range (0, mol.atoms.shape[0]):
-			print ("Evaluating atom: ", mol.atoms[i])
+			print(("Evaluating atom: ", mol.atoms[i]))
 			xyz, p = self.EvalOneAtom(mol, i, maxstep, ngrid)
 			XYZ.append(xyz)
 			P.append(p)
@@ -285,7 +291,7 @@ class TFManage:
 		xyz, inputs = self.SampleAtomGrid( mol, atom, maxstep, ngrid)
 		plist = []
 		p = self.Instances[ele].evaluate(inputs.reshape((inputs.shape[0], -1)))
-		print "p: ",p
+		print("p: ",p)
 		if (np.sum(p**2)**0.5 != 0):
 			p = p/(np.sum(p**2))**0.5
 		else:
@@ -300,7 +306,7 @@ class TFManage:
 			#print xyz.shape
 			MB_inputs = self.TData.dig.ConditionDigest(mol, atom, i, xyz)
 			tmp_p = self.Instances[ele].evaluate(MB_inputs.reshape((MB_inputs.shape[0], -1)))
-			print "tmp_p",tmp_p
+			print("tmp_p",tmp_p)
 			if (np.sum(tmp_p**2)**0.5 != 0):
 				tmp_p = tmp_p/(np.sum(tmp_p**2))**0.5  #just normlized it...
 			else:
@@ -314,7 +320,7 @@ class TFManage:
 		XYZ=[]
 		P=[]
 		for i in range (0, mol.atoms.shape[0]):
-				print ("Evaluating atom: ", mol.atoms[i])
+				print(("Evaluating atom: ", mol.atoms[i]))
 				xyz, p = self.EvalOneAtomMB(mol, i, maxstep, ngrid)
 				XYZ.append(xyz)
 				P.append(p)
@@ -329,7 +335,7 @@ class TFManage:
 			inputs = np.array(inputs)
 			inputs = inputs.reshape((1,-1))
 			p = float(self.Instances[mol.atoms[i]].evaluate(inputs))
-			print ("p:", p)
+			print(("p:", p))
 			P  *= p
 		return P
 
@@ -341,9 +347,9 @@ class TFManage:
 			inputs = np.array(inputs)
 			inputs = inputs.reshape((1,-1))
 			p = float(self.Instances[tmp_mol.atoms[i]].evaluate(inputs))
-			print ("i:",i, "p:", p, "logp:", math.log10(p))
+			print(("i:",i, "p:", p, "logp:", math.log10(p)))
 			logP += math.log10(p)
-		print ("logP:", logP)
+		print(("logP:", logP))
 		return logP
 
 class TFManage_Queue(TFManage):
@@ -352,7 +358,7 @@ class TFManage_Queue(TFManage):
 		self.TestData = TestData_
 
 	def TrainElement(self, ele):
-		print "Training Element:", ele
+		print("Training Element:", ele)
 		if (self.TData.dig.eshape==None):
 			raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.

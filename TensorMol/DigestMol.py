@@ -3,8 +3,10 @@
  TODO: Should inherit from Digest.py (which needs cleanup)
 """
 
-from Mol import *
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Mol import *
+from .Util import *
 
 class MolDigester:
 	def __init__(self, eles_, name_="Coulomb", OType_="FragEnergy", SensRadius_=6):
@@ -52,7 +54,7 @@ class MolDigester:
 			#print "sym", sym
 			SYM.append(sym)
 		SYM =  np.asarray(SYM)
-		print "mol.atoms", mol.atoms, "SYM", SYM
+		print("mol.atoms", mol.atoms, "SYM", SYM)
 		SYM_deri = np.zeros((SYM.shape[0], SYM.shape[1])) # debug, it will take some work to implement to derivative of sym func.
 		return SYM, SYM_deri
 
@@ -358,7 +360,7 @@ class MolDigester:
 			self.eshape=Ins.shape[1:] # The first dimension is atoms. eshape is per-atom.
 			if (MakeGradients and self.egshape == None):
 				self.egshape=Grads.shape[1:]
-				print "Grads Shape: ", Grads.shape
+				print("Grads Shape: ", Grads.shape)
 		if (MakeOutputs):
 			if (self.OType == "Energy"):
 				Outs = np.array([mol_.properties["energy"]])
@@ -437,7 +439,7 @@ class MolDigester:
 			return self.Emb(mol_,True,False)
 
 	def Print(self):
-		print "Digest name: ", self.name
+		print("Digest name: ", self.name)
 
 class MolDigesterEE(MolDigester):
 	def __init__(self, eles_, name_="ANI1_Sym", OType_="EnergyChargesDipole", SensRadius_=6):

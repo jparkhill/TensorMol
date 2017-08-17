@@ -1,6 +1,8 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from TensorMol.ElectrostaticsTF import *
 
 def TrainPrepare():
@@ -29,13 +31,13 @@ def TrainPrepare():
 		for i, mol in enumerate(a.mols):
 			rmsgrad[i] = (np.sum(np.square(mol.properties['gradients'])))**0.5
 		meangrad = np.mean(rmsgrad)
-		print "mean:", meangrad, "std:", np.std(rmsgrad)
+		print("mean:", meangrad, "std:", np.std(rmsgrad))
 		np.savetxt("chemspider9_force_dist.dat", rmsgrad)
 		for i, mol in enumerate(a.mols):
 			rmsgrad = (np.sum(np.square(mol.properties['gradients'])))**0.5
 			if 2 > rmsgrad > 1.5:
 				mol.WriteXYZfile(fname="large_force")
-				print rmsgrad
+				print(rmsgrad)
 
 	if (0):
 		a = MSet("chemspider9_force")
@@ -62,12 +64,12 @@ def TrainPrepare():
 				mol.properties["atomization"] -= ele_E_david[mol.atoms[i]]
 		#	if abs(mol.properties["energy"]) > 1000:
                  #               mol.properties["energy"] = mol.properties["energy"] / KCALPERHARTREE
-			print mol.properties["atomization"], mol.properties["energy"]
+			print(mol.properties["atomization"], mol.properties["energy"])
 		a.Save()
-		print a.mols[0].properties
+		print(a.mols[0].properties)
 		a.mols[0].WriteXYZfile(fname="test")
 
-def TrainForceField(SetName_ = "DavidMetaMD"):
+def TrainForceField(SetName_ = "GoldStd"):
 	a = MSet(SetName_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -137,6 +139,6 @@ def TestIRLinearDirect():
 	WriteDerDipoleCorrelationFunction(md.mu_his,"THP_udp_grad_IR.txt")
 
 #TestCoulomb()
-TrainPrepare()
-# TrainForceField()
+#FTrainPrepare()
+TrainForceField()
 # TestIRLinearDirect()

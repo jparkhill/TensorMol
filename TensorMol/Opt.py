@@ -2,12 +2,14 @@
 We should get all references to TFManage out of this
 and just pass a EnergyAndForce Field function.
 """
-from Sets import *
-from TFManage import *
-from QuasiNewtonTools import *
-from DIIS import *
-from BFGS import *
-from LinearOperations import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Sets import *
+from .TFManage import *
+from .QuasiNewtonTools import *
+from .DIIS import *
+from .BFGS import *
+from .LinearOperations import *
 import random
 import time
 
@@ -17,7 +19,7 @@ class GeomOptimizer:
 		Geometry optimizations based on NN-PES's etc.
 
 		Args:
-			f_: An EnergyForce routine 
+			f_: An EnergyForce routine
 		"""
 		self.thresh = PARAMS["OptThresh"]
 		self.maxstep = PARAMS["OptMaxStep"]
@@ -44,7 +46,7 @@ class GeomOptimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
@@ -57,13 +59,13 @@ class GeomOptimizer:
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			m.coords = LineSearch(Energy, m.coords, frc)
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
-			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
+			print("step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-		print "Final Energy:", Energy(prev_m.coords)
+		print("Final Energy:", Energy(prev_m.coords))
 		return prev_m
 
 	def Opt_GD(self,m, filename="OptLog",Debug=False):
@@ -81,7 +83,7 @@ class GeomOptimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
@@ -91,16 +93,16 @@ class GeomOptimizer:
 		while( step < self.max_opt_step and rmsgrad > self.thresh):
 			prev_m = Mol(m.atoms, m.coords)
 			if step == 0:
-				old_frc = frc 
+				old_frc = frc
 			energy, frc = self.EnergyAndForce(m.coords)
 			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
 			frc /= JOULEPERHARTREE
-			print ("force:", frc)
+			print(("force:", frc))
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			frc = (1-self.momentum)*frc + self.momentum*old_frc
 			m.coords = m.coords + self.fscale*frc
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
-			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
+			print("step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
@@ -129,15 +131,15 @@ class Optimizer:
 		self.tfm = tfm_
 		if (self.tfm!=None):
 			self.OType = self.tfm.TData.dig.OType
-			print "Optimizer will use ",self.OType, " outputs from tensorflow to optimize."
+			print("Optimizer will use ",self.OType, " outputs from tensorflow to optimize.")
 		return
 
 	def CenterOfMass(self, xyz, probs):
 		#Check for garbage...
 		isn=np.all(np.isfinite(probs))
 		if (not isn):
-			print "Infinite Probability predicted."
-			print probs
+			print("Infinite Probability predicted.")
+			print(probs)
 			raise Exception("NanTFOutput")
 		nprobs=probs/np.sum(probs)
 		pxyz=(xyz.T*nprobs).T
@@ -170,7 +172,7 @@ class Optimizer:
 		ccoords = coords-p0
 		Ls=np.cross(ccoords,velocs)
 		n_L=np.sum(Ls,axis=0)
-		print "Net Angular Momentum:",n_L
+		print("Net Angular Momentum:",n_L)
 		return velocs
 
 	def OptGoForce(self,m):
@@ -186,7 +188,7 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
@@ -202,7 +204,7 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", "OptLog")
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+			print("Step:", step, " RMS Error: ", err, " Coords: ", m.coords)
 		return
 
 	def OptLJForce(self,m):
@@ -217,7 +219,7 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		self.momentum = 0.0
@@ -242,7 +244,7 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile(PARAMS["results_dir"], "OptLog")
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+			print("Step:", step, " RMS Error: ", err, " Coords: ", m.coords)
 		return
 
 	def OptTFGoForce(self,m,Debug=True):
@@ -257,7 +259,7 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
@@ -270,7 +272,7 @@ class Optimizer:
 					veloc[i] = -0.001*self.tfm.evaluate(m,i)
 			if (Debug):
 				for i in range(m.NAtoms()):
-					print "Real & TF ",m.atoms[i], ":" , veloc[i], "::", -1.0*m.GoForce(i)
+					print("Real & TF ",m.atoms[i], ":" , veloc[i], "::", -1.0*m.GoForce(i))
 			c_veloc = (1.0-self.momentum)*veloc+self.momentum*old_veloc
 			# Remove translation.
 			c_veloc = c_veloc - np.average(c_veloc,axis=0)
@@ -281,7 +283,7 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./datasets/", "OptLog")
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", m.coords
+			print("Step:", step, " RMS Error: ", err, " Coords: ", m.coords)
 		return
 
 	def OptTFRealForce(self,m, filename="OptLog",Debug=False):
@@ -300,7 +302,7 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		diis = DIIS()
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
@@ -314,7 +316,7 @@ class Optimizer:
 					veloc[i] = self.tfm.evaluate(m,i)
 			if (Debug):
 				for i in range(m.NAtoms()):
-					print "TF veloc: ",m.atoms[i], ":" , veloc[i]
+					print("TF veloc: ",m.atoms[i], ":" , veloc[i])
 			veloc = veloc - np.average(veloc,axis=0)
 			#Remove translation.
 			prev_m = Mol(m.atoms, m.coords)
@@ -353,7 +355,7 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		diis = DIIS()
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
@@ -369,13 +371,13 @@ class Optimizer:
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			m.coords = LineSearch(Energy, m.coords, frc)
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
-			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
+			print("step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-		print "Final Energy:", Energy(prev_m.coords)
+		print("Final Energy:", Energy(prev_m.coords))
 		return prev_m
 
 	def OptANI1Direct(self,m, filename="OptLog",Debug=False):
@@ -395,7 +397,7 @@ class Optimizer:
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		diis = DIIS()
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
@@ -410,13 +412,13 @@ class Optimizer:
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			m.coords = LineSearch(Energy, m.coords, frc)
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
-			print "step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp
+			print("step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
 			step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-		print "Final Energy:", Energy(prev_m.coords)
+		print("Final Energy:", Energy(prev_m.coords))
 		return prev_m
 
 	def OptTFRealForceLBFGS(self,m, filename="OptLog",Debug=False):
@@ -434,7 +436,7 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", m.coords
+		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		veloc=np.zeros(m.coords.shape)
 		self.m_max = PARAMS["OptMaxBFGS"]
@@ -450,7 +452,7 @@ class Optimizer:
 					veloc[i] = self.tfm.evaluate(m,i)
 			if (Debug):
 				for i in range(m.NAtoms()):
-					print "TF veloc: ",m.atoms[i], ":" , veloc[i]
+					print("TF veloc: ",m.atoms[i], ":" , veloc[i])
 			veloc = veloc - np.average(veloc,axis=0)
 			if step < self.m_max:
 				R_Hist[step] = m.coords.copy()
@@ -508,7 +510,7 @@ class Optimizer:
 		mol_hist = []
 		new_m = Mol()
 		new_m = m
- 		print "Orig Coords", new_m.coords
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -535,7 +537,7 @@ class Optimizer:
 				GridstoRaw(grids,250,str(step))
 			step+=1
 			Energy = new_m.EnergyAfterAtomMove(new_m.coords[0],0)
-                        print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
 			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
@@ -550,7 +552,7 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		new_m = Mol(m.atoms, m.coords)
-		print "Orig Coords", new_m.coords
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -583,7 +585,7 @@ class Optimizer:
 				grids = tmp_m.AddPointstoMolDots(grids, xs, ps)
 				GridstoRaw(grids,250,str(step))
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords)
 		return
 
 	def OptSmoothP(self,m):
@@ -592,7 +594,7 @@ class Optimizer:
 		step=0
 		mol_hist = []
 		new_m = copy.deepcopy(m)
-		print "Orig Coords", new_m.coords
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -616,7 +618,7 @@ class Optimizer:
 				grids = tmp_m.AddPointstoMolDots(grids, xs, ps)
 				GridstoRaw(grids,250,str(step))
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords)
 		return
 
 	def GoOptProb(self,m):
@@ -628,7 +630,7 @@ class Optimizer:
 		mol_hist = []
 		new_m = Mol()
 		new_m = m
- 		print "Orig Coords", new_m.coords
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -655,7 +657,7 @@ class Optimizer:
 				GridstoRaw(grids,250,str(step))
 			step+=1
 			Energy = new_m.EnergyAfterAtomMove(new_m.coords[0],0)
-                        print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
 			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
@@ -667,7 +669,7 @@ class Optimizer:
 		mol_hist = []
 		new_m = Mol()
 		new_m = m
- 		print "Orig Coords", new_m.coords
+		print("Orig Coords", new_m.coords)
 		old_veloc=np.zeros(new_m.coords.shape)
 		while(err>self.thresh and step < self.max_opt_step):
 			coords=np.array(new_m.coords,copy=True)
@@ -694,7 +696,7 @@ class Optimizer:
 				GridstoRaw(grids,250,str(step))
 			step+=1
 			Energy = new_m.GoPotential()
-                        print "Step:", step, " RMS Error: ", err, "Energy: ", Energy#" Coords: ", new_m.coords
+			print("Step:", step, " RMS Error: ", err, "Energy: ", Energy)#" Coords: ", new_m.coords
 			#print "Step:", step, " RMS Error: ", err, " Coords: ", new_m.coords
 		return
 
@@ -734,5 +736,5 @@ class Optimizer:
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results", "OptLog")
 			step+=1
-			print "Step:", step, " RMS Error: ", err, " Coords: ", m1.coords
+			print("Step:", step, " RMS Error: ", err, " Coords: ", m1.coords)
 		return

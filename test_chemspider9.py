@@ -1,6 +1,8 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 
@@ -26,7 +28,7 @@ def TrainPrepare():
                 a.Save()
 
 
-	if (0):
+	if (1):
 		B3LYP631GstarAtom={}
 		B3LYP631GstarAtom[1]=-0.5002727827
 		B3LYP631GstarAtom[6]=-37.8462793509
@@ -50,7 +52,7 @@ def TrainPrepare():
 				mol.properties['atomization'] -= B3LYP631GstarAtom[mol.atoms[i]]
                         a.mols.append(mol)
 		a.mols[100].WriteXYZfile(fname="metady_test")
-		print a.mols[100].properties
+		print(a.mols[100].properties)
                 a.Save()
 
 
@@ -82,10 +84,12 @@ def TrainPrepare():
 		RIMP2Atom={}
 		RIMP2Atom[1]=-0.4998098112
 		RIMP2Atom[8]=-74.9659650581
-                a = MSet("H2O_augmented_more_rimp2_force_dipole")
+                a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
                 dic_list_1 = pickle.load(open("./datasets/H2O_augmented_more_cutoff5_rimp2_force_dipole.dat", "rb"))
 		dic_list_2 = pickle.load(open("./datasets/H2O_long_dist_pair.dat", "rb"))
-		dic_list = dic_list_1 + dic_list_2
+		dic_list_3 = pickle.load(open("./datasets/H2O_metady_bowl02.dat", "rb"))
+		dic_list = dic_list_1 + dic_list_2 + dic_list_3
+		random.shuffle(dic_list)
                 for dic in dic_list:
                         atoms = []
                         for atom in dic['atoms']:
@@ -102,8 +106,28 @@ def TrainPrepare():
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
                         a.mols.append(mol)
-		print "number of mols:", len(a.mols)
+
+		b = MSet("H2O_bowl02_rimp2_force_dipole")
+                for dic in dic_list_3:
+                        atoms = []
+                        for atom in dic['atoms']:
+                                atoms.append(AtomicNumber(atom))
+                        atoms = np.asarray(atoms, dtype=np.uint8)
+                        mol = Mol(atoms, dic['xyz'])
+                        mol.properties['mul_charges'] = dic['mul_charges']
+                        mol.properties['dipole'] = dic['dipole']
+			mol.properties['scf_dipole'] = dic['scf_dipole']
+                        mol.properties['energy'] = dic['energy']
+			mol.properties['scf_energy'] = dic['scf_energy']
+                        mol.properties['gradients'] = dic['gradients']
+			mol.properties['atomization'] = dic['energy']
+			for i in range (0, mol.NAtoms()):
+				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
+                        b.mols.append(mol)
+		print("number of a mols:", len(a.mols))
+		print("number of b mols:", len(b.mols))
                 a.Save()
+		b.Save()
 		
 
 	if (0):
@@ -113,13 +137,13 @@ def TrainPrepare():
 		for i, mol in enumerate(a.mols):
 			rmsgrad[i] = (np.sum(np.square(mol.properties['gradients'])))**0.5
 		meangrad = np.mean(rmsgrad)
-		print "mean:", meangrad, "std:", np.std(rmsgrad)
+		print("mean:", meangrad, "std:", np.std(rmsgrad))
 		np.savetxt("chemspider9_force_dist.dat", rmsgrad)
 		for i, mol in enumerate(a.mols):
                         rmsgrad = (np.sum(np.square(mol.properties['gradients'])))**0.5
 			if 2 > rmsgrad > 1.5:
 				mol.WriteXYZfile(fname="large_force")
-				print rmsgrad
+				print(rmsgrad)
 
 	if (0):
 		a = MSet("chemspider9_force")
@@ -137,7 +161,7 @@ def TrainPrepare():
 	if (0):
 		a = MSet("chemspider9_force")
 		a.Load()
-		print a.mols[0].properties
+		print(a.mols[0].properties)
 		a.mols[0].WriteXYZfile(fname="test")
 
 def TrainForceField():
@@ -217,7 +241,7 @@ def TrainForceField():
                 #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
                 manager.Continue_Training(target="All")
 
-	#New radius: 8 A
+	#New radius
 
         if (0):
                 a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
@@ -249,8 +273,8 @@ def TrainForceField():
                 #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
                 manager.Train()
 
-	#New radius: 5 A 
-        if (0):
+	#New radius: 5 A
+        if (1):
                 a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
@@ -267,7 +291,7 @@ def TrainForceField():
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 7.0
 		PARAMS["AN1_r_Rc"] = 5.0
-		PARAMS["Erf_Width"] = 0.4 
+		PARAMS["Erf_Width"] = 0.4
 		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
@@ -313,8 +337,41 @@ def TrainForceField():
 
 	#New radius: 8 A and long distance pair
 
-        if (1):
+        if (0):
                 a = MSet("H2O_augmented_more_rimp2_force_dipole")
+                a.Load()
+                TreatedAtoms = a.AtomTypes()
+                PARAMS["learning_rate"] = 0.00001
+                PARAMS["momentum"] = 0.95
+                PARAMS["max_steps"] = 901
+                PARAMS["batch_size"] = 1000
+                PARAMS["test_freq"] = 10
+                PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScaler"] = 1.0
+		PARAMS["DipoleScaler"]=1.0
+                PARAMS["NeuronType"] = "relu"
+                PARAMS["HiddenLayers"] = [512, 512, 512]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 7.0
+		PARAMS["AN1_r_Rc"] = 8.0
+		PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["Erf_Width"] = 0.4
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 100
+                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+                manager.Train()
+
+
+        if (1):
+		#New radius: 8 A and long distance pair and bowl potential with K=0.2
+                #a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
+		a =  MSet("H2O_bowl02_rimp2_force_dipole")
                 a.Load()
                 TreatedAtoms = a.AtomTypes()
                 PARAMS["learning_rate"] = 0.00001
@@ -342,6 +399,7 @@ def TrainForceField():
                 manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
                 #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
                 manager.Train()
+
 
 	# With Chemspider9 Metadyn
         if (0):
@@ -405,29 +463,29 @@ def EvalForceField():
 		#print out_list
 		#print "gradient: ", out_list[-1]/BOHRPERA
 		#print manager.EvalBPDirectEESingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-		m = a.mols[1]
-		def EnAndForce(x_):
-                        m.coords = x_
-                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-                        energy = Etotal[0]
-                        force = gradient[0]
-                        return energy, force
-                ForceField = lambda x: EnAndForce(x)[-1]
-                EnergyForceField = lambda x: EnAndForce(x)
+		m = a.mols[4]
+		#def EnAndForce(x_):
+                #        m.coords = x_
+                #        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+                #        energy = Etotal[0]
+                #        force = gradient[0]
+                #        return energy, force
+                #ForceField = lambda x: EnAndForce(x)[-1]
+                #EnergyForceField = lambda x: EnAndForce(x)
 
-		PARAMS["MDdt"] = 0.2
-        	PARAMS["RemoveInvariant"]=True
-        	PARAMS["MDMaxStep"] = 2000
-        	PARAMS["MDThermostat"] = "Nose"
-        	PARAMS["MDV0"] = None
-		PARAMS["MDAnnealTF"] = 0.0
-                PARAMS["MDAnnealT0"] = 300.0
-		PARAMS["MDAnnealSteps"] = 2000	
-       	 	anneal = Annealer(EnergyForceField, None, m, "Anneal")
-       	 	anneal.Prop()
-       	 	m.coords = anneal.Minx.copy()
-       	 	m.WriteXYZfile("./results/", "Anneal_opt")
-		raise Exception("Aneal Ended")
+		#PARAMS["MDdt"] = 0.2
+        	#PARAMS["RemoveInvariant"]=True
+        	#PARAMS["MDMaxStep"] = 10000
+        	#PARAMS["MDThermostat"] = "Nose"
+        	#PARAMS["MDV0"] = None
+		#PARAMS["MDAnnealTF"] = 300.0
+                #PARAMS["MDAnnealT0"] = 0.0
+		#PARAMS["MDAnnealSteps"] = 2000
+       	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
+       	 	#anneal.Prop()
+       	 	#m.coords = anneal.Minx.copy()
+       	 	#m.WriteXYZfile("./results/", "Anneal_opt")
+
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(m)
                 #PARAMS["MDThermostat"] = "Nose"
@@ -458,7 +516,7 @@ def EvalForceField():
 		#MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
 		#mbe =  NN_MBE_Linear(manager)
 		#mbe.EnergyForceDipole(MBEterms)
-		
+
 		def EnAndForce(x_):
                         m.coords = x_
                         Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
@@ -495,16 +553,16 @@ def EvalForceField():
         	PARAMS["MDV0"] = None
 		PARAMS["MDAnnealTF"] = 300.0
                 PARAMS["MDAnnealT0"] = 0.0
-		PARAMS["MDAnnealSteps"] = 10000	
+		PARAMS["MDAnnealSteps"] = 10000
        	 	anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	anneal.Prop()
-       	 	m.coords = anneal.x.copy()
+       	 	m.coords = anneal.Minx.copy()
        	 	m.WriteXYZfile("./results/", "Anneal_opt")
 	        PARAMS["MDThermostat"] = None
 	        PARAMS["MDTemp"] = 0
 	        PARAMS["MDdt"] = 0.1
 	        PARAMS["MDV0"] = None
-	        PARAMS["MDMaxStep"] = 40000
+	        PARAMS["MDMaxStep"] = 100000
 	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
 	        md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)		
@@ -542,7 +600,6 @@ def EvalForceField():
 		#print "gradient: ", out_list[-1]/BOHRPERA
 		#print manager.EvalBPDirectEESingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		m = a.mols[5]
-
 		#PARAMS["MDdt"] = 0.2
         	#PARAMS["RemoveInvariant"]=True
         	#PARAMS["MDMaxStep"] = 2000
@@ -563,13 +620,15 @@ def EvalForceField():
 		mbe =  NN_MBE_Linear(manager)
 		def EnAndForce(x_):
                         m.coords = x_
-			MBEterms.Update(m.coords, 15.0, 15.0)
+			MBEterms.Update(m.coords, 10, 10)
                         Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
                         energy = Etotal
                         force = gradient
                         return energy, force
 
                 EnergyForceField = lambda x: EnAndForce(x)
+		print(EnergyForceField(m.coords))
+		raise Exception("Stop here for debugging")
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(m)
 
@@ -580,7 +639,7 @@ def EvalForceField():
         	#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 0.0
                 #PARAMS["MDAnnealT0"] = 100.0
-		#PARAMS["MDAnnealSteps"] = 500	
+		#PARAMS["MDAnnealSteps"] = 200	
        	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	#anneal.Prop()
        	 	#m.coords = anneal.Minx.copy()
@@ -588,7 +647,7 @@ def EvalForceField():
 	
 		def ChargeField(x_):
 			m.coords = x_
-                        MBEterms.Update(m.coords, 15.0, 15.0)
+                        MBEterms.Update(m.coords, 20.0, 20.0)
                         Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
 			return charge
 
@@ -596,8 +655,7 @@ def EvalForceField():
 		EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
 
-
-		#PARAMS["MDdt"] = 0.2
+		#PARAMS["MDdt"] = 0.1
 		#PARAMS["RemoveInvariant"]=True
 		#PARAMS["MDMaxStep"] = 10000
 		#PARAMS["MDThermostat"] = "Nose"
@@ -608,7 +666,6 @@ def EvalForceField():
 		#anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		#anneal.Prop()
 		#m.coords = anneal.x.copy()
-		#m.WriteXYZfile("./results/", "Anneal_opt")
 
 	
                 PARAMS["MDThermostat"] = "Nose"
@@ -630,8 +687,9 @@ def EvalForceField():
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
-	if (0):
-		os.environ["CUDA_VISIBLE_DEVICES"]=""
+
+	if (1):
+		os.environ["CUDA_VISIBLE_DEVICES"]="0"
 		a = MSet("chemspider9_metady_force")
 		a.Load()
 		b = MSet("david_test")
@@ -661,7 +719,7 @@ def EvalForceField():
 		#print manager.EvalBPDirectEESingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		#print a.mols[1].properties, "Dipole in a.u.:",a.mols[1].properties["dipole"]*0.393456
 
-		m = b.mols[3]
+		m = b.mols[7]
 		def EnAndForce(x_):
 			m.coords = x_
 			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
@@ -696,12 +754,12 @@ def EvalForceField():
 		PARAMS["MDMaxStep"] = 10000
 		PARAMS["MDThermostat"] = "Nose"
 		PARAMS["MDV0"] = None
-		PARAMS["MDAnnealTF"] = 200.0
+		PARAMS["MDAnnealTF"] = 300.0
 		PARAMS["MDAnnealT0"] = 0.1
 		PARAMS["MDAnnealSteps"] = 10000
 		anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		anneal.Prop()
-		m.coords = anneal.x.copy()
+		m.coords = anneal.Minx.copy()
 		m.WriteXYZfile("./results/", "Anneal_opt")
 		PARAMS["MDThermostat"] = None
 		PARAMS["MDTemp"] = 0

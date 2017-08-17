@@ -47,12 +47,12 @@ class BumpHolder:
 			self.nb_pl=tf.placeholder(tf.int32)
 			self.h = tf.Variable(0.5,dtype = tf.float64)
 			self.w = tf.Variable(1.0,dtype = tf.float64)
-			self.BowlK = tf.Variable(1.0,dtype = tf.float64)
+			self.BowlKv = tf.Variable(self.BowlK,dtype = tf.float64)
 			init = tf.global_variables_initializer()
 			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
-			self.BowlE = BowlEnergy(self.BowlK, self.x_pl)
-			self.BowlF = tf.gradients(BowlEnergy(self.BowlK, self.x_pl), self.x_pl)
+			self.BowlE = BowlEnergy(self.BowlKv, self.x_pl)
+			self.BowlF = tf.gradients(BowlEnergy(self.BowlKv, self.x_pl), self.x_pl)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
@@ -1189,16 +1189,15 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 			t = time.time()
 			if self.profiling:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
+				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+				chrome_trace = fetched_timeline.generate_chrome_trace_format()
+				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+					f.write(chrome_trace)
 			else:
 				dump_, dump_2, total_loss_value, loss_value, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + loss_value
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
-			if self.profiling:
-				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-				chrome_trace = fetched_timeline.generate_chrome_trace_format()
-				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-					f.write(chrome_trace)
 		self.PrintTrain(step, train_loss, num_of_mols, duration)
 		return
 
@@ -1287,7 +1286,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
-	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
+	def __init__(self, TData_, Name_=None, Trainable_=True, ForceType_="LJ"):
 		"""
 		Args:
 			TData_: A TensorMolData instance.
@@ -1626,6 +1625,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
+			self.sess.graph.finalize()
 			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 			#self.run_metadata = tf.RunMetadata()
 		return
@@ -2650,7 +2650,6 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return test_loss
 
-
 	def train_step_dipole(self, step):
 		"""
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
@@ -2672,7 +2671,9 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_dipole, self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
-			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			LOGGER.debug("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			max_index = np.argmax(np.sum(abs(batch_data[3]-mol_dipole),axis=1))
+			LOGGER.debug("real dipole:\n", batch_data[3][max_index], "\nmol_dipole:\n", mol_dipole[max_index], "\n xyz:", batch_data[0][max_index], batch_data[1][max_index])
 			#print ("Etotal:", Etotal[:20], " Ecc:", Ecc[:20])
 			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
 			#print ("charge:", atom_charge )
@@ -3061,11 +3062,14 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			# please do not use the totality of the GPU memory
+			config=tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
+			config.gpu_options.per_process_gpu_memory_fraction = 0.90
+			self.sess = tf.Session()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
-
+			self.sess.graph.finalize()
 
 	def dipole_inference(self, inp, indexs, xyzs, natom, EE_cuton, EE_cutoff, Reep, AddEcc):
 		"""

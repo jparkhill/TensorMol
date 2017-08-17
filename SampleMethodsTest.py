@@ -4,6 +4,8 @@ develop energies and forces, and gather statistics
 for data tables and figures
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 import os
 import numpy as np
@@ -11,17 +13,15 @@ from math import *
 from random import *
 from TensorMol.ElectrostaticsTF import *
 
-def GetEnergyAndForceFromManager(MName_, set_):
+def GetEnergyAndForceFromManager(MName_, a):
 	"""
 	MName: name of the manager. (specifies sampling method.)
-	set_: name of dataset
+	set_: An MSet() dataset which has been loaded. 
 	"""
 	# If you wanna do eq.
 	# a = MSet("sampling_mols")
 	# a.ReadXYZ()
 	#
-	a = MSet(set_)
-	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
@@ -51,9 +51,9 @@ def GetEnergyAndForceFromManager(MName_, set_):
 		#print "FErr[i]", FErr[i]
 	final_E_err = (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE
 	final_F_err = (np.sum(FErr)/nmols)*KCALPERHARTREE
-	print np.sum(FErr,axis=0), nmols
-	print "RMS energy error: ", (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE
-	print "<|F_err|> error: ", (np.sum(FErr)/nmols)*KCALPERHARTREE
+	print(np.sum(FErr,axis=0), nmols)
+	print("RMS energy error: ", (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE)
+	print("<|F_err|> error: ", (np.sum(FErr)/nmols)*KCALPERHARTREE)
 	return final_E_err, final_F_err
 
 def CompareAllData():
@@ -63,23 +63,19 @@ def CompareAllData():
 	the managers.
 	"""
 
-	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
-	SetNames=["DavidMD","DavidMetaMD"]
-	nm = MSet("DavidNM")
-	rnd = MSet("DavidRandom")
-	hyb = MSet("Hybrid")
-	gold = MSet("GoldStd")
-	MSets = map(MSet,SetNames)
+	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_Hybrid_AN1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_GoldStd_AN1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+	SetNames = ["DavidMD","DavidMetaMD","DavidNM","DavidRandom", "Hybrid","GoldStd"]
+	MSets = [MSet(name) for name in SetNames]
 	for aset in MSets:
 		aset.Load()
 	results = {}
-	print "Loaded Sets... "
-	
+	print("Loaded Sets... ")
+
 	for i in managers:
 		for j in range(len(MSets)):
 			en, f = GetEnergyAndForceFromManager(i,MSets[j])
 			results[(i,SetNames[j])] = (en, f)
-	print results
+	print(results)
 
 def TestOptimization(MName_):
 	"""
@@ -112,10 +108,10 @@ def TestOptimization(MName_):
 	molp = GeomOptimizer(EnergyForceField).Opt(mol)
 	tmp_rms = mol.rms_inv(molp)
 	rms_list.append(tmp_rms)
-	print "RMS:", tmp_rms
+	print("RMS:", tmp_rms)
 	return np.mean(rms_list)
 
 
-GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Hybrid")
-# CompareAllData()
+# GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Hybrid")
+CompareAllData()
 # print TestOptimization("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
