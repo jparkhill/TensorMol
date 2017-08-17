@@ -314,11 +314,11 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
 	PARAMS["HiddenLayers"] = [512, 512, 512, 512]
-	PARAMS["max_steps"] = 2000
+	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 2000
+	PARAMS["batch_size"] = 500
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float64"
+	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -349,4 +349,4 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-train_forces_GauSH_direct("chemspider_all_60_rand")
+train_forces_GauSH_direct("SmallMols")
