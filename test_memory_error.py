@@ -36,6 +36,7 @@ tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  Wi
 #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
 manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode") # Initialzie a manager than manage the training of neural network.
 #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+PARAMS["Profiling"] = 1
 with memory_util.capture_stderr() as stderr:
 	manager.Train(1)
 memory_util.print_memory_timeline(stderr, ignore_less_than_bytes=1000)
