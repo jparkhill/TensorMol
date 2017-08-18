@@ -1490,6 +1490,14 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
 
+# def gaussian_overlap(gaussian_params):
+# 	r_nought = gaussian_params[:,0]
+# 	sigma = gaussian_params[:,1]
+# 	tf.sqrt(np.pi / 2) * tf.exp(-tf.square(tf.expand_dims(r_nought, axis=0) - tf.expand_dims(r_nought, axis=1))
+# 	/ (2.0 * (tf.square(tf.expand_dims(sigma, axis=0)) + tf.square(tf.expand_dims(sigma, axis=1)))))
+# 	* (1 + tf.erf(tf.expand_dims(r_nought, axis=0))
+
+
 def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors):
 	exponent = ((r - gaussian_params[:,0]) ** 2.0) / (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
