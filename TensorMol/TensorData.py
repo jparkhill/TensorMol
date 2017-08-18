@@ -591,6 +591,7 @@ class TensorDataDirect(TensorData):
 			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
 			self.Nmols = len(self.set.mols)
 			self.AvailableElements = self.set.AtomTypes()
+			self.name = self.set.name
 
 	def LoadData(self):
 		if self.set == None:
@@ -665,3 +666,66 @@ class TensorDataDirect(TensorData):
 		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		return [xyzs, Zs, labels]
+
+	def EvaluateTestBatch(self, desired, predicted):
+		try:
+			print("Evaluating, ", len(desired), " predictions... ")
+			print(desired.shape, predicted.shape)
+			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
+				err = predicted-desired
+				ders = np.linalg.norm(err, axis=1)
+				for i in range(20):
+					print("Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:])
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired,axis=0)),str(np.average(predicted,axis=0)))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
+				# Convert them back to cartesian
+				desiredc = SphereToCartV(desired)
+				predictedc = SphereToCartV(predicted)
+				err = predictedc-desiredc
+				ders = np.linalg.norm(err, axis=1)
+				for i in range(20):
+					print("Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:])
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+			elif (self.dig.OType == "ForceMag"):
+				err = predicted-desired
+				for i in range(20):
+					print("Desired: ",i,desired[i]," Predicted: ",predicted[i])
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:],axis=0)),str(np.average(predicted[:],axis=0)))
+			elif (self.dig.OType=="SmoothP"):
+				ders=np.zeros(len(desired))
+				iers=np.zeros(len(desired))
+				comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
+					Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
+					Pr /= np.sum(Pr)
+					p=np.dot(GRIDS.MyGrid().T,Pr)
+					#print "fit disp: ", p
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+					iers[i] = np.linalg.norm(p-desired[i,-3:])
+					comp[i] = np.linalg.norm(p-predicted[i,-3:])
+				print("Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp))
+				print("Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0))
+				print("Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+			elif (self.dig.OType=="StoP"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="Energy"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="GoForce_old_version"): # python version is fine for here
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="HardP"):
+				raise Exception("Unknown Digester Output Type.")
+			else:
+				raise Exception("Unknown Digester Output Type.")
+		except Exception as Ex:
+			print("Something went wrong")
+			print(Ex)
+			pass
+		return
