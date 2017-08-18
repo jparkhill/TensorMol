@@ -1580,6 +1580,22 @@ def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params,
 		labels_list.append(tf.boolean_mask(tf.reshape(labels, [num_mols * max_num_atoms, tf.shape(labels)[2]]), element_mask))
 	return embedding_list, labels_list
 
+def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_params, atomic_embed_factors, l_max):
+	jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
+	with jit_scope():
+		num_mols = tf.shape(Zs)[0]
+		max_num_atoms = tf.shape(Zs)[1]
+		delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
+		distance_tensor = tf.norm(delta_xyzs,axis=3)
+		atom_scaled_gaussians = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors)
+		spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
+	embedding = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
+							[num_mols * max_num_atoms, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
+	element_mask = tf.equal(tf.reshape(Zs, [num_mols * max_num_atoms]), element)
+	embedding = tf.boolean_mask(embedding, element_mask)
+	labels = tf.boolean_mask(tf.reshape(labels, [num_mols * max_num_atoms, tf.shape(labels)[2]]), element_mask)
+	return embedding, labels
+
 def TF_random_rotate(xyzs, labels):
 	num_mols = tf.shape(xyzs)[0]
 	theta = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
