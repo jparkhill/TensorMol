@@ -202,6 +202,7 @@ class Instance:
 		self.PreparedFor = 0
 		self.summary_op = None
 		self.activation_function = None
+		print(self.__dict__)
 		return
 
 	def SaveAndClose(self):
@@ -841,7 +842,6 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape],
 															var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd=None)
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-				# branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
 				atom_outputs.append(tf.matmul(branches[-1][-1], weights) + biases)
 			tf.verify_tensor_all_finite(atom_outputs,"Nan in output!!!")
 		return atom_outputs
@@ -870,6 +870,31 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		self.summary_op =None
 		self.summary_writer=None
 		Instance.Save(self)
+		return
+
+	def Clean(self):
+		if (self.sess != None):
+			self.sess.close()
+		self.sess = None
+		self.loss = None
+		self.output = None
+		self.total_loss = None
+		self.train_op = None
+		self.saver = None
+		self.gradient = None
+		self.summary_writer = None
+		self.PreparedFor = 0
+		self.summary_op = None
+		self.activation_function = None
+		self.atomic_embed_factors = None
+		self.gaussian_params = None
+		self.labels_list = None
+		self.norm_output_list = None
+		self.labels_pl = None
+		self.Zs_pl = None
+		self.xyzs_pl = None
+		self.output_list = None
+		self.embedding_list = None
 		return
 
 	def save_chk(self,  step):  # this can be included in the Instance
