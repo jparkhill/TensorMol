@@ -95,6 +95,9 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_LJForce(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
+		if (PARAMS["Profiling"]>0):
+			self.Instances.profile()
+			return
 		self.n_train = PARAMS["max_steps"]
 		self.Instances.train(self.n_train)
 		nm = self.Instances.name
