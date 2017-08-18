@@ -591,6 +591,7 @@ class TensorDataDirect(TensorData):
 			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
 			self.Nmols = len(self.set.mols)
 			self.AvailableElements = self.set.AtomTypes()
+			self.name = self.set.name
 
 	def LoadData(self):
 		if self.set == None:
@@ -666,144 +667,65 @@ class TensorDataDirect(TensorData):
 		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		return [xyzs, Zs, labels]
 
-class TensorData_TFRecords(TensorData):
-	def __init__(self, MSet_=None, Dig_=None, Name_=None, test_=False, type_="atom"):
-		TensorData.__init__(self, MSet_, Dig_, Name_, type_)
-		self.test = test_
-
-	def _int64_feature(self, value):
-		return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-	def _bytes_feature(self, value):
-		return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
-
-	def _float_feature(self, value):
-		return tf.train.Feature(float_list=tf.train.FloatList(value=value))
-
-	def ConvertToTFRec(self, inputs, labels, name):
-		"""Converts a dataset to tfrecords."""
-		num_examples = labels.shape[0]
-		if inputs.shape[0] != num_examples:
-			raise ValueError('Input size %d does not match label size %d.', inputs.shape[0], num_examples)
-		filename = name
-		print(('Writing', filename))
-		writer = tf.python_io.TFRecordWriter(filename)
-		for index in range(num_examples):
-			input_raw = inputs[index].tostring()
-			label_raw = labels[index].tostring()
-			example = tf.train.Example(features=tf.train.Features(feature={
-				'input_raw': self._bytes_feature(input_raw),
-				'label_raw': self._bytes_feature(label_raw),}))
-			writer.write(example.SerializeToString())
-		writer.close()
-
-	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
-		"""
-		Generates inputs for all training data using the chosen digester.
-		This version builds all the elements at the same time.
-		The other version builds each element separately
-		If PESSamples = [] it may use a Go-model (CITE:http://dx.doi.org/10.1016/S0006-3495(02)75308-3)
-		"""
-		if (((self.dig.name != "GauInv" and self.dig.name !="GauSH" and self.dig.name !="ANI1_Sym")) or (self.dig.OType != "GoForce" and self.dig.OType!="GoForceSphere"
- 								and self.dig.OType!="Force" and self.dig.OType!="Del_Force" and self.dig.OType !="ForceSphere" and self.dig.OType !="ForceMag")):
-			raise Exception("Molwise Embedding not supported")
-		if (self.set == None):
-			try:
-				self.ReloadSet()
-			except Exception as Ex:
-				print("TData doesn't have a set.", Ex)
-		self.CheckShapes()
-		self.name=name_
-		LOGGER.info("Generating Train set: %s from mol set %s of size %i molecules", self.name, self.set.name, len(self.set.mols))
-		if (len(atypes)==0):
-			atypes = self.set.AtomTypes()
-		LOGGER.debug("Will train atoms: "+str(atypes))
-		# Determine the size of the training set that will be made.
-		nofe = [0 for i in range(MAX_ATOMIC_NUMBER)]
-		for element in atypes:
-			for m in self.set.mols:
-				nofe[element] = nofe[element]+m.NumOfAtomsE(element)
-		truncto = [nofe[i] for i in range(MAX_ATOMIC_NUMBER)]
-		self.SamplesPerElement = [None for i in range(10)]
-		self.AvailableDataFiles = [None for i in range(10)]
-		if self.test:
-			data_names = [self.path+name_+"_"+self.dig.name+"_"+str(element)+"_test.tfrecords" for element in atypes]
-		else:
-			data_names = [self.path+name_+"_"+self.dig.name+"_"+str(element)+"_train.tfrecords" for element in atypes]
-		self.writers = [tf.python_io.TFRecordWriter(filename) for filename in data_names]
-		# cases_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.eshape)), dtype=np.float32) for element in atypes]
-		# labels_list = [np.zeros(shape=tuple([nofe[element]*self.dig.NTrainSamples]+list(self.dig.lshape)), dtype=np.float32) for element in atypes]
-		casep_list = [0 for element in atypes]
-		t0 = time.time()
-		ord = len(self.set.mols)
-		mols_done = 0
+	def EvaluateTestBatch(self, desired, predicted):
 		try:
-			for mi in xrange(ord):
-				m = self.set.mols[mi]
-				ins,labels = self.dig.TrainDigestMolwise(m)
-				ins = ins.astype(np.float32)
-				labels = labels.astype(np.float32)
-				for i in range(m.NAtoms()):
-					# Route all the inputs and outputs to the appropriate place...
-					ai = atypes.tolist().index(m.atoms[i])
-					input_raw = ins[i].tostring()
-					label_raw = labels[i].tostring()
-					example = tf.train.Example(features=tf.train.Features(feature={
-						'input_raw': self._bytes_feature(input_raw),
-						'label_raw': self._bytes_feature(label_raw),}))
-					self.writers[ai].write(example.SerializeToString())
-					# cases_list[ai][casep_list[ai]] = ins[i]
-					# labels_list[ai][casep_list[ai]] = outs[i]
-					casep_list[ai] = casep_list[ai]+1
-				if (mols_done%10000==0 and mols_done>0):
-					print(mols_done)
-				if (mols_done==400):
-					print("Seconds to process 400 molecules: ", time.time()-t0)
-				mols_done = mols_done + 1
-			for writer in self.writers:
-				writer.close()
+			print("Evaluating, ", len(desired), " predictions... ")
+			print(desired.shape, predicted.shape)
+			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
+				err = predicted-desired
+				ders = np.linalg.norm(err, axis=1)
+				for i in range(20):
+					print("Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:])
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired,axis=0)),str(np.average(predicted,axis=0)))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
+				# Convert them back to cartesian
+				desiredc = SphereToCartV(desired)
+				predictedc = SphereToCartV(predicted)
+				err = predictedc-desiredc
+				ders = np.linalg.norm(err, axis=1)
+				for i in range(20):
+					print("Desired: ",i,desiredc[i,-3:]," Predicted: ",predictedc[i,-3:])
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desiredc[:,-3:],axis=0)),str(np.average(predictedc[:,-3:],axis=0)))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+			elif (self.dig.OType == "ForceMag"):
+				err = predicted-desired
+				for i in range(20):
+					print("Desired: ",i,desired[i]," Predicted: ",predicted[i])
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired[:],axis=0)),str(np.average(predicted[:],axis=0)))
+			elif (self.dig.OType=="SmoothP"):
+				ders=np.zeros(len(desired))
+				iers=np.zeros(len(desired))
+				comp=np.zeros(len(desired))
+				for i in range(len(desired)):
+					#print "Direct - desired disp", desired[i,-3:]," Pred disp", predicted[i,-3:]
+					Pr = GRIDS.Rasterize(predicted[i,:GRIDS.NGau3])
+					Pr /= np.sum(Pr)
+					p=np.dot(GRIDS.MyGrid().T,Pr)
+					#print "fit disp: ", p
+					ders[i] = np.linalg.norm(predicted[i,-3:]-desired[i,-3:])
+					iers[i] = np.linalg.norm(p-desired[i,-3:])
+					comp[i] = np.linalg.norm(p-predicted[i,-3:])
+				print("Test displacement errors direct (mean,std) ", np.average(ders),np.std(ders), " indirect ",np.average(iers),np.std(iers), " Comp ", np.average(comp), np.std(comp))
+				print("Average learning target: ", np.average(desired[:,-3:],axis=0),"Average output (direct)",np.average(predicted[:,-3:],axis=0))
+				print("Fraction of incorrect directions: ", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+			elif (self.dig.OType=="StoP"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="Energy"):
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="GoForce_old_version"): # python version is fine for here
+				raise Exception("Unknown Digester Output Type.")
+			elif (self.dig.OType=="HardP"):
+				raise Exception("Unknown Digester Output Type.")
+			else:
+				raise Exception("Unknown Digester Output Type.")
 		except Exception as Ex:
-				print("Likely you need to re-install MolEmb.", Ex)
-		for element in atypes:
-			# Write the tfrecords file for this element.
-			ai = atypes.tolist().index(element)
-			# if self.test:
-			# 	data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_test.tfrecords"
-			# else:
-			# 	data_name = self.path+name_+"_"+self.dig.name+"_"+str(element)+"_train.tfrecords"
-			# self.ConvertToTFRec(cases_list[ai][:casep_list[ai]], labels_list[ai][:casep_list[ai]], data_name)
-			# self.AvailableDataFiles.append([data_name])
-			self.AvailableElements.append(element)
-			self.AvailableDataFiles[element] = data_names[ai]
-			self.SamplesPerElement[element] = casep_list[ai]*self.dig.NTrainSamples
-		print(self.AvailableElements)
-		print(self.AvailableDataFiles)
-		print(self.SamplesPerElement)
-		self.Save() #write a convenience pickle.
-		return
-
-	def CleanScratch(self):
-		self.ScratchState=None
-		self.ScratchPointer=0 # for non random batch iteration.
-		self.scratch_inputs=None
-		self.scratch_outputs=None
-		self.scratch_test_inputs=None # These should be partitioned out by LoadElementToScratch
-		self.scratch_test_outputs=None
-		self.set=None
-		self.writers=None
-		return
-
-	def Load(self):
-		print("Unpickling Tensordata")
-		f = open(self.path+self.name+".tdt","rb")
-		tmp=pickle.load(f)
-		self.__dict__.update(tmp)
-		f.close()
-		self.CheckShapes()
-		print("Training data manager loaded.")
-		if (self.set != None):
-			print("Based on ", len(self.set.mols), " molecules ")
-		print("Based on files: ",self.AvailableDataFiles)
-		self.PrintSampleInformation()
-		self.dig.Print()
+			print("Something went wrong")
+			print(Ex)
+			pass
 		return

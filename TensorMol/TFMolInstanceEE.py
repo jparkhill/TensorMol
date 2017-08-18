@@ -758,8 +758,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 			#dipole, total_loss_value, loss_value,  atom_outputs, charge_gradient = self.sess.run([ self.dipole_output, self.total_loss, self.loss, self.atom_outputs, self.charge_gradient],  feed_dict=feed_dict)
 			output_list, charge_gradient = self.sess.run([  self.output_list, self.charge_gradient],  feed_dict=feed_dict)
 			#print ("unscaled_charge:\n", output_list[2],"\n")
-                        #print ("scaled_atom_outputs:", output_list[1], "unscaled_atom_outputs:", output_list[2], " charge_gradient:", charge_gradient, "length of charge_gradient:", len(charge_gradient))
-                        return   output_list[0]/AUPERDEBYE, output_list[1], charge_gradient
+			#print ("scaled_atom_outputs:", output_list[1], "unscaled_atom_outputs:", output_list[2], " charge_gradient:", charge_gradient, "length of charge_gradient:", len(charge_gradient))
+			return   output_list[0]/AUPERDEBYE, output_list[1], charge_gradient
 
 	def EvalPrepare(self):
 		if (isinstance(self.inshape,tuple)):
@@ -769,20 +769,20 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 				self.inshape = self.inshape[0]
 		#eval_labels = np.zeros(Ncase)  # dummy labels
 		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-                        self.inp_pl=[]
-                        self.mats_pl=[]
-                        self.coords_pl=[]
-                        for e in range(len(self.eles)):
-                                self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
-                                self.mats_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.batch_size_output])))
-                                self.coords_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None, 3])))
-                        self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output, 3]))
-                        self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output, 1]))
+			self.inp_pl=[]
+			self.mats_pl=[]
+			self.coords_pl=[]
+			for e in range(len(self.eles)):
+				self.inp_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.inshape])))
+				self.mats_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None,self.batch_size_output])))
+				self.coords_pl.append(tf.placeholder(self.tf_prec, shape=tuple([None, 3])))
+			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output, 3]))
+			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size_output, 1]))
 			self.output_list   = self.inference(self.inp_pl, self.mats_pl, self.coords_pl, self.natom_pl)
 			self.charge_gradient = tf.gradients(self.output_list[2], self.inp_pl)  # gradient of unscaled_charge respect to input
-                        self.check = tf.add_check_numerics_ops()
-                        #self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
-                        #self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.check = tf.add_check_numerics_ops()
+			#self.total_loss, self.loss = self.loss_op(self.dipole_output, self.label_pl)
+			#self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver()
@@ -1040,9 +1040,9 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
 			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-                        #chrome_trace = fetched_timeline.generate_chrome_trace_format()
-                        #with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-                        #       f.write(chrome_trace)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+			#       f.write(chrome_trace)
 		#print ("gradients:", gradients)
 		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
 		#self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)

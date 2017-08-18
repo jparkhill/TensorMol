@@ -188,26 +188,6 @@ def Brute_LJParams():
 	print resbrute[1]
 	# print ins.LJFrc(p)
 
-def QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
-	if (BuildTrain_):
-		a=MSet(trainset_)
-		a.Load()
-		b=MSet(testset_)
-		b.Load()
-		if numrot_ != None:
-			a = a.RotatedClone(numrot_)
-			a.Save(a.name+"_"+str(numrot_)+"rot")
-		TreatedAtoms = a.AtomTypes()
-		print "Number of Mols: ", len(a.mols)
-		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
-		tset = TensorData_TFRecords(a,d)
-		tset.BuildTrainMolwise(set_,TreatedAtoms)
-	else:
-		trainset = TensorData_TFRecords(None,None,trainset_+"_"+dig_)
-		testset = TensorData_TFRecords(None, None,testset_+"_"+dig_)
-	manager=TFManage_Queue("",trainset, testset, False,"fc_sqdiff_queue")
-	manager.TrainElement(1)
-
 def TestForces():
 	a=MSet("chemspid")
 	# a=MSet("SmallMols")
@@ -301,8 +281,8 @@ def TestTFGauSH():
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	new_xyzs = sess.run(tmp)
-	print new_xyzs
+	tmp2, tmp3 = sess.run(tmp)
+	print np.allclose(tmp2, tmp3)
 
 def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
@@ -313,19 +293,19 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
-	PARAMS["HiddenLayers"] = [512, 512, 512, 512]
+	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 2000
+	PARAMS["batch_size"] = 330
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float64"
+	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
+	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
 
 
 # InterpoleGeometries()
@@ -348,5 +328,5 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
-# train_forces_GauSH_direct("SmallMols_rand")
+# TestTFGauSH()
+train_forces_GauSH_direct("benzene_1rot")

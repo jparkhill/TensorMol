@@ -2281,6 +2281,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.train_dir = './networks/'+self.name
 		self.Training_Traget = "Dipole"
 		self.SetANI1Param()
+		self.run_metadata = None
 
 	def Clean(self):
 		MolInstance_DirectBP_Grad_Linear.Clean(self)
@@ -2303,6 +2304,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole = None, None, None, None, None
 		self.train_op_dipole, self.train_op_EandG = None, None
 		self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG = None, None, None, None, None
+		self.run_metadata = None
 		return
 
 	def TrainPrepare(self,  continue_training =False):
@@ -2337,11 +2339,12 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
+			with tf.device('/cpu:0'):
+				self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl, self.AddEcc_pl)
 			#self.Etotal,  self.energy_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
-			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
+			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl,name="BPEnGrad", colocate_gradients_with_ops=True)
 
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -2357,31 +2360,35 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
+			config.gpu_options.per_process_gpu_memory_fraction = 0.90
+			self.sess = tf.Session(config=config)
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
-			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
-			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			#self.run_metadata = tf.RunMetadata()
+
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			if (PARAMS["Profiling"]>0):
+				print("logging with FULL TRACE")
+				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+				self.run_metadata = tf.RunMetadata()
+				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
+
+			self.sess.graph.finalize()
 		return
 
-
-
-
 	def loss_op(self, energy, energy_grads, dipole, Elabels, grads, Dlabels):
-		energy_diff  = tf.subtract(energy, Elabels)
-		energy_loss = tf.nn.l2_loss(energy_diff)
-		grads_diff = tf.subtract(energy_grads, grads)
-		grads_loss = tf.nn.l2_loss(grads_diff)
-		dipole_diff = tf.subtract(dipole, Dlabels)
-		dipole_loss = tf.nn.l2_loss(dipole_diff)
+		energy_diff  = tf.subtract(energy, Elabels,name="EnDiff")
+		energy_loss = tf.nn.l2_loss(energy_diff,name="EnL2")
+		grads_diff = tf.subtract(energy_grads, grads,name="GradDiff")
+		grads_loss = tf.nn.l2_loss(grads_diff,name="GradL2")
+		dipole_diff = tf.subtract(dipole, Dlabels,name="DipoleDiff")
+		dipole_loss = tf.nn.l2_loss(dipole_diff,name="DipL2")
 		#loss = tf.multiply(grads_loss, energy_loss)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
+		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar),name="MulLoss")
 		loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScalar))
 		#loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
-
 
 	def loss_op_dipole(self, energy, energy_grads, dipole, Elabels, grads, Dlabels):
 		energy_diff  = tf.subtract(energy, Elabels)
@@ -2395,7 +2402,6 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
-
 
 	def loss_op_EandG(self, energy, energy_grads, dipole, Elabels, grads, Dlabels):
 		energy_diff  = tf.subtract(energy, Elabels)
@@ -2411,7 +2417,6 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		#loss = tf.identity(energy_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
-
 
 	def loss_op_EandG_test(self, energy, energy_grads, Elabels, grads):
 		energy_diff  = tf.subtract(energy, Elabels)
@@ -2542,13 +2547,13 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		train_op: The Op for training.
 		"""
 		tf.summary.scalar(loss.op.name, loss)
-		optimizer = tf.train.AdamOptimizer(learning_rate)
+		optimizer = tf.train.AdamOptimizer(learning_rate,name="Adam")
 		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
 		if update_var == None:
-			train_op = optimizer.minimize(loss, global_step=global_step)
+			train_op = optimizer.minimize(loss, global_step=global_step, name="trainop")
 		else:
-			train_op = optimizer.minimize(loss, global_step=global_step, var_list=update_var)
+			train_op = optimizer.minimize(loss, global_step=global_step, var_list=update_var, name="trainop")
 		return train_op
 
 	def fill_feed_dict(self, batch_data):
@@ -2854,7 +2859,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.energy_wb, self.dipole_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl, self.AddEcc_pl)
 			self.check = tf.add_check_numerics_ops()
-			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
+			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, "TotalEnGrad")
 
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -2890,9 +2895,10 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ebp, self.Ecc, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
 		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient
 
-
-
 	def train(self, mxsteps, continue_training= False):
+		"""
+		This the training loop for the united model.
+		"""
 		LOGGER.info("running the TFMolInstance.train()")
 		self.TrainPrepare(continue_training)
 		test_freq = PARAMS["test_freq"]
@@ -2925,6 +2931,64 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 						mini_test_loss = test_loss
 						self.save_chk(step)
 		self.SaveAndClose()
+		return
+
+	def profile_step(self, step):
+		"""
+		Perform a single profiling step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		train_energy_loss = 0.0
+		train_dipole_loss = 0.0
+		train_grads_loss = 0.0
+		num_of_mols = 0
+		pre_output = np.zeros((self.batch_size),dtype=np.float64)
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep:", ministep)
+			batch_data = self.TData.GetTrainBatch(self.batch_size)+[False]
+			actual_mols  = self.batch_size
+			t = time.time()
+			dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.train_op_EandG, self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
+			#print ("Ecc:", Ecc[:20])
+			#for k, ecc in enumerate(list(Ecc)):
+			#	if ecc > 0.05:
+			#		print ("Ecc:", ecc)
+			#		np.savetxt("test_charge.dat", atom_charge[k])
+			#		np.savetxt("test_xyz.dat", batch_data[0][k])
+			#		raise Exception("end now")
+			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			#print ("Etotal:", Etotal, " Ecc:", Ecc)
+			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
+			#print ("charge:", atom_charge )
+			train_loss = train_loss + loss_value
+			train_energy_loss += energy_loss
+			train_grads_loss += grads_loss
+			train_dipole_loss += dipole_loss
+			self.summary_writer.add_run_metadata(self.run_metadata, 'minstep%d' % ministep)
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+				f.write(chrome_trace)
+		#print ("gradients:", gradients)
+		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
+		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
+		return
+
+	def profile(self):
+		"""
+		This profiles a training step.
+		"""
+		LOGGER.info("running the TFMolInstance.train()")
+		self.TrainPrepare(False)
+		self.profile_step(1)
 		return
 
 	def continue_training(self, mxsteps):
@@ -2962,7 +3026,6 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.Training_Traget = "Dipole"
-
 
 	def Clean(self):
 		MolInstance_DirectBP_EE.Clean(self)
@@ -3016,14 +3079,14 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]))
-			self.Elabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			self.Dlabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, 3]))
-			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
-			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
-			self.Reep_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
+			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]),name="InputCoords")
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]),name="InputZs")
+			self.Elabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]),name="DesEnergy")
+			self.Dlabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, 3]),name="DesDipoles")
+			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]),name="DesGrads")
+			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]),name="RadialPairs")
+			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]),name="AngularTriples")
+			self.Reep_pl=tf.placeholder(tf.int64, shape=tuple([None,3]),name="RadialElectros")
 			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.AddEcc_pl = tf.placeholder(tf.bool, shape=())
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
@@ -3039,35 +3102,44 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
+#			with tf.name_scope("MakeDescriptors"):
+			with tf.device('/cpu:0'):
+				self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Ecc, self.dipole, self.charge, self.dipole_wb = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl, self.AddEcc_pl)
 			self.Radius_Qs_Encode, self.Radius_Qs_Encode_Index = TFSymSet_Radius_Scattered_Linear_Qs(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, eta,  self.Radp_pl, self.charge)
+#			with tf.name_scope("behler"):
 			self.Etotal, self.Ebp,  self.energy_wb = self.energy_inference(self.Scatter_Sym, self.Sym_Index, self.Radius_Qs_Encode, self.Ecc)
 			#self.Etotal,  self.energy_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
-			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
-
+			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad", colocate_gradients_with_ops=True)
+#			with tf.name_scope("losses"):
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
-
 			self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole = self.loss_op_dipole(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.train_op_dipole = self.training(self.total_loss_dipole, self.learning_rate_dipole, self.momentum, self.dipole_wb)
-
 			self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG = self.loss_op_EandG(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
+			tf.summary.scalar("loss", self.loss)
+			tf.summary.scalar("loss_dip", self.loss_dipole)
+			tf.summary.scalar("loss_EG", self.loss_EandG)
+
+#			with tf.name_scope("training"):
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum, )
+			self.train_op_dipole = self.training(self.total_loss_dipole, self.learning_rate_dipole, self.momentum, self.dipole_wb)
 			self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum, self.energy_wb)
-
-			#self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG = self.loss_op_EandG_test(self.Etotal, self.gradient, self.Elabel_pl, self.grads_pl)
-			#self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum, self.energy_wb)
-
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			# please do not use the totality of the GPU memory
-			config=tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
+			config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
 			config.gpu_options.per_process_gpu_memory_fraction = 0.90
-			self.sess = tf.Session()
+			self.sess = tf.Session(config=config)
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
-			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
+
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			if (PARAMS["Profiling"]>0):
+				print("logging with FULL TRACE")
+				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+				self.run_metadata = tf.RunMetadata()
+				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
+
 			self.sess.graph.finalize()
 
 	def dipole_inference(self, inp, indexs, xyzs, natom, EE_cuton, EE_cutoff, Reep, AddEcc):
@@ -3163,12 +3235,12 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 					if i == 0:
 						with tf.name_scope(str(self.eles[e])+'_hidden1'):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape_withencode, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape_withencode))), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biaseslayer'+str(i))
 							Ebranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 					else:
 						with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biaseslayer'+str(i))
 							Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
 				with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 					shp = tf.shape(inputs)
@@ -3229,7 +3301,6 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 			#self.Etotal,  self.energy_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl)
-
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 

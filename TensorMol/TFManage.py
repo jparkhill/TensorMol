@@ -55,8 +55,8 @@ class TFManage:
 
 	def Train(self):
 		print("Will train a NNetwork for each element in: ", self.TData.name)
-		if (self.NetType == "fc_sqdiff_GauSH_direct"):
-			self.Instances = Instance_fc_sqdiff_GauSH_direct(self.TData, self.TData.AvailableElements, True)
+		if (self.NetType == "fc_sqdiff_GauSH_direct_all"):
+			self.Instances = Instance_fc_sqdiff_GauSH_direct_all(self.TData, self.TData.AvailableElements, True)
 			self.Instances.train(self.n_train)
 		else:
 			for i in range(len(self.TData.AvailableElements)):
@@ -84,15 +84,15 @@ class TFManage:
 
 	def TrainElement(self, ele):
 		print("Training Element:", ele)
-		if (self.TData.dig.eshape==None):
-			raise Exception("Must Have Digester")
+		# if (self.TData.dig.eshape==None):
+		# 	raise Exception("Must Have Digester")
 		# It's up the TensorData to provide the batches and input output shapes.
 		if (self.NetType == "fc_classify" or PARAMS["Classify"]):
 			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None)
 		elif (self.NetType == "fc_sqdiff"):
 			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "fc_sqdiff_GauSH_direct"):
-			self.Instances[ele] = Instance_fc_sqdiff_GauSH_direct(self.TData, ele, None)
+			self.Instances[ele] = Instance_fc_sqdiff_GauSH_direct(self.TData, [ele], True)
 		elif (self.NetType == "del_fc_sqdiff"):
 			self.Instances[ele] = Instance_del_fc_sqdiff(self.TData, ele, None)
 		elif (self.NetType == "3conv_sqdiff"):
