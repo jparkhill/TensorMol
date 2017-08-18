@@ -319,6 +319,7 @@ class VelocityVerlet:
 		self.md_log = None
 
 		if (PARAMS["MDV0"]=="Random"):
+			np.random.seed()   # reset random seed
 			self.v = np.random.randn(*self.x.shape)
 			Tstat = Thermostat(self.m, self.v) # Will rescale self.v appropriately.
 		self.Tstat = None

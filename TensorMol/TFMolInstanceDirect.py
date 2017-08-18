@@ -16,7 +16,6 @@ from TensorMol.Neighbors import *
 from TensorMol.RawEmbeddings import *
 from tensorflow.python.client import timeline
 import threading
-os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 class BumpHolder:
 	def __init__(self,natom_,maxbump_,bowlk_=0.0):
