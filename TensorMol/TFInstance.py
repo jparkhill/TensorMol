@@ -739,7 +739,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 	def __init__(self, TData_, elements_ , Trainable_ = True, Name_ = None):
 		Instance.__init__(self, TData_, elements_, Name_)
 		self.NetType = "fc_sqdiff_GauSH_direct"
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.number_radial = PARAMS["SH_NRAD"]
 		self.l_max = PARAMS["SH_LMAX"]
@@ -753,7 +753,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 			self.TData.LoadDataToScratch(self.tformer)
 
 	def compute_normalization_constants(self):
-		batch_data = self.TData.GetTrainBatch(self.batch_size)
+		batch_data = self.TData.GetTrainBatch(4 * self.batch_size)
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
 		embedding_list, labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, Zs, rotated_labels,
@@ -763,13 +763,14 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		with tf.Session() as sess:
 			sess.run(tf.global_variables_initializer())
 			embed_list, label_list = sess.run([embedding_list, labels_list])
-		embed_stats = []
+		self.embedding_mean_std, self.labels_mean_std = [], []
 		for i in range(len(self.element)):
-			embed_stats.append([np.mean(embed_list[i], axis=0), np.std(embed_list[i], axis=0)])
-		return embed_stats
+			self.embedding_mean_std.append([np.mean(embed_list[i], axis=0), np.std(embed_list[i], axis=0)])
+			self.labels_mean_std.append([np.mean(label_list[i]), np.std(label_list[i])])
+		return
 
 
-	def TrainPrepare(self, continue_training =False):
+	def TrainPrepare(self):
 		""" Builds the graphs by calling inference """
 		with tf.Graph().as_default():
 			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
@@ -778,17 +779,25 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
 			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
 			l_max = tf.constant(self.l_max, dtype=tf.int32)
-			embed_stats = []
+			embedding_mean_std = []
+			labels_mean_std = []
 			for i in range(len(self.element)):
-				embed_stats.append([tf.stack(self.embed_stats[i][0]), tf.stack(self.embed_stats[i][1])])
+				embedding_mean_std.append([tf.constant(self.embedding_mean_std[i][0], dtype=self.tf_prec),
+									tf.constant(self.embedding_mean_std[i][1], dtype=self.tf_prec)])
+				labels_mean_std.append([tf.constant(self.labels_mean_std[i][0], dtype=self.tf_prec),
+									tf.constant(self.labels_mean_std[i][1], dtype=self.tf_prec)])
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
 			self.embedding_list, self.labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, rotated_labels,
 											self.element, self.gaussian_params, self.atomic_embed_factors, l_max)
-			norm_embed_list = []
+			norm_embed_list, norm_labels_list = [], []
 			for i in range(len(self.element)):
-				norm_embed_list.append((self.embedding_list[i]-embed_stats[i][0])/embed_stats[i][1])
-			self.output = self.inference(self.embedding_list)
-			self.total_loss, self.loss, self.loss_dict = self.loss_op(self.output, self.labels_list)
+				norm_embed_list.append((self.embedding_list[i] - embedding_mean_std[i][0]) / embedding_mean_std[i][1])
+				norm_labels_list.append((self.labels_list[i] - labels_mean_std[i][0]) / labels_mean_std[i][1])
+			self.norm_output_list = self.inference(norm_embed_list)
+			self.output_list = []
+			for i in range(len(self.element)):
+				self.output_list.append((self.norm_output_list[i] * labels_mean_std[i][1]) + labels_mean_std[i][0])
+			self.total_loss, self.loss = self.loss_op(self.norm_output_list, norm_labels_list)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -815,27 +824,25 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		for e in range(len(self.element)):
 			branches.append([])
 			atom_inputs = inputs[e]
-			shp_in = tf.shape(inputs)
 			for i in range(len(self.HiddenLayers)):
 				if i == 0:
 					with tf.name_scope(str(self.element[e])+'_hidden1'):
 						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]],
-																	var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
+																	var_stddev=1.0 / math.sqrt(float(self.inshape)), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 						branches[-1].append(self.activation_function(tf.matmul(atom_inputs, weights) + biases))
 				else:
 					with tf.name_scope(str(self.element[e])+'_hidden'+str(i+1)):
 						weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1],self.HiddenLayers[i]],
-																	var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+																	var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd=0.001)
 						biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 						branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.element[e])+'_regression_linear'):
-				shp = tf.shape(inputs)
 				weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape],
-															var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+															var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd=None)
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
-				atom_outputs.append(branches[-1][-1])
+				# branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
+				atom_outputs.append(tf.matmul(branches[-1][-1], weights) + biases)
 			tf.verify_tensor_all_finite(atom_outputs,"Nan in output!!!")
 		return atom_outputs
 
@@ -865,15 +872,18 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		Instance.Save(self)
 		return
 
+	def save_chk(self,  step):  # this can be included in the Instance
+		checkpoint_file_mini = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+		LOGGER.info("Saving Checkpoint file, "+checkpoint_file_mini)
+		self.saver.save(self.sess, checkpoint_file_mini)
+		return
+
 	def loss_op(self, output, labels):
-		loss_dict = {}
-		loss = 0.0
 		for i in range(len(output)):
 			diff = tf.subtract(output[i], labels[i])
-			loss_dict[str(self.element[i])] = tf.reduce_mean(tf.nn.l2_loss(diff))
 			loss = tf.nn.l2_loss(diff)
 			tf.add_to_collection('losses', loss)
-		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, loss_dict
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
 	def fill_feed_dict(self, batch_data):
 		"""
@@ -894,10 +904,10 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		return feed_dict
 
 	def train(self, mxsteps, continue_training= False):
-		self.embed_stats = self.compute_normalization_constants()
-		self.TrainPrepare(continue_training)
+		self.compute_normalization_constants()
+		self.TrainPrepare()
 		test_freq = PARAMS["test_freq"]
-		mini_test_loss = 100000000 # some big numbers
+		mini_test_loss = 1.e16 # some big numbers
 		for step in range(1, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
@@ -921,9 +931,10 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 				chrome_trace = fetched_timeline.generate_chrome_trace_format()
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
+				train_loss += total_loss_value
 			else:
 				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-			train_loss = train_loss + loss_value
+				train_loss += total_loss_value
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, Ncase_train, duration)
 		return
@@ -935,15 +946,15 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
 			feed_dict = self.fill_feed_dict(batch_data)
-			preds, labels, total_loss_value, loss_value, loss_dict, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels_list, self.total_loss,  self.loss, self.loss_dict, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
-			test_loss = test_loss + loss_value
-		for i in range(len(self.output)):
-			self.TData.EvaluateTestBatch(labels[i], preds[i], self.tformer)
+			preds, labels, total_loss_value, loss_value, gaussian_params, atomic_embed_factors = self.sess.run([self.output_list, self.labels_list, self.total_loss,  self.loss, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
+			test_loss += total_loss_value
+		for i in range(len(self.output_list)):
+			self.TData.EvaluateTestBatch(labels[i], preds[i])
 		duration = time.time() - test_start_time
 		print("testing...")
 		# LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		# LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
-		self.print_testing(step, test_loss, loss_dict, Ncase_test, duration)
+		self.print_testing(step, test_loss, Ncase_test, duration)
 		return test_loss
 
 	def print_training(self, step, loss, Ncase, duration):
@@ -951,10 +962,9 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
 		return
 
-	def print_testing(self, step, loss, loss_dict, Ncase, duration):
+	def print_testing(self, step, loss, Ncase, duration):
 		denom = max((int(Ncase/self.batch_size)),1)
 		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
-		LOGGER.info("Element losses: %s", loss_dict)
 
 	def PrepareData(self, batch_data):
 		if (batch_data[0].shape[0]==self.batch_size):
@@ -1006,8 +1016,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]))
 			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
-			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
 			l_max = tf.constant(self.l_max, dtype=tf.int32)
 			inmean = tf.constant(self.inmean, dtype=self.tf_prec)
 			instd = tf.constant(self.instd, dtype=self.tf_prec)
@@ -1060,7 +1070,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape],
 														var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd=None)
 			biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-			# layers.append(tf.matmul(layers[-1], weights) + biases)
 			outputs = tf.matmul(layers[-1], weights) + biases
 		tf.verify_tensor_all_finite(outputs,"Nan in output!!!")
 		return outputs
@@ -1110,7 +1119,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		return feed_dict
 
 	def train(self, mxsteps, continue_training= False):
-		self.embed_stats = self.compute_normalization_constants()
+		self.compute_normalization_constants()
 		self.TrainPrepare(continue_training)
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
@@ -1139,7 +1148,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 					f.write(chrome_trace)
 			else:
 				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-			train_loss = train_loss + loss_value
+				train_loss += total_loss_value
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, Ncase_train, duration)
 		return
@@ -1152,9 +1161,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
 			feed_dict = self.fill_feed_dict(batch_data)
 			preds, labels, total_loss_value, loss_value, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss,  self.loss, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
-			test_loss = test_loss + loss_value
-		# preds = (preds * self.outstd) + self.outmean
-		self.TData.EvaluateTestBatch(labels, preds, self.tformer)
+			test_loss += total_loss_value
+		self.TData.EvaluateTestBatch(labels, preds)
 		duration = time.time() - test_start_time
 		print("testing...")
 		# LOGGER.info("Gaussian paramaters: %s", gaussian_params)

@@ -188,26 +188,6 @@ def Brute_LJParams():
 	print resbrute[1]
 	# print ins.LJFrc(p)
 
-def QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
-	if (BuildTrain_):
-		a=MSet(trainset_)
-		a.Load()
-		b=MSet(testset_)
-		b.Load()
-		if numrot_ != None:
-			a = a.RotatedClone(numrot_)
-			a.Save(a.name+"_"+str(numrot_)+"rot")
-		TreatedAtoms = a.AtomTypes()
-		print "Number of Mols: ", len(a.mols)
-		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
-		tset = TensorData_TFRecords(a,d)
-		tset.BuildTrainMolwise(set_,TreatedAtoms)
-	else:
-		trainset = TensorData_TFRecords(None,None,trainset_+"_"+dig_)
-		testset = TensorData_TFRecords(None, None,testset_+"_"+dig_)
-	manager=TFManage_Queue("",trainset, testset, False,"fc_sqdiff_queue")
-	manager.TrainElement(1)
-
 def TestForces():
 	a=MSet("chemspid")
 	# a=MSet("SmallMols")
@@ -313,7 +293,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
-	PARAMS["HiddenLayers"] = [512, 512, 512, 512]
+	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 500
@@ -325,7 +305,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
+	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
 
 
 # InterpoleGeometries()
@@ -349,4 +329,4 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-train_forces_GauSH_direct("SmallMols")
+train_forces_GauSH_direct("SmallMols_rand")
