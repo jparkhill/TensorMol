@@ -2,6 +2,8 @@
 Various tests of tensormol's functionality.
 Many of these tests take a pretty significant amount of time and memory to complete.
 """
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 import os
 import numpy as np
@@ -257,13 +259,13 @@ def TestBP(set_= "gdb9", dig_ = "Coulomb",BuildTrain_ =False):
 		set_: A dataset ("gdb9 or alcohol are available")
 		dig_: the digester string
 	"""
-	print "Testing General Behler-Parrinello using ab-initio energies...."
+	print("Testing General Behler-Parrinello using ab-initio energies....")
 	PARAMS["NormalizeOutputs"] = True
 	#	if (BuildTrain_): # Need to add missing parts of set to get this separated...
 	a=MSet(set_)
 	a.ReadXYZ(set_)
 	TreatedAtoms = a.AtomTypes()
-	print "TreatedAtoms ", TreatedAtoms
+	print("TreatedAtoms ", TreatedAtoms)
 	d = MolDigester(TreatedAtoms, name_=dig_+"_BP", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
 	tset.BuildTrain(set_)
@@ -313,7 +315,7 @@ def TestANI1():
 		a = MSet("johnsonmols_noH")
 		a.ReadXYZ("johnsonmols_noH")
 		for mol in a.mols:
-			print "mol.coords:", mol.coords
+			print("mol.coords:", mol.coords)
 		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		ins, grad = manager.TData.dig.EvalDigest(a.mols[0])
 		#print manager.Eval_BPForce(a.mols[0], True)
@@ -322,21 +324,21 @@ def TestANI1():
 		#print manager.Eval_BPForce(a.mols[0], True)
 		ins1, grad1 = manager.TData.dig.EvalDigest(a.mols[0])
 		gradflat =grad.reshape(-1)
-		print "grad shape:", grad.shape
+		print("grad shape:", grad.shape)
 		for n in range (0, a.mols[0].NAtoms()):
 			diff = -(ins[n] - ins1[n]) /0.001
 			for i in range (0,diff.shape[0]):
 				if grad[n][i][2] != 0:
 					if abs((diff[i] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
 						#pass
-						print n, i , abs((diff[i] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2], gradflat[n*768*17*3 + i*17*3 +2], n*768*17*3+i*17*3+2, ins[n][i], ins1[n][i]
+						print(n, i , abs((diff[i] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2], gradflat[n*768*17*3 + i*17*3 +2], n*768*17*3+i*17*3+2, ins[n][i], ins1[n][i])
 		for n in range (0, a.mols[0].NAtoms()):
                         diff = -(ins[n] - ins1[n]) /0.001
                         for i in range (0,diff.shape[0]):
                                 if grad[n][i][2] != 0:
                                         if abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]) >  0.01:
 						# pass
-                                        	print n, i , abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2]
+                                        	print(n, i , abs((grad1[n][i][2] - grad[n][i][2]) / grad[n][i][2]), diff[i],  grad[n][i][2],  grad1[n][i][2])
 		#t = time.time()
 		#print manager.Eval_BPForce(a.mols[0], True)
 	if (0):
@@ -391,13 +393,13 @@ def TestBP_WithGrad():
 		if (0):
 			# Train the atomization energy in a normal BP network to test.
 			d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AtomizationEnergy")  # Initialize a digester that apply descriptor for the fragme
-			print "Set elements: ", a.AtomTypes()
+			print("Set elements: ", a.AtomTypes())
 			tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol")
 			tset.BuildTrain("glymd", append=False, max_nmols_=1000000)
 			manager=TFMolManage("",tset,False,"fc_sqdiff_BP")
 			manager.Train(maxstep=200)
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym", OType_="AEAndForce")  # Initialize a digester that apply descriptor for the fragme
-		print "Set elements: ", a.AtomTypes()
+		print("Set elements: ", a.AtomTypes())
 		tset = TensorMolData_BP(a,d, order_=1, num_indis_=1, type_="mol", WithGrad_=True)
 		tset.BuildTrain("glymd", append=False, max_nmols_=1000000, WithGrad_=True)
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_WithGrad")
@@ -437,7 +439,7 @@ def TestMetadynamics():
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),False)
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-	print "Masses:", masses
+	print("Masses:", masses)
 	PARAMS["MDdt"] = 0.2
 	PARAMS["RemoveInvariant"]=True
 	PARAMS["MDMaxStep"] = 8000
@@ -463,7 +465,7 @@ def TestJohnson():
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),True)
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-	print "Masses:", masses
+	print("Masses:", masses)
 
 	if (0):
 		test_mat = np.zeros((6,6))
@@ -471,7 +473,7 @@ def TestJohnson():
 		test_mat[3:,3:] = np.array([[1.0,0.1,0.001],[0.1,1.2,0.1],[0.001,0.1,1.5]])
 		test_mat[3:,:3] = np.array([[0.3,0.3,0.3],[0.3,0.3,0.3],[0.3,0.3,0.3]])
 		test_mat[:3,3:] = np.array([[0.3,0.3,0.3],[0.3,0.3,0.3],[0.3,0.3,0.3]])
-		print test_mat
+		print(test_mat)
 		x0 = np.array([[0.0,0.0,0.0],[1.0,0.0,0.0]])
 		TESTEN = lambda x_: 0.5*np.dot(np.dot(x_.reshape(6),test_mat),x_.reshape(6))
 		masses = np.array([0.001,0.002])
@@ -580,7 +582,7 @@ def TestIndoIR():
 	PARAMS["OptStepSize"] = 0.02
 	PARAMS["OptMaxCycles"]=200
 	indo = a.mols[0]
-	print "number of atoms in indo", indo.NAtoms()
+	print("number of atoms in indo", indo.NAtoms())
 	#optimizer = Optimizer(manager)
 	#optimizer.OptANI1(indo)
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
@@ -636,7 +638,7 @@ def david_testIR():
 	PARAMS["OptStepSize"] = 0.02
 	PARAMS["OptMaxCycles"]=200
 	indo = a.mols[11]
-	print "number of atoms in indo", indo.NAtoms()
+	print("number of atoms in indo", indo.NAtoms())
 	#optimizer = Optimizer(manager)
 	#optimizer.OptANI1(indo)
 	qmanager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False, RandomTData_=False, Trainable_=False)
@@ -655,16 +657,16 @@ def david_testIR():
 	indo.WriteXYZfile("./results/", "davidIR_opt")
 	# Perform a Harmonic analysis
 	m=indo
-	print "Harmonic Analysis"
+	print("Harmonic Analysis")
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
 	v = v.real
-	print np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT
+	print(np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT)
 	for i in range(3*m.NAtoms()):
-		print np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT
+		print(np.sign(w[i])*np.sqrt(KCONVERT*abs(w[i]))*CMCONVERT)
 		nm = v[:,i].reshape((m.NAtoms(),3))
 		nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)])).T
-		print nm
+		print(nm)
 		for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
 			mdisp = Mol(m.atoms,m.coords+alpha*nm)
 			mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
@@ -730,7 +732,7 @@ def david_HarmonicAnalysis():
 	# indo.WriteXYZfile("./results/", "davidIR_opt")
 	# # Perform a Harmonic analysis
 	m=indo
-	print "Harmonic Analysis"
+	print("Harmonic Analysis")
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
 	v = v.real
@@ -851,7 +853,7 @@ def TestDipole():
 		manager= TFMolManage("Mol_chemspider9_multipole_ANI1_Sym_Dipole_BP_1" , None, False)
 		net, dipole, charge = manager.Eval_BPDipole(a.mols[0], True)
 		#net, dipole, charge = manager.Eval_BPDipole(a.mols, True)
-		print net, dipole, charge
+		print(net, dipole, charge)
 		#np.savetxt("./results/furan_md_nn_dipole.dat", dipole)
 
 	if (0):
@@ -876,14 +878,14 @@ def TestDipole():
 		#mul_charge = np.tile(np.loadtxt("./results/CH3OH_mul.dat"), 2)
 		#hir_charge = np.tile(np.loadtxt("./results/CH3OH_hir.dat"), 2)
 		mul_charge = np.loadtxt("./results/thf_dimer_flip_mul.dat")
-		print mul_charge.shape
+		print(mul_charge.shape)
 		#hir_charge = np.loadtxt("./results/CH3OH_dimer_flip_hir.dat")
 		mul_dipole = np.zeros((len(a.mols),3))
 		#hir_dipole = np.zeros((len(a.mols),3))
 		#nn_dipole = np.zeros((len(a.mols),3))
 		for i, mol in enumerate(a.mols):
 			center_ = np.average(mol.coords,axis=0)
-			print mol.coords.shape
+			print(mol.coords.shape)
 			mul_dipole[i] = np.einsum("ax,a", mol.coords-center_ , mul_charge[i])/AUPERDEBYE
 			#hir_dipole[i] = np.einsum("ax,a", mol.coords-center_ , hir_charge)/AUPERDEBYE
 			#nn_dipole[i] = np.einsum("ax,a", mol.coords-center_ , nn_charge)/AUPERDEBYE
@@ -927,7 +929,7 @@ def TestGeneralMBEandMolGraph():
 	a.ReadXYZ("1_1_Ostrech")
 	g = GraphSet(a.name, a.path)
 	g.graphs = a.Make_Graphs()
-	print "found?", g.graphs[4].Find_Frag(g.graphs[3])
+	print("found?", g.graphs[4].Find_Frag(g.graphs[3]))
 
 def TestAlign():
 	"""
@@ -948,14 +950,14 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 		dig_ : type of digester to be used (GauSH, etc.)
 	"""
 	if (BuildTrain_):
-		print "Testing a Network learning Go-Atom Force..."
+		print("Testing a Network learning Go-Atom Force...")
 		a=MSet("OptMols")
 		a.ReadXYZ("OptMols")
 		if (PARAMS["RotateSet"]):
 			b = a.RotatedClone(2)
 		if (PARAMS["TransformSet"]):
 			b = a.TransformedClone(OctahedralOperations())
-		print "nmols:",len(b.mols)
+		print("nmols:",len(b.mols))
 		c=b.DistortedClone(PARAMS["NDistorts"],0.25) # number of distortions, displacement
 		d=b.DistortAlongNormals(PARAMS["NModePts"], True, 0.7)
 		c.AppendSet(d)
@@ -975,17 +977,17 @@ def TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_
 			a=MSet("OptMols")
 			a.ReadXYZ("OptMols")
 			test_mol = a.mols[11]
-			print "Orig Coords", test_mol.coords
+			print("Orig Coords", test_mol.coords)
 			test_mol.Distort()
 			optimizer  = Optimizer(manager)
 			optimizer.Opt(test_mol)
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	test_mol = a.mols[11]
-	print "Orig Coords", test_mol.coords
+	print("Orig Coords", test_mol.coords)
 	test_mol.Distort()
-	print test_mol.coords
-	print test_mol.atoms
+	print(test_mol.coords)
+	print(test_mol.atoms)
 	manager=TFManage("OptMols_NEQ_"+dig_+"_"+net_,None,False)
 	optimizer  = Optimizer(manager)
 	optimizer.Opt(test_mol)
@@ -1082,7 +1084,7 @@ def TestIpecac(dig_ = "GauSH"):
 		goodcrds = m.coords.copy()
 		m.BuildDistanceMatrix()
 		gooddmat = m.DistMatrix
-		print "Good Coordinates", goodcrds
+		print("Good Coordinates", goodcrds)
 		TreatedAtoms = m.AtomTypes()
 		dig = Digester(TreatedAtoms, name_=dig_, OType_ ="GoForce")
 		emb = dig.TrainDigestMolwise(m,MakeOutputs_=False)
@@ -1097,10 +1099,10 @@ def Test_ULJ():
 	Create a Universal Lennard-Jones model.
 	"""
 	# This Tests the optimizer.
-	print "Learning Best-Fit element specific LJ parameters."
+	print("Learning Best-Fit element specific LJ parameters.")
 	a=MSet("SmallMols")
 	a.Load()
-	print "Loaded data..."
+	print("Loaded data...")
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
 	tset = TensorMolData(a,d)
@@ -1190,10 +1192,10 @@ def TestHerrNet1(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	a=MSet("OptMols")
 	a.ReadXYZ("OptMols")
 	test_mol = a.mols[5]
-	print "Orig Coords", test_mol.coords
+	print("Orig Coords", test_mol.coords)
 	#test_mol.Distort(0.25,0.2)
-	print test_mol.coords
-	print test_mol.atoms
+	print(test_mol.coords)
+	print(test_mol.atoms)
 	manager=TFManage("SmallMols_20rot_"+dig_+"_"+net_,None,False)
 	optimizer  = Optimizer(manager)
 	optimizer.OptTFRealForce(test_mol)
@@ -1212,18 +1214,18 @@ def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	a.ReadXYZ("OCSDB_test")
 	b=MSet("OCSDB_Dist02")
 	b.ReadXYZ("OCSDB_Dist02")
-	print "A,B RMS (Angstrom): ",a.rms(b)
+	print("A,B RMS (Angstrom): ",a.rms(b))
 	frcs = np.zeros(shape=(1,3))
 	for m in a.mols:
 		frc = tfm.EvalRotAvForce(m, RotAv=PARAMS["RotAvOutputs"], Debug=False)
 		frcs=np.append(frcs,frc,axis=0)
-	print "RMS Force of crystal structures:",np.sqrt(np.sum(frcs*frcs,axis=(0,1))/(frcs.shape[0]-1))
+	print("RMS Force of crystal structures:",np.sqrt(np.sum(frcs*frcs,axis=(0,1))/(frcs.shape[0]-1)))
 	b.name = "OCSDB_Dist02_OPTd"
 	optimizer  = Optimizer(tfm)
 	for i,m in enumerate(b.mols):
 		m = optimizer.OptTFRealForce(m,str(i))
 	b.WriteXYZ()
-	print "A,B (optd) RMS (Angstrom): ",a.rms(b)
+	print("A,B (optd) RMS (Angstrom): ",a.rms(b))
 	return
 
 def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
@@ -1326,19 +1328,19 @@ def TestEE():
                 a = MSet("gradient_test_0")
                 a.ReadXYZ("gradient_test_0")
                 manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
-                print manager.Eval_BP(a)
+                print(manager.Eval_BP(a))
 
                 a = MSet("gradient_test_1")
                 a.ReadXYZ("gradient_test_1")
 		t = time.time()
-                print manager.Eval_BP(a)
-		print "time cost to eval:", time.time() -t
+                print(manager.Eval_BP(a))
+		print("time cost to eval:", time.time() -t)
 
 		a = MSet("gradient_test_2")
                 a.ReadXYZ("gradient_test_2")
                 t = time.time()
-                print manager.Eval_BP(a)
-                print "time cost to eval:", time.time() -t
+                print(manager.Eval_BP(a))
+                print("time cost to eval:", time.time() -t)
 
 	if (1):
 		a = MSet("md_test")
@@ -1391,11 +1393,11 @@ def TestNeighborList():
 		t0 = time.time()
 		nl0 = Make_NListNaive(x,10.0,4000,True);
 		talg0+=time.time() - t0
-		print 0,talg0, time.time() - t0
+		print(0,talg0, time.time() - t0)
 		t1 = time.time()
 		nl1 = Make_NListLinear(x,10.0,8000,True);
 		talg1+=time.time() - t1
-		print 1,talg1, time.time() - t1
+		print(1,talg1, time.time() - t1)
 		# Compare the two lists.
 	for i in range(nreplica):
 		x = np.random.random((nmol,maxnatom,3))*30.0
@@ -1404,12 +1406,12 @@ def TestNeighborList():
 		nl0 = NeighborListSet(x,nnzl,DoTriples,False,None,0)
 		nl0.Update(x,10.0,9.0)
 		talg0+=time.time() - t0
-		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape
+		print(nl0.alg,talg0, time.time() - t0, nl0.pairs.shape)
 		t1 = time.time()
 		nl1 = NeighborListSet(x,nnzl,DoTriples,False,None,1)
 		nl1.Update(x,10.0,9.0)
 		talg1+=time.time() - t1
-		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape
+		print(nl1.alg,talg1, time.time() - t1, nl1.pairs.shape)
 		# Compare the two lists.
 	nmol = 1
 	maxnatom = 3000
@@ -1424,12 +1426,12 @@ def TestNeighborList():
 		nl0 = NeighborListSet(x,nnzl,True,False,None,0)
 		nl0.Update(x,10.0,9.0)
 		talg0+=time.time() - t0
-		print nl0.alg,talg0, time.time() - t0, nl0.pairs.shape, nl0.triples.shape
+		print(nl0.alg,talg0, time.time() - t0, nl0.pairs.shape, nl0.triples.shape)
 		t1 = time.time()
 		nl1 = NeighborListSet(x,nnzl,True,False,None,1)
 		nl1.Update(x,10.0,9.0)
 		talg1+=time.time() - t1
-		print nl1.alg,talg1, time.time() - t1, nl1.pairs.shape, nl1.triples.shape
+		print(nl1.alg,talg1, time.time() - t1, nl1.pairs.shape, nl1.triples.shape)
 
 def TestMBNeighborList():
 	"""

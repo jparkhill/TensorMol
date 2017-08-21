@@ -4,8 +4,9 @@ Requires a list of atom fragments, prepared by the user or MSet::ToFragments
 TODO: extend to triples.
 """
 
+from __future__ import absolute_import
 import numpy as np
-from MolEmb import Make_NListNaive, Make_NListLinear
+from MolEmb import Make_NListNaive, Make_NListLinear, Make_DistMat
 
 class MBNeighbors:
 	"""
@@ -97,7 +98,9 @@ class MBNeighbors:
 					if (j != None):
 						for k in range(j+1,nnt):
 							if (k != None):
-								self.tripi.add(tuple(sorted([i,ThreeBodyPairs[i][j],ThreeBodyPairs[i][k]])))
+								if ThreeBodyPairs[i][k] in ThreeBodyPairs[ThreeBodyPairs[i][j]]:
+									self.tripi.add(tuple(sorted([i,ThreeBodyPairs[i][j],ThreeBodyPairs[i][k]])))
+		DistMatrix = Make_DistMat(self.x)
 		self.ntrip = len(self.tripi)
 		self.npair = len(self.pairi)
 		#print "num pairs", self.npair
@@ -112,7 +115,7 @@ class MBNeighbors:
 		self.tripC = np.ones(self.ntrip)
 		self.singI = self.frags
 		self.pairI = []
-		self.tripI = [] 
+		self.tripI = []
 		self.pairs = np.zeros((self.npair,self.maxnatom,3))
 		self.trips = np.zeros((self.ntrip,self.maxnatom,3))
 		self.pairz = np.zeros((self.npair,self.maxnatom), dtype=np.uint8)
@@ -144,3 +147,51 @@ class MBNeighbors:
 			self.singC[i] -= 1
 			self.singC[j] -= 1
 		return
+
+
+
+class MBNeighborsSet:
+	"""
+	The purpose of this class is to provide:
+	self.sings_atom_index, self.pairs_atom_index, self.trips_atom_index: keep record of which atoms the frag contains in the format of: num_of_frags X max_num_atoms_of_frag X 2: (mol_index, atom_index_in_mol) example: [[[0, 0], [0, 1], [0, 2]],[[0, 3], [0, 4], [0, 5]]]
+	self.sings_mol_index, self.pairs_mol_index, self.trips_mol_index: keep record of which mol the frag belongs to in the format of:  num_of_frags: [0, 0]:  
+	"""
+	def __init__(self, x_, nnz_, frags_):
+		"""
+		Initialize a Many-Body Neighbor list which
+		can generate in linear time.
+		terms in a many body expansion up to three.
+
+		Args:
+			x_ : coordinates of all the atoms. 
+			z_ : atomic numbers of all the atoms.
+			frags_: list of lists containing these atoms.
+		"""
+
+		self.nlist = []
+		self.nmol = x_.shape[0]
+		self.maxnatom = x.shape[1]
+		self.x = x_
+		self.maxnatom = 3*max(len(frag) for frag in frags_)
+		self.frags = frags_
+		self.nnz = nnz_
+		self.UpdateInterval = 1
+		self.UpdateCounter = 0
+		self.sings = []
+		for i in range (0, self.nmol):
+			for j in range(0, len(self.frags[i])):
+				self.sings.append(self.x[i, self.frags[i][j]].copy())	
+		return
+
+	def Update(self, x_, R2=10.0, R3=5.0):
+		"""
+		Update...
+		
+		Args:
+			x: A new position vector
+			R2: pair cutoff
+			R3: triples cutoff
+		"""
+		if (R2<R3):
+			raise Exception("R3<R2 Assumption Violated.")
+		

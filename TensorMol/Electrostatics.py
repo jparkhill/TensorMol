@@ -3,10 +3,12 @@ Routines for calculating dipoles quadropoles, etc, and cutoff electrostatic ener
 See also: ElectrostaticsTF for tensorflow implementations of electrostatics.
 """
 
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Util import *
 import numpy as np
 import random, math
-import PhysicalData, MolEmb
+import TensorMol.PhysicalData, MolEmb
 
 def WeightedCoordAverage(x_, q_, center_=None):
 	""" Dipole relative to center of x_ """
@@ -16,11 +18,11 @@ def WeightedCoordAverage(x_, q_, center_=None):
 
 def DipoleDebug(m_):
 		if ("dipole" in m_.properties and "charges" in m_.properties):
-			print "Qchem, Calc'd", m_.properties["dipole"]*AUPERDEBYE, WeightedCoordAverage(m_.coords*BOHRPERA, m_.properties["charges"], m_.Center())
+			print("Qchem, Calc'd", m_.properties["dipole"]*AUPERDEBYE, WeightedCoordAverage(m_.coords*BOHRPERA, m_.properties["charges"], m_.Center()))
 
 def Dipole(x_, q_):
 	""" Arguments are in A, and elementary charges.  """
- 	return WeightedCoordAverage(x_*BOHRPERA, q_)
+	return WeightedCoordAverage(x_*BOHRPERA, q_)
 
 def ChargeCharge(m1_, m2_):
 	"""calculate  the charge-charge interaction energy between two molecules"""
@@ -125,7 +127,7 @@ def ECoulECutoff(m_):
 	# 1/r => 0.5*(Tanh[(x - EECutoff)/EEdr] + 1)/r
 	OneOverRScreened = 0.5*(np.tanh((dm - PARAMS["EECutoff"]*BOHRPERA)/(PARAMS["EEdr"]*BOHRPERA))+1)*idm
 	ECutoff = np.dot(m_.properties["charges"],np.dot(OneOverRScreened, m_.properties["charges"]))
-	print ECoul, ECutoff
+	print(ECoul, ECutoff)
 	return
 
 def WriteDerDipoleCorrelationFunction(MuTraj, name_="MutMu0.txt"):

@@ -29,7 +29,10 @@ By using this software you agree to the terms in COPYING
 ```
 git clone https://github.com/jparkhill/TensorMol.git
 cd TensorMol
+# If you are using python2x
 sudo pip install -e .
+# If you are using python3x
+sudo pip3 install -e . 
 python test.py
 ```
 
@@ -46,6 +49,7 @@ python test.py
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
+- Python3x support coming soon. 
 - Useful Pre-Requisites: CUDA7.5, PySCF
 - To Train Minimally: ~100GB Disk 20GB memory
 - To Train Realistically: 1TB Disk, GTX1070++

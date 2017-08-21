@@ -10,6 +10,11 @@
 #include <set>
 #include "SH.hpp"
 
+#if PY_MAJOR_VERSION >= 3
+    #define PyInt_FromLong PyLong_FromLong
+		#define PyInt_AS_LONG PyLong_AS_LONG
+#endif
+
 // So that parameters can be dealt with elsewhere.
 static SHParams ParseParams(PyObject *Pdict)
 {
@@ -29,10 +34,10 @@ static SHParams ParseParams(PyObject *Pdict)
 		PyArrayObject* RBFa = (PyArrayObject*) RBFo;
 		tore.ANES = (double*)RBFa->data;
 	}
-	tore.SH_LMAX = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
-	tore.SH_NRAD = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
-	tore.SH_ORTH = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
-	tore.SH_MAXNR = PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_MAXNR")));
+	tore.SH_LMAX = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_LMAX")));
+	tore.SH_NRAD = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_NRAD")));
+	tore.SH_ORTH = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_ORTH")));
+	tore.SH_MAXNR = (int)PyInt_AS_LONG((PyDict_GetItemString(Pdict,"SH_MAXNR")));
 	// HACK TO DEBUG>>>>>
 	/*
 	double t[9] = {1.0,0.,0.,0.,1.,0.,0.,0.,1.};
@@ -1482,13 +1487,16 @@ static PyObject* Make_LJForce(PyObject *self, PyObject  *args)
 //
 static PyObject* Overlap_SH(PyObject *self, PyObject  *args)
 {
+  //std::cout << "Recompiled... " << endl;
+	//return NULL;
 	PyObject* Prm_;
 	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &Prm_))
-	return NULL;
+		return NULL;
 
 	SHParams Prmo = ParseParams(Prm_);SHParams* Prm=&Prmo;
 	int Nbas = Prm->SH_NRAD*(1+Prm->SH_LMAX)*(1+Prm->SH_LMAX);
 	npy_intp outdim[2] = {Nbas,Nbas};
+	//std::cout << "NBAS: " << Nbas << endl;
 	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
 	double *SH_data;
 	SH_data = (double*) ((PyArrayObject*)SH)->data;
@@ -2105,10 +2113,56 @@ static PyMethodDef EmbMethods[] =
 	{NULL, NULL, 0, NULL}
 };
 
+struct module_state {
+    PyObject *error;
+};
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
+
+static PyObject *
+error_out(PyObject *m) {
+    struct module_state *st = GETSTATE(m);
+    PyErr_SetString(st->error, "something bad happened");
+    return NULL;
+}
+
+#if PY_MAJOR_VERSION >= 3
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "MolEmb",     /* m_name */
+        "A CAPI for TensorMol",  /* m_doc */
+        -1,                  /* m_size */
+        EmbMethods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+
+#pragma message("Compiling MolEmb for Python3x")
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_MolEmb(void)
+{
+PyObject *m = PyModule_Create(&moduledef);
+if (m == NULL)
+		return NULL;
+
+return m;
+}
+#else
+
 PyMODINIT_FUNC
 initMolEmb(void)
 {
 	(void) Py_InitModule("MolEmb", EmbMethods);
 	/* IMPORTANT: this must be called */
 	import_array();
+	return;
 }
+#endif

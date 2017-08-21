@@ -15,6 +15,7 @@ results/*.log
 logs/*.log
 qchem/*
 results/*.xyz
+timeline_step* 
 *.pdb
 *_NEQ.pdb* # don't save random distortions. 
 *.raw

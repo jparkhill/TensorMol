@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
@@ -94,9 +96,9 @@ if (0):
 		#a=FragableMSetBF("H2O_dimer")
                 #a.ReadXYZ("H2O_dimer")	
 	
-		print "Generate_All_MBE_term_General: "
+		print("Generate_All_MBE_term_General: ")
 		a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
-		print "End of Generate_All_MBE_term_General"	
+		print("End of Generate_All_MBE_term_General")	
 
 		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
 		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
@@ -120,15 +122,15 @@ if (0):
 		#for mol in a.mols:
 			#manager.Eval_BPForceSingle(mol)
 		#	dipole_manager.Eval_BPDipoleGrad_2(mol)
-		print dipole_manager.Eval_BPDipoleGrad_2(a)
+		print(dipole_manager.Eval_BPDipoleGrad_2(a))
 
 if (1): 
                 a=FragableMSetBF("H2O_cluster_larger")
                 a.ReadXYZ("H2O_cluster_larger")
 
-                print "Generate_All_MBE_term_General: "
+                print("Generate_All_MBE_term_General: ")
                 a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
-                print "End of Generate_All_MBE_term_General"
+                print("End of Generate_All_MBE_term_General")
 		#manager= TFMolManage("Mol_H2O_augmented_more_400K_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1",None,False)
                 manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
                 dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
@@ -200,7 +202,7 @@ if (0):
 		mono_max = 30000
 		for mol_index, mol in enumerate(a.mols):
 	          if 1000 < mol_index :
-			print mol_index
+			print(mol_index)
 			dist_mat =  MolEmb.Make_DistMat(mol.coords)
 			for i in range (0, mol.NAtoms()):
 				if mono_index < mono_max and mol.atoms[i] == 8:
@@ -266,7 +268,7 @@ if (0):
 		a=MSet("H2O_tinker_amoeba")
                 a.Load()
 		TreatedAtoms = a.AtomTypes()
-		print "TreatedAtoms ", TreatedAtoms 
+		print("TreatedAtoms ", TreatedAtoms) 
 		d = MolDigester(TreatedAtoms, name_="SymFunc")  # Initialize a digester that apply descriptor for the fragments.
 		#tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
 		#tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.

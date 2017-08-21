@@ -4,6 +4,8 @@ develop energies and forces, and gather statistics
 for data tables and figures.
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 from TensorMol import *
 import os
 import numpy as np
@@ -49,9 +51,9 @@ def GetEnergyAndForceFromManager(MName_, a):
 		#print "FErr[i]", FErr[i]
 	final_E_err = (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE
 	final_F_err = (np.sum(FErr)/nmols)*KCALPERHARTREE
-	print np.sum(FErr,axis=0), nmols
-	print "RMS energy error: ", (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE
-	print "<|F_err|> error: ", (np.sum(FErr)/nmols)*KCALPERHARTREE
+	print(np.sum(FErr,axis=0), nmols)
+	print("RMS energy error: ", (np.sqrt(np.sum(EErr*EErr)/nmols))*KCALPERHARTREE)
+	print("<|F_err|> error: ", (np.sum(FErr)/nmols)*KCALPERHARTREE)
 	return final_E_err, final_F_err
 
 def CompareAllData():
@@ -68,17 +70,21 @@ def CompareAllData():
 	for aset in MSets:
 		aset.Load()
 	results = {}
-	print "Loaded Sets... "
+	print("Loaded Sets... ")
 
 	for i in managers:
 		for j in range(len(MSets)):
 			en, f = GetEnergyAndForceFromManager(i,MSets[j])
 			results[(i,SetNames[j])] = (en, f)
+<<<<<<< HEAD
 	print results
 	try:
 		f.write(results)
 	except:
 		f.write(str(results))
+=======
+	print(results)
+>>>>>>> fc625dfc4af8c1908f6e48ff6330f55b5e5e8681
 
 def TestOptimization(MName_):
 	"""
@@ -111,7 +117,7 @@ def TestOptimization(MName_):
 	molp = GeomOptimizer(EnergyForceField).Opt(mol)
 	tmp_rms = mol.rms_inv(molp)
 	rms_list.append(tmp_rms)
-	print "RMS:", tmp_rms
+	print("RMS:", tmp_rms)
 	return np.mean(rms_list)
 
 def GetEnergyVariance(MName_):

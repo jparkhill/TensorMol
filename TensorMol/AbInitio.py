@@ -1,14 +1,16 @@
 """
 Routines for running external Ab-Initio packages to get shit out of mol.py
 """
-from Util import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Util import *
 import numpy as np
 import random, math, subprocess
-import Mol
+from . import Mol
 
 def PyscfDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
 	if (not HAS_PYSCF):
-		print "Missing PYSCF"
+		print("Missing PYSCF")
 		return 0.0
 	mol = gto.Mole()
 	pyscfatomstring=""
@@ -35,7 +37,6 @@ def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp'
 	for j in range(len(m_.atoms)):
 		istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
 	istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
-	#print istring
 	with open(path_+filename_+'.in','w') as fin:
 		fin.write(istring)
 	with open(path_+filename_+'.out','a') as fout:
@@ -70,6 +71,35 @@ def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp'
 	else:
 		raise Exception("jobtype needs formatted for return variables")
 
+def QchemDFT_optimize(m_,basis_ = '6-31g*',xc_='b3lyp', filename_='tmp', path_='./qchem/', threads=False):
+	istring = '$molecule\n0 1 \n'
+	crds = m_.coords.copy()
+	crds[abs(crds)<0.0000] *=0.0
+	atoms = m_.atoms.shape[0]
+	for j in range(len(m_.atoms)):
+		istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+	istring =istring + '$end\n\n$rem\njobtype opt\ngeom_opt_max_cycles 500\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+	with open(path_+filename_+'.in','w') as fin:
+		fin.write(istring)
+	with open(path_+filename_+'.out','a') as fout:
+		if threads:
+			proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+		else:
+			proc = subprocess.Popen(['qchem', path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+		out, err = proc.communicate()
+		fout.write(out)
+	lines = out.split('\n')
+	for i, line in enumerate(lines):
+		if "**  OPTIMIZATION CONVERGED  **" in line:
+			with open(path_+filename_+'.xyz','a') as fopt:
+				xyz = []
+				for j in range(atoms):
+					xyz.append([lines[i+5+j].split()[1],lines[i+5+j].split()[2],lines[i+5+j].split()[3],lines[i+5+j].split()[4]])
+				fopt.write(str(atoms)+"\nComment:\n")
+				for j in range(atoms):
+					fopt.write(xyz[j][0]+"      "+xyz[j][1]+"      "+xyz[j][2]+"      "+xyz[j][3]+"\n")
+				fopt.write("\n")
+			break
 
 def QchemRIMP2(m_,basis_ = 'cc-pvtz', aux_basis_='rimp2-cc-pvtz', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
 	istring = '$molecule\n0 1 \n'
@@ -165,9 +195,9 @@ def PullFreqData():
 			m.properties["energy"] = en
 			return en
 		except Exception as Ex:
-			print "PYSCF Calculation error... :",Ex
-			print "Mol.atom:", mol.atom
-			print "Pyscf string:", pyscfatomstring
+			print("PYSCF Calculation error... :",Ex)
+			print("Mol.atom:", mol.atom)
+			print("Pyscf string:", pyscfatomstring)
 			return 0.0
 			#raise Ex
 		return

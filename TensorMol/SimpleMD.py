@@ -3,10 +3,12 @@ The Units chosen are Angstrom, Fs.
 I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
 """
 
-from Sets import *
-from TFManage import *
-from Electrostatics import *
-from QuasiNewtonTools import *
+from __future__ import absolute_import
+from __future__ import print_function
+from .Sets import *
+from .TFManage import *
+from .Electrostatics import *
+from .QuasiNewtonTools import *
 
 def VelocityVerletStep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	"""
@@ -59,7 +61,7 @@ class Thermostat:
 		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
 		self.tau = 30*PARAMS["MDdt"]
 		self.name = "Rescaling"
-		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
+		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
 		self.Rescale(v_)
 		return
 
@@ -95,7 +97,7 @@ class NoseThermostat(Thermostat):
 		self.eta = 0.0
 		self.name = "Nose"
 		self.Rescale(v_)
-		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
+		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
 		return
 
 	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_ = True):
@@ -139,7 +141,7 @@ class NosePerParticleThermostat(Thermostat):
 		self.eta = np.zeros(self.N)
 		self.name = "NosePerParticle"
 		self.Rescale(v_)
-		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
+		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
 		return
 	def step(self,f_, a_, x_, v_, m_, dt_, fande_=None , frc_ = True):
 		"""
@@ -205,7 +207,7 @@ class NoseChainThermostat(Thermostat):
 		self.Geta = np.zeros(self.M) # Chain forces
 		self.name = "NoseHooverChain"
 		self.Rescale(v_)
-		print "Using ", self.name, " thermostat at ",self.T, " degrees Kelvin"
+		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
 		return
 
 	def MartynaQs(self):
@@ -218,10 +220,10 @@ class NoseChainThermostat(Thermostat):
 	def step(self,f_, a_, x_, v_, m_, dt_ ,fande_=None):
 		v = self.IntegrateChain(a_, x_, v_, m_, dt_) # half step the chain.
 		# Get KE of the chain.
-		print "Energies of the system... ", self.ke(v_,m_), " Teff ", (2./3.)*self.ke(v_,m_)*pow(10.0,10.0)/IDEALGASR/self.N
-		print "Energies along the chain... Desired:", (3./2.)*self.kT
+		print("Energies of the system... ", self.ke(v_,m_), " Teff ", (2./3.)*self.ke(v_,m_)*pow(10.0,10.0)/IDEALGASR/self.N)
+		print("Energies along the chain... Desired:", (3./2.)*self.kT)
 		for i in range(self.M):
-			print self.Veta[i]*self.Veta[i]*self.Qs[i]/2.
+			print(self.Veta[i]*self.Veta[i]*self.Qs[i]/2.)
 		v = v + self.dt2*a_
 		x = x_ + self.dt*v
 
@@ -273,10 +275,10 @@ class NoseChainThermostat(Thermostat):
 					self.Veta[i] = self.Veta[i]*AA*AA + wdtj4*self.Geta[i]*AA
 					self.Geta[i+1] = (self.Qs[i]*self.Veta[i]*self.Veta[i] - self.kT)/self.Qs[i+1]
 				self.Veta[-1] += self.Geta[-1] * wdtj4
-		print "eta",self.eta
-		print "Meta",self.Qs
-		print "Veta",self.Veta
-		print "Geta",self.Geta
+		print("eta",self.eta)
+		print("Meta",self.Qs)
+		print("Veta",self.Veta)
+		print("Geta",self.Geta)
 		return v_*scale
 
 class VelocityVerlet:
@@ -317,6 +319,7 @@ class VelocityVerlet:
 		self.md_log = None
 
 		if (PARAMS["MDV0"]=="Random"):
+			np.random.seed()   # reset random seed
 			self.v = np.random.randn(*self.x.shape)
 			Tstat = Thermostat(self.m, self.v) # Will rescale self.v appropriately.
 		self.Tstat = None
@@ -329,7 +332,7 @@ class VelocityVerlet:
 		elif (PARAMS["MDThermostat"]=="NoseHooverChain"):
 			self.Tstat = NoseChainThermostat(self.m, self.v)
 		else:
-			print "Unthermostated Velocity Verlet."
+			print("Unthermostated Velocity Verlet.")
 		return
 
 	def WriteTrajectory(self):
@@ -368,7 +371,7 @@ class VelocityVerlet:
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
-			print ("per step cost:", time.time() -t )
+			print(("per step cost:", time.time() -t ))
 		return
 
 class IRTrajectory(VelocityVerlet):
@@ -437,8 +440,8 @@ class IRTrajectory(VelocityVerlet):
 			# ElectricFieldForce Is in units of Hartree/angstrom.
 			# and must be converted to kg*Angstrom/(Fs^2)
 			ElecForce = 4184.0*ElectricFieldForce(self.qs, self.EField)
-			print "Field Free Force", FFForce
-			print "ElecForce Force", ElecForce
+			print("Field Free Force", FFForce)
+			print("ElecForce Force", ElecForce)
 			return e, RemoveInvariantForce(x_, FFForce + ElecForce, self.m)
 		else:
 			return e, RemoveInvariantForce(x_, FFForce, self.m)
@@ -486,7 +489,7 @@ class IRTrajectory(VelocityVerlet):
 				self.MinS = step
 				LOGGER.info(" -- You didn't start from the global minimum -- ")
 				LOGGER.info("   -- I'mma set you back to the beginning -- ")
-				print self.x
+				print(self.x)
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
 			if (step%50==0 and PARAMS["MDLogTrajectory"]):
@@ -546,7 +549,7 @@ class Annealer(IRTrajectory):
 				LOGGER.info("   -- cycling annealer -- ")
 				if (PARAMS["MDAnnealT0"] > PARAMS["MDAnnealTF"]):
 					self.AnnealT0 = self.Tstat.T+PARAMS["MDAnnealKickBack"]
-				print self.x
+				print(self.x)
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
 
@@ -555,7 +558,7 @@ class Annealer(IRTrajectory):
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
 		#self.x = self.Minx.copy()
-		print "Achieved Minimum energy ", self.MinE, " at step ", step
+		print("Achieved Minimum energy ", self.MinE, " at step ", step)
 		return
 
 class NoEnergyAnnealer(VelocityVerlet):
@@ -596,7 +599,7 @@ class NoEnergyAnnealer(VelocityVerlet):
 				self.MinS = step
 				LOGGER.info("   -- cycling annealer -- ")
 				self.AnnealT0 = self.Tstat.T
-				print self.x
+				print(self.x)
 				step=0
 
 			if (step%7==0 and PARAMS["MDLogTrajectory"]):
@@ -604,5 +607,5 @@ class NoEnergyAnnealer(VelocityVerlet):
 			step+=1
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f ", self.name, step, self.t, self.KE, RmsForce(self.frc), self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff)
 		self.Minx = self.x.copy()
-		print "Achieved Minimum energy ", self.MinF, " at step ", step
+		print("Achieved Minimum energy ", self.MinF, " at step ", step)
 		return

@@ -6,11 +6,13 @@
 # but otherwise the behavior of these is the same as Tensordata etc.
 #
 #
+from __future__ import absolute_import
+from __future__ import print_function
 import os, gc
-from Sets import *
-from DigestMol import *
-from TensorData import *
-from Neighbors import *
+from .Sets import *
+from .DigestMol import *
+from .TensorData import *
+from .Neighbors import *
 #import tables should go to hdf5 soon...
 
 class TensorMolData(TensorData):
@@ -41,13 +43,13 @@ class TensorMolData(TensorData):
 			LOGGER.info("NMols in TensorMolData.set: %i", len(self.set.mols))
 			self.raw_it = iter(self.set.mols)
 		except:
-			print " do not include MSet"
+			print(" do not include MSet")
 		self.MaxNAtoms = None
 		try:
 			if (MSet_ != None):
 				self.MaxNAtoms = MSet_.MaxNAtoms()
 		except:
-			print "fail to load self.MaxNAtoms"
+			print("fail to load self.MaxNAtoms")
 		return
 
 	def QueryAvailable(self):
@@ -67,9 +69,9 @@ class TensorMolData(TensorData):
 				return
 		else:
 			raise Exception("Unknown Type")
-		print "self.dig ", self.dig.name
-		print "self.dig input shape: ", self.dig.eshape
-		print "self.dig output shape: ", self.dig.lshape
+		print("self.dig ", self.dig.name)
+		print("self.dig input shape: ", self.dig.eshape)
+		print("self.dig output shape: ", self.dig.lshape)
 		if (self.dig.eshape == None or self.dig.lshape ==None):
 			raise Exception("Ain't got no fucking shape.")
 
@@ -155,7 +157,7 @@ class TensorMolData(TensorData):
 		Outs = np.zeros(tuple([nmol,self.MaxNAtoms,3]))
 		while (ndone<nmol):
 			try:
-				m = self.raw_it.next()
+				m = next(self.raw_it)
 #				print "m props", m.properties.keys()
 #				print "m coords", m.coords
 				ti, to = self.dig.Emb(m, True, False)
@@ -216,7 +218,7 @@ class TensorMolData(TensorData):
 		for i in range (1, self.num_indis+1):
 			tmp = tmp*i
 		group = group*(tmp**self.order)
-		print "randomize group:", group
+		print("randomize group:", group)
 		if (random):
 			ti, to = self.Randomize(ti, to, group)
 		self.NTrain = to.shape[0]
@@ -225,19 +227,19 @@ class TensorMolData(TensorData):
 	def KRR(self):
 		from sklearn.kernel_ridge import KernelRidge
 		ti, to = self.LoadData(True)
-		print "KRR: input shape", ti.shape, " output shape", to.shape
+		print("KRR: input shape", ti.shape, " output shape", to.shape)
 		#krr = KernelRidge()
 		krr = KernelRidge(alpha=0.0001, kernel='rbf')
 		trainsize = int(ti.shape[0]*0.5)
 		krr.fit(ti[0:trainsize,:], to[0:trainsize])
 		predict  = krr.predict(ti[trainsize:, : ])
-		print predict.shape
+		print(predict.shape)
 		krr_acc_pred  = np.zeros((predict.shape[0],2))
 		krr_acc_pred[:,0] = to[trainsize:].reshape(to[trainsize:].shape[0])
 		krr_acc_pred[:,1] = predict.reshape(predict.shape[0])
 		np.savetxt("krr_acc_pred.dat", krr_acc_pred)
-		print "KRR train R^2:", krr.score(ti[0:trainsize, : ], to[0:trainsize])
-		print "KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:])
+		print("KRR train R^2:", krr.score(ti[0:trainsize, : ], to[0:trainsize]))
+		print("KRR test  R^2:", krr.score(ti[trainsize:, : ], to[trainsize:]))
 		return
 
 	def LoadDataToScratch(self, tformer, random=True):
@@ -264,7 +266,7 @@ class TensorMolData(TensorData):
 		return
 
 	def PrintSampleInformation(self):
-		print "From files: ", self.AvailableDataFiles
+		print("From files: ", self.AvailableDataFiles)
 		return
 
 	def Save(self):
@@ -320,11 +322,11 @@ class TensorMolData_BP(TensorMolData):
 		self.test_begin_mol  = None
 		self.test_mols = []
 		self.MaxN3 = None # The most coordinates in the set.
-		print "TensorMolData_BP.eles", self.eles
-		print "self.HasGrad:", self.HasGrad
+		print("TensorMolData_BP.eles", self.eles)
+		print("self.HasGrad:", self.HasGrad)
 		if (self.HasGrad):
 			self.MaxN3 = 3*np.max([m.NAtoms() for m in self.set.mols])
-			print "TensorMolData_BP.MaxN3", self.MaxN3
+			print("TensorMolData_BP.MaxN3", self.MaxN3)
 		return
 
 	def CleanScratch(self):
@@ -373,7 +375,7 @@ class TensorMolData_BP(TensorMolData):
 			nat = self.set.mols[mi].NAtoms()
 			#print "casep:", casep
 			if (mols_done%1000==0):
-				print "time cost:", time.time() -t, " second"
+				print("time cost:", time.time() -t, " second")
 				LOGGER.info("Mol:"+str(mols_done))
 				t = time.time()
 			if (WithGrad_):
@@ -381,7 +383,7 @@ class TensorMolData_BP(TensorMolData):
 			else:
 				ins, outs = self.dig.TrainDigest(self.set.mols[mi])
 			if not np.all(np.isfinite(ins)):
-				print "find a bad case, writting down xyz.."
+				print("find a bad case, writting down xyz..")
 				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
@@ -684,8 +686,8 @@ class TensorMolData_BP(TensorMolData):
 			return [inputs, matrices, outputs]
 
 	def PrintStatus(self):
-		print "self.ScratchState",self.ScratchState
-		print "self.ScratchPointer",self.ScratchPointer
+		print("self.ScratchState",self.ScratchState)
+		print("self.ScratchPointer",self.ScratchPointer)
 		#print "self.test_ScratchPointer",self.test_ScratchPointer
 
 
@@ -703,7 +705,7 @@ class TensorMolData_BP(TensorMolData):
 				atom_type = mol.atoms[i]
 				self.test_atom_index[self.eles.index(atom_type)][pointer[self.eles.index(atom_type)]] = [int(mol_index), i]
 				pointer[self.eles.index(atom_type)] += 1
-		print self.test_atom_index
+		print(self.test_atom_index)
 		f  = open("test_energy_real_atom_index_for_test.dat","wb")
 		pickle.dump(self.test_atom_index, f)
 		f.close()
@@ -740,14 +742,14 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
 		self.CheckShapes()
 		self.name=name_
-		print "self.type:", self.type
+		print("self.type:", self.type)
 		if self.type=="frag":
 			raise Exception("No BP frags now")
 		nmols  = len(self.set.mols)
 		nbonds = self.set.NBonds()
-		print "self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape
+		print("self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape)
 		cases = np.zeros(tuple([nbonds]+list(self.dig.eshape)))
-		print "cases:", cases.shape
+		print("cases:", cases.shape)
 		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
 		self.CaseMetadata = np.zeros((nbonds, 4), dtype = np.int)
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
@@ -761,10 +763,10 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 		for mi in ord:
 			nbo = self.set.mols[mi].NBonds()
 			if (mi == 0 or mi == 1):
-				print "name of the first/second mol:", self.set.mols[mi].name
+				print("name of the first/second mol:", self.set.mols[mi].name)
 			#print "casep:", casep
 			if (mols_done%1000==0):
-				print "Mol:", mols_done
+				print("Mol:", mols_done)
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nbo] = ins
@@ -807,7 +809,7 @@ class TensorMolData_Bond_BP(TensorMolData_BP):
 				bond_type = mol.bonds[i,0]
 				self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
 				pointer[self.eles.index(bond_type)] += 1
-		print self.test_atom_index
+		print(self.test_atom_index)
 		f  = open("test_energy_bond_index_for_test.dat","wb")
 		pickle.dump(self.test_atom_index, f)
 		f.close()
@@ -1009,14 +1011,14 @@ class TensorMolData_Bond_BP_Update(TensorMolData_BP_Update):
 	def BuildTrain(self, name_="gdb9",  append=False, max_nmols_=1000000):
 		self.CheckShapes()
 		self.name=name_
-		print "self.type:", self.type
+		print("self.type:", self.type)
 		if self.type=="frag":
 			raise Exception("No BP frags now")
 		nmols  = len(self.set.mols)
 		nbonds = self.set.NBonds()
-		print "self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape
+		print("self.dig.eshape", self.dig.eshape, " self.dig.lshape", self.dig.lshape)
 		cases = np.zeros(tuple([nbonds]+list(self.dig.eshape)))
-		print "cases:", cases.shape
+		print("cases:", cases.shape)
 		labels = np.zeros(tuple([nmols]+list(self.dig.lshape)))
 		self.CaseMetadata = np.zeros((nbonds, 4), dtype = np.int)
 		insname = self.path+"Mol_"+name_+"_"+self.dig.name+"_in.npy"
@@ -1030,10 +1032,10 @@ class TensorMolData_Bond_BP_Update(TensorMolData_BP_Update):
 		for mi in ord:
 			nbo = self.set.mols[mi].NBonds()
 			if (mi == 0 or mi == 1):
-				print "name of the first/second mol:", self.set.mols[mi].name
+				print("name of the first/second mol:", self.set.mols[mi].name)
 			#print "casep:", casep
 			if (mols_done%1000==0):
-				print "Mol:", mols_done
+				print("Mol:", mols_done)
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nbo] = ins
@@ -1076,7 +1078,7 @@ class TensorMolData_Bond_BP_Update(TensorMolData_BP_Update):
 				bond_type = mol.bonds[i,0]
 				self.test_atom_index[self.eles.index(bond_type)][pointer[self.eles.index(bond_type)]] = [int(mol_index), i]
 				pointer[self.eles.index(bond_type)] += 1
-		print self.test_atom_index
+		print(self.test_atom_index)
 		f  = open("test_energy_bond_index_for_test.dat","wb")
 		pickle.dump(self.test_atom_index, f)
 		f.close()
@@ -1094,7 +1096,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 			self.eles = list(MSet_.AtomTypes())
 			self.eles.sort()
 			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
-			print "self.MaxNAtoms:", self.MaxNAtoms
+			print("self.MaxNAtoms:", self.MaxNAtoms)
 			self.Nmols = len(self.set.mols)
 		self.MeanStoich=None
 		self.MeanNAtoms=None
@@ -1103,8 +1105,8 @@ class TensorMolData_BP_Direct(TensorMolData):
 		self.test_mols = []
 		self.MaxN3 = None # The most coordinates in the set.
 		self.name = self.set.name
-		print "TensorMolData_BP.eles", self.eles
-		print "self.HasGrad:", self.HasGrad
+		print("TensorMolData_BP.eles", self.eles)
+		print("self.HasGrad:", self.HasGrad)
 		return
 
 	def CleanScratch(self):
@@ -1117,7 +1119,11 @@ class TensorMolData_BP_Direct(TensorMolData):
 		return
 
 	def LoadData(self):
-		self.ReloadSet()
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print("TData doesn't have a set.", Ex)
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
@@ -1211,8 +1217,8 @@ class TensorMolData_BP_Direct(TensorMolData):
 			return [xyzs, Zs, labels]
 
 	def PrintStatus(self):
-		print "self.ScratchState",self.ScratchState
-		print "self.ScratchPointer",self.ScratchPointer
+		print("self.ScratchState",self.ScratchState)
+		print("self.ScratchPointer",self.ScratchPointer)
 		#print "self.test_ScratchPointer",self.test_ScratchPointer
 
 	def Save(self):
@@ -1234,7 +1240,7 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 			self.eles = list(MSet_.AtomTypes())
 			self.eles.sort()
 			self.MaxNAtoms = np.max([m.NAtoms() for m in self.set.mols])
-			print "self.MaxNAtoms:", self.MaxNAtoms
+			print("self.MaxNAtoms:", self.MaxNAtoms)
 			self.Nmols = len(self.set.mols)
 		self.MeanStoich=None
 		self.MeanNAtoms=None
@@ -1243,8 +1249,8 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		self.test_mols = []
 		self.MaxN3 = None # The most coordinates in the set.
 		self.name = self.set.name
-		print "TensorMolData_BP.eles", self.eles
-		print "self.HasGrad:", self.HasGrad
+		print("TensorMolData_BP.eles", self.eles)
+		print("self.HasGrad:", self.HasGrad)
 		return
 
 	def CleanScratch(self):
@@ -1280,7 +1286,7 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 		Outs = np.zeros(tuple([nmol]))
 		while (ndone<nmol):
 			try:
-				m = self.raw_it.next()
+				m = next(self.raw_it)
 				ti, to = self.dig.Emb(m, True, False)
 				n=ti.shape[0]
 				Ins[ndone,:n,:] = ti
@@ -1391,8 +1397,8 @@ class TensorMolData_BPBond_Direct(TensorMolData):
 	# 		return [xyzs, Zs, labels]
 
 	def PrintStatus(self):
-		print "self.ScratchState",self.ScratchState
-		print "self.ScratchPointer",self.ScratchPointer
+		print("self.ScratchState",self.ScratchState)
+		print("self.ScratchPointer",self.ScratchPointer)
 		#print "self.test_ScratchPointer",self.test_ScratchPointer
 
 	def Save(self):
@@ -1413,7 +1419,11 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 		return
 
 	def LoadData(self):
-		self.ReloadSet()
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print("TData doesn't have a set.", Ex)
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
@@ -1431,7 +1441,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 			if (self.dig.OType  == "AtomizationEnergy"):
 				labels[i] = mol.properties["atomization"]
 			else:
-                        	raise Exception("Output Type is not implemented yet")
+				raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
 				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
@@ -1466,7 +1476,7 @@ class TensorMolData_BP_Direct_Linear(TensorMolData_BP_Direct):
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
 		self.NTrain = self.LastTrainMol
-                self.NTest = self.NTestMols
+		self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
 		self.ScratchState = 1
@@ -1532,7 +1542,11 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		return
 
 	def LoadData(self):
-		self.ReloadSet()
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print("TData doesn't have a set.", Ex)
 		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
@@ -1545,14 +1559,18 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		if (self.HasGrad):
 			grads = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype=np.float64)
 		for i, mol in enumerate(self.set.mols):
-			xyzs[i][:mol.NAtoms()] = mol.coords
-			Zs[i][:mol.NAtoms()] = mol.atoms
-			natom[i] = mol.NAtoms()
+			try:
+				xyzs[i][:mol.NAtoms()] = mol.coords
+				Zs[i][:mol.NAtoms()] = mol.atoms
+				natom[i] = mol.NAtoms()
+			except Exception as ex:
+				print(mol.coords, mol.atoms, mol.coords.shape[0], mol.atoms.shape[0])
+				raise Exception("Bad data2")
 			if (self.dig.OType  == "EnergyAndDipole"):
 				Elabels[i] = mol.properties["atomization"]
 				Dlabels[i] = mol.properties["dipole"]*AUPERDEBYE
 			else:
-                        	raise Exception("Output Type is not implemented yet")
+				raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
 				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
@@ -1587,7 +1605,7 @@ class TensorMolData_BP_Direct_EE(TensorMolData_BP_Direct_Linear):
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
 		self.NTrain = self.LastTrainMol
-                self.NTest = self.NTestMols
+		self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
 		self.ScratchState = 1

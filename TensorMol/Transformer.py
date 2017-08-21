@@ -1,8 +1,12 @@
-from Mol import *
-from Util import *
-import numpy,os,sys,re
-import cPickle as pickle
-import LinearOperations
+from __future__ import absolute_import
+from .Mol import *
+from .Util import *
+import os,sys,re
+if sys.version_info[0] < 3:
+	import cPickle as pickle
+else:
+	import _pickle as pickle
+from . import LinearOperations
 
 class Transformer:
 	"""
@@ -22,12 +26,10 @@ class Transformer:
 		"""
 		self.Emb = Emb_
 		self.OType = OType_
-		self.innorm = None
-		self.outnorm = None
-		if (InNorm_ != None):
-			self.innorm = InNorm_
-		if (OutNorm_ != None):
-			self.outnorm = OutNorm_
+		self.innorm = InNorm_
+		self.outnorm = OutNorm_
+
+
 		#Should check that normalization routines match input/output types here
 
 	def Print(self):
@@ -88,19 +90,12 @@ class Transformer:
 		return (ins - self.inmin)/(self.inmax-self.inmin)
 
 	def AssignOutMeanStd(self, outs):
+		outs = outs[~np.all(np.equal(outs, 0), axis=2)]
 		self.outmean = np.mean(outs)
 		self.outstd = np.std(outs)
 
 	def NormOutMeanStd(self, outs):
 		return (outs - self.outmean)/self.outstd
-
-	def NormOutLogarithmic(self, outs):
-		for x in np.nditer(outs, op_flags=["readwrite"]):
-			if x > 0:
-				x[...] = np.log(x+1)
-			if x < 0:
-				x[...] = -np.log(np.absolute(x-1))
-		return outs
 
 	def NormOutSign(self, outs):
 		return np.sign(outs)
@@ -113,12 +108,3 @@ class Transformer:
 
 	def UnNormOutMeanStd(self, outs):
 		return outs*self.outstd+self.outmean
-
-	def UnNormOutLogarithmic(self, outs):
-		tmp_outs = outs.copy()
-		for x in np.nditer(tmp_outs, op_flags=["readwrite"]):
-			if x > 0:
-				x[...] = (np.exp(x))-1
-			if x < 0:
-				x[...] = (-1*(np.exp(-x)))+1
-		return tmp_outs

@@ -6,10 +6,12 @@
 # but otherwise the behavior of these is the same as Tensordata etc.
 #
 #
+from __future__ import absolute_import
+from __future__ import print_function
 import os, gc
-from Sets import *
-from DigestMol import *
-from TensorMolData import *
+from .Sets import *
+from .DigestMol import *
+from .TensorMolData import *
 
 
 class TensorMolData_BP_Multipole(TensorMolData_BP):
@@ -30,7 +32,6 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 		self.scratch_test_xyzmeta = None
 		return
 
-
 	def LoadData(self):
 		insname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_in.npy"
 		outsname = self.path+"Mol_"+self.name+"_"+self.dig.name+"_out.npy"
@@ -50,7 +51,6 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 		xyzf.close()
 		to = to.reshape((to.shape[0],-1))  # flat labels to [mol, 1]
 		return ti, to, tm, txyzm
-
 
 	def LoadDataToScratch(self, tformer):
 		"""
@@ -151,7 +151,7 @@ class TensorMolData_BP_Multipole(TensorMolData_BP):
 				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			if not np.all(np.isfinite(ins)):
-				print "find a bad case, writting down xyz.."
+				print("find a bad case, writting down xyz..")
 				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
@@ -542,7 +542,7 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 				LOGGER.info("Mol:"+str(mols_done))
 			ins,outs = self.dig.TrainDigest(self.set.mols[mi])
 			if not np.all(np.isfinite(ins)):
-				print "find a bad case, writting down xyz.."
+				print("find a bad case, writting down xyz..")
 				self.set.mols[mi].WriteXYZfile(fpath=".", fname="bad_buildset_cases")
 			#print mi, ins.shape, outs.shape
 			cases[casep:casep+nat] = ins
@@ -575,12 +575,11 @@ class TensorMolData_BP_Multipole_2(TensorMolData_BP_Multipole):
 		return
 
 class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
-        """
-    A tensordata for learning the multipole of molecules using Behler-Parinello scheme.
-        """
+	"""
+	A tensordata for learning the multipole of molecules using Behler-Parinello scheme.
+	"""
 	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
 		TensorMolData_BP_Direct.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_, WithGrad_)
-
 
 	def LoadData(self):
 		self.ReloadSet()
@@ -601,13 +600,13 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
 			if (self.dig.OType  == "Multipole2"):
 				labels[i] = mol.properties["dipole"]*AUPERDEBYE
 			else:
-                        	raise Exception("Output Type is not implemented yet")
+				raise Exception("Output Type is not implemented yet")
 			if (self.HasGrad):
 				grads[i][:mol.NAtoms()] = mol.properties["gradients"]
 		if (self.HasGrad):
 			return xyzs, Zs, labels, natom, grads
 		else:
-			return xyzs, Zs, labels, natom	
+			return xyzs, Zs, labels, natom
 
 	def LoadDataToScratch(self, tformer):
 		"""
@@ -624,7 +623,7 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
 			Also determines mean stoichiometry
 		"""
 		try:
-			self.HasGrad 
+			self.HasGrad
 		except:
 			self.HasGrad = False
 		if (self.ScratchState == 1):
@@ -636,10 +635,10 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
 		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
 		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
 		self.NTrain = self.LastTrainMol
-                self.NTest = self.NTestMols
+		self.NTest = self.NTestMols
 		self.test_ScratchPointer = self.LastTrainMol
 		self.ScratchPointer = 0
-		self.ScratchState = 1 
+		self.ScratchState = 1
 		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
 		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
 		return
@@ -671,11 +670,11 @@ class TensorMolData_BP_Multipole_2_Direct(TensorMolData_BP_Direct):
 		if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
 			self.test_ScratchPointer = self.LastTrainMol
 		self.test_ScratchPointer += ncases
-                xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-                Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-                labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		natom = self.natom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-                if (self.HasGrad):
-                        return [xyzs, Zs, labels, 1.0/natom, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer]]
-                else:
-                        return [xyzs, Zs, labels, 1.0/natom]
+		if (self.HasGrad):
+			return [xyzs, Zs, labels, 1.0/natom, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer]]
+		else:
+			return [xyzs, Zs, labels, 1.0/natom]
