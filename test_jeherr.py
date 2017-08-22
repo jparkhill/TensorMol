@@ -313,6 +313,8 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 
 def TestTFSym():
 	np.set_printoptions(threshold=100000)
+	Ra_cut = PARAMS["AN1_a_Rc"]
+	Rr_cut = PARAMS["AN1_r_Rc"]
 	a=MSet("SmallMols_rand")
 	a.Load()
 	maxnatoms = a.MaxNAtoms()
@@ -331,10 +333,12 @@ def TestTFSym():
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
-	NL = NeighborListSet(paddedxyz, natom, True, True, paddedz)
-	rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
+	xyz_np = np.stack(xyzlist)
+	z_np = np.stack(zlist)
+	NL = NeighborListSet(xyz_np, natom, True, True, z_np)
+	rad_p, ang_t = NL.buildPairsAndTriples(Rr_cut, Ra_cut)
 	Radp_pl=tf.Variable(rad_p, dtype=tf.int64,name="RadialPairs")
-	Angt_pl=tf.placeholder(ang_t, dtype=tf.int64,name="AngularTriples")
+	Angt_pl=tf.Variable(ang_t, dtype=tf.int64,name="AngularTriples")
 
 	eles = [1,6,7,8]
 	n_eles = len(eles)
@@ -349,12 +353,12 @@ def TestTFSym():
 
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
-	zetas = np.array([[PARAMS["AN1_zeta"]]], dtype = prec)
-	etas = np.array([[PARAMS["AN1_eta"]]], dtype = prec)
+	zetas = np.array([[PARAMS["AN1_zeta"]]], dtype = np.float64)
+	etas = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
 	AN1_num_a_As = PARAMS["AN1_num_a_As"]
 	AN1_num_a_Rs = PARAMS["AN1_num_a_Rs"]
-	thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = prec)
-	rs =  np.array([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = prec)
+	thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = np.float64)
+	rs =  np.array([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = np.float64)
 	# Create a parameter tensor. 4 x nzeta X neta X ntheta X nr
 	p1 = np.tile(np.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
 	p2 = np.tile(np.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
@@ -362,9 +366,9 @@ def TestTFSym():
 	p4 = np.tile(np.reshape(rs,[1,1,1,AN1_num_a_Rs,1]),[1,1,AN1_num_a_As,1,1])
 	SFPa = np.concatenate([p1,p2,p3,p4],axis=4)
 	SFPa = np.transpose(SFPa, [4,0,1,2,3])
-	etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = prec)
+	etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
 	AN1_num_r_Rs = PARAMS["AN1_num_r_Rs"]
-	rs_R =  np.array([ Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = prec)
+	rs_R =  np.array([ Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
 	# Create a parameter tensor. 2 x  neta X nr
 	p1_R = np.tile(np.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
 	p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
@@ -389,16 +393,27 @@ def TestTFSym():
 	Ra_cut = tf.Variable(PARAMS["AN1_a_Rc"], trainable=False, dtype = tf.float64)
 	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
 	eta = tf.Variable(PARAMS["AN1_eta"], trainable=False, dtype = tf.float64)
-	Scatter_Sym, Sym_Index  = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
+	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
+	# sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
+	tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
 
-	# tmp = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8], gaussian_params, atomic_embed_factors, 4)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
-	# for i in range(a.mols[0].atoms.shape[0]):
-	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	tmp2, tmp3 = sess.run(Scatter_Sym, Sym_Index)
-	print tmp2, tmp3
+	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+	run_metadata = tf.RunMetadata()
 
+	# tmp, tmp2, tmp3, tmp4 = sess.run([Scatter_Sym, Sym_Index, sym_tmp, idx_tmp])
+	# print np.allclose(tmp[0], tmp3[0])
+	# print np.allclose(tmp2[0], tmp4[0])
+	tmp2 = sess.run([tmp])
+	print tmp2
+	# print tmp2[0][0].shape, tmp2[0][1].shape
+	# print np.allclose(tmp2[0][0], tmp2[0][1])
+	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
+	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	# chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+	# 	f.write(chrome_trace)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
