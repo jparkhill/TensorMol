@@ -876,7 +876,7 @@ def TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 	is separated across elements as well. eleps_ is a list of element pairs
 	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
 	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
-	This version improves append ele pair index at the end of triples with 
+	This version improves append ele pair index at the end of triples with
 	sorted order: m, i, l, j, k
 
 	Args:
@@ -1769,6 +1769,21 @@ def TF_spherical_harmonics(delta_xyzs, distance_tensor, max_l):
 	return harmonics
 
 def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params, atomic_embed_factors, l_max):
+	"""
+	Encodes atoms into a gaussians and spherical harmonics embedding
+	Args:
+		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
+		Zs (tf.int32): NMol x MaxNAtoms atomic number tensor
+		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
+		elements (list): list of elements present in the dataset
+		gaussian_params (tf.float): NGaussians x 2 tensor of gaussian parameters
+		atomic_embed_factors (tf.float): MaxElementNumber tensor of scaling factors for elements
+		l_max (tf.int32): Scalar for the highest order spherical harmonics to use (needs implemented)
+
+	Returns:
+		embedding_list (list of tf.floats): NElement length list of atom embeddings
+		labels_list (list of tf.floats): NElement length list of atom labels
+	"""
 	jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
 	with jit_scope():
 		num_mols = tf.shape(Zs)[0]
@@ -1788,6 +1803,22 @@ def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params,
 	return embedding_list, labels_list
 
 def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_params, atomic_embed_factors, l_max):
+	"""
+	Encodes atoms into a gaussians and spherical harmonics embedding
+
+	Args:
+		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
+		Zs (tf.int32): NMol x MaxNAtoms atomic number tensor
+		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
+		element (int): element to return embedding/labels for
+		gaussian_params (tf.float): NGaussians x 2 tensor of gaussian parameters
+		atomic_embed_factors (tf.float): MaxElementNumber tensor of scaling factors for elements
+		l_max (tf.int32): Scalar for the highest order spherical harmonics to use (needs implemented)
+
+	Returns:
+		embedding (tf.float): atom embeddings for element
+		labels (tf.float): atom labels for element
+	"""
 	jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
 	with jit_scope():
 		num_mols = tf.shape(Zs)[0]
@@ -1803,7 +1834,18 @@ def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 	labels = tf.boolean_mask(tf.reshape(labels, [num_mols * max_num_atoms, tf.shape(labels)[2]]), element_mask)
 	return embedding, labels
 
-def TF_random_rotate(xyzs, labels):
+def TF_random_rotate(xyzs, labels = None):
+	"""
+	Rotates molecules and optionally labels in a uniformly random fashion
+
+	Args:
+		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
+		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
+
+	Returns:
+		new_xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor of randomly rotated molecules
+		new_labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of randomly rotated learning targets
+	"""
 	num_mols = tf.shape(xyzs)[0]
 	theta = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
 	phi = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
@@ -1817,7 +1859,8 @@ def TF_random_rotate(xyzs, labels):
 	R = tf.stack([R1, R2, R3], axis=1)
 	M = tf.matmul((tf.expand_dims(v, axis=1) * tf.expand_dims(v, axis=2)) - tf.eye(3, dtype=eval(PARAMS["tf_prec"])), R)
 	new_xyzs = tf.einsum("lij,lkj->lki",M, xyzs)
-	new_labels = tf.einsum("lij,lkj->lki",M, (xyzs + labels)) - new_xyzs
+	if labels != None:
+		new_labels = tf.einsum("lij,lkj->lki",M, (xyzs + labels)) - new_xyzs
 	return new_xyzs, new_labels
 
 def TFSymSet_Scattered_Linear_tmp(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, Radp, Angt):

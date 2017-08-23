@@ -1119,6 +1119,31 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			LOGGER.error("TFInputs"+str(eval_input) ) #If it's still a problem here use tf.Print version of the graph.
 		return tmp[0,:given_cases]
 
+	def Clean(self):
+		if (self.sess != None):
+			self.sess.close()
+		self.sess = None
+		self.loss = None
+		self.output = None
+		self.total_loss = None
+		self.train_op = None
+		self.saver = None
+		self.gradient = None
+		self.summary_writer = None
+		self.PreparedFor = 0
+		self.summary_op = None
+		self.activation_function = None
+		self.atomic_embed_factors = None
+		self.gaussian_params = None
+		self.labels = None
+		self.norm_output = None
+		self.labels_pl = None
+		self.Zs_pl = None
+		self.xyzs_pl = None
+		self.output = None
+		self.embedding = None
+		return
+
 	def loss_op(self, output, labels):
 		diff  = tf.subtract(output, labels)
 		loss = tf.nn.l2_loss(diff)
