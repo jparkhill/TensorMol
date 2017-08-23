@@ -120,6 +120,7 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		self.dbg1 = None
 		self.dbg2 = None
 		self.NL = None
+		self.max_checkpoints = 5000
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 
 	def loss_op(self, output, labels):
