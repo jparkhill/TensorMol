@@ -1,7 +1,7 @@
 """
 Routines that will create managers from trained networks,
 develop energies and forces, and gather statistics
-for data tables and figures
+for data tables and figures.
 """
 
 from __future__ import absolute_import
@@ -15,8 +15,8 @@ from TensorMol.ElectrostaticsTF import *
 
 def GetEnergyAndForceFromManager(MName_, a):
 	"""
-	MName: name of the manager. (specifies sampling method.)
-	set_: An MSet() dataset which has been loaded. 
+	MName: name of the manager. (specifies sampling method)
+	set_: An MSet() dataset which has been loaded.
 	"""
 	# If you wanna do eq.
 	# a = MSet("sampling_mols")
@@ -62,8 +62,9 @@ def CompareAllData():
 	Results are stored in a dictionary; the keys for the dictionary are
 	the managers.
 	"""
-
-	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_Hybrid_AN1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_GoldStd_AN1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
+	f = open("/media/sdb1/dtoth/TensorMol/results/SamplingData.txt", 'w')
+	print "File opened"
+	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_Hybrid_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_GoldStd_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
 	SetNames = ["DavidMD","DavidMetaMD","DavidNM","DavidRandom", "Hybrid","GoldStd"]
 	MSets = [MSet(name) for name in SetNames]
 	for aset in MSets:
@@ -75,7 +76,15 @@ def CompareAllData():
 		for j in range(len(MSets)):
 			en, f = GetEnergyAndForceFromManager(i,MSets[j])
 			results[(i,SetNames[j])] = (en, f)
+<<<<<<< HEAD
+	print results
+	try:
+		f.write(results)
+	except:
+		f.write(str(results))
+=======
 	print(results)
+>>>>>>> fc625dfc4af8c1908f6e48ff6330f55b5e5e8681
 
 def TestOptimization(MName_):
 	"""
@@ -111,7 +120,28 @@ def TestOptimization(MName_):
 	print("RMS:", tmp_rms)
 	return np.mean(rms_list)
 
+def GetEnergyVariance(MName_):
+	"""
+	Useful routine to get the data for
+	a plot of the energy variance within a dataset (MSet).
+
+	Args:
+		MName_: Name of dataset as a string
+	"""
+
+	a = MSet(MName_)
+	a.Load()
+
+	for mol in a.mols:
+		mol.properties["energy"] = mol.properties["atomization"]
+
+	ens = np.array([mol.properties["energy"] for m in a.mols])
+	ensmav = ens - np.average(ens)
+
+	np.savetxt(MName_, ensmav)
+
 
 # GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Hybrid")
 CompareAllData()
 # print TestOptimization("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
+# GetEnergyVariance()
