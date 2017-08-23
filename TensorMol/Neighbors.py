@@ -21,7 +21,7 @@ class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
 	"""
-	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False, ele_ = None, alg_ = None):
+	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False, ele_ = None, alg_ = None, sort_ = False):
 		"""
 		Builds or updates a neighbor list of atoms within rcut_
 		using n*Log(n) kd-tree.
@@ -29,6 +29,8 @@ class NeighborList:
 		Args:
 			x_: coordinate array
 			rcut_: distance cutoff.
+			ele_: element types of each atoms.
+			sort_: whether sorting the jk in triples by atom index
 		"""
 		self.natom = x_.shape[0] # includes periodic images.
 		self.x = x_.T.copy()
@@ -40,6 +42,7 @@ class NeighborList:
 		self.npairs = None
 		self.ntriples = None
 		self.alg = alg_
+		self.sort = sort_
 		return
 
 	def Update(self, x_, rcut_pairs=5.0, rcut_triples=5.0, molind_ = None, nreal_ = None):
@@ -174,12 +177,18 @@ class NeighborList:
 							if self.ele is not None and self.ele[j] > self.ele[k]:  # atom will smaller element index alway go first
 								t[tp,2]=k
 								t[tp,3]=j
+							elif self.sort and j > k:
+								t[tp,2]=k
+								t[tp,3]=j
 							else:
 								t[tp,2]=j
 								t[tp,3]=k
 						else:
 							t[tp,0]=i
 							if self.ele is not None and self.ele[j] > self.ele[k]:
+								t[tp,1]=k
+								t[tp,2]=j
+							elif self.sort and j > k:
 								t[tp,1]=k
 								t[tp,2]=j
 							else:
@@ -191,13 +200,15 @@ class NeighborList:
 		return p,t
 
 class NeighborListSet:
-	def __init__(self, x_, nnz_, DoTriples_=False, DoPerms_=False, ele_=None, alg_ = None ):
+	def __init__(self, x_, nnz_, DoTriples_=False, DoPerms_=False, ele_=None, alg_ = None, sort_ = False):
 		"""
 		A neighborlist for a set
 
 		Args:
 			x_: NMol X MaxNAtom X 3 tensor of coordinates.
 			nnz_: NMol vector of maximum atoms in each mol.
+			ele_: element type of each atom.
+			sort_: whether sort jk in triples by atom index 
 		"""
 		self.nlist = []
 		self.nmol = x_.shape[0]
@@ -211,6 +222,7 @@ class NeighborListSet:
 		self.x = x_
 		self.nnz = nnz_
 		self.ele = ele_
+		self.sort = sort_
 		self.pairs = None
 		self.DoTriples = DoTriples_
 		self.DoPerms = DoPerms_
@@ -221,10 +233,10 @@ class NeighborListSet:
 		if (self.alg<2):
 			if self.ele is None:
 				for i in range(self.nmol):
-					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, None,self.alg))
+					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, None, self.alg, self.sort))
 			else:
 				for i in range(self.nmol):
-					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]],self.alg))
+					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]], self.alg, self.sort))
 		else:
 			self.PairMaker = PairProvider(self.nmol,self.maxnatom)
 		return
@@ -301,3 +313,46 @@ class NeighborListSet:
 				pp += mol.npairs
 				tp += mol.ntriples
 			return trp, trt
+
+	def buildPairsAndTriplesWithEleIndex(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
+		"""
+		generate sorted pairs and triples with index of correspoding ele or elepair append to it.
+		sorted order: mol, i (center atom), l (ele or elepair index), j (connected atom 1), k (connected atom 2 for triples)
+
+		Args:
+			rcut_: a cutoff parameter.
+			ele: element
+			elep: element pairs
+		Returns:
+			(nnzero pairs X 4 pair tensor) (mol, I, J, L)
+			(nnzero triples X 5 triple tensor) (mol, I, J, K, L) 
+		"""
+	
+		if not self.sort:
+			print ("Warning! Triples need to be sorted")
+		if self.ele == None:	
+			raise Exception("Element type of each atom is needed.")
+		#import time
+		#t0 = time.time()
+		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
+		#print ("make pair and triple time:", time.time()-t0)
+		#t_start = time.time()
+		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
+		Z = self.ele[trp[:, 0], trp[:, 2]]
+		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1)) 
+		pair_index = np.where(np.all(pair_mask, axis=-1))[1]
+		Z1 = self.ele[trt[:, 0], trt[:, 2]]
+		Z2 = self.ele[trt[:, 0], trt[:, 3]]
+		Z1Z2 = np.transpose(np.vstack((Z1, Z2)))
+		trip_mask = np.equal(Z1Z2.reshape((trt.shape[0],1,1,2)), eleps.reshape((eleps.shape[0],2,2)))
+		trip_index = np.where(np.any(np.all(trip_mask, axis=-1),axis=-1))[1]
+		trpE = np.concatenate((trp, pair_index.reshape((-1,1))), axis=-1)
+		trtE = np.concatenate((trt, trip_index.reshape((-1,1))), axis=-1)
+		#t0 = time.time()
+		sort_index = np.lexsort((trpE[:,2], trpE[:,3], trpE[:,1], trpE[:,0]))
+		trpE_sorted = trpE[sort_index]
+		sort_index = np.lexsort((trtE[:,2], trtE[:,3], trtE[:,4], trtE[:,1], trtE[:,0]))
+		trtE_sorted = trtE[sort_index]
+		#print ("numpy lexsorting time:", time.time() -t0)
+		#print ("time to append and sort element", time.time() - t_start)
+		return trpE_sorted, trtE_sorted

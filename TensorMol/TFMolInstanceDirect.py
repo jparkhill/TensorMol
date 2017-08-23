@@ -120,6 +120,7 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		self.dbg1 = None
 		self.dbg2 = None
 		self.NL = None
+		self.max_checkpoints = 5000
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
 
 	def loss_op(self, output, labels):
@@ -2361,7 +2362,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
-			config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
+			config=tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
 			config.gpu_options.per_process_gpu_memory_fraction = 0.90
 			self.sess = tf.Session(config=config)
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
@@ -2672,10 +2673,13 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		pre_output = np.zeros((self.batch_size),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			#print ("ministep:", ministep)
+			t_mini = time.time()
 			batch_data = self.TData.GetTrainBatch(self.batch_size) + [False]
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_dipole, self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			print ("mini step time dipole:", time.time() - t_mini )
+			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
 			LOGGER.debug("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
 			max_index = np.argmax(np.sum(abs(batch_data[3]-mol_dipole),axis=1))
 			LOGGER.debug("real dipole:\n", batch_data[3][max_index], "\nmol_dipole:\n", mol_dipole[max_index], "\n xyz:", batch_data[0][max_index], batch_data[1][max_index])
@@ -2753,11 +2757,12 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		num_of_mols = 0
 		pre_output = np.zeros((self.batch_size),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
-			#print ("ministep:", ministep)
+			t_mini = time.time()
 			batch_data = self.TData.GetTrainBatch(self.batch_size)+[False]
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_EandG, self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			print ("mini step time EandG:", time.time() - t_mini) 
 			#print ("Ecc:", Ecc[:20])
 			#for k, ecc in enumerate(list(Ecc)):
 			#	if ecc > 0.05:
@@ -3104,6 +3109,7 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 #			with tf.name_scope("MakeDescriptors"):
+			#with tf.device('/job:localhost/replica:0/task:0/gpu:1'):
 			#with tf.device('/cpu:0'):
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Ecc, self.dipole, self.charge, self.dipole_wb = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl, self.AddEcc_pl)
@@ -3128,7 +3134,7 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			# please do not use the totality of the GPU memory
-			config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
+			config=tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
 			config.gpu_options.per_process_gpu_memory_fraction = 0.90
 			self.sess = tf.Session(config=config)
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)

@@ -691,7 +691,7 @@ def EvalForceField():
 		os.environ["CUDA_VISIBLE_DEVICES"]="0"
 		a = MSet("chemspider9_metady_force")
 		a.Load()
-		b = MSet("david_test")
+		b = MSet("IRSmallmols")
 		b.ReadXYZ()
 		TreatedAtoms = a.AtomTypes()
 		PARAMS["learning_rate"] = 0.00001
@@ -717,8 +717,7 @@ def EvalForceField():
 		#print manager.EvalBPDirectEESet(b, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		#print manager.EvalBPDirectEESingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		#print a.mols[1].properties, "Dipole in a.u.:",a.mols[1].properties["dipole"]*0.393456
-
-		m = b.mols[7]
+		m = b.mols[8]
 		def EnAndForce(x_):
 			m.coords = x_
 			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
