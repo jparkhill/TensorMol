@@ -419,9 +419,9 @@ def HarmKernels(XYZs, Deqs, Keqs):
 		Keqs: a nmol X maxnatom X maxnatom tensor of Force constants.
 	"""
 	Ds = TFDistances(XYZs)
-	tmp = Ds - Deqs
+	tmp = Ds - tf.cast(Deqs,tf.float64)
 	tmp -= tf.matrix_diag(tf.matrix_diag_part(tmp))
-	K = Keqs*tmp*tmp
+	K = tf.cast(Keqs,tf.float64)*tmp*tmp
 	#K = tf.Print(K,[K],"Kern",100)
 	K = tf.matrix_band_part(K, 0, -1) # Extract upper triangle of each.
 	return K
