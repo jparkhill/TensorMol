@@ -3121,9 +3121,8 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 			tf.summary.scalar("loss", self.loss)
 			tf.summary.scalar("loss_dip", self.loss_dipole)
 			tf.summary.scalar("loss_EG", self.loss_EandG)
-
 #			with tf.name_scope("training"):
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum, )
+			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum, name="TotalLossTrainOp")
 			self.train_op_dipole = self.training(self.total_loss_dipole, self.learning_rate_dipole, self.momentum, self.dipole_wb)
 			self.train_op_EandG = self.training(self.total_loss_EandG, self.learning_rate_energy, self.momentum, self.energy_wb)
 			self.summary_op = tf.summary.merge_all()
@@ -3134,14 +3133,12 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 			self.sess = tf.Session(config=config)
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess.run(init)
-
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			if (PARAMS["Profiling"]>0):
 				print("logging with FULL TRACE")
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
 				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
-
 			self.sess.graph.finalize()
 
 	def dipole_inference(self, inp, indexs, xyzs, natom, EE_cuton, EE_cutoff, Reep, AddEcc):
