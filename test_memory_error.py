@@ -9,13 +9,13 @@ from TensorMol.NN_MBE import *
 
 a = MSet("chemspider9_metady_force")
 a.Load()
-for i in range(141776):
-	a.mols.pop()
+#for i in range(141776):
+#	a.mols.pop()
 TreatedAtoms = a.AtomTypes()
 PARAMS["learning_rate"] = 0.00001
 PARAMS["momentum"] = 0.95
 PARAMS["max_steps"] = 101
-PARAMS["batch_size"] =  500   # 40 the max min-batch size it can go without memory error for training
+PARAMS["batch_size"] =  40   # 40 the max min-batch size it can go without memory error for training
 PARAMS["test_freq"] = 2
 PARAMS["tf_prec"] = "tf.float64"
 PARAMS["GradScaler"] = 1.0
