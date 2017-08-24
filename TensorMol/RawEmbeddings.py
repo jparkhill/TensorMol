@@ -1957,15 +1957,16 @@ def TFSymRSet_Linear_tmp(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float
 	# And finally the last two factors
 	fac2t = tf.expand_dims(0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0), axis=-1)
 	## assemble the full symmetry function for all triples.
-	Gm = tf.reshape(fac1*fac2t,[nnz*nsym]) # nnz X nzeta X neta X ntheta X nsym
+	Gm = tf.reshape(fac1*fac2t,[nnz, nsym]) # nnz X nzeta X neta X ntheta X nsym
 	## Finally scatter out the symmetry functions where they belong.
 	mil_j = tf.concat([GoodInds2[:,:2],GoodInds2[:,3:2:-1],GoodInds2[:,2:1:-1]],axis=-1)
-	mil_j_Outer = tf.tile(tf.expand_dims(mil_j,axis=1),[1,nsym,1])
+	# mil_j_Outer = tf.tile(tf.expand_dims(mil_j,axis=1),[1,nsym,1])
 	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nsym to finish the indices.
-	p2_2 = tf.expand_dims(tf.expand_dims(tf.range(nsym),axis=-1),axis=0)
-	p4_2 = tf.tile(p2_2,[nnz,1,1]) # should be nnz X nsym
-	ind2 = tf.reshape(tf.concat([mil_j_Outer,p4_2],axis=-1),[nnz*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nsym X 8 -  m,i,l,jk,zeta,eta,theta,r
-	to_reduce2 = tf.scatter_nd(ind2,Gm,[nmol,natom,nele,natom,nsym])
+	# p2_2 = tf.expand_dims(tf.expand_dims(tf.range(nsym),axis=-1),axis=0)
+	# p4_2 = tf.tile(p2_2,[nnz,1,1]) # should be nnz X nsym
+	# ind2 = tf.reshape(tf.concat([mil_j_Outer,p4_2],axis=-1),[nnz*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nsym X 8 -  m,i,l,jk,zeta,eta,theta,r
+	# to_reduce2 = tf.scatter_nd(ind2,Gm,[nmol,natom,nele,natom,nsym])
+	to_reduce2 = tf.scatter_nd(mil_j, Gm, [nmol,natom,nele,natom,nsym])
 	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nsym])
 	return tf.reduce_sum(to_reduce2, axis=3)
@@ -2050,25 +2051,44 @@ def TFSymASet_Linear_tmp(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Angtri, prec=tf
 	fac4 = 0.5*(tf.cos(3.14159265359*RikRik2/R_cut)+1.0)
 	## assemble the full symmetry function for all triples.
 	fac34t = tf.reshape(fac3*fac4,[nnzt,1,1])
-	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
+	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt, nsym]) # nnz X nzeta X neta X ntheta X nr
 
 	## Finally scatter out the symmetry functions where they belong.
 	jk2 = tf.add(tf.multiply(tf.slice(GoodInds2,[0,2],[nnzt,1]), natom), tf.slice(GoodInds2,[0,3],[nnzt, 1]))
 	mil_jk2 = tf.concat([tf.slice(GoodInds2,[0,0],[nnzt,2]),tf.slice(GoodInds2,[0,4],[nnzt,1]),tf.reshape(jk2,[nnzt,1])],axis=-1)
-	mil_jk_Outer2 = tf.tile(tf.expand_dims(mil_jk2,axis=1),[1,nsym,1])
+	# mil_jk_Outer2 = tf.tile(tf.expand_dims(mil_jk2,axis=1),[1,nsym,1])
+	jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1
 
 	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
-	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.range(ntheta), nr),[ntheta,1,1]),[1,nr,1])
-	p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.range(nr),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
-	p3_2 = tf.reshape(tf.reduce_sum(p2_2,axis=-1),[1,nsym,1]) # scatter_nd only supports up to rank 5... so gotta smush this...
-	p6_2 = tf.tile(p3_2,[nnzt,1,1]) # should be nnz X nsym
+	# p1_2 = tf.tile(tf.reshape(tf.multiply(tf.range(ntheta), nr),[ntheta,1,1]),[1,nr,1])
+	# p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.range(nr),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
+	# p3_2 = tf.reshape(tf.reduce_sum(p2_2,axis=-1),[1,nsym,1]) # scatter_nd only supports up to rank 5... so gotta smush this...
+	# p6_2 = tf.tile(p3_2,[nnzt,1,1]) # should be nnz X nsym
 
-	ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnzt*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
+	# ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnzt*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
 	# return tf.shape(ind2)
 	# to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nelep,natom2,nsym], dtype=tf.int32))  # scatter_nd way to do it
-	to_reduce2 = tf.SparseTensor(tf.cast(ind2, tf.int64), Gm, dense_shape=tf.cast([nmol, natom, nelep, natom2, nsym], tf.int64))
-	return tf.sparse_reduce_sum(to_reduce2, axis=3)
-	# return tf.reduce_sum(to_reduce2, axis=3)
+	# to_reduce2 = tf.SparseTensor(tf.cast(ind2, tf.int64), Gm, dense_shape=tf.cast([nmol, natom, nelep, natom2, nsym], tf.int64))
+	to_reduce2 = tf.scatter_nd(mil_jk2, Gm, [nmol,natom, nelep, tf.cast(jk_max, tf.int32), nsym])
+	# return tf.sparse_reduce_sum(to_reduce2, axis=3)
+	return tf.reduce_sum(to_reduce2, axis=3)
+
+
+	# fac2 = tf.exp(-eta*tet*tet)
+	# # And finally the last two factors
+	# fac3 = 0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0)
+	# fac4 = 0.5*(tf.cos(3.14159265359*RikRik2/R_cut)+1.0)
+	# ## assemble the full symmetry function for all triples.
+	# fac34t =  tf.tile(tf.reshape(fac3*fac4,[nnzt,1,1]),[1,ntheta,nr])
+	# Gm = tf.reshape(fac1*fac2*fac34t,[nnzt*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
+	# ## Finally scatter out the symmetry functions where they belong.
+	# jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), tf.cast(natom, dtype=tf.int64)), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
+	# #mil_jk2 = tf.concat([tf.slice(AngtriEle,[0,0],[nnzt,2]),tf.slice(AngtriEle,[0,4],[nnzt,1]),tf.reshape(jk2,[nnzt,1])],axis=-1)
+	# jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1
+	#
+	# Gm2= tf.reshape(Gm, [nnzt, nsym])
+	# to_reduce2 = tf.scatter_nd(mil_jk2, Gm2, tf.cast([nmol,natom, nelep, tf.cast(jk_max, tf.int32), nsym], dtype=tf.int64))
+
 
 
 
