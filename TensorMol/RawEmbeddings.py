@@ -945,21 +945,24 @@ def TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 	jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), tf.cast(natom, dtype=tf.int64)), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
 	#mil_jk2 = tf.concat([tf.slice(AngtriEle,[0,0],[nnzt,2]),tf.slice(AngtriEle,[0,4],[nnzt,1]),tf.reshape(jk2,[nnzt,1])],axis=-1)
 	jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1
-	mil_jk_Outer2 = tf.tile(tf.reshape(mil_jk2,[nnzt,1,4]),[1,nsym,1])
-	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
-	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.cast(tf.range(ntheta), dtype=tf.int64), tf.cast(nr, dtype=tf.int64)),[ntheta,1,1]),[1,nr,1])
-	p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
-	p3_2 = tf.reshape(tf.reduce_sum(p2_2,axis=-1),[1,nsym,1]) # scatter_nd only supports up to rank 5... so gotta smush this...
-	p6_2 = tf.tile(p3_2,[nnzt,1,1]) # should be nnz X nsym
-	ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnzt*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
-	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom, nelep, tf.cast(jk_max, tf.int32), nsym], dtype=tf.int64))  # scatter_nd way to do it
-	#to_reduce2 = tf.SparseTensor(ind2, Gm, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(jk_max, tf.int64), tf.cast(nsym, tf.int64)])
-	#to_reduce2_reorder = tf.sparse_reorder(to_reduce2)
-	#reduced2 = tf.sparse_reduce_sum_sparse(to_reduce2, axis=3)
-	#to_reduce2_dense = tf.sparse_tensor_to_dense(to_reduce2, validate_indices=True)
-	#to_reduce2_dense = tf.sparse_to_dense(ind2, [tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(jk_max, tf.int64), tf.cast(nsym, tf.int64)], Gm)
-	#to_reduce2_dense = tf.sparse_to_dense(ind2, [tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(natom2, tf.int64), tf.cast(nsym, tf.int64)], Gm, validate_indices=True)
-	#return tf.sparse_reduce_sum(to_reduce2, axis=3)
+
+	Gm2= tf.reshape(Gm, [nnzt, nsym])
+	to_reduce2 = tf.scatter_nd(mil_jk2, Gm2, tf.cast([nmol,natom, nelep, tf.cast(jk_max, tf.int32), nsym], dtype=tf.int64))
+#	mil_jk_Outer2 = tf.tile(tf.reshape(mil_jk2,[nnzt,1,4]),[1,nsym,1])
+#	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
+#	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.cast(tf.range(ntheta), dtype=tf.int64), tf.cast(nr, dtype=tf.int64)),[ntheta,1,1]),[1,nr,1])
+#	p2_2 = tf.reshape(tf.concat([p1_2,tf.tile(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[1,nr,1]),[ntheta,1,1])],axis=-1),[1,ntheta,nr,2])
+#	p3_2 = tf.reshape(tf.reduce_sum(p2_2,axis=-1),[1,nsym,1]) # scatter_nd only supports up to rank 5... so gotta smush this...
+#	p6_2 = tf.tile(p3_2,[nnzt,1,1]) # should be nnz X nsym
+#	ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnzt*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
+#	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom, nelep, tf.cast(jk_max, tf.int32), nsym], dtype=tf.int64))  # scatter_nd way to do it
+#	#to_reduce2 = tf.SparseTensor(ind2, Gm, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(jk_max, tf.int64), tf.cast(nsym, tf.int64)])
+#	#to_reduce2_reorder = tf.sparse_reorder(to_reduce2)
+#	#reduced2 = tf.sparse_reduce_sum_sparse(to_reduce2, axis=3)
+#	#to_reduce2_dense = tf.sparse_tensor_to_dense(to_reduce2, validate_indices=True)
+#	#to_reduce2_dense = tf.sparse_to_dense(ind2, [tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(jk_max, tf.int64), tf.cast(nsym, tf.int64)], Gm)
+#	#to_reduce2_dense = tf.sparse_to_dense(ind2, [tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(natom2, tf.int64), tf.cast(nsym, tf.int64)], Gm, validate_indices=True)
+#	#return tf.sparse_reduce_sum(to_reduce2, axis=3)
 	return tf.reduce_sum(to_reduce2, axis=3)
 	#return tf.sparse_tensor_to_dense(reduced2), ind2
 
@@ -1239,15 +1242,18 @@ def TFSymRSet_Linear_WithEle(R, Zs, eles_, SFPs_, eta, R_cut, RadpairEle, prec=t
 	fac2t = tf.tile(tf.reshape(fac2,[nnz,1]),[1,nr])
 	## assemble the full symmetry function for all triples.
 	Gm = tf.reshape(fac1*fac2t,[nnz*nr]) # nnz X nzeta X neta X ntheta X nr
+	Gm2 = tf.reshape(Gm, [nnz, nr])
 	## Finally scatter out the symmetry functions where they belong.
 	mil_j = tf.concat([tf.slice(RadpairEle,[0,0],[nnz,2]),tf.slice(RadpairEle,[0,3],[nnz,1]),tf.slice(RadpairEle,[0,2],[nnz,1])],axis=-1)
-	mil_j_Outer = tf.tile(tf.reshape(mil_j,[nnz,1,4]),[1,nsym,1])
-	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
-	p2_2 = tf.reshape(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[nr,1]),[1,nr,1])
-	p4_2 = tf.tile(p2_2,[nnz,1,1]) # should be nnz X nsym
-	ind2 = tf.reshape(tf.concat([mil_j_Outer,p4_2],axis=-1),[nnz*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
-	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nele,natom,nsym], dtype=tf.int64))
-	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
+	#mil_j_Outer = tf.tile(tf.reshape(mil_j,[nnz,1,4]),[1,nsym,1])
+
+	to_reduce2 = tf.scatter_nd(mil_j, Gm2, tf.cast([nmol,natom,nele,natom,nsym], dtype=tf.int64))
+#	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
+#	p2_2 = tf.reshape(tf.reshape(tf.cast(tf.range(nr), dtype=tf.int64),[nr,1]),[1,nr,1])
+#	p4_2 = tf.tile(p2_2,[nnz,1,1]) # should be nnz X nsym
+#	ind2 = tf.reshape(tf.concat([mil_j_Outer,p4_2],axis=-1),[nnz*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
+#	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nele,natom,nsym], dtype=tf.int64))
+#	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
 	return tf.reduce_sum(to_reduce2, axis=3)
 
@@ -2216,12 +2222,12 @@ class ANISym:
 			#A, B, C, D  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs], feed_dict = feed_dict)
 
 			#A, B  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			C, D  = self.sess.run([self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			#A, B, C, D  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict)
+			#C, D  = self.sess.run([self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			A, B, C, D  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict)
 			#print ("A:\n", A[0].shape, "\nC:\n", C[0].shape)
 			#np.set_printoptions(threshold=np.nan)
-			#print ("A:",A, "B:",B)
-			#print ("C:",C, "D:",D)
+			print ("A:",A, "B:",B)
+			print ("C:",C, "D:",D)
 			#np.savetxt("rad_sym.dat", A[0][0][:64])
 			#np.savetxt("Zs_sym.dat", C[0][0])
 			#np.savetxt("rad_ang_sym.dat", A[0][0])
