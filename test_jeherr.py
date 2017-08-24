@@ -312,34 +312,31 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
 
 def TestTFSym():
+	t1 = time.time()
 	np.set_printoptions(threshold=100000)
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
-	a=MSet("SmallMols_rand")
+	a=MSet("SmallMols")
 	a.Load()
+	t1 = time.time()
 	maxnatoms = a.MaxNAtoms()
 	zlist = []
 	xyzlist = []
-	natom = np.zeros((2), dtype=np.int32)
+	natom = np.zeros((600), dtype=np.int32)
 	for i, mol in enumerate(a.mols):
 		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
-		paddedz = np.zeros((maxnatoms), dtype=np.int64)
+		paddedz = np.zeros((maxnatoms), dtype=np.int32)
 		paddedz[:mol.atoms.shape[0]] = mol.atoms
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		natom[i] = mol.NAtoms()
-		if i == 1:
+		if i == 599:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
 	xyz_np = np.stack(xyzlist)
 	z_np = np.stack(zlist)
-	NL = NeighborListSet(xyz_np, natom, True, True, z_np)
-	rad_p, ang_t = NL.buildPairsAndTriples(Rr_cut, Ra_cut)
-	Radp_pl=tf.Variable(rad_p, dtype=tf.int64,name="RadialPairs")
-	Angt_pl=tf.Variable(ang_t, dtype=tf.int64,name="AngularTriples")
-
 	eles = [1,6,7,8]
 	n_eles = len(eles)
 	eles_np = np.asarray(eles).reshape((n_eles,1))
@@ -348,8 +345,13 @@ def TestTFSym():
 		for j in range(i, len(eles)):
 			eles_pairs.append([eles[i], eles[j]])
 	eles_pairs_np = np.asarray(eles_pairs)
-	Ele = tf.Variable(eles_np, trainable=False, dtype = tf.int64)
-	Elep = tf.Variable(eles_pairs_np, trainable=False, dtype = tf.int64)
+	NL = NeighborListSet(xyz_np, natom, True, True, ele_= z_np, sort_ = True)
+	rad_p, ang_t, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, ele = eles_np, elep = eles_pairs_np)
+	Radp_pl=tf.Variable(rad_p, dtype=tf.int32,name="RadialPairs")
+	Angt_pl=tf.Variable(ang_t, dtype=tf.int32,name="AngularTriples")
+	mil_jkt = tf.Variable(mil_jk, dtype=tf.int32)
+	Ele = tf.Variable(eles_np, trainable=False, dtype = tf.int32)
+	Elep = tf.Variable(eles_pairs_np, trainable=False, dtype = tf.int32)
 
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
@@ -359,30 +361,15 @@ def TestTFSym():
 	AN1_num_a_Rs = PARAMS["AN1_num_a_Rs"]
 	thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = np.float64)
 	rs =  np.array([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = np.float64)
-	# Create a parameter tensor. 4 x nzeta X neta X ntheta X nr
-	p1 = np.tile(np.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
-	p2 = np.tile(np.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
-	p3 = np.tile(np.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_a_Rs,1])
-	p4 = np.tile(np.reshape(rs,[1,1,1,AN1_num_a_Rs,1]),[1,1,AN1_num_a_As,1,1])
-	SFPa = np.concatenate([p1,p2,p3,p4],axis=4)
-	SFPa = np.transpose(SFPa, [4,0,1,2,3])
+
 	etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
 	AN1_num_r_Rs = PARAMS["AN1_num_r_Rs"]
 	rs_R =  np.array([ Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
-	# Create a parameter tensor. 2 x  neta X nr
-	p1_R = np.tile(np.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
-	p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
-	SFPr = np.concatenate([p1_R,p2_R],axis=2)
-	SFPr = np.transpose(SFPr, [2,0,1])
-	# self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
-	# self.inshape_withencode = int(self.inshape + AN1_num_r_Rs)
-	#self.inshape = int(len(self.eles)*AN1_num_r_Rs)
+
+
 	p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
 	p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
-	# SFPa2 = np.concatenate([p1,p2],axis=2)
-	# self.SFPa2 = np.transpose(SFPa2, [2,0,1])
-	# p1_new = np.reshape(rs_R,[AN1_num_r_Rs,1])
-	# self.SFPr2 = np.transpose(p1_new, [1,0])
+
 	zeta = PARAMS["AN1_zeta"]
 	eta = PARAMS["AN1_eta"]
 	# self.HasANI1PARAMS = True
@@ -394,11 +381,12 @@ def TestTFSym():
 	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
 	eta = tf.Variable(PARAMS["AN1_eta"], trainable=False, dtype = tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, tf.cast(zstack, tf.int32), tf.cast(Ele, tf.int32), SFPr2, Rr_cut, tf.cast(Elep, tf.int32), SFPa2, zeta, eta, Ra_cut, tf.cast(Radp_pl, tf.int32), tf.cast(Angt_pl, tf.int32))
+	sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, tf.cast(zstack, tf.int32), tf.cast(Ele, tf.int32), SFPr2, Rr_cut, tf.cast(Elep, tf.int32), SFPa2, zeta, eta, Ra_cut, tf.cast(Radp_pl, tf.int32), Angt_pl)
 
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
+	t1 = time.time()
 	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 	run_metadata = tf.RunMetadata()
 
@@ -409,11 +397,13 @@ def TestTFSym():
 	# print tmp2
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
-	tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
-	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-	chrome_trace = fetched_timeline.generate_chrome_trace_format()
-	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-		f.write(chrome_trace)
+	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
+	tmp, tmp2 = sess.run([sym_tmp, idx_tmp])
+	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	# chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+	# 	f.write(chrome_trace)
+	print time.time() - t1
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
