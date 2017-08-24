@@ -394,8 +394,8 @@ def TestTFSym():
 	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
 	eta = tf.Variable(PARAMS["AN1_eta"], trainable=False, dtype = tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	# sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
+	sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, tf.cast(zstack, tf.int32), tf.cast(Ele, tf.int32), SFPr2, Rr_cut, tf.cast(Elep, tf.int32), SFPa2, zeta, eta, Ra_cut, tf.cast(Radp_pl, tf.int32), tf.cast(Angt_pl, tf.int32))
+	# tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, tf.cast(zstack, tf.int32), tf.cast(Ele, tf.int32), SFPr2, Rr_cut, tf.cast(Elep, tf.int32), SFPa2, zeta, eta, Ra_cut, tf.cast(Radp_pl, tf.int32), Angt_pl)
 
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
@@ -403,23 +403,23 @@ def TestTFSym():
 	run_metadata = tf.RunMetadata()
 
 	# tmp, tmp2, tmp3, tmp4 = sess.run([Scatter_Sym, Sym_Index, sym_tmp, idx_tmp])
-	# print np.allclose(tmp[0], tmp3[0])
-	# print np.allclose(tmp2[0], tmp4[0])
-	tmp2 = sess.run([tmp])
-	print tmp2
+	# print np.allclose(tmp[1], tmp3[1])
+	# print np.allclose(tmp2[1], tmp4[1])
+	# tmp2 = sess.run([tmp])
+	# print tmp2
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
-	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
-	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-	# chrome_trace = fetched_timeline.generate_chrome_trace_format()
-	# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-	# 	f.write(chrome_trace)
+	tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("chemspider_all_60", 500000)
+# RandomSmallSet("SmallMols_35", 1000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -438,3 +438,8 @@ def TestTFSym():
 # TestTFGauSH()
 # train_forces_GauSH_direct("benzene_1rot")
 TestTFSym()
+
+# a=MSet("SmallMols")
+# a.Load()
+# a.cut_max_n_atoms(35)
+# a.Save("SmallMols_35")
