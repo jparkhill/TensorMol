@@ -842,7 +842,8 @@ def TFSymASet_Linear(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Angtri, prec=tf.flo
 	fac1 = tf.pow(tf.cast(2.0, prec),1.0-zeta)*tf.pow((1.0+Tijk),zeta)
 	rtmp = tf.cast(tf.reshape(SFPs_[1],[1,ntheta,nr]),prec) # ijk X zeta X eta ....
 	ToExp = ((RijRij2+RikRik2)/2.0)
-	tet = tf.tile(tf.reshape(ToExp,[nnzt,1,1]),[1,ntheta,nr]) - rtmp
+	tet = tf.reshape(ToExp,[nnzt,1,1]) - rtmp
+	#tet = tf.tile(tf.reshape(ToExp,[nnzt,1,1]),[1,ntheta,nr]) - rtmp
 	fac2 = tf.exp(-eta*tet*tet)
 	# And finally the last two factors
 	fac3 = 0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0)
@@ -2186,7 +2187,7 @@ class ANISym:
 		qs = np.zeros((self.nmol, self.MaxAtoms),dtype=np.float64)
 		Zs = np.zeros((self.nmol, self.MaxAtoms), dtype=np.int64)
 		nnz_atom = np.zeros((self.nmol), dtype=np.int64)
-		random.shuffle(self.set.mols)
+		#random.shuffle(self.set.mols)
 		for i, mol in enumerate(self.set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
