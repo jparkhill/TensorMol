@@ -869,7 +869,7 @@ def TFSymASet_Linear(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Angtri, prec=tf.flo
 	#return tf.reduce_sum(to_reduce2_dense, axis=3)
 	return tf.sparse_tensor_to_dense(reduced2)
 
-def TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, prec=tf.float64):
+def TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, mil_jk2, prec=tf.float64):
 	"""
 	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
 	Here j,k are all other atoms, but implicitly the output
@@ -922,9 +922,11 @@ def TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
 	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
 	Thetaijk = tf.acos(ToACos)
-	thetatmp = tf.cast(tf.tile(tf.reshape(SFPs_[0],[1,ntheta,nr]),[nnzt,1,1]),prec)
+	#thetatmp = tf.cast(tf.tile(tf.reshape(SFPs_[0],[1,ntheta,nr]),[nnzt,1,1]),prec)
 	# Broadcast the thetas and ToCos together
-	tct = tf.tile(tf.reshape(Thetaijk,[nnzt,1,1]),[1,ntheta,nr])
+	#tct = tf.tile(tf.reshape(Thetaijk,[nnzt,1,1]),[1,ntheta,nr])
+	thetatmp = tf.cast(tf.expand_dims(SFPs_[0], axis=0),prec)
+	tct = tf.expand_dims(tf.expand_dims(Thetaijk, axis=1), axis=-1)
 	ToCos = tct-thetatmp
 	Tijk = tf.cos(ToCos) # shape: natom3 X ...
 	# complete factor 1
@@ -941,7 +943,8 @@ def TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	## Finally scatter out the symmetry functions where they belong.
 	jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), tf.cast(natom, dtype=tf.int64)), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
-	mil_jk2 = tf.concat([tf.slice(AngtriEle,[0,0],[nnzt,2]),tf.slice(AngtriEle,[0,4],[nnzt,1]),tf.reshape(jk2,[nnzt,1])],axis=-1)
+	#mil_jk2 = tf.concat([tf.slice(AngtriEle,[0,0],[nnzt,2]),tf.slice(AngtriEle,[0,4],[nnzt,1]),tf.reshape(jk2,[nnzt,1])],axis=-1)
+	jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1
 	mil_jk_Outer2 = tf.tile(tf.reshape(mil_jk2,[nnzt,1,4]),[1,nsym,1])
 	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
 	p1_2 = tf.tile(tf.reshape(tf.multiply(tf.cast(tf.range(ntheta), dtype=tf.int64), tf.cast(nr, dtype=tf.int64)),[ntheta,1,1]),[1,nr,1])
@@ -949,14 +952,15 @@ def TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 	p3_2 = tf.reshape(tf.reduce_sum(p2_2,axis=-1),[1,nsym,1]) # scatter_nd only supports up to rank 5... so gotta smush this...
 	p6_2 = tf.tile(p3_2,[nnzt,1,1]) # should be nnz X nsym
 	ind2 = tf.reshape(tf.concat([mil_jk_Outer2,p6_2],axis=-1),[nnzt*nsym,5]) # This is now nnz*nzeta*neta*ntheta*nr X 8 -  m,i,l,jk,zeta,eta,theta,r
-	#to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nelep,natom2,nsym], dtype=tf.int64))  # scatter_nd way to do it
-	#to_reduce2 = tf.SparseTensor(ind2, Gm, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(natom2, tf.int64), tf.cast(nsym, tf.int64)])
+	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom, nelep, tf.cast(jk_max, tf.int32), nsym], dtype=tf.int64))  # scatter_nd way to do it
+	#to_reduce2 = tf.SparseTensor(ind2, Gm, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(jk_max, tf.int64), tf.cast(nsym, tf.int64)])
 	#to_reduce2_reorder = tf.sparse_reorder(to_reduce2)
 	#reduced2 = tf.sparse_reduce_sum_sparse(to_reduce2, axis=3)
 	#to_reduce2_dense = tf.sparse_tensor_to_dense(to_reduce2, validate_indices=True)
-	to_reduce2_dense = tf.sparse_to_dense(ind2, [tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(natom2, tf.int64), tf.cast(nsym, tf.int64)], Gm, validate_indices=True)
+	#to_reduce2_dense = tf.sparse_to_dense(ind2, [tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(jk_max, tf.int64), tf.cast(nsym, tf.int64)], Gm)
+	#to_reduce2_dense = tf.sparse_to_dense(ind2, [tf.cast(nmol, tf.int64), tf.cast(natom, tf.int64), tf.cast(nelep, tf.int64), tf.cast(natom2, tf.int64), tf.cast(nsym, tf.int64)], Gm, validate_indices=True)
 	#return tf.sparse_reduce_sum(to_reduce2, axis=3)
-	return tf.reduce_sum(to_reduce2_dense, axis=3), ind2
+	return tf.reduce_sum(to_reduce2, axis=3)
 	#return tf.sparse_tensor_to_dense(reduced2), ind2
 
 def TFCoulomb(R, Qs, R_cut, Radpair, prec=tf.float64):
@@ -1245,7 +1249,7 @@ def TFSymRSet_Linear_WithEle(R, Zs, eles_, SFPs_, eta, R_cut, RadpairEle, prec=t
 	to_reduce2 = tf.scatter_nd(ind2,Gm,tf.cast([nmol,natom,nele,natom,nsym], dtype=tf.int64))
 	#to_reduce2 = tf.sparse_to_dense(ind2, tf.convert_to_tensor([nmol, natom, nelep, natom2, nsym]), Gm)
 	#to_reduce_sparse = tf.SparseTensor(ind2,[nmol, natom, nelep, natom2, nzeta, neta, ntheta, nr])
-	return tf.reduce_sum(to_reduce2, axis=3), ind2
+	return tf.reduce_sum(to_reduce2, axis=3)
 
 def TFSymRSet_Linear_Qs(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, Qs, prec=tf.float64):
 	"""
@@ -1546,7 +1550,7 @@ def TFSymSet_Scattered_Linear(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zet
 	return SymList, IndexList
 
 
-def TFSymSet_Scattered_Linear_WithEle(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle):
+def TFSymSet_Scattered_Linear_WithEle(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk):
 	"""
 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
 	Args:
@@ -1566,9 +1570,9 @@ def TFSymSet_Scattered_Linear_WithEle(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
 	natom = inp_shp[1]
 	nele = tf.shape(eles_)[0]
 	nelep = tf.shape(eleps_)[0]
-	GMR, R_index = TFSymRSet_Linear_WithEle(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle)
-	GMA, A_index = TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle)
-	return GMR, R_index, GMA, A_index
+	GMR = tf.reshape(TFSymRSet_Linear_WithEle(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle),[nmol, natom,-1], name="FinishGMR")
+	GMA = tf.reshape(TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk),[nmol, natom,-1], name="FinishGMA")
+	#return GMR, R_index, GMA, A_index
 	#GMR = tf.reshape(TFSymRSet_Linear_WithEle(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle),[nmol, natom,-1], name="FinishGMR")
 	#GMA = tf.reshape(TFSymASet_Linear_WithEle(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle), [nmol, natom,-1], name="FinishGMA")
 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
@@ -2039,7 +2043,7 @@ class ANISym:
 		self.set = mset_
 		self.MaxAtoms = self.set.MaxNAtoms()
 		self.nmol = len(self.set.mols)
-		self.MolPerBatch = 2000
+		self.MolPerBatch = 10000
 		self.SymOutput = None
 		self.xyz_pl= None
 		self.Z_pl = None
@@ -2108,6 +2112,7 @@ class ANISym:
 			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
 			self.RadpEle_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
 			self.AngtEle_pl=tf.placeholder(tf.int64, shape=tuple([None,5]))
+			self.mil_jk_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
 			self.Qs_pl=tf.placeholder(tf.float64, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
 			Ele = tf.Variable([[1],[8]], dtype = tf.int64)
 			Elep = tf.Variable([[1,1],[1,8],[8,8]], dtype = tf.int64)
@@ -2127,7 +2132,7 @@ class ANISym:
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
 			#self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs = TFSymSet_Radius_Scattered_Linear_Qs(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep,  self.eta,  self.Radp_pl, self.Qs_pl)
 			self.Scatter_Sym_Linear, self.Sym_Index_Linear = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Scatter_Sym_Linear_Ele, self.R_index, self.Sym_Index_Linear_Ele, self.A_index = TFSymSet_Scattered_Linear_WithEle(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.RadpEle_pl, self.AngtEle_pl)
+			self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele = TFSymSet_Scattered_Linear_WithEle(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.RadpEle_pl, self.AngtEle_pl, self.mil_jk_pl)
 			#self.Eee, self.Kern, self.index = TFCoulombCosLR(self.xyz_pl, tf.cast(self.Z_pl, dtype=tf.float64), Rr_cut, self.Radp_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)
 			#self.gradient_update2 = tf.gradients(self.Scatter_Sym_Update2, self.xyz_pl)
@@ -2139,15 +2144,15 @@ class ANISym:
 			self.run_metadata = tf.RunMetadata()
 		return
 
-	def fill_feed_dict(self, batch_data, coord_pl, atom_pl, radp_pl,  angt_pl, Qs_pl, radpEle_pl,  angtEle_pl):
-		return {coord_pl: batch_data[0], atom_pl: batch_data[1], radp_pl:batch_data[2], angt_pl:batch_data[3], Qs_pl:batch_data[4], radpEle_pl:batch_data[5], angtEle_pl:batch_data[6]}
+	def fill_feed_dict(self, batch_data, coord_pl, atom_pl, radp_pl,  angt_pl, Qs_pl, radpEle_pl,  angtEle_pl, mil_jk_pl):
+		return {coord_pl: batch_data[0], atom_pl: batch_data[1], radp_pl:batch_data[2], angt_pl:batch_data[3], Qs_pl:batch_data[4], radpEle_pl:batch_data[5], angtEle_pl:batch_data[6], mil_jk_pl:batch_data[7]}
 
 	def Generate_ANISYM(self):
 		xyzs = np.zeros((self.nmol, self.MaxAtoms, 3),dtype=np.float64)
 		qs = np.zeros((self.nmol, self.MaxAtoms),dtype=np.float64)
 		Zs = np.zeros((self.nmol, self.MaxAtoms), dtype=np.int64)
 		nnz_atom = np.zeros((self.nmol), dtype=np.int64)
-		#random.shuffle(self.set.mols)
+		random.shuffle(self.set.mols)
 		for i, mol in enumerate(self.set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
@@ -2166,13 +2171,13 @@ class ANISym:
 			t = time.time()
 			NL = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], True, True, Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], sort_=True)
 			rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
-			rad_p_ele, ang_t_elep = NL.buildPairsAndTriplesWithEleIndex(self.Rr_cut, self.Ra_cut, Ele, Elep)
-			print ("time to build pairs:", time.time() - t)
-			print ("rad_p_ele:\n", rad_p_ele, "\nang_t_elep:\n", ang_t_elep)
-			#raise Exception("Debugg..")
+			rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(self.Rr_cut, self.Ra_cut, Ele, Elep)
+			#print ("time to build pairs:", time.time() - t)
+			#print ("rad_p_ele:\n", rad_p_ele, "\nang_t_elep:\n", ang_t_elep)
+			#raise Exception("Debug..")
 			t = time.time()
-			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p,  ang_t, qs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p_ele, ang_t_elep]
-			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.Radp_pl, self.Angt_pl, self.Qs_pl, self.RadpEle_pl, self.AngtEle_pl)
+			batch_data = [xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p,  ang_t, qs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], rad_p_ele, ang_t_elep, mil_jk]
+			feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.Radp_pl, self.Angt_pl, self.Qs_pl, self.RadpEle_pl, self.AngtEle_pl, self.mil_jk_pl)
 			t = time.time()
 			#sym_output, grad = self.sess.run([self.SymOutput, self.SymGrads], feed_dict = feed_dict)
 			#sym_output_update2, sym_index_update2, sym_output, sym_index, gradient_update2 = self.sess.run([self.Scatter_Sym_Update2, self.Sym_Index_Update2, self.Scatter_Sym_Update, self.Sym_Index_Update, self.gradient_update2], feed_dict = feed_dict)
@@ -2182,22 +2187,25 @@ class ANISym:
 			#A, B  = self.sess.run([self.Scatter_Sym_Update, self.Sym_Index_Update], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			#A, B, C, D  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs], feed_dict = feed_dict)
 
-			A, B, C, D, E, F  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Linear_Ele, self.R_index, self.Sym_Index_Linear_Ele, self.A_index], feed_dict = feed_dict)
-			print ("A:\n", A[0].shape, "\nC:\n", C[0].shape)
-			np.set_printoptions(threshold=np.nan)
-			print ("R_index:\n", D[:200], "\nA_index:\n", F[:200])
+			#A, B  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			C, D  = self.sess.run([self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			#A, B, C, D  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict)
+			#print ("A:\n", A[0].shape, "\nC:\n", C[0].shape)
+			#np.set_printoptions(threshold=np.nan)
+			#print ("A:",A, "B:",B)
+			#print ("C:",C, "D:",D)
 			#np.savetxt("rad_sym.dat", A[0][0][:64])
 			#np.savetxt("Zs_sym.dat", C[0][0])
 			#np.savetxt("rad_ang_sym.dat", A[0][0])
-			raise Exception("End Here")
+			#raise Exception("End Here")
 			#print ("i: ", i,  "sym_ouotput: ", len(sym_output)," time:", time.time() - t, " second", "gpu time:", time.time()-t1, sym_index)
 			#print ("sym_output_update:", np.array_equal(sym_output_update2[0], sym_output[0]))
 			#print ("sym_output_update:", np.sum(np.abs(sym_output_update2[0]-sym_output[0])))
 			#print ("gradient_update:", np.sum(np.abs(gradient[0]-gradient_update[0])))
 			#print ("sym_index_update:", np.array_equal(sym_index_update[0], sym_index[0]))
 			#print ("gradient:", gradient[0].shape)
-			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
-			#with open('timeline_step_%d_old.json' % i, 'w') as f:
-			#	f.write(chrome_trace)
-			#print ("inference time:", time.time() - t)
+			fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			with open('timeline_step_%d_new.json' % i, 'w') as f:
+				f.write(chrome_trace)
+			print ("inference time:", time.time() - t)
