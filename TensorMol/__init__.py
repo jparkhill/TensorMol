@@ -10,7 +10,7 @@
 - Keep classes to < 20 member variables.
 - Keep loops to a depth < 6
 - Use functional programming constructs whenever possible.
-- Use docstrings, you asshole and use Args: and Returns:
+- Use Google-style docstrings, you asshole and use Args: and Returns:
 - Commit your changes once a day at least.
 - Use np.array rather than python list whenever possible.
 - It's NOT okay to put default parameters in __init__() and change them all the time instead add them to TMPARAMS.py so they become logged parameters attached to results.
@@ -50,6 +50,8 @@ from TensorMol.ElectrostaticsTF import *
 from TensorMol.SimpleMD import *
 from TensorMol.InfraredMD import *
 from TensorMol.MetaDynamics import *
+from TensorMol.Periodic import *
+from TensorMol.OptPeriodic import *
 from TensorMol.PeriodicMD import *
 from TensorMol.LinearOperations import *
 from TensorMol.AbInitio import *

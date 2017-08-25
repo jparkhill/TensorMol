@@ -4,6 +4,8 @@ No symmetry but general unit cells supported.
 
 Maintenance of the unit cell, etc. are handled by PeriodicForce.
 Only linear scaling forces with energy are supported.
+
+TODO: Barostat...
 """
 
 from __future__ import absolute_import
@@ -13,145 +15,8 @@ from .TFManage import *
 from .Neighbors import *
 from .Electrostatics import *
 from .QuasiNewtonTools import *
+from .Periodic import *
 from .SimpleMD import *
-
-class Lattice:
-	def __init__(self, latvec_):
-		"""
-		Build a periodic lattice
-
-		Args:
-			latvec_: A 3x3 tensor of lattice vectors.
-		"""
-		self.lattice = latvec_.copy()
-		self.latticeMetric = MatrixPower(np.array([[np.dot(self.lattice[i],self.lattice[j]) for j in range(3)] for i in range(3)]),-1/2.)
-		self.latticeCenter = (self.lattice[0]+self.lattice[1]+self.lattice[2])/2.0
-		self.latticeMinDiameter = 2.0*min([np.linalg.norm(self.lattice[0]-self.latticeCenter),np.linalg.norm(self.lattice[1]-self.latticeCenter),np.linalg.norm(self.lattice[2]-self.latticeCenter)])
-		return
-	def CenteredInLattice(self, mol):
-		return Mol(mol.atoms,self.ModuloLattice(mol.coords - mol.Center() + self.latticeCenter))
-	def ModuloLattice(self, crds):
-		"""
-		Transports all coordinates into the primitive cell.
-
-		Args:
-			crds: a natom X 3 ndarray of atomic coordinates.
-		Returns:
-			crds modulo the primitive lattice.
-		"""
-		#print "CoordsL", crds
-		tmp = np.einsum("ij,jk->ij", crds, self.latticeMetric ) # atom X lattice.
-		fpart = np.fmod(tmp,1.0)
-		revs=np.where(fpart < 0.0)
-		fpart[revs] = 1.0 + fpart[revs]
-		tore = np.einsum("ij,jk->ik", fpart, self.lattice) # atom X coord
-		return tore
-
-	def TessLattice(self, atoms_, coords_, rng_):
-		"""
-		Enlarges a molecule to allow for accurate calculation of a short-ranged force
-
-		Args:
-			mol_: a molecule.
-			rng_: how much tesselation is required (Angstrom)
-		returns
-			An enlarged molecule where the real coordinates preceed 'fake' periodic images.
-		"""
-		if (rng_ > self.latticeMinDiameter):
-			raise Exception("Enlarge Cell")
-		natom = atoms_.shape[0]
-		newAtoms = np.zeros(27*natom,dtype=np.uint8)
-		newCoords = np.zeros((27*natom,3))
-		newAtoms[:natom] = atoms_
-		newCoords[:natom,:3] = coords_
-		ind = 1
-		for i in range(-1,2):
-			for j in range(-1,2):
-				for k in range(-1,2):
-					if (i==0 and j==0 and k ==0):
-						continue
-					newAtoms[ind*natom:(ind+1)*natom] = atoms_
-					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
-					ind = ind + 1
-		return newAtoms, newCoords
-
-class LocalForce:
-	def __init__(self, f_, rng_=5.0, NeedsTriples_=False):
-		self.range = rng_
-		self.func=f_
-		self.NeedsTriples = NeedsTriples_
-		return
-	def __call__(self, z, x, NZ):
-		"""
-		Generic call to a linear scaling local force.
-
-		Args:
-			z: atomic number vector
-			x: atoms X 3 coordinate vector.
-			NZ: pair or triples matrix. (NZP X 2)
-		returns:
-			energy number, and force vector with same shape as x.
-		"""
-		tmp = self.func(z, x, NZ)
-		return tmp
-
-class PeriodicForce:
-	def __init__(self, pm_, lat_):
-		"""
-		A periodic force evaluator. The force consists of two components
-		Short-Ranged forces, and long-ranged forces. Short ranged forces are
-		evaluated by tesselation. Long-range forces are not supported yet.
-
-		Args:
-			pm_: a molecule.
-			lat_: lattice vectors.
-		"""
-		self.lattice = Lattice(lat_)
-		self.NL = None
-		self.mol0 = self.lattice.CenteredInLattice(pm_)
-		self.atoms = self.mol0.atoms.copy()
-		self.natoms = self.mol0.NAtoms()
-		self.natomsReal = pm_.NAtoms()
-		self.LocalForces = []
-		#self.LongForces = [] Everything is real-space courtesy of DSF.
-		return
-	def AddLocal(self, lf_,rng_):
-		"""
-		Adds a local force to be computed when the PeriodicForce is called.
-
-		Args:
-			lf_: a function which takes z,x and returns atom energies, atom forces.
-		"""
-		self.LocalForces.append(LocalForce(lf_,rng_))
-	def __call__(self,x_):
-		"""
-		Returns the Energy per unit cell and force on all primitive atoms
-
-		Args:
-			x_: a primitive geometry of atoms matching self.atoms.
-		"""
-		# Compute local energy.
-		etore = 0.0
-		ftore = np.zeros((self.natomsReal,3))
-		mxrng = max([f.range for f in self.LocalForces])
-		NeedsTriples = any([f.NeedsTriples for f in self.LocalForces])
-		# Tesselate atoms.
-		z,x = self.lattice.TessLattice(self.atoms,x_, mxrng)
-		# Construct NeighborList
-		if (self.NL==None):
-			self.NL = NeighborList(x,NeedsTriples)
-		self.NL.Update(x, mxrng, 0.0, None, self.natomsReal)
-		# Compute forces and energies.
-		for f in self.LocalForces:
-			einc, finc = f(z,x,self.NL.pairs)
-			etore += np.sum(einc)
-			ftore += finc[:self.natomsReal]
-		return etore, ftore
-	def Ewald(self):
-		"""
-		http://thynnine.github.io/pysic/coulombsummation%20class.html
-		"""
-		return
 
 def PeriodicVelocityVerletStep(pf_, a_, x_, v_, m_, dt_):
 	"""

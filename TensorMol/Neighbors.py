@@ -41,7 +41,9 @@ class NeighborList:
 		self.ele = ele_
 		self.npairs = None
 		self.ntriples = None
-		self.alg = alg_
+		self.alg = 0 if self.natom < 20000 else 1
+		if (alg_ != None):
+			self.alg = alg_
 		self.sort = sort_
 		return
 
@@ -208,7 +210,7 @@ class NeighborListSet:
 			x_: NMol X MaxNAtom X 3 tensor of coordinates.
 			nnz_: NMol vector of maximum atoms in each mol.
 			ele_: element type of each atom.
-			sort_: whether sort jk in triples by atom index 
+			sort_: whether sort jk in triples by atom index
 		"""
 		self.nlist = []
 		self.nmol = x_.shape[0]
@@ -325,12 +327,12 @@ class NeighborListSet:
 			elep: element pairs
 		Returns:
 			(nnzero pairs X 4 pair tensor) (mol, I, J, L)
-			(nnzero triples X 5 triple tensor) (mol, I, J, K, L) 
+			(nnzero triples X 5 triple tensor) (mol, I, J, K, L)
 		"""
-	
+
 		if not self.sort:
 			print ("Warning! Triples need to be sorted")
-		if self.ele == None:	
+		if self.ele == None:
 			raise Exception("Element type of each atom is needed.")
 		#import time
 		#t0 = time.time()
@@ -339,7 +341,7 @@ class NeighborListSet:
 		#t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
-		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1)) 
+		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
 		pair_index = np.where(np.all(pair_mask, axis=-1))[1]
 		Z1 = self.ele[trt[:, 0], trt[:, 2]]
 		Z2 = self.ele[trt[:, 0], trt[:, 3]]
