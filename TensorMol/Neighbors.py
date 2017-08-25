@@ -337,8 +337,8 @@ class NeighborListSet:
 		#import time
 		#t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		#print ("make pair and triple time:", time.time()-t0)
-		#t_start = time.time()
+		print ("make pair and triple time:", time.time()-t0)
+		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
 		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
@@ -350,11 +350,42 @@ class NeighborListSet:
 		trip_index = np.where(np.any(np.all(trip_mask, axis=-1),axis=-1))[1]
 		trpE = np.concatenate((trp, pair_index.reshape((-1,1))), axis=-1)
 		trtE = np.concatenate((trt, trip_index.reshape((-1,1))), axis=-1)
-		#t0 = time.time()
 		sort_index = np.lexsort((trpE[:,2], trpE[:,3], trpE[:,1], trpE[:,0]))
 		trpE_sorted = trpE[sort_index]
 		sort_index = np.lexsort((trtE[:,2], trtE[:,3], trtE[:,4], trtE[:,1], trtE[:,0]))
 		trtE_sorted = trtE[sort_index]
 		#print ("numpy lexsorting time:", time.time() -t0)
 		#print ("time to append and sort element", time.time() - t_start)
-		return trpE_sorted, trtE_sorted
+		valance_pair = np.zeros(trt.shape[0])
+		pointer = 0
+		t1 = time.time()
+		prev_l = trtE_sorted[0][4]
+		prev_atom = trtE_sorted[0][1]
+		prev_mol = trtE_sorted[0][0]
+		for i in range(0, trt.shape[0]):
+			current_l = trtE_sorted[i][4]
+			current_atom = trtE_sorted[i][1]
+			current_mol = trtE_sorted[i][0]
+			#print ("i:       ", i)
+			#print ("prev:    ", prev_l)
+			#print ("current: ", current_l)
+			if current_l == prev_l and current_atom == prev_atom and current_mol == prev_mol:
+				pointer += 1
+				pass
+			else:
+				valance_pair[i-pointer:i]=range(0, pointer)
+				pointer = 1
+				prev_l = current_l
+				prev_atom = current_atom
+				prev_mol = current_mol
+		print ("time of making l_max:", time.time() - t1)
+		#print ("valance_pair:", valance_pair[:20])
+		#print ("trtE:", trtE_sorted[:20])
+		mil_jk = np.zeros((trt.shape[0],4))
+		mil_jk[:,[0,1,2]]= trtE_sorted[:,[0,1,4]]
+		mil_jk[:,3] = valance_pair
+		print ("time of after processing..", time.time() - t_start)
+		#print ("mil_jk", mil_jk[:20])
+		jk_max = np.max(valance_pair)
+		print ("jk_max:", jk_max)
+		return trpE_sorted, trtE_sorted, mil_jk, jk_max

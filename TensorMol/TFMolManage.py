@@ -83,6 +83,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_Update"):
+			self.Instances = MolInstance_DirectBP_EE_Update(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode(self.TData)
 		elif (self.NetType == "Dipole_BP"):
@@ -1237,6 +1239,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_Update"):
+			self.Instances = MolInstance_DirectBP_EE_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):

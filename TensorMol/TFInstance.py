@@ -202,7 +202,6 @@ class Instance:
 		self.PreparedFor = 0
 		self.summary_op = None
 		self.activation_function = None
-		print(self.__dict__)
 		return
 
 	def SaveAndClose(self):
@@ -1137,6 +1136,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.gaussian_params = None
 		self.labels = None
 		self.norm_output = None
+		self.norm_labels = None
+		self.norm_embedding = None
 		self.labels_pl = None
 		self.Zs_pl = None
 		self.xyzs_pl = None
@@ -1215,8 +1216,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.TData.EvaluateTestBatch(labels, preds)
 		duration = time.time() - test_start_time
 		print("testing...")
-		# LOGGER.info("Gaussian paramaters: %s", gaussian_params)
-		# LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
+		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
+		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
 		self.print_testing(step, test_loss, Ncase_test, duration)
 		return test_loss
 
