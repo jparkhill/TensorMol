@@ -10,10 +10,8 @@ from .PhysicalData import *
 
 def RmsForce(f_):
 	return np.mean(np.linalg.norm(f_,axis=1))
-
 def CenterOfMass(x_,m_):
 	return (np.einsum("m,mx->x",m_,x_)/np.sum(m_))
-
 def InertiaTensor(x_,m_):
 	I = np.zeros((3,3))
 	for i in range(len(m_)):
@@ -27,7 +25,6 @@ def InertiaTensor(x_,m_):
 	I[2,0] = I[0,2]
 	I[2,1] = I[1,2]
 	return I
-
 def DiagHess(f_,x_,eps_=0.0005):
 	"""
 	Args:
@@ -44,7 +41,6 @@ def DiagHess(f_,x_,eps_=0.0005):
 		tore[it.multi_index] = ((f_(x_t) - f_x_)/eps_)[it.multi_index]
 		it.iternext()
 	return tore
-
 def FdiffGradient(f_, x_, eps_=0.0001):
 	"""
 	Computes a finite difference gradient of a single or multi-valued function
@@ -61,7 +57,6 @@ def FdiffGradient(f_, x_, eps_=0.0001):
 		tore[it.multi_index] = ((f_(x_t) - f_x_)/eps_)
 		it.iternext()
 	return tore
-
 def CoordinateScan(f_, x_, name_="", eps_=0.03, num_=15):
 	# Writes a plaintext file containing scans of each coordinate.
 	samps = np.logspace(0.0,eps_,num_)-1.0
@@ -78,8 +73,6 @@ def CoordinateScan(f_, x_, name_="", eps_=0.03, num_=15):
 		np.savetxt("./results/CoordScan"+name_+str(ci)+".txt",tore[iti.multi_index])
 		ci += 1
 		iti.iternext()
-
-
 def FdiffHessian(f_, x_, eps_=0.0001, mode_ = "central", grad_ = None):
 	"""
 	Computes a finite difference hessian of a single or multi-valued function
@@ -173,7 +166,6 @@ def FourPointHessQuad(f):
 	term3 =  44.0*(f[3,0]+f[0,3]-f[0,0]-f[3,3])
 	term4 =  74.0*(f[1,1]+f[2,2]-f[2,1]-f[1,2])
 	return (term1+term2+term3+term4)/600.0
-
 def DirectedFdiffHessian(f_, x_, dirs_, eps_=0.01):
 	"""
 	Four-Point Hessian quadrature along dirs_ directions.
@@ -195,7 +187,6 @@ def DirectedFdiffHessian(f_, x_, dirs_, eps_=0.01):
 			tore[i,j] = FourPointHessQuad(samps)/eps_/eps_
 			tore[j,i] = tore[i,j]
 	return tore
-
 def InternalCoordinates(x_,m):
 	"""
 	Generates a set of internal (ie: rot-trans free)
@@ -303,6 +294,9 @@ def LineSearch(f_, x0_, p_, thresh = 0.00001):
 		f_: a function which returns energy.
 		x0_: Origin of the search.
 		p_: search direction.
+
+	Returns:
+		x: coordinates which minimize along this search direction.
 	'''
 	k=0
 	rmsdist = 10.0
@@ -319,9 +313,9 @@ def LineSearch(f_, x0_, p_, thresh = 0.00001):
 			#print fa,fc,fd,fb
 			#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
 			print("Line Search: Overstep")
-			if (PARAMS["GSSearchAlpha"] > 0.00005): 
-				PARAMS["GSSearchAlpha"] /= 1.701
-			else: 
+			if (PARAMS["GSSearchAlpha"] > 0.00005):
+				PARAMS["GSSearchAlpha"] /= 1.71
+			else:
 				print("Keeping step")
 			a = x0_
 			b = x0_ + PARAMS["GSSearchAlpha"]*p_
@@ -335,7 +329,8 @@ def LineSearch(f_, x0_, p_, thresh = 0.00001):
 			#print fa,fc,fd,fb
 			#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
 			print("Line Search: Understep")
-			PARAMS["GSSearchAlpha"] *= 1.7
+			if (PARAMS["GSSearchAlpha"] < 10.0):
+				PARAMS["GSSearchAlpha"] *= 1.7
 			a = x0_
 			b = x0_ + PARAMS["GSSearchAlpha"]*p_
 			c = b - (b - a) / GOLDENRATIO

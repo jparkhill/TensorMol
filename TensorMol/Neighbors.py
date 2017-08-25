@@ -41,7 +41,9 @@ class NeighborList:
 		self.ele = ele_
 		self.npairs = None
 		self.ntriples = None
-		self.alg = alg_
+		self.alg = 0 if self.natom < 20000 else 1
+		if (alg_ != None):
+			self.alg = alg_
 		self.sort = sort_
 		return
 
@@ -330,16 +332,15 @@ class NeighborListSet:
 
 		if not self.sort:
 			print ("Warning! Triples need to be sorted")
-		# if self.ele == None:
-		# 	raise Exception("Element type of each atom is needed.")
-		import time
-		t0 = time.time()
+		if self.ele == None:
+			raise Exception("Element type of each atom is needed.")
+		#import time
+		#t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
 		print ("make pair and triple time:", time.time()-t0)
 		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
-		#print ("Z:", Z, " ele:", ele)
 		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
 		pair_index = np.where(np.all(pair_mask, axis=-1))[1]
 		Z1 = self.ele[trt[:, 0], trt[:, 2]]
