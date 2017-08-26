@@ -286,8 +286,6 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 			self.train_step(step)
 		self.SaveAndClose()
 		return
-<<<<<<< HEAD
-=======
 
 class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 	"""
@@ -2708,7 +2706,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_EandG, self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
-			print ("mini step time EandG:", time.time() - t_mini) 
+			print ("mini step time EandG:", time.time() - t_mini)
 			#print ("Ecc:", Ecc[:20])
 			#for k, ecc in enumerate(list(Ecc)):
 			#	if ecc > 0.05:
@@ -3279,7 +3277,7 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 class MolInstance_DirectBP_EE_Update(MolInstance_DirectBP_EE):
 	"""
 	Electrostatic embedding Behler-Parinello scheme.
-	This version prebuild the mijkl and mil_jk in python.  
+	This version prebuild the mijkl and mil_jk in python.
 	"""
 
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
@@ -3463,5 +3461,3 @@ class MolInstance_DirectBP_EE_Update(MolInstance_DirectBP_EE):
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		print("Prepared for Evaluation...")
 		return
-
->>>>>>> cb0b11a9a1fb319572537729e3b1107e00134d10

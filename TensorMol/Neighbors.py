@@ -9,6 +9,7 @@ from __future__ import print_function
 import numpy as np
 #from PairProviderTF import *
 from MolEmb import Make_NListNaive, Make_NListLinear
+import time
 
 #
 # I excised the K-D tree because it had some weird bugs.
@@ -332,10 +333,10 @@ class NeighborListSet:
 
 		if not self.sort:
 			print ("Warning! Triples need to be sorted")
-		if self.ele == None:
-			raise Exception("Element type of each atom is needed.")
+		# if self.ele == None:
+		# 	raise Exception("Element type of each atom is needed.")
 		#import time
-		#t0 = time.time()
+		t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
 		print ("make pair and triple time:", time.time()-t0)
 		t_start = time.time()

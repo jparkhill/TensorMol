@@ -167,7 +167,7 @@ class PeriodicForce:
 			self.lastx = x_.copy()
 			#print("NL update",rms)
 		else:
-			#print("No NL update",rms)
+			print("No NL update",rms)
 		#print(self.NL.pairs)
 		# Compute forces and energies.
 		for f in self.LocalForces:

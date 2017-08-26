@@ -2167,8 +2167,8 @@ def TFSymRSet_Linear_channel(R, Zs, eles, SFPs_, eta, R_cut, RadpairEle, element
 	fac2t = tf.expand_dims(0.5*(tf.cos(3.14159265359*distance_tensor/R_cut)+1.0), axis=-1)
 	Gm = tf.reshape(fac1*fac2t,[nmol, natom, natom, nsym]) # nnz X nzeta X neta X ntheta X nsym
 	element_mask = tf.equal(tf.expand_dims(tf.expand_dims(Zs, axis=-1), axis=-1), tf.expand_dims(tf.expand_dims(eles, axis=0), axis=1)) # nmol X natom3 X nelep
-	tmp = tf.where(element_mask, Gm, tf.zeros_like(Gm))
-	return element_mask
+	tmp = tf.where(element_mask, tf.ones_like(element_mask), tf.zeros_like(element_mask))
+	return tmp
 
 	# ElemReduceMask = tf.reduce_all(tf.equal(tf.reshape(ZPairs,[nmol,natom2,1,1]),tf.reshape(eles_,[1,1,nele,1])),axis=-1) # nmol X natom3 X nelep
 	# # Zero out the diagonal contributions (i==j or i==k)
