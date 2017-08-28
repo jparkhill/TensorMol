@@ -313,16 +313,16 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 
 def TestTFSym():
 	t1 = time.time()
-	np.set_printoptions(threshold=100000)
+	np.set_printoptions(threshold=1000000)
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
-	a=MSet("SmallMols_rand")
+	a=MSet("SmallMols")
 	a.Load()
 	t1 = time.time()
 	maxnatoms = a.MaxNAtoms()
 	zlist = []
 	xyzlist = []
-	natom = np.zeros((100), dtype=np.int32)
+	natom = np.zeros((4000), dtype=np.int32)
 	for i, mol in enumerate(a.mols):
 		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
@@ -331,7 +331,7 @@ def TestTFSym():
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		natom[i] = mol.NAtoms()
-		if i == 99:
+		if i == 3999:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
@@ -372,7 +372,8 @@ def TestTFSym():
 
 	zeta = PARAMS["AN1_zeta"]
 	eta = PARAMS["AN1_eta"]
-	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44])
+	PARAMS["ANES"] = np.array([2.20, 2.55, 3.04, 3.44])
+
 	# self.HasANI1PARAMS = True
 
 	SFPa2 = tf.Variable(np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1]), trainable= False, dtype = tf.float64)
@@ -382,10 +383,11 @@ def TestTFSym():
 	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
 	eta = tf.Variable(PARAMS["AN1_eta"], trainable=False, dtype = tf.float64)
 	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
+	element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	# sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors)
+	sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
 	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
-	tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors)
+	# tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
 
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
@@ -393,18 +395,24 @@ def TestTFSym():
 	run_metadata = tf.RunMetadata()
 
 	# tmp, tmp2, tmp3, tmp4 = sess.run([sym_tmp, idx_tmp, sym_tmp2, idx_tmp2])
-	# print np.allclose(tmp[0], tmp3[0])
-	# print np.allclose(tmp2[0], tmp4[0])
+	# print np.isclose(tmp[2], tmp3[2])
+	# print tmp[0][np.where(np.logical_not(np.isclose(tmp[0], tmp3[0])))][-20:]
+	# print tmp3[0][np.where(np.logical_not(np.isclose(tmp[0], tmp3[0])))][-20:]
+	# print np.isclose(tmp2[0], tmp4[0])
 	# tmp2 = sess.run([tmp])
 	# print tmp2[0].shape
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
 	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp])
-	tmp2 = sess.run([tmp], options=options, run_metadata=run_metadata)
+	tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
 	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
 	chrome_trace = fetched_timeline.generate_chrome_trace_format()
 	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 		f.write(chrome_trace)
+
+def train_energy_symm_func_channel():
+
+
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)

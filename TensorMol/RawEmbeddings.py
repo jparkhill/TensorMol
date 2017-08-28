@@ -2047,7 +2047,7 @@ def TFSymASet_Linear_tmp(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, mil_
 	# return tf.sparse_reduce_sum(to_reduce2, axis=3)
 	return tf.reduce_sum(to_reduce2, axis=3)
 
-def TFSymSet_Scattered_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk, element_factors):
+def TFSymSet_Scattered_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk, element_factors, element_pair_factors):
 	"""
 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
 	Args:
@@ -2068,12 +2068,13 @@ def TFSymSet_Scattered_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
 	nele = tf.shape(eles_)[0]
 	nelep = tf.shape(eleps_)[0]
 
-	# GMR = tf.reshape(TFSymRSet_Linear_channel(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle, element_factors),[nmol, natom,-1], name="FinishGMR")
+	# GMR = tf.reshape(TFSymRSet_Linear_tmp(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle, element_factors),[nmol, natom,-1], name="FinishGMR")
 	GMR = TFSymRSet_Linear_channel(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle, element_factors)
-	return GMR
-	GMA = tf.reshape(TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk),[nmol, natom,-1], name="FinishGMA")
+	# return GMR
+	# GMA = tf.reshape(TFSymASet_Linear_tmp(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk),[nmol, natom,-1], name="FinishGMA")
+	GMA = TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk, element_pair_factors)
 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
-
+	#GM = tf.identity(GMA)
 	num_ele, num_dim = eles_.get_shape().as_list()
 	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]), name="FormEleMask")
 	ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), prec=tf.int32)
@@ -2091,7 +2092,166 @@ def TFSymSet_Scattered_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
 		IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
 	return SymList, IndexList
 
-# def TFSymRSet_Linear_channel(R, Zs, eles_, SFPs_, eta, R_cut, RadpairEle, element_factors, prec=tf.float64):
+def TFSymRSet_Linear_channel(R, Zs, eles_, SFPs_, eta, R_cut, RadpairEle, element_factors, prec=tf.float64):
+	"""
+	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
+	Here j,k are all other atoms, but implicitly the output
+	is separated across elements as well. eleps_ is a list of element pairs
+	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
+	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
+	This version improves on the previous by avoiding some
+	heavy tiles.
+
+	Args:
+	    R: a nmol X maxnatom X 3 tensor of coordinates.
+	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+	    eles_: a nelepairs X 1 tensor of elements present in the data.
+	    SFP: A symmetry function parameter tensor having the number of elements
+	    as the SF output. 2 X neta  X nRs.
+	    R_cut: Radial Cutoff
+	    Radpair: None zero pairs X 3 tensor (mol, i, j)
+	    prec: a precision.
+	Returns:
+	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+	"""
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	natom2 = natom*natom
+	nele = tf.shape(eles_)[0]
+	pshape = tf.shape(SFPs_)
+	nsym = pshape[1]
+	nnz = tf.shape(RadpairEle)[0]
+	RijRij2 = tf.sqrt(tf.reduce_sum(tf.square(DifferenceVectorsLinear(R, RadpairEle[:,:3])),axis=1)+1.0e-26)
+	fac1 = tf.exp(-eta*tf.square(tf.expand_dims(RijRij2,axis=-1) - tf.expand_dims(SFPs_[0],axis=0)))
+	fac2t = tf.expand_dims(0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0), axis=-1)
+	Gm = tf.reshape(fac1*fac2t,[nnz, nsym])
+	element_channel_factor = tf.gather(element_factors, RadpairEle[:,3:4])
+	Gm *= element_channel_factor
+	mil_j = tf.concat([RadpairEle[:,:2],RadpairEle[:,2:3]],axis=-1)
+	to_reduce2 = tf.scatter_nd(mil_j, Gm, [nmol,natom,natom,nsym])
+	return tf.reduce_sum(to_reduce2, axis=2)
+
+def TFSymASet_Linear_channel(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, mil_jk2, element_pair_factors, prec=tf.float64):
+	"""
+	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
+	Here j,k are all other atoms, but implicitly the output
+	is separated across elements as well. eleps_ is a list of element pairs
+	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
+	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
+	This version improves on the previous by avoiding some
+	heavy tiles.
+
+	Args:
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
+		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
+		R_cut: Radial Cutoff
+		Angtri: angular triples within the cutoff.
+		prec: a precision.
+	Returns:
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+	"""
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	natom2 = natom*natom
+	natom3 = natom*natom2
+	nelep = tf.shape(eleps_)[0]
+	pshape = tf.shape(SFPs_)
+	ntheta = pshape[1]
+	nr = pshape[2]
+	nsym = ntheta*nr
+	infinitesimal = 0.000000000000000000000000001
+	onescalar = 1.0 - 0.0000000000000001
+	nnzt = tf.shape(AngtriEle)[0]
+	Rij_inds = AngtriEle[:,:3]
+	Rik_inds = tf.concat([AngtriEle[:,:2], AngtriEle[:,3:4]],axis=-1)
+	Rjk_inds = tf.concat([AngtriEle[:,0:1], AngtriEle[:,2:4]],axis=-1)
+	Rij = DifferenceVectorsLinear(R, Rij_inds)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+	Rik = DifferenceVectorsLinear(R, Rik_inds)
+	RikRik2 = tf.sqrt(tf.reduce_sum(Rik*Rik,axis=1)+infinitesimal)
+	RijRik2 = tf.reduce_sum(Rij*Rik, axis=1)
+	denom = RijRij2*RikRik2
+
+	ToACos = RijRik2/denom
+	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
+	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
+	Thetaijk = tf.acos(ToACos)
+	thetatmp = tf.expand_dims(SFPs_[0], axis=0)
+	tct = tf.expand_dims(tf.expand_dims(Thetaijk, axis=1), axis=-1)
+	ToCos = tct-thetatmp
+	Tijk = tf.cos(ToCos)
+	fac1 = tf.pow(tf.cast(2.0, prec),1.0-zeta)*tf.pow((1.0+Tijk),zeta)
+	rtmp = tf.cast(tf.expand_dims(SFPs_[1], axis=0),prec)
+	ToExp = ((RijRij2+RikRik2)/2.0)
+	tet = tf.reshape(ToExp,[nnzt,1,1]) - rtmp
+	fac2 = tf.exp(-eta*tet*tet)
+	fac3 = 0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0)
+	fac4 = 0.5*(tf.cos(3.14159265359*RikRik2/R_cut)+1.0)
+
+	fac34t = tf.reshape(fac3*fac4,[nnzt,1,1])
+	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt, nsym]) # nnz X nzeta X neta X ntheta X nr
+	element_pair_channel_factor = tf.gather(element_pair_factors,  mil_jk2[:,2:3])
+	Gm *= element_pair_channel_factor
+	jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), natom), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
+	jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1
+	mi_jk2 = tf.concat([mil_jk2[:,:2], mil_jk2[:,3:]], axis=1)
+
+	to_reduce2 = tf.scatter_nd(mi_jk2, Gm, [nmol,natom, jk_max, nsym])
+	return tf.reduce_sum(to_reduce2, axis=2)
+
+# def TFSymSet_Scattered_Linear_channel2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, element_factors):
+# 	"""
+# 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
+# 	Args:
+# 		R: a nmol X maxnatom X 3 tensor of coordinates.
+# 		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+# 		eles_: a neles X 1 tensor of elements present in the data.
+# 		SFPsR_: A symmetry function parameter of radius part
+# 		Rr_cut: Radial Cutoff of radius part
+# 		eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+# 		SFPsA_: A symmetry function parameter of angular part
+# 		RA_cut: Radial Cutoff of angular part
+# 	Returns:
+# 		Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+# 	"""
+# 	inp_shp = tf.shape(R)
+# 	nmol = inp_shp[0]
+# 	natom = inp_shp[1]
+# 	nele = tf.shape(eles_)[0]
+# 	nelep = tf.shape(eleps_)[0]
+#
+# 	GMR = tf.reshape(TFSymRSet_Linear_channel(R, Zs, eles_, SFPsR_, eta, Rr_cut, element_factors), [nmol, natom, -1])
+# 	# GMR = TFSymRSet_Linear_channel(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle, element_factors)
+# 	# return GMR
+# 	# GMA = tf.reshape(TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+# 	GMA = TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut)
+# 	return GMA
+# 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
+#
+# 	num_ele, num_dim = eles_.get_shape().as_list()
+# 	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]), name="FormEleMask")
+# 	ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), prec=tf.int32)
+# 	v = tf.reshape(tf.range(nmol*natom), [nmol, natom, 1])
+# 	ToMask = tf.concat([ToMask1, v], axis = -1)
+# 	IndexList = []
+# 	SymList= []
+# 	GatherList = []
+# 	for e in range(num_ele):
+# 		GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
+# 		NAtomOfEle=tf.shape(GatherList[-1])[0]
+# 		SymList.append(tf.gather_nd(GM, tf.slice(GatherList[-1],[0,0],[NAtomOfEle,2])))
+# 		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
+# 		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
+# 		IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
+# 	return SymList, IndexList
+#
+# def TFSymRSet_Linear_channel2(R, Zs, elements, SFPs_, eta, R_cut, element_factors, prec=tf.float64):
 # 	"""
 # 	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
 # 	Here j,k are all other atoms, but implicitly the output
@@ -2102,237 +2262,102 @@ def TFSymSet_Scattered_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
 # 	heavy tiles.
 #
 # 	Args:
-# 	    R: a nmol X maxnatom X 3 tensor of coordinates.
-# 	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-# 	    eles_: a nelepairs X 1 tensor of elements present in the data.
-# 	    SFP: A symmetry function parameter tensor having the number of elements
-# 	    as the SF output. 2 X neta  X nRs.
-# 	    R_cut: Radial Cutoff
-# 	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-# 	    prec: a precision.
+# 		R: a nmol X maxnatom X 3 tensor of coordinates.
+# 		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+# 		eles_: a nelepairs X 1 tensor of elements present in the data.
+# 		SFP: A symmetry function parameter tensor having the number of elements
+# 		as the SF output. 2 X neta X nRs.
+# 		R_cut: Radial Cutoff
+# 		Radpair: None zero pairs X 3 tensor (mol, i, j)
+# 		prec: a precision.
 # 	Returns:
-# 	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+# 		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 # 	"""
 # 	inp_shp = tf.shape(R)
 # 	nmol = inp_shp[0]
 # 	natom = inp_shp[1]
-# 	natom2 = natom*natom
-# 	nele = tf.shape(eles_)[0]
+# 	nele = tf.shape(elements)[0]
 # 	pshape = tf.shape(SFPs_)
 # 	nsym = pshape[1]
-# 	nnz = tf.shape(RadpairEle)[0]
-# 	# RijRij2 = tf.sqrt(tf.reduce_sum(tf.square(DifferenceVectorsLinear(R, RadpairEle[:,:3])),axis=1)+1.0e-26)
-# 	RijRij2 = tf.norm(DifferenceVectorsLinear(R, RadpairEle[:,:3]),axis=1)+1.0e-26
-# 	fac1 = tf.exp(-eta*tf.square(tf.expand_dims(RijRij2,axis=-1) - tf.expand_dims(SFPs_[0],axis=0)))
-# 	fac2t = tf.expand_dims(0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0), axis=-1)
-# 	Gm = tf.reshape(fac1*fac2t,[nnz, nsym]) # nnz X nzeta X neta X ntheta X nsym
-# 	mil_j = tf.concat([RadpairEle[:,:2],RadpairEle[:,3:4],RadpairEle[:,2:3]],axis=-1)
-# 	# channel_factors = tf.gather(element_factors, Zs)
-# 	to_reduce2 = tf.scatter_nd(mil_j, Gm, [nmol,natom,nele,natom,nsym])
-# 	return tf.reduce_sum(to_reduce2, axis=3)
-
-def TFSymRSet_Linear_channel(R, Zs, elements, SFPs_, eta, R_cut, RadpairEle, element_factors, prec=tf.float64):
-	"""
-	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
-	Here j,k are all other atoms, but implicitly the output
-	is separated across elements as well. eleps_ is a list of element pairs
-	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
-	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
-	This version improves on the previous by avoiding some
-	heavy tiles.
-
-	Args:
-		R: a nmol X maxnatom X 3 tensor of coordinates.
-		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-		eles_: a nelepairs X 1 tensor of elements present in the data.
-		SFP: A symmetry function parameter tensor having the number of elements
-		as the SF output. 2 X neta X nRs.
-		R_cut: Radial Cutoff
-		Radpair: None zero pairs X 3 tensor (mol, i, j)
-		prec: a precision.
-	Returns:
-		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
-	"""
-	inp_shp = tf.shape(R)
-	nmol = inp_shp[0]
-	natom = inp_shp[1]
-	nele = tf.shape(elements)[0]
-	pshape = tf.shape(SFPs_)
-	nsym = pshape[1]
-	delta_xyzs = tf.expand_dims(R, axis=2) - tf.expand_dims(R, axis=1)
-	distance_tensor = tf.norm(delta_xyzs,axis=3) + 1.0e-26
-	radial_factor = tf.exp(-eta*tf.square(tf.expand_dims(distance_tensor,axis=-1) - tf.reshape(SFPs_[0],[1,1,1,nsym])))
-	distance_cutoff_factor = tf.expand_dims(0.5*(tf.cos(np.pi*distance_tensor/R_cut)+1.0), axis=-1)
-	radial_grid = tf.reshape(radial_factor*distance_cutoff_factor,[nmol, natom, natom, nsym])
-	element_mask = tf.equal(tf.expand_dims(tf.expand_dims(Zs, axis=-1), axis=-1), tf.expand_dims(tf.expand_dims(elements, axis=0), axis=1))
-	element_mask_broadcast = tf.where(element_mask, tf.ones_like(element_mask, dtype=prec), tf.zeros_like(element_mask, dtype=prec))
-	radial_element_grid = tf.reduce_sum(tf.expand_dims(radial_grid, axis=3) * tf.expand_dims(element_mask_broadcast, axis=1), axis=2)
-	return radial_element_grid
-
-# atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=eval(PARAMS["tf_prec"])), atomic_embed_factors], axis=0)
-# element_embed_factor = tf.expand_dims(tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=1), axis=-1)
-
-def TFSymASet_Linear_channel(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, mil_jk2, prec=tf.float64):
-	"""
-	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
-	Here j,k are all other atoms, but implicitly the output
-	is separated across elements as well. eleps_ is a list of element pairs
-	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
-	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
-	This version improves on the previous by avoiding some
-	heavy tiles.
-
-	Args:
-		R: a nmol X maxnatom X 3 tensor of coordinates.
-		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
-		SFP: A symmetry function parameter tensor having the number of elements
-		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
-		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
-		R_cut: Radial Cutoff
-		Angtri: angular triples within the cutoff.
-		prec: a precision.
-	Returns:
-		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
-	"""
-	inp_shp = tf.shape(R)
-	nmol = inp_shp[0]
-	natom = inp_shp[1]
-	natom2 = natom*natom
-	natom3 = natom*natom2
-	nelep = tf.shape(eleps_)[0]
-	pshape = tf.shape(SFPs_)
-	ntheta = pshape[1]
-	nr = pshape[2]
-	nsym = ntheta*nr
-	infinitesimal = 0.000000000000000000000000001
-	onescalar = 1.0 - 0.0000000000000001
-	nnzt = tf.shape(AngtriEle)[0]
-	delta_xyzs = tf.expand_dims(R, axis=2) - tf.expand_dims(R, axis=1)
-	distance_tensor = tf.norm(delta_xyzs,axis=3) + 1.0e-26
-	distance_tensor_j = tf.expand_dims(distance_tensor, axis=3)
-	distance_tensor_k = tf.expand_dims(distance_tensor, axis=2)
-	theta_factor = (distance_tensor_j + distance_tensor_k) / (distance_tensor_j * distance_tensor_k)
-	theta_factor = tf.where(tf.greater_equal(theta_factor, 1.0), tf.ones_like(theta_factor, dtype=prec) * onescalar, theta_factor)
-	theta_factor = tf.where(tf.less_equal(theta_factor, -1.0), -1.0 * tf.ones_like(theta_factor, dtype=prec) * onescalar, theta_factor)
-	delta_theta_ijk_s = tf.expand_dims(tf.acos(theta_factor), axis=-1) - tf.reshape(SFPs[0], [1, 1, 1, 1, ntheta, nr])
- 	cos_factor = tf.pow((1.0 + delta_theta_ijk_s), zeta)
-	scaling_factor = tf.pow(2.0, 1.0 - zeta)
-
-
-	Rij_inds = AngtriEle[:,:3]
-	Rik_inds = tf.concat([AngtriEle[:,:2], AngtriEle[:,3:4]],axis=-1)
-	Rjk_inds = tf.concat([AngtriEle[:,0:1], AngtriEle[:,2:4]],axis=-1)
-	Rij = DifferenceVectorsLinear(R, Rij_inds)
-	RijRij2 = tf.norm(DifferenceVectorsLinear(R, Rij_inds),axis=1)+infinitesimal
-	Rik = DifferenceVectorsLinear(R, Rik_inds)
-	RikRik2 = tf.norm(DifferenceVectorsLinear(R, Rik_inds),axis=1)+infinitesimal
-	RijRik2 = tf.reduce_sum(Rij*Rik, axis=1)
-	denom = RijRij2*RikRik2
-	#Mask any troublesome entries.
-
-	ToACos = RijRik2/denom
-	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
-	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
-	Thetaijk = tf.acos(ToACos)
-	thetatmp = tf.expand_dims(SFPs_[0], axis=0)
-	# Broadcast the thetas and ToCos together
-	tct = tf.expand_dims(tf.expand_dims(Thetaijk, axis=1), axis=-1)
-	ToCos = tct-thetatmp
-	Tijk = tf.cos(ToCos) # shape: natom3 X ...
-	# complete factor 1
-	fac1 = tf.pow(tf.cast(2.0, prec),1.0-zeta)*tf.pow((1.0+Tijk),zeta)
-	rtmp = tf.cast(tf.expand_dims(SFPs_[1], axis=0),prec) # ijk X zeta X eta ....
-	ToExp = ((RijRij2+RikRik2)/2.0)
-	tet = tf.reshape(ToExp,[nnzt,1,1]) - rtmp
-	fac2 = tf.exp(-eta*tet*tet)
-	# And finally the last two factors
-	fac3 = 0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0)
-	fac4 = 0.5*(tf.cos(3.14159265359*RikRik2/R_cut)+1.0)
-	## assemble the full symmetry function for all triples.
-	fac34t = tf.reshape(fac3*fac4,[nnzt,1,1])
-	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt, nsym]) # nnz X nzeta X neta X ntheta X nr
-	## Finally scatter out the symmetry functions where they belong.
-	jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), natom), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
-	jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1
-	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
-	to_reduce2 = tf.scatter_nd(mil_jk2, Gm, [nmol,natom, nelep, jk_max, nsym])
-	return tf.reduce_sum(to_reduce2, axis=3)
-
-def TFSymASet_Linear_channel(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, mil_jk2, prec=tf.float64):
-	"""
-	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
-	Here j,k are all other atoms, but implicitly the output
-	is separated across elements as well. eleps_ is a list of element pairs
-	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
-	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
-	This version improves on the previous by avoiding some
-	heavy tiles.
-
-	Args:
-		R: a nmol X maxnatom X 3 tensor of coordinates.
-		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
-		SFP: A symmetry function parameter tensor having the number of elements
-		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
-		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
-		R_cut: Radial Cutoff
-		Angtri: angular triples within the cutoff.
-		prec: a precision.
-	Returns:
-		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
-	"""
-	inp_shp = tf.shape(R)
-	nmol = inp_shp[0]
-	natom = inp_shp[1]
-	natom2 = natom*natom
-	natom3 = natom*natom2
-	nelep = tf.shape(eleps_)[0]
-	pshape = tf.shape(SFPs_)
-	ntheta = pshape[1]
-	nr = pshape[2]
-	nsym = ntheta*nr
-	infinitesimal = 0.000000000000000000000000001
-	onescalar = 1.0 - 0.0000000000000001
-	nnzt = tf.shape(AngtriEle)[0]
-	Rij_inds = AngtriEle[:,:3]
-	Rik_inds = tf.concat([AngtriEle[:,:2], AngtriEle[:,3:4]],axis=-1)
-	Rjk_inds = tf.concat([AngtriEle[:,0:1], AngtriEle[:,2:4]],axis=-1)
-	Rij = DifferenceVectorsLinear(R, Rij_inds)
-	RijRij2 = tf.norm(DifferenceVectorsLinear(R, Rij_inds),axis=1)+infinitesimal
-	Rik = DifferenceVectorsLinear(R, Rik_inds)
-	RikRik2 = tf.norm(DifferenceVectorsLinear(R, Rik_inds),axis=1)+infinitesimal
-	RijRik2 = tf.reduce_sum(Rij*Rik, axis=1)
-	denom = RijRij2*RikRik2
-	#Mask any troublesome entries.
-
-	ToACos = RijRik2/denom
-	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
-	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
-	Thetaijk = tf.acos(ToACos)
-	thetatmp = tf.expand_dims(SFPs_[0], axis=0)
-	# Broadcast the thetas and ToCos together
-	tct = tf.expand_dims(tf.expand_dims(Thetaijk, axis=1), axis=-1)
-	ToCos = tct-thetatmp
-	Tijk = tf.cos(ToCos) # shape: natom3 X ...
-	# complete factor 1
-	fac1 = tf.pow(tf.cast(2.0, prec),1.0-zeta)*tf.pow((1.0+Tijk),zeta)
-	rtmp = tf.cast(tf.expand_dims(SFPs_[1], axis=0),prec) # ijk X zeta X eta ....
-	ToExp = ((RijRij2+RikRik2)/2.0)
-	tet = tf.reshape(ToExp,[nnzt,1,1]) - rtmp
-	fac2 = tf.exp(-eta*tet*tet)
-	# And finally the last two factors
-	fac3 = 0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0)
-	fac4 = 0.5*(tf.cos(3.14159265359*RikRik2/R_cut)+1.0)
-	## assemble the full symmetry function for all triples.
-	fac34t = tf.reshape(fac3*fac4,[nnzt,1,1])
-	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt, nsym]) # nnz X nzeta X neta X ntheta X nr
-	## Finally scatter out the symmetry functions where they belong.
-	jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), natom), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
-	jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1
-	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
-	to_reduce2 = tf.scatter_nd(mil_jk2, Gm, [nmol,natom, nelep, jk_max, nsym])
-	return tf.reduce_sum(to_reduce2, axis=3)
+#
+# 	delta_xyzs = tf.expand_dims(R, axis=2) - tf.expand_dims(R, axis=1)
+# 	distance_tensor = tf.norm(delta_xyzs,axis=3) + 1.0e-26
+# 	radial_factor = tf.exp(-eta*tf.square(tf.expand_dims(distance_tensor,axis=-1) - tf.reshape(SFPs_[0],[1,1,1,nsym])))
+# 	distance_cutoff_factor = tf.expand_dims(0.5*(tf.cos(np.pi*distance_tensor/R_cut)+1.0), axis=-1)
+# 	radial_grid = tf.reshape(radial_factor*distance_cutoff_factor,[nmol, natom, natom, nsym])
+#
+# 	element_mask = tf.equal(tf.expand_dims(tf.expand_dims(Zs, axis=-1), axis=-1), tf.expand_dims(tf.expand_dims(elements, axis=0), axis=1))
+# 	identity_mask = tf.equal(distance_tensor, 1.0e-26)
+# 	element_identity_mask = tf.logical_and(tf.expand_dims(element_mask, axis=1), tf.expand_dims(tf.expand_dims(identity_mask, axis=-1), axis=-1))
+# 	element_mask_broadcast = tf.where(element_identity_mask, tf.ones_like(element_identity_mask, dtype=prec), tf.zeros_like(element_identity_mask, dtype=prec))
+#
+# 	radial_element_grid = tf.reduce_sum(tf.expand_dims(radial_grid, axis=3) * element_mask_broadcast, axis=2)
+# 	return radial_element_grid
+#
+# def TFSymASet_Linear_channel2(R, Zs, element_pairs, SFPs, zeta, eta, R_cut, prec=tf.float64):
+# 	"""
+# 	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
+# 	Here j,k are all other atoms, but implicitly the output
+# 	is separated across elements as well. eleps_ is a list of element pairs
+# 	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
+# 	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
+# 	This version improves on the previous by avoiding some
+# 	heavy tiles.
+#
+# 	Args:
+# 		R: a nmol X maxnatom X 3 tensor of coordinates.
+# 		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+# 		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
+# 		SFP: A symmetry function parameter tensor having the number of elements
+# 		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
+# 		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
+# 		R_cut: Radial Cutoff
+# 		Angtri: angular triples within the cutoff.
+# 		prec: a precision.
+# 	Returns:
+# 		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+# 	"""
+# 	inp_shp = tf.shape(R)
+# 	nmol = inp_shp[0]
+# 	natom = inp_shp[1]
+# 	nelep = tf.shape(element_pairs)[0]
+# 	pshape = tf.shape(SFPs)
+# 	ntheta = pshape[1]
+# 	nr = pshape[2]
+# 	nsym = ntheta*nr
+# 	onescalar = 1.0 - 0.0000000000000001
+#
+# 	# atom_j_index = tf.range(natom, dtype=tf.int32)
+# 	# atom_k_index = tf.range(atom_j_index, natom, dtype=tf.int32)
+#
+# 	# with tf.device('/gpu:0'):
+# 	delta_xyzs = tf.expand_dims(R, axis=2) - tf.expand_dims(R, axis=1)
+# 	distance_tensor = tf.norm(delta_xyzs,axis=3) + 1.0e-26
+# 	distance_tensor_j = tf.expand_dims(distance_tensor, axis=3)
+# 	distance_tensor_k = tf.expand_dims(distance_tensor, axis=2)
+#
+# 	theta_factor = (distance_tensor_j + distance_tensor_k) / (distance_tensor_j * distance_tensor_k)
+# 	theta_factor = tf.where(tf.greater_equal(theta_factor, 1.0), tf.ones_like(theta_factor, dtype=prec) * onescalar, theta_factor)
+# 	theta_factor = tf.where(tf.less_equal(theta_factor, -1.0), -1.0 * tf.ones_like(theta_factor, dtype=prec) * onescalar, theta_factor)
+#
+# 	delta_theta_ijk_s = tf.reshape(tf.acos(theta_factor), [nmol, natom, natom, natom, 1, 1]) - tf.reshape(SFPs[0], [1, 1, 1, 1, ntheta, nr])
+#  	cos_factor = tf.pow((1.0 + tf.cos(delta_theta_ijk_s)), zeta)
+# 	scaling_factor = tf.pow(tf.cast(2.0, dtype=prec), 1.0 - zeta)
+#
+# 	rij_rik_exponent = tf.reshape((distance_tensor_j + distance_tensor_k) / 2.0, [nmol, natom, natom, natom, 1, 1])
+# 	rs_exponent = tf.reshape(SFPs[1],[1, 1, 1, 1, ntheta, nr])
+# 	exponential_factor = tf.exp(-eta * tf.square(rij_rik_exponent - rs_exponent))
+#
+# 	rij_cutoff = 0.5 * (tf.cos(np.pi * distance_tensor_j / R_cut) +1.0)
+# 	rik_cutoff = 0.5 * (tf.cos(np.pi * distance_tensor_k / R_cut) +1.0)
+# 	angular_grid = scaling_factor * cos_factor * exponential_factor * tf.reshape(rij_cutoff, [nmol, natom, natom, 1, 1, 1]) * tf.reshape(rik_cutoff, [nmol, natom, 1, natom, 1, 1])
+#
+# 	Zj_Zk = ZouterSet(Zs)
+# 	element_pair_mask = tf.reduce_all(tf.equal(tf.expand_dims(Zj_Zk, axis=-2), tf.reshape(element_pairs, [1, 1, 1, nelep, 2])), -1)
+# 	element_pair_mask_broadcast = tf.where(element_pair_mask, tf.ones_like(element_pair_mask, dtype=prec), tf.zeros_like(element_pair_mask, dtype=prec))
+#
+# 	angular_element_grid = tf.reduce_sum(tf.expand_dims(angular_grid, axis=4) * tf.reshape(element_pair_mask_broadcast,[nmol, 1, natom, natom, nelep, 1, 1]), axis=[2, 3])
+# 	return tf.reshape(angular_element_grid, [nmol, natom, nelep, nsym])
 
 class ANISym:
 	def __init__(self, mset_):
