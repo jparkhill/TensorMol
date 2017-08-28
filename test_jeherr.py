@@ -395,16 +395,16 @@ def TestTFSym():
 	# tmp, tmp2, tmp3, tmp4 = sess.run([sym_tmp, idx_tmp, sym_tmp2, idx_tmp2])
 	# print np.allclose(tmp[0], tmp3[0])
 	# print np.allclose(tmp2[0], tmp4[0])
-	tmp2 = sess.run([tmp])
-	print tmp2[0].shape
+	# tmp2 = sess.run([tmp])
+	# print tmp2[0].shape
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
 	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp])
-	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
-	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-	# chrome_trace = fetched_timeline.generate_chrome_trace_format()
-	# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-	# 	f.write(chrome_trace)
+	tmp2 = sess.run([tmp], options=options, run_metadata=run_metadata)
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
