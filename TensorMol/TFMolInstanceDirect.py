@@ -17,6 +17,61 @@ from TensorMol.RawEmbeddings import *
 from tensorflow.python.client import timeline
 import threading
 
+class BumpHolder:
+	def __init__(self,natom_,maxbump_,bowlk_=0.0):
+		"""
+		Holds a bump-function graph to allow for rapid
+		metadynamics. Can also hold an attractive bump which draws
+		atoms towards 0,0,0
+		Args:
+			m: a molecule.
+		"""
+		self.natom = natom_
+		self.maxbump = maxbump_
+		self.sess = None
+		self.xyzs_pl = None
+		self.x_pl = None
+		self.nb_pl = None
+		self.h = None
+		self.w = None
+		self.BowlK = bowlk_
+		self.Prepare()
+		return
+
+	def Prepare(self):
+		with tf.Graph().as_default():
+			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
+			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.natom,3]))
+			self.nb_pl=tf.placeholder(tf.int32)
+			self.h = tf.Variable(0.5,dtype = tf.float64)
+			self.w = tf.Variable(1.0,dtype = tf.float64)
+			self.BowlKv = tf.Variable(self.BowlK,dtype = tf.float64)
+			init = tf.global_variables_initializer()
+			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
+			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
+			self.BowlE = BowlEnergy(self.BowlKv, self.x_pl)
+			self.BowlF = tf.gradients(BowlEnergy(self.BowlKv, self.x_pl), self.x_pl)
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
+		return
+
+	def Bump(self, BumpCoords, x_, NBump_):
+		"""
+		Returns the Bump energy force.
+		"""
+		if (self.BowlK == 0.0):
+			return self.sess.run([self.BE,self.BF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
+		else:
+			e,f,we,wf = self.sess.run([self.BE,self.BF,self.BowlE,self.BowlF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
+			return (e+we), ([f[0]+wf[0]])
+
+	def Bowl(self, x_):
+		"""
+		Returns the Bowl force.
+		which is a linear attraction to 0.0.0
+		"""
+		return self.sess.run([self.BowlE,self.BowlF], feed_dict = {self.x_pl:x_})
 
 class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 	"""
@@ -286,8 +341,6 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 			self.train_step(step)
 		self.SaveAndClose()
 		return
-<<<<<<< HEAD
-=======
 
 class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 	"""
@@ -2708,7 +2761,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_EandG, self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
-			print ("mini step time EandG:", time.time() - t_mini) 
+			print ("mini step time EandG:", time.time() - t_mini)
 			#print ("Ecc:", Ecc[:20])
 			#for k, ecc in enumerate(list(Ecc)):
 			#	if ecc > 0.05:
@@ -3279,7 +3332,7 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 class MolInstance_DirectBP_EE_Update(MolInstance_DirectBP_EE):
 	"""
 	Electrostatic embedding Behler-Parinello scheme.
-	This version prebuild the mijkl and mil_jk in python.  
+	This version prebuild the mijkl and mil_jk in python.
 	"""
 
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
