@@ -316,13 +316,13 @@ def TestTFSym():
 	np.set_printoptions(threshold=100000)
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	t1 = time.time()
 	maxnatoms = a.MaxNAtoms()
 	zlist = []
 	xyzlist = []
-	natom = np.zeros((600), dtype=np.int32)
+	natom = np.zeros((100), dtype=np.int32)
 	for i, mol in enumerate(a.mols):
 		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
@@ -331,7 +331,7 @@ def TestTFSym():
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		natom[i] = mol.NAtoms()
-		if i == 599:
+		if i == 99:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
@@ -372,6 +372,7 @@ def TestTFSym():
 
 	zeta = PARAMS["AN1_zeta"]
 	eta = PARAMS["AN1_eta"]
+	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44])
 	# self.HasANI1PARAMS = True
 
 	SFPa2 = tf.Variable(np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1]), trainable= False, dtype = tf.float64)
@@ -380,30 +381,30 @@ def TestTFSym():
 	Ra_cut = tf.Variable(PARAMS["AN1_a_Rc"], trainable=False, dtype = tf.float64)
 	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
 	eta = tf.Variable(PARAMS["AN1_eta"], trainable=False, dtype = tf.float64)
+	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
-	# tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, tf.cast(zstack, tf.int32), tf.cast(Ele, tf.int32), SFPr2, Rr_cut, tf.cast(Elep, tf.int32), SFPa2, zeta, eta, Ra_cut, tf.cast(Radp_pl, tf.int32), Angt_pl)
+	# sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors)
+	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
+	tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors)
 
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
-	t1 = time.time()
 	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 	run_metadata = tf.RunMetadata()
 
-	# tmp, tmp2, tmp3, tmp4 = sess.run([Scatter_Sym, Sym_Index, sym_tmp, idx_tmp])
-	# print np.allclose(tmp[1], tmp3[1])
-	# print np.allclose(tmp2[1], tmp4[1])
-	# tmp2 = sess.run([tmp])
-	# print tmp2
+	# tmp, tmp2, tmp3, tmp4 = sess.run([sym_tmp, idx_tmp, sym_tmp2, idx_tmp2])
+	# print np.allclose(tmp[0], tmp3[0])
+	# print np.allclose(tmp2[0], tmp4[0])
+	tmp2 = sess.run([tmp])
+	print tmp2[0].shape
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
+	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp])
 	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
-	tmp, tmp2 = sess.run([sym_tmp, idx_tmp])
 	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
 	# chrome_trace = fetched_timeline.generate_chrome_trace_format()
 	# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 	# 	f.write(chrome_trace)
-	print time.time() - t1
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)

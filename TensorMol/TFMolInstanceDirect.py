@@ -3516,5 +3516,3 @@ class MolInstance_DirectBP_EE_Update(MolInstance_DirectBP_EE):
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 		print("Prepared for Evaluation...")
 		return
-
->>>>>>> cb0b11a9a1fb319572537729e3b1107e00134d10
