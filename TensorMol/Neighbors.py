@@ -390,3 +390,56 @@ class NeighborListSet:
 		jk_max = np.max(valance_pair)
 		print ("jk_max:", jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
+
+
+class CellList:
+	"""
+	TODO: CellList updates.
+	"""
+	def __init__(self, x_, cutoff_ = 5.0, ele_ = None, padding_ = 1.0):
+		"""
+		Builds or updates a cubic cell list. Each cell size  = 2*cutoff_.
+		Args:
+			x_: coordinate array
+			cutoff_: interaction cutoff
+			ele_: element types of each atoms.
+			padding_: padding of the molecule box. 
+		"""
+		self.natom = x_.shape[0] # includes periodic images.
+		self.x = x_.copy()
+		self.ele = ele_
+		self.cutoff = cutoff_
+		self.Rcore = self.cutoff   # in current implementation, Rcore has to equal Rskin
+		self.Rskin = self.cutoff
+		self.Rcell = self.Rcore + 2*self.Rskin
+		self.padding = padding_
+		from itertools import product
+		self.offset = np.asarray(list(product([-1, 0, 1], repeat=3)),dtype=int)
+		return
+
+	def Update(self, x_):
+		self.x = x_.copy()
+		core_begin_end = np.array([[np.min(self.x[:,0])-self.padding, np.max(self.x[:,0])+self.padding],\
+			[np.min(self.x[:,1])-self.padding, np.max(self.x[:,1])+self.padding],\
+			[np.min(self.x[:,2])-self.padding, np.max(self.x[:,2])+self.padding]])
+		#print ("core_begin_end:", core_begin_end)
+		core_size = core_begin_end[:,1] - core_begin_end[:,0]	
+		n_core = np.array([core_size[0]/self.Rcore, core_size[1]/self.Rcore, core_size[2]/self.Rcore], dtype=int) + 1
+		n_cell = n_core.copy()
+		cell_begin_end = core_begin_end + np.array([-self.Rskin, self.Rskin]) 
+		#print ("cell_begin_end:", cell_begin_end)
+		#print ("n_core:", n_core)
+		core_index = [[] for i in range(0, np.prod(n_core))]
+		cell_index = [[] for i in range(0, np.prod(n_cell))]
+		for i in range (0, self.natom):
+			atom_core_index = ((self.x[i]  - core_begin_end[:,0])/self.Rcore).astype(int)
+			core_index[atom_core_index[0]*n_core[1]*n_core[2]+atom_core_index[1]*n_core[2]+atom_core_index[2]].append(i)
+			tmp  =  atom_core_index + self.offset
+			atom_cell_index = tmp[(tmp[:,0] >= 0) & (tmp[:,0] <  n_cell[0]) & (tmp[:,1] >= 0) & (tmp[:,1] <  n_cell[1]) &  (tmp[:,2] >= 0) & (tmp[:,2] <  n_cell[2])]
+			for j in list(atom_cell_index[:,0]*n_cell[1]*n_cell[2]+atom_cell_index[:,1]*n_cell[2]+atom_cell_index[:,2]):
+				cell_index[j].append(i)
+		#print ("core_index:", core_index)
+		#print ("cell_index:", cell_index)
+		return core_index, cell_index
+
+
