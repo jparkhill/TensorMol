@@ -36,6 +36,7 @@ from TensorMol.TensorMolDataEE import *
 from TensorMol.TFInstance import *
 from TensorMol.TFMolInstance import *
 from TensorMol.TFMolInstanceDirect import *
+from TensorMol.TFForces import *
 from TensorMol.TFManage import *
 from TensorMol.TFMolManage import *
 from TensorMol.Ipecac import *
