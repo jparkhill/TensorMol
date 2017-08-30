@@ -417,7 +417,6 @@ class Instance:
 		"""
 		tf.summary.scalar(loss.op.name, loss)
 		optimizer = tf.train.AdamOptimizer(learning_rate)
-		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
 		train_op = optimizer.minimize(loss, global_step=global_step)
 		return train_op
@@ -1054,6 +1053,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.norm_labels = (self.labels - outmean) / outstd
 			self.norm_output = self.inference(self.norm_embedding)
 			self.output = (self.norm_output * outstd) + outmean
+			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -1173,7 +1173,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.compute_normalization_constants()
 		self.TrainPrepare(continue_training)
 		test_freq = PARAMS["test_freq"]
-		mini_test_loss = 100000000 # some big numbers
+		mini_test_loss = 1.e24
 		for step in range(1, mxsteps+1):
 			self.train_step(step)
 			if step%test_freq==0 and step!=0 :
@@ -1188,47 +1188,50 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
 		train_loss =  0.0
-		for ministep in range (0, int(Ncase_train/self.batch_size)):
+		n_atoms_epoch = 0
+		for ministep in xrange(0, int(Ncase_train/self.batch_size)):
 			batch_data = self.TData.GetTrainBatch(self.batch_size) #advances the case pointer in TData...
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.profiling:
-				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
+				_, total_loss_value, loss_value, n_atoms_batch = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
 				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
 				chrome_trace = fetched_timeline.generate_chrome_trace_format()
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
 			else:
-				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-				train_loss += total_loss_value
+				_, total_loss_value, loss_value, n_atoms_batch = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch], feed_dict=feed_dict)
+			train_loss += total_loss_value
+			n_atoms_epoch += n_atoms_batch
 		duration = time.time() - start_time
-		self.print_training(step, train_loss, Ncase_train, duration)
+		self.print_training(step, train_loss, n_atoms_epoch, duration)
 		return
 
 	def test(self, step):
 		Ncase_test = self.TData.NTest
 		test_loss =  0.0
+		n_atoms_epoch = 0
 		test_start_time = time.time()
 		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
 			feed_dict = self.fill_feed_dict(batch_data)
-			preds, labels, total_loss_value, loss_value, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss,  self.loss, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
+			output, labels, total_loss_value, loss_value, n_atoms_batch, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
 			test_loss += total_loss_value
-		self.TData.EvaluateTestBatch(labels, preds)
+			n_atoms_epoch += n_atoms_batch
+		self.TData.EvaluateTestBatch(labels, output)
 		duration = time.time() - test_start_time
 		print("testing...")
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
-		self.print_testing(step, test_loss, Ncase_test, duration)
-		return test_loss
+		self.print_testing(step, test_loss, n_atoms_epoch, duration)
+		return test_loss / float(n_atoms_epoch)
 
-	def print_training(self, step, loss, Ncase, duration):
-		denom = max((int(Ncase/self.batch_size)),1)
-		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+	def print_training(self, step, loss, n_cases, duration):
+		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(loss / float(n_cases)))
 		return
 
-	def print_testing(self, step, loss, Ncase, duration):
-		denom = max((int(Ncase/self.batch_size)),1)
-		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+	def print_testing(self, step, loss, n_cases, duration):
+		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(loss / float(n_cases)))
+		return
 
 	def PrepareData(self, batch_data):
 		if (batch_data[0].shape[0]==self.batch_size):

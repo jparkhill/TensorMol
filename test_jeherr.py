@@ -309,7 +309,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
+	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
 
 def TestTFSym():
 	t1 = time.time()
@@ -411,14 +411,27 @@ def TestTFSym():
 		f.write(chrome_trace)
 
 def train_energy_symm_func_channel():
-
-
+	PARAMS["HiddenLayers"] = [256, 256, 256]
+	PARAMS["max_steps"] = 1000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 330
+	PARAMS["NeuronType"] = "elu"
+	PARAMS["tf_prec"] = "tf.float64"
+	a=MSet("benzene")
+	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="atomization")
+	tset = TensorMolData_BP_Direct_WithEle(a,d)
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt", Trainable_=True)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols_35", 1000)
+# RandomSmallSet("SmallMols", 10000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -435,8 +448,9 @@ def train_energy_symm_func_channel():
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-# train_forces_GauSH_direct("benzene_1rot")
-TestTFSym()
+train_forces_GauSH_direct("SmallMols_rand")
+# TestTFSym()
+# train_energy_symm_func_channel()
 
 # a=MSet("SmallMols")
 # a.Load()

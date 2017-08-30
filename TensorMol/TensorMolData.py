@@ -1717,7 +1717,7 @@ class TensorMolData_BP_Direct_EE_WithEle(TensorMolData_BP_Direct_EE):
 		else:
 			return [xyzs, Zs, Elabels, Dlabels, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom]
 
-class TensorMolData_BP_Direct_Grad_WithEle(TensorMolData_BP_Direct_EE):
+class TensorMolData_BP_Direct_WithEle(TensorMolData_BP_Direct_EE):
 	"""
 	This tensordata serves up batches digested within TensorMol.
 	"""
@@ -1726,6 +1726,76 @@ class TensorMolData_BP_Direct_Grad_WithEle(TensorMolData_BP_Direct_EE):
 		self.Ree_cut = PARAMS["EECutoffOff"]
 		self.ele = None #  determine later
 		self.elep = None # determine later
+		return
+
+	def LoadData(self):
+		if (self.set == None):
+			try:
+				self.ReloadSet()
+			except Exception as Ex:
+				print("TData doesn't have a set.", Ex)
+		random.shuffle(self.set.mols)
+		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((self.Nmols), dtype = np.int32)
+		if (self.dig.OType == "atomization"):
+			labels = np.zeros((self.Nmols), dtype = np.float64)
+		else:
+			raise Exception("Output Type is not implemented yet")
+		if (self.HasGrad):
+			grads = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype=np.float64)
+		for i, mol in enumerate(self.set.mols):
+			try:
+				xyzs[i][:mol.NAtoms()] = mol.coords
+				Zs[i][:mol.NAtoms()] = mol.atoms
+				natom[i] = mol.NAtoms()
+			except Exception as ex:
+				print(mol.coords, mol.atoms, mol.coords.shape[0], mol.atoms.shape[0])
+				raise Exception("Bad data2")
+			if (self.dig.OType  == "atomization"):
+				labels[i] = mol.properties["atomization"]
+			else:
+				raise Exception("Output Type is not implemented yet")
+			if (self.HasGrad):
+				grads[i][:mol.NAtoms()] = -1 * mol.properties["forces"]
+		if (self.HasGrad):
+			return xyzs, Zs, Elabels, natom, grads
+		else:
+			return xyzs, Zs, Elabels, natom
+
+	def LoadDataToScratch(self, tformer):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+		note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		try:
+			self.HasGrad
+		except:
+			self.HasGrad = False
+		if (self.ScratchState == 1):
+			return
+		if (self.HasGrad):
+			self.xyzs, self.Zs, self.labels, self.natom, self.grads = self.LoadData()
+		else:
+			self.xyzs, self.Zs, self.labels, self.natom  = self.LoadData()
+		self.NTestMols = int(self.TestRatio * self.Zs.shape[0])
+		self.LastTrainMol = int(self.Zs.shape[0]-self.NTestMols)
+		self.NTrain = self.LastTrainMol
+		self.NTest = self.NTestMols
+		self.test_ScratchPointer = self.LastTrainMol
+		self.ScratchPointer = 0
+		self.ScratchState = 1
+		LOGGER.debug("LastTrainMol in TensorMolData: %i", self.LastTrainMol)
+		LOGGER.debug("NTestMols in TensorMolData: %i", self.NTestMols)
 		return
 
 	def GetTrainBatch(self, ncases):
@@ -1766,4 +1836,4 @@ class TensorMolData_BP_Direct_Grad_WithEle(TensorMolData_BP_Direct_EE):
 		if (self.HasGrad):
 			return [xyzs, Zs, labels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], rad_p_ele, ang_t_elep, mil_jk]
 		else:
-			return [xyzs, Zs, labels, rad_p_ele, ang_t_elep, rad_eep, mil_jk]
+			return [xyzs, Zs, labels, rad_p_ele, ang_t_elep, mil_jk]

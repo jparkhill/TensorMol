@@ -79,8 +79,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
 			self.Instances = MolInstance_DirectBP_Grad_Linear(self.TData)
-		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
-			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_EmbOpt(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_Update"):
@@ -1235,8 +1235,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
 			self.Instances = MolInstance_DirectBP_Grad_Linear(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
-		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
-			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_EmbOpt(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_Update"):

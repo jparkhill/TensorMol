@@ -2047,7 +2047,7 @@ def TFSymASet_Linear_tmp(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, mil_
 	# return tf.sparse_reduce_sum(to_reduce2, axis=3)
 	return tf.reduce_sum(to_reduce2, axis=3)
 
-def TFSymSet_Scattered_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk, element_factors, element_pair_factors):
+def TFSymSet_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk, element_factors, element_pair_factors):
 	"""
 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
 	Args:
@@ -2226,10 +2226,10 @@ def TFSymASet_Linear_channel(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 # 	nele = tf.shape(eles_)[0]
 # 	nelep = tf.shape(eleps_)[0]
 #
-# 	GMR = tf.reshape(TFSymRSet_Linear_channel(R, Zs, eles_, SFPsR_, eta, Rr_cut, element_factors), [nmol, natom, -1])
+# 	GMR = tf.reshape(TFSymRSet_Linear_channel2(R, Zs, eles_, SFPsR_, eta, Rr_cut, element_factors), [nmol, natom, -1])
 # 	# GMR = TFSymRSet_Linear_channel(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle, element_factors)
 # 	# return GMR
-# 	# GMA = tf.reshape(TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
+# 	# GMA = tf.reshape(TFSymASet_Linear_channel2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
 # 	GMA = TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut)
 # 	return GMA
 # 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
