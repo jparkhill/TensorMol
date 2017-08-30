@@ -15,6 +15,13 @@ from TensorMol.Util import *
 if (HAS_TF):
 	import tensorflow as tf
 
+def TFMatrixPower(mat_,exp_):
+	"""
+	General Matrix Power in Tensorflow.
+	"""
+	s,u,v = tf.svd(mat_,full_matrices=True,compute_uv=True)
+	return tf.transpose(tf.matmul(u,tf.matmul(tf.diag(tf.pow(s,exp_)),tf.transpose(v))))
+
 def TFDistance(A):
 	"""
 	Compute a distance matrix of A, a coordinate matrix

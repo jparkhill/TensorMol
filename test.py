@@ -33,6 +33,41 @@ def TestPeriodicLJOpt():
 	PGO.OptWCell(m,"PeriodicOpt")
 	return
 
+def TestBoxing():
+	"""
+	Makes a box of 64 water molecules
+	The final lattice spacing would be 1water/3.10432 Angstroms.
+	"""
+	a = MSet("h2o")
+	a.ReadXYZ("h2o")
+	m = a.mols[0]
+	latv = np.array([[10.0,0.,0.],[0.,10.,0.],[0.,0.,10.]])
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(m)
+	print(mc.coords)
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,4))
+	print(mt.coords)
+	mt.coords += np.min(mt.coords)
+	lat0 = np.array([[np.max(mt.coords),0.,0.],[0.,np.max(mt.coords),0.],[0.,0.,np.max(mt.coords)]])*4.0
+	latp = np.array([[3.10432,0.,0.],[0.,3.10432,0.],[0.,0.,3.10432]])
+	print(lat0,latp)
+	m = Lattice(lat0).CenteredInLattice(mt)
+	print(m.coords)
+
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
+	tset = TensorMolData(a,d)
+	tset.MaxNAtoms = m.NAtoms()
+	ins = MolInstance_DirectForce(tset,None,False,"LJ")
+	ins.TrainPrepare()
+	# Convert from hartree/ang to joules/mol ang.
+	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[1]
+	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
+
+	Box = BoxingDynamics(ForceField, m, "BoxingMD", EnergyForceField, lat0, latp, 500.)
+	Box.Prop()
+	return
+
 def TestBPDirectWater():
 	a=MSet("H2O_force_test", center_=False)
 	a.ReadXYZ("H2O_force_test")
@@ -1485,7 +1520,8 @@ def TestMBNeighborList():
 #TestMetadynamics()
 #PullFreqData()
 #TestPeriodicLJMD()
-TestPeriodicLJOpt()
+#TestPeriodicLJOpt()
+TestBoxing()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
