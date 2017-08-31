@@ -307,7 +307,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["max_steps"] = 10
+	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 330
 	PARAMS["NeuronType"] = "elu"
@@ -318,7 +318,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
+	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
 
 def TestTFSym():
 	t1 = time.time()

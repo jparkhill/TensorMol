@@ -799,7 +799,9 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 				self.output_list.append((self.norm_output_list[i] * labels_mean_std[i][1]) + labels_mean_std[i][0])
 				self.n_atoms_batch_list.append(tf.shape(self.output_list[-1])[0])
 			self.total_loss, self.loss = self.loss_op(self.norm_output_list, norm_labels_list)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.sigma_constraint_loss = tf.reduce_sum(0.0001 / tf.square(self.gaussian_params[:,1])) * self.total_loss
+			self.loss_and_constraint = self.total_loss + self.sigma_constraint_loss
+			self.train_op = self.training(self.loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
@@ -1058,7 +1060,9 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.output = (self.norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			self.sigma_constraint_loss = tf.reduce_sum(0.0001 / tf.square(self.gaussian_params[:,1])) * self.total_loss
+			self.loss_and_constraint = self.total_loss + self.sigma_constraint_loss
+			self.train_op = self.training(self.loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
