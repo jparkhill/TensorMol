@@ -277,12 +277,21 @@ def TestTFGauSH():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 	tmp = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8], gaussian_params, atomic_embed_factors, 4)
+	check = tf.add_check_numerics_ops()
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	tmp2, tmp3 = sess.run(tmp)
-	print np.allclose(tmp2, tmp3)
+	_, tmp2 = sess.run([check, tmp])
+	print tmp2
+
+def test_gaussian_overlap():
+	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
+	tmp = gaussian_overlap(gaussian_params)
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+	tmp2 = sess.run(tmp)
+	print tmp2
 
 def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
@@ -297,8 +306,8 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_NRAD"] = 10
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
-	PARAMS["HiddenLayers"] = [256, 256, 256]
-	PARAMS["max_steps"] = 1000
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["max_steps"] = 10
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 330
 	PARAMS["NeuronType"] = "elu"
@@ -309,7 +318,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
+	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
 
 def TestTFSym():
 	t1 = time.time()
@@ -412,6 +421,7 @@ def TestTFSym():
 
 def train_energy_symm_func_channel():
 	PARAMS["HiddenLayers"] = [256, 256, 256]
+	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 330
@@ -451,6 +461,7 @@ def train_energy_symm_func_channel():
 train_forces_GauSH_direct("SmallMols_rand")
 # TestTFSym()
 # train_energy_symm_func_channel()
+# test_gaussian_overlap()
 
 # a=MSet("SmallMols")
 # a.Load()

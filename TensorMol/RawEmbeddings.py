@@ -1700,13 +1700,30 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
 	return rlist, indexlist
 
-# def gaussian_overlap(gaussian_params):
-# 	r_nought = gaussian_params[:,0]
-# 	sigma = gaussian_params[:,1]
-# 	tf.sqrt(np.pi / 2) * tf.exp(-tf.square(tf.expand_dims(r_nought, axis=0) - tf.expand_dims(r_nought, axis=1))
-# 	/ (2.0 * (tf.square(tf.expand_dims(sigma, axis=0)) + tf.square(tf.expand_dims(sigma, axis=1)))))
-# 	* (1 + tf.erf(tf.expand_dims(r_nought, axis=0))
+def matrix_power(matrix, power):
+	"""
+	Raise a Hermitian Matrix to a possibly fractional power.
+	"""
+	s, U, V = tf.svd(matrix)
+	s = tf.maximum(s, tf.pow(10.0, -14.0))
+	return tf.matmul(U, tf.matmul(tf.diag(tf.pow(s, power)), tf.transpose(V)))
 
+def gaussian_overlap(gaussian_params):
+	r_nought = gaussian_params[:,0]
+	sigma = gaussian_params[:,1]
+	scaling_factor = tf.sqrt(np.pi / 2)
+	exponential_factor = tf.exp(-tf.square(tf.expand_dims(r_nought, axis=0) - tf.expand_dims(r_nought, axis=1))
+	/ (2.0 * (tf.square(tf.expand_dims(sigma, axis=0)) + tf.square(tf.expand_dims(sigma, axis=1)))))
+	# return exponential_factor
+	root_inverse_sigma_sum = tf.sqrt((1.0 / tf.expand_dims(tf.square(sigma), axis=0)) + (1.0 / tf.expand_dims(tf.square(sigma), axis=1)))
+	erf_numerator = (tf.expand_dims(r_nought, axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
+				+ tf.expand_dims(r_nought, axis=1) * tf.expand_dims(tf.square(sigma), axis=0))
+	erf_denominator = (tf.sqrt(2.0) * tf.expand_dims(tf.square(sigma), axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
+				* root_inverse_sigma_sum)
+	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
+	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
+	orthogonal_scaling_matrix = matrix_power(overlap_matrix, -0.5)
+	return orthogonal_scaling_matrix
 
 def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors):
 	exponent = ((r - gaussian_params[:,0]) ** 2.0) / (-2.0 * (gaussian_params[:,1] ** 2))
