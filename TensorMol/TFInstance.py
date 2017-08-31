@@ -898,6 +898,8 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		self.output_list = None
 		self.embedding_list = None
 		self.n_atoms_batch_list = None
+		self.sigma_constraint_loss = None
+		self.loss_and_constraint = None
 		return
 
 	def save_chk(self,  step):  # this can be included in the Instance
@@ -1151,6 +1153,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.output = None
 		self.embedding = None
 		self.n_atoms_batch = None
+		self.sigma_constraint_loss = None
+		self.loss_and_constraint = None
 		return
 
 	def loss_op(self, output, labels):
