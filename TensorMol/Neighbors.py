@@ -338,7 +338,7 @@ class NeighborListSet:
 		#import time
 		t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		print ("make pair and triple time:", time.time()-t0)
+		#print ("make pair and triple time:", time.time()-t0)
 		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
@@ -379,16 +379,16 @@ class NeighborListSet:
 				prev_l = current_l
 				prev_atom = current_atom
 				prev_mol = current_mol
-		print ("time of making l_max:", time.time() - t1)
+		#print ("time of making l_max:", time.time() - t1)
 		#print ("valance_pair:", valance_pair[:20])
 		#print ("trtE:", trtE_sorted[:20])
 		mil_jk = np.zeros((trt.shape[0],4))
 		mil_jk[:,[0,1,2]]= trtE_sorted[:,[0,1,4]]
 		mil_jk[:,3] = valance_pair
-		print ("time of after processing..", time.time() - t_start)
+		#print ("time of after processing..", time.time() - t_start)
 		#print ("mil_jk", mil_jk[:20])
 		jk_max = np.max(valance_pair)
-		print ("jk_max:", jk_max)
+		#print ("jk_max:", jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
 
 
