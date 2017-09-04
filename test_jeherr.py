@@ -426,21 +426,21 @@ def TestTFSym():
 		f.write(chrome_trace)
 
 def train_energy_symm_func_channel():
-	PARAMS["HiddenLayers"] = [256, 256, 256]
+	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 330
-	PARAMS["NeuronType"] = "elu"
+	PARAMS["batch_size"] = 500
+	PARAMS["NeuronType"] = "relu"
 	PARAMS["tf_prec"] = "tf.float64"
-	a=MSet("benzene")
+	a=MSet("SmallMols")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="atomization")
-	tset = TensorMolData_BP_Direct_WithEle(a,d)
+	tset = TensorMolData_BP_Direct_WithEle(a,d, WithGrad_=True)
 	manager=TFMolManage("",tset,True,"fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt", Trainable_=True)
 
 # InterpoleGeometries()
@@ -464,9 +464,9 @@ def train_energy_symm_func_channel():
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-train_forces_GauSH_direct("SmallMols")
+# train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
-# train_energy_symm_func_channel()
+train_energy_symm_func_channel()
 # test_gaussian_overlap()
 
 # a=MSet("SmallMols")

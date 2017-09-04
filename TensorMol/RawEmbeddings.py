@@ -1705,8 +1705,15 @@ def matrix_power(matrix, power):
 	Raise a Hermitian Matrix to a possibly fractional power.
 	"""
 	s, U, V = tf.svd(matrix)
+	return s
 	s = tf.maximum(s, tf.pow(10.0, -14.0))
 	return tf.matmul(U, tf.matmul(tf.diag(tf.pow(s, power)), tf.transpose(V)))
+
+def matrix_power2(matrix, power):
+	matrix_eigenvals, matrix_eigenvectors = tf.self_adjoint_eig(matrix)
+	singular_values = tf.sqrt(matrix_eigenvals)
+
+	return singular_values
 
 def gaussian_overlap(gaussian_params):
 	r_nought = gaussian_params[:,0]
@@ -1722,9 +1729,11 @@ def gaussian_overlap(gaussian_params):
 				* root_inverse_sigma_sum)
 	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
-	min_eigenvalue = tf.self_adjoint_eigvals(overlap_matrix)
-	orthogonal_scaling_matrix = matrix_power(overlap_matrix, -0.5)
-	return orthogonal_scaling_matrix, min_eigenvalue
+	# min_eigenvalue = tf.self_adjoint_eigvals(overlap_matrix)
+	# orthogonal_scaling_matrix = matrix_power(overlap_matrix, -0.5)
+	orthogonal_scaling_matrix = matrix_power2(overlap_matrix, -0.5)
+	return orthogonal_scaling_matrix
+	# return orthogonal_scaling_matrix, min_eigenvalue
 
 def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors, orthogonalize=False):
 	exponent = (tf.square(r - gaussian_params[:,0])) / (-2.0 * (gaussian_params[:,1] ** 2))
@@ -2226,52 +2235,6 @@ def TFSymASet_Linear_channel(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 	to_reduce2 = tf.scatter_nd(mi_jk2, Gm, [nmol,natom, jk_max, nsym])
 	return tf.reduce_sum(to_reduce2, axis=2)
 
-# def TFSymSet_Scattered_Linear_channel2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, element_factors):
-# 	"""
-# 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
-# 	Args:
-# 		R: a nmol X maxnatom X 3 tensor of coordinates.
-# 		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-# 		eles_: a neles X 1 tensor of elements present in the data.
-# 		SFPsR_: A symmetry function parameter of radius part
-# 		Rr_cut: Radial Cutoff of radius part
-# 		eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
-# 		SFPsA_: A symmetry function parameter of angular part
-# 		RA_cut: Radial Cutoff of angular part
-# 	Returns:
-# 		Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
-# 	"""
-# 	inp_shp = tf.shape(R)
-# 	nmol = inp_shp[0]
-# 	natom = inp_shp[1]
-# 	nele = tf.shape(eles_)[0]
-# 	nelep = tf.shape(eleps_)[0]
-#
-# 	GMR = tf.reshape(TFSymRSet_Linear_channel2(R, Zs, eles_, SFPsR_, eta, Rr_cut, element_factors), [nmol, natom, -1])
-# 	# GMR = TFSymRSet_Linear_channel(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle, element_factors)
-# 	# return GMR
-# 	# GMA = tf.reshape(TFSymASet_Linear_channel2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut), [nmol, natom, -1])
-# 	GMA = TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut)
-# 	return GMA
-# 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
-#
-# 	num_ele, num_dim = eles_.get_shape().as_list()
-# 	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]), name="FormEleMask")
-# 	ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), prec=tf.int32)
-# 	v = tf.reshape(tf.range(nmol*natom), [nmol, natom, 1])
-# 	ToMask = tf.concat([ToMask1, v], axis = -1)
-# 	IndexList = []
-# 	SymList= []
-# 	GatherList = []
-# 	for e in range(num_ele):
-# 		GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
-# 		NAtomOfEle=tf.shape(GatherList[-1])[0]
-# 		SymList.append(tf.gather_nd(GM, tf.slice(GatherList[-1],[0,0],[NAtomOfEle,2])))
-# 		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
-# 		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
-# 		IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
-# 	return SymList, IndexList
-#
 # def TFSymRSet_Linear_channel2(R, Zs, elements, SFPs_, eta, R_cut, element_factors, prec=tf.float64):
 # 	"""
 # 	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
@@ -2351,7 +2314,6 @@ def TFSymASet_Linear_channel(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, AngtriEle, 
 # 	# atom_j_index = tf.range(natom, dtype=tf.int32)
 # 	# atom_k_index = tf.range(atom_j_index, natom, dtype=tf.int32)
 #
-# 	# with tf.device('/gpu:0'):
 # 	delta_xyzs = tf.expand_dims(R, axis=2) - tf.expand_dims(R, axis=1)
 # 	distance_tensor = tf.norm(delta_xyzs,axis=3) + 1.0e-26
 # 	distance_tensor_j = tf.expand_dims(distance_tensor, axis=3)

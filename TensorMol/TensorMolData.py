@@ -1759,9 +1759,9 @@ class TensorMolData_BP_Direct_WithEle(TensorMolData_BP_Direct_EE):
 			if (self.HasGrad):
 				grads[i][:mol.NAtoms()] = -1 * mol.properties["forces"]
 		if (self.HasGrad):
-			return xyzs, Zs, Elabels, natom, grads
+			return xyzs, Zs, labels, natom, grads
 		else:
-			return xyzs, Zs, Elabels, natom
+			return xyzs, Zs, labels, natom
 
 	def LoadDataToScratch(self, tformer):
 		"""
@@ -1809,14 +1809,14 @@ class TensorMolData_BP_Direct_WithEle(TensorMolData_BP_Direct_EE):
 		self.ScratchPointer += ncases
 		xyzs = self.xyzs[self.ScratchPointer-ncases:self.ScratchPointer]
 		Zs = self.Zs[self.ScratchPointer-ncases:self.ScratchPointer]
-		labels = self.Elabels[self.ScratchPointer-ncases:self.ScratchPointer]
+		labels = self.labels[self.ScratchPointer-ncases:self.ScratchPointer]
 		natom = self.natom[self.ScratchPointer-ncases:self.ScratchPointer]
 		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
 		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(self.Rr_cut, self.Ra_cut, self.ele, self.elep)
 		if (self.HasGrad):
-			return [xyzs, Zs, labels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer], rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, self.grads[self.ScratchPointer-ncases:self.ScratchPointer], natom, rad_p_ele, ang_t_elep, mil_jk]
 		else:
-			return [xyzs, Zs, labels, rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, natom, rad_p_ele, ang_t_elep, mil_jk]
 
 	def GetTestBatch(self,ncases):
 		if (self.ScratchState == 0):
@@ -1829,11 +1829,11 @@ class TensorMolData_BP_Direct_WithEle(TensorMolData_BP_Direct_EE):
 		self.test_ScratchPointer += ncases
 		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
-		labels = self.Elabels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		labels = self.labels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		natom = self.natom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
 		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
 		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(self.Rr_cut, self.Ra_cut, self.ele, self.elep)
 		if (self.HasGrad):
-			return [xyzs, Zs, labels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], natom, rad_p_ele, ang_t_elep, mil_jk]
 		else:
-			return [xyzs, Zs, labels, rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, natom, rad_p_ele, ang_t_elep, mil_jk]
