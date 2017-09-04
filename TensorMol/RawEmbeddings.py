@@ -1722,16 +1722,20 @@ def gaussian_overlap(gaussian_params):
 				* root_inverse_sigma_sum)
 	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
+	min_eigenvalue = tf.self_adjoint_eigvals(overlap_matrix)
 	orthogonal_scaling_matrix = matrix_power(overlap_matrix, -0.5)
-	return orthogonal_scaling_matrix
+	return orthogonal_scaling_matrix, min_eigenvalue
 
-def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors):
-	exponent = ((r - gaussian_params[:,0]) ** 2.0) / (-2.0 * (gaussian_params[:,1] ** 2))
+def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors, orthogonalize=False):
+	exponent = (tf.square(r - gaussian_params[:,0])) / (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
+	orthogonal_scaling_matrix, min_eigenvalue = gaussian_overlap(gaussian_params)
+	if orthogonalize: #Doesn't work for embedding optimization, no gradient for tf.svd
+		gaussian_embed = tf.reduce_sum(tf.expand_dims(gaussian_embed, axis=-2) * orthogonal_scaling_matrix, axis=-1)
 	gaussian_embed *= tf.where(tf.not_equal(r, 0), tf.ones_like(r), tf.zeros_like(r))
 	atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=eval(PARAMS["tf_prec"])), atomic_embed_factors], axis=0)
 	element_embed_factor = tf.expand_dims(tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=1), axis=-1)
-	return gaussian_embed * element_embed_factor
+	return gaussian_embed * element_embed_factor, min_eigenvalue
 
 def TF_spherical_harmonics_0(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
 	return tf.fill(tf.shape(inverse_distance_tensor), tf.constant(0.28209479177387814, dtype=eval(PARAMS["tf_prec"])))
@@ -1796,7 +1800,7 @@ def TF_spherical_harmonics(delta_xyzs, distance_tensor, max_l):
 	harmonics = TF_spherical_harmonics_4(delta_xyzs, delta_xyzs_squared, inverse_distance_tensor)
 	return harmonics
 
-def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params, atomic_embed_factors, l_max):
+def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params, atomic_embed_factors, l_max, orthogonalize=False):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 	Args:
@@ -1818,7 +1822,7 @@ def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params,
 		max_num_atoms = tf.shape(Zs)[1]
 		delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 		distance_tensor = tf.norm(delta_xyzs,axis=3)
-		atom_scaled_gaussians = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors)
+		atom_scaled_gaussians, min_eigenvalue = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors, orthogonalize)
 		spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
 	embedding = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_mols * max_num_atoms, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
@@ -1828,9 +1832,9 @@ def TF_gaussian_spherical_harmonics(xyzs, Zs, labels, elements, gaussian_params,
 		element_mask = tf.equal(tf.reshape(Zs, [num_mols * max_num_atoms]), element)
 		embedding_list.append(tf.boolean_mask(embedding, element_mask))
 		labels_list.append(tf.boolean_mask(tf.reshape(labels, [num_mols * max_num_atoms, tf.shape(labels)[2]]), element_mask))
-	return embedding_list, labels_list
+	return embedding_list, labels_list, min_eigenvalue
 
-def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_params, atomic_embed_factors, l_max):
+def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_params, atomic_embed_factors, l_max, orthogonalize=False):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 
@@ -1853,14 +1857,14 @@ def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 		max_num_atoms = tf.shape(Zs)[1]
 		delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 		distance_tensor = tf.norm(delta_xyzs,axis=3)
-		atom_scaled_gaussians = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors)
+		atom_scaled_gaussians, min_eigenvalue = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors, orthogonalize)
 		spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
 	embedding = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_mols * max_num_atoms, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
 	element_mask = tf.equal(tf.reshape(Zs, [num_mols * max_num_atoms]), element)
 	embedding = tf.boolean_mask(embedding, element_mask)
 	labels = tf.boolean_mask(tf.reshape(labels, [num_mols * max_num_atoms, tf.shape(labels)[2]]), element_mask)
-	return embedding, labels
+	return embedding, labels, min_eigenvalue
 
 def TF_random_rotate(xyzs, labels = None):
 	"""

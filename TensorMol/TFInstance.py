@@ -748,6 +748,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
 		self.Trainable = Trainable_
+		self.orthogonalize = False
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 
@@ -755,7 +756,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		batch_data = self.TData.GetTrainBatch(4 * self.batch_size)
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
-		embedding_list, labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, Zs, rotated_labels,
+		embedding_list, labels_list, _ = TF_gaussian_spherical_harmonics(rotated_xyzs, Zs, rotated_labels,
 											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
 											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
 											tf.Variable(self.l_max, trainable=False, dtype=tf.int32))
@@ -778,6 +779,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
 			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
 			l_max = tf.constant(self.l_max, dtype=tf.int32)
+			orthogonalize = tf.constant(PARAMS["SH_ORTH"], dtype=tf.uint8)
 			embedding_mean_std = []
 			labels_mean_std = []
 			for i in range(len(self.element)):
@@ -786,8 +788,8 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 				labels_mean_std.append([tf.constant(self.labels_mean_std[i][0], dtype=self.tf_prec),
 									tf.constant(self.labels_mean_std[i][1], dtype=self.tf_prec)])
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
-			self.embedding_list, self.labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, rotated_labels,
-											self.element, self.gaussian_params, self.atomic_embed_factors, l_max)
+			self.embedding_list, self.labels_list, min_eigenvalue = TF_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, rotated_labels,
+											self.element, self.gaussian_params, self.atomic_embed_factors, l_max, self.orthogonalize)
 			norm_embed_list, norm_labels_list = [], []
 			for i in range(len(self.element)):
 				norm_embed_list.append((self.embedding_list[i] - embedding_mean_std[i][0]) / embedding_mean_std[i][1])
@@ -799,9 +801,11 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 				self.output_list.append((self.norm_output_list[i] * labels_mean_std[i][1]) + labels_mean_std[i][0])
 				self.n_atoms_batch_list.append(tf.shape(self.output_list[-1])[0])
 			self.total_loss, self.loss = self.loss_op(self.norm_output_list, norm_labels_list)
-			self.sigma_constraint_loss = tf.reduce_sum(0.0001 / tf.square(self.gaussian_params[:,1])) * self.total_loss
-			self.loss_and_constraint = self.total_loss + self.sigma_constraint_loss
-			self.train_op = self.training(self.loss_and_constraint, self.learning_rate, self.momentum)
+			sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
+			r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
+			# gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss #Doesn't work due to gradient of eigenvalue
+			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint
+			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
@@ -898,8 +902,6 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		self.output_list = None
 		self.embedding_list = None
 		self.n_atoms_batch_list = None
-		self.sigma_constraint_loss = None
-		self.loss_and_constraint = None
 		return
 
 	def save_chk(self,  step):  # this can be included in the Instance
@@ -962,7 +964,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
 			else:
-				_, total_loss_value, loss_value, n_atoms_batch_list = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch_list], feed_dict=feed_dict)
+				total_loss_value, loss_value, n_atoms_batch_list = self.sess.run([self.total_loss, self.loss, self.n_atoms_batch_list], feed_dict=feed_dict)
 			train_loss += total_loss_value
 			n_atoms_epoch += sum(n_atoms_batch_list)
 		duration = time.time() - start_time
@@ -1029,7 +1031,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		batch_data = self.TData.GetTrainBatch(4 * self.batch_size)
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
-		embedding, labels = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
+		embedding, labels, _ = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
 											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
 											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
 											tf.Variable(self.l_max, trainable=False, dtype=tf.int32))
@@ -1054,7 +1056,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			outmean = tf.constant(self.outmean, dtype=self.tf_prec)
 			outstd = tf.constant(self.outstd, dtype=self.tf_prec)
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
-			self.embedding, self.labels = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			self.embedding, self.labels, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 											self.element, self.gaussian_params, self.atomic_embed_factors, l_max)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
@@ -1062,9 +1064,11 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.output = (self.norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-			self.sigma_constraint_loss = tf.reduce_sum(0.0001 / tf.square(self.gaussian_params[:,1])) * self.total_loss
-			self.loss_and_constraint = self.total_loss + self.sigma_constraint_loss
-			self.train_op = self.training(self.loss_and_constraint, self.learning_rate, self.momentum)
+			sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
+			r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
+			# gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss #Doesn't work due to gradient of eigenvalue
+			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint
+			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
@@ -1153,8 +1157,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.output = None
 		self.embedding = None
 		self.n_atoms_batch = None
-		self.sigma_constraint_loss = None
-		self.loss_and_constraint = None
 		return
 
 	def loss_op(self, output, labels):
