@@ -1880,7 +1880,7 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			batch_data=self.TData.GetTestBatch(self.batch_size)
 			feed_dict=self.fill_feed_dict(batch_data)
 			actual_mols  = self.batch_size
-			preds, total_loss_value, loss_value, energy_loss, grads_loss, mol_output, atom_outputs = self.sess.run([self.output, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output, self.atom_outputs],  feed_dict=feed_dict)
+			preds, total_loss_value, loss_value, energy_loss, grads_loss, mol_output, atom_outputs, element_factors, element_pair_factors = self.sess.run([self.output, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output, self.atom_outputs, self.element_factors, self.element_pair_factors],  feed_dict=feed_dict)
 			test_loss += loss_value
 			num_of_mols += actual_mols
 			test_energy_loss += energy_loss
@@ -1888,6 +1888,8 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		duration = time.time() - start_time
 		print( "testing...")
 		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, num_of_mols, duration)
+		LOGGER.info("Element factors: %s", element_factors)
+ 		LOGGER.info("Element pair factors: %s", element_pair_factors)
 		return test_loss
 
 	def save_chk(self, step):  # We need to merge this with the one in TFInstance
@@ -1994,10 +1996,10 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
 			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
-			element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
-			element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
+			self.element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
+			self.element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, element_factors, element_pair_factors)
+			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, self.element_factors, self.element_pair_factors)
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
 			self.check = tf.add_check_numerics_ops()
 			self.gradient = tf.gradients(self.output, self.xyzs_pl)
@@ -3416,4 +3418,3 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update(MolInstance_DirectBP_EE_Charge
 			raise Exception("DontEatShit")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_pl] + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl], batch_data)}
 		return feed_dict
-

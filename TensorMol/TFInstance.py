@@ -439,7 +439,6 @@ class Instance:
 		raise Exception("Cannot Train base...")
 		return
 
-
 	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():

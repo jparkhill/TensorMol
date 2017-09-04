@@ -427,7 +427,7 @@ def TestTFSym():
 
 def train_energy_symm_func_channel():
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.0001
+	PARAMS["learning_rate"] = 0.001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 500
