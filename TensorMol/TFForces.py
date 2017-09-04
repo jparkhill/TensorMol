@@ -116,7 +116,7 @@ class BumpHolder(ForceHolder):
 		Args:
 			m: a molecule.
 		"""
-		ForceHolder.__init__(natom_)
+		ForceHolder.__init__(self, natom_)
 		self.maxbump = maxbump_
 		self.nb_pl = None
 		self.h = None
