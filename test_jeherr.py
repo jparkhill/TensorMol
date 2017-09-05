@@ -276,20 +276,20 @@ def TestTFGauSH():
 	labelstack = tf.stack(labelslist)
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
-	tmp = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8], gaussian_params, atomic_embed_factors, 4, orthogonalize=True)
-	check = tf.add_check_numerics_ops()
+	element = tf.constant(1, dtype=tf.int32)
+	tmp = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 4, orthogonalize=False)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
 	tmp2 = sess.run([tmp])
-	print tmp2[0][0]
-	TreatedAtoms = a.AtomTypes()
-	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-	# tset = TensorData(a,d)
-	mol_ = a.mols[0]
-	print d.Emb(mol_, -1, mol_.coords[0], MakeOutputs=False)[0]
-	print mol_.atoms[0]
+	print tmp2[0].shape
+	# TreatedAtoms = a.AtomTypes()
+	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	# # tset = TensorData(a,d)
+	# mol_ = a.mols[0]
+	# print d.Emb(mol_, -1, mol_.coords[0], MakeOutputs=False)[0]
+	# print mol_.atoms[0]
 
 def test_gaussian_overlap():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
@@ -463,10 +463,10 @@ def train_energy_symm_func_channel():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-# TestTFGauSH()
-# train_forces_GauSH_direct("SmallMols")
+TestTFGauSH()
+# train_forces_GauSH_direct("SmallMols_rand")
 # TestTFSym()
-train_energy_symm_func_channel()
+# train_energy_symm_func_channel()
 # test_gaussian_overlap()
 
 # a=MSet("SmallMols")

@@ -1047,7 +1047,7 @@ def TFCoulombCosLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 def TFCoulombPolyLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	"""
 	Tensorflow implementation of short range cutoff sparse-coulomb
-	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j 
+	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j
 
 	Args:
 	    R: a nmol X maxnatom X 3 tensor of coordinates.
@@ -1059,7 +1059,7 @@ def TFCoulombPolyLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	R_width = PARAMS["Poly_Width"]*BOHRPERA
-	R_begin = R_cut 
+	R_begin = R_cut
 	R_end =  R_cut+R_width
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1071,7 +1071,7 @@ def TFCoulombPolyLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
 	t = (RijRij2 - R_begin)/R_width
 	Cut_step1  = tf.where(tf.greater(t, 0.0), -t*t*(2.0*t-3.0), tf.zeros_like(t))
-	Cut = tf.where(tf.greater(t, 1.0), tf.ones_like(t), Cut_step1)	
+	Cut = tf.where(tf.greater(t, 1.0), tf.ones_like(t), Cut_step1)
 	# Grab the Q's.
 	Qii = tf.slice(Radpair,[0,0],[-1,2])
 	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
@@ -1747,17 +1747,35 @@ def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
 def matrix_power(matrix, power):
 	"""
 	Raise a Hermitian Matrix to a possibly fractional power.
+
+	Args:
+		matrix (tf.float): Diagonalizable matrix
+		power (tf.float): power to raise the matrix to
+
+	Returns:
+		matrix_to_power (tf.float): matrix raised to the power
+
+	Note:
+		As of tensorflow v1.3, tf.svd() does not have gradients implimented
 	"""
 	s, U, V = tf.svd(matrix)
-	return s
 	s = tf.maximum(s, tf.pow(10.0, -14.0))
 	return tf.matmul(U, tf.matmul(tf.diag(tf.pow(s, power)), tf.transpose(V)))
 
 def matrix_power2(matrix, power):
-	matrix_eigenvals, matrix_eigenvectors = tf.self_adjoint_eig(matrix)
-	singular_values = tf.sqrt(matrix_eigenvals)
+	"""
+	Raises a matrix to a possibly fractional power
 
-	return singular_values
+	Args:
+		matrix (tf.float): Diagonalizable matrix
+		power (tf.float): power to raise the matrix to
+
+	Returns:
+		matrix_to_power (tf.float): matrix raised to the power
+	"""
+	matrix_eigenvals, matrix_eigenvecs = tf.self_adjoint_eig(matrix)
+	matrix_to_power = tf.matmul(matrix_eigenvecs, tf.matmul(tf.matrix_diag(tf.pow(matrix_eigenvals, power)), tf.transpose(matrix_eigenvecs)))
+	return matrix_to_power
 
 def gaussian_overlap(gaussian_params):
 	r_nought = gaussian_params[:,0]
@@ -1765,7 +1783,6 @@ def gaussian_overlap(gaussian_params):
 	scaling_factor = tf.sqrt(np.pi / 2)
 	exponential_factor = tf.exp(-tf.square(tf.expand_dims(r_nought, axis=0) - tf.expand_dims(r_nought, axis=1))
 	/ (2.0 * (tf.square(tf.expand_dims(sigma, axis=0)) + tf.square(tf.expand_dims(sigma, axis=1)))))
-	# return exponential_factor
 	root_inverse_sigma_sum = tf.sqrt((1.0 / tf.expand_dims(tf.square(sigma), axis=0)) + (1.0 / tf.expand_dims(tf.square(sigma), axis=1)))
 	erf_numerator = (tf.expand_dims(r_nought, axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
 				+ tf.expand_dims(r_nought, axis=1) * tf.expand_dims(tf.square(sigma), axis=0))
@@ -1773,22 +1790,22 @@ def gaussian_overlap(gaussian_params):
 				* root_inverse_sigma_sum)
 	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
-	# min_eigenvalue = tf.self_adjoint_eigvals(overlap_matrix)
-	# orthogonal_scaling_matrix = matrix_power(overlap_matrix, -0.5)
+	min_eigenval = tf.reduce_min(tf.self_adjoint_eig(overlap_matrix)[0])
 	orthogonal_scaling_matrix = matrix_power2(overlap_matrix, -0.5)
-	return orthogonal_scaling_matrix
-	# return orthogonal_scaling_matrix, min_eigenvalue
+	return orthogonal_scaling_matrix, min_eigenval
 
 def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors, orthogonalize=False):
 	exponent = (tf.square(r - gaussian_params[:,0])) / (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
 	orthogonal_scaling_matrix, min_eigenvalue = gaussian_overlap(gaussian_params)
-	if orthogonalize: #Doesn't work for embedding optimization, no gradient for tf.svd
+	if orthogonalize:
 		gaussian_embed = tf.reduce_sum(tf.expand_dims(gaussian_embed, axis=-2) * orthogonal_scaling_matrix, axis=-1)
 	gaussian_embed *= tf.where(tf.not_equal(r, 0), tf.ones_like(r), tf.zeros_like(r))
 	atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=eval(PARAMS["tf_prec"])), atomic_embed_factors], axis=0)
 	element_embed_factor = tf.expand_dims(tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=1), axis=-1)
-	return gaussian_embed * element_embed_factor, min_eigenvalue
+	return tf.gather(atomic_embed_factor, Zs)
+	# return gaussian_embed * element_embed_factor, min_eigenvalue
+	return gaussian_embed * element_embed_factor
 
 def TF_spherical_harmonics_0(del_xyzs, del_xyzs_squared, inverse_distance_tensor):
 	return tf.fill(tf.shape(inverse_distance_tensor), tf.constant(0.28209479177387814, dtype=eval(PARAMS["tf_prec"])))
@@ -1904,14 +1921,17 @@ def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 		embedding (tf.float): atom embeddings for element
 		labels (tf.float): atom labels for element
 	"""
-	jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
-	with jit_scope():
-		num_mols = tf.shape(Zs)[0]
-		max_num_atoms = tf.shape(Zs)[1]
-		delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
-		distance_tensor = tf.norm(delta_xyzs,axis=3)
-		atom_scaled_gaussians, min_eigenvalue = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors, orthogonalize)
-		spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
+	# jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
+	# with jit_scope():
+	num_mols = tf.shape(Zs)[0]
+	max_num_atoms = tf.shape(Zs)[1]
+	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
+	element_delta_xyzs = tf.gather_nd(delta_xyzs, tf.where(tf.equal(Zs, element)))
+	distance_tensor = tf.norm(element_delta_xyzs,axis=2)
+	# atom_scaled_gaussians, min_eigenvalue = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors, orthogonalize)
+	atom_scaled_gaussians = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), Zs, gaussian_params, atomic_embed_factors, orthogonalize)
+	return atom_scaled_gaussians
+	spherical_harmonics = TF_spherical_harmonics(delta_xyzs, distance_tensor, 0)
 	embedding = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_mols * max_num_atoms, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
 	element_mask = tf.equal(tf.reshape(Zs, [num_mols * max_num_atoms]), element)
