@@ -283,7 +283,7 @@ def TestTFGauSH():
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
 	tmp2 = sess.run([tmp])
-	print tmp2[0].shape
+	print tmp2[0][1].shape
 	# TreatedAtoms = a.AtomTypes()
 	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	# # tset = TensorData(a,d)
@@ -426,7 +426,7 @@ def TestTFSym():
 		f.write(chrome_trace)
 
 def train_energy_symm_func_channel():
-	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["HiddenLayers"] = [512, 512, 512, 512]
 	PARAMS["learning_rate"] = 0.001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
@@ -463,8 +463,8 @@ def train_energy_symm_func_channel():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
-# train_forces_GauSH_direct("SmallMols_rand")
+# TestTFGauSH()
+train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
