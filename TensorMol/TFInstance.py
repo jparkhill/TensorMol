@@ -1058,7 +1058,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			outstd = tf.constant(self.outstd, dtype=self.tf_prec)
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
 			self.embedding, self.labels, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
-											element, self.gaussian_params, self.atomic_embed_factors, l_max, orthogonalize=self.orthogonalize)
+							element, self.gaussian_params, self.atomic_embed_factors, l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
 			self.norm_output = self.inference(self.norm_embedding)
@@ -1224,15 +1224,23 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		Ncase_test = self.TData.NTest
 		test_loss, n_atoms_epoch = 0.0, 0.0
 		test_start_time = time.time()
+		mean_test_error, std_dev_test_error = 0.0, 0.0
+		sum_abs_error_matrix, sum_square_error_matrix = 0.0, 0.0
 		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
 			feed_dict = self.fill_feed_dict(batch_data)
 			output, labels, total_loss_value, loss_value, n_atoms_batch, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
-		self.TData.EvaluateTestBatch(labels, output)
+			sum_abs_error_matrix += np.sum(np.abs(output - labels))
+			sum_square_error_matrix += np.sum(np.square(output - labels))
+			# batch_mean_error, batch_std_dev_error = self.TData.EvaluateTestBatch(labels, output)
+			# mean_test_error += batch_mean_error
+			# std_dev_test_error += batch_std_dev_error
 		duration = time.time() - test_start_time
 		print("testing...")
+		LOGGER.info("MAE: %f", sum_abs_error_matrix / (n_atoms_epoch * 3))
+		LOGGER.info("RMSE: %f", np.sqrt(sum_abs_error_matrix / (n_atoms_epoch * 3)))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
 		self.print_testing(step, test_loss, n_atoms_epoch, duration)

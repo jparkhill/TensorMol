@@ -1919,8 +1919,6 @@ def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 		embedding (tf.float): atom embeddings for element
 		labels (tf.float): atom labels for element
 	"""
-	jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
-	# with jit_scope():
 	num_mols = tf.shape(Zs)[0]
 	max_num_atoms = tf.shape(Zs)[1]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
@@ -1930,9 +1928,8 @@ def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 	element_Zs = tf.gather(Zs, element_mask[:,0])
 	element_labels = tf.gather_nd(labels, element_mask)
 	distance_tensor = tf.norm(element_delta_xyzs,axis=2)
-	with jit_scope():
-		atom_scaled_gaussians, min_eigenval = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), element_Zs, gaussian_params, atomic_embed_factors, orthogonalize)
-		spherical_harmonics = TF_spherical_harmonics(element_delta_xyzs, distance_tensor, 0)
+	atom_scaled_gaussians, min_eigenval = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), element_Zs, gaussian_params, atomic_embed_factors, orthogonalize)
+	spherical_harmonics = TF_spherical_harmonics(element_delta_xyzs, distance_tensor, 0)
 	element_embedding = tf.reshape(tf.einsum('jkg,jkl->jgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_batch_elements, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
 	return element_embedding, element_labels, min_eigenval
