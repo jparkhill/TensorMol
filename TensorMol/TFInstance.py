@@ -439,7 +439,6 @@ class Instance:
 		raise Exception("Cannot Train base...")
 		return
 
-
 	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
 		with tf.Graph().as_default():
@@ -1024,6 +1023,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
 		self.Trainable = Trainable_
+		self.orthogonalize = True
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 
@@ -1034,7 +1034,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		embedding, labels, _ = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
 											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
 											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
-											tf.Variable(self.l_max, trainable=False, dtype=tf.int32))
+											tf.Variable(self.l_max, trainable=False, dtype=tf.int32), self.orthogonalize)
 		with tf.Session() as sess:
 			sess.run(tf.global_variables_initializer())
 			embed, label = sess.run([embedding, labels])
@@ -1051,13 +1051,14 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
 			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
 			l_max = tf.constant(self.l_max, dtype=tf.int32)
+			element = tf.constant(self.element, dtype=tf.int32)
 			inmean = tf.constant(self.inmean, dtype=self.tf_prec)
 			instd = tf.constant(self.instd, dtype=self.tf_prec)
 			outmean = tf.constant(self.outmean, dtype=self.tf_prec)
 			outstd = tf.constant(self.outstd, dtype=self.tf_prec)
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
 			self.embedding, self.labels, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
-											self.element, self.gaussian_params, self.atomic_embed_factors, l_max)
+											element, self.gaussian_params, self.atomic_embed_factors, l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
 			self.norm_output = self.inference(self.norm_embedding)
@@ -1066,8 +1067,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
 			sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
 			r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
-			# gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss #Doesn't work due to gradient of eigenvalue
-			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint
+			gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
+			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint + gaussian_overlap_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()

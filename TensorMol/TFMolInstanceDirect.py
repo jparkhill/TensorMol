@@ -1290,7 +1290,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			#tf.verify_tensor_all_finite(self.Scatter_Sym[1], "Nan in output!!! 1")
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
 			self.check = tf.add_check_numerics_ops()
-			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
+			self.gradient = tf.gradients(self.output, self.xyzs_pl)
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss = self.loss_op(self.output, self.gradient, self.label_pl, self.grads_pl)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -1710,6 +1710,46 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		self.NetType = "RawBP_Grad_Linear"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
+		self.TData.ele = self.eles_np
+		self.TData.elep = self.eles_pairs_np
+
+	def SetANI1Param(self, prec=np.float64):
+		self.Ra_cut = PARAMS["AN1_a_Rc"]
+		self.Rr_cut = PARAMS["AN1_r_Rc"]
+		zetas = np.array([[PARAMS["AN1_zeta"]]], dtype = prec)
+		etas = np.array([[PARAMS["AN1_eta"]]], dtype = prec)
+		AN1_num_a_As = PARAMS["AN1_num_a_As"]
+		AN1_num_a_Rs = PARAMS["AN1_num_a_Rs"]
+		thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = prec)
+		rs =  np.array([ self.Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = prec)
+		# Create a parameter tensor. 4 x nzeta X neta X ntheta X nr
+		p1 = np.tile(np.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
+		p2 = np.tile(np.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
+		p3 = np.tile(np.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_a_Rs,1])
+		p4 = np.tile(np.reshape(rs,[1,1,1,AN1_num_a_Rs,1]),[1,1,AN1_num_a_As,1,1])
+		SFPa = np.concatenate([p1,p2,p3,p4],axis=4)
+		self.SFPa = np.transpose(SFPa, [4,0,1,2,3])
+		etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = prec)
+		AN1_num_r_Rs = PARAMS["AN1_num_r_Rs"]
+		rs_R =  np.array([ self.Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = prec)
+		# Create a parameter tensor. 2 x  neta X nr
+		p1_R = np.tile(np.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
+		p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
+		SFPr = np.concatenate([p1_R,p2_R],axis=2)
+		self.SFPr = np.transpose(SFPr, [2,0,1])
+		self.inshape = int(AN1_num_r_Rs + AN1_num_a_Rs*AN1_num_a_As)
+		self.inshape_withencode = int(self.inshape + AN1_num_r_Rs)
+		#self.inshape = int(len(self.eles)*AN1_num_r_Rs)
+		p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
+		p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
+		SFPa2 = np.concatenate([p1,p2],axis=2)
+		self.SFPa2 = np.transpose(SFPa2, [2,0,1])
+		p1_new = np.reshape(rs_R,[AN1_num_r_Rs,1])
+		self.SFPr2 = np.transpose(p1_new, [1,0])
+		self.zeta = PARAMS["AN1_zeta"]
+		self.eta = PARAMS["AN1_eta"]
+		self.HasANI1PARAMS = True
+		print ("self.inshape:", self.inshape)
 
 	def Clean(self):
 		MolInstance_DirectBP_Grad.Clean(self)
@@ -1732,7 +1772,7 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.mil_jk_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.grads_pl] + [self.n_atoms] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.mil_jk_pl], batch_data)}
 		return feed_dict
 
 	def inference(self, inp, indexs):
@@ -1781,6 +1821,89 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
 			#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), atom_outputs
+
+	def loss_op(self, output, nn_grads, labels, grads, n_atoms):
+		energy_diff  = tf.subtract(output, labels)
+		energy_loss = tf.nn.l2_loss(energy_diff)
+		grads_diff = tf.subtract(nn_grads, grads)
+		nonzero_grads_diff = tf.gather_nd(grads_diff, tf.where(tf.not_equal(grads_diff, 0)))
+		grads_loss = tf.nn.l2_loss(nonzero_grads_diff) / tf.reduce_sum(n_atoms) * self.batch_size
+		#loss = tf.multiply(grads_loss, energy_loss)
+		# loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
+		loss = energy_loss + grads_loss
+		#loss = tf.identity(energy_loss)
+		tf.add_to_collection('losses', loss)
+		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss
+
+	def train_step(self, step):
+		"""
+		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		train_energy_loss = 0.0
+		train_grads_loss = 0.0
+		num_of_mols = 0
+		pre_output = np.zeros((self.batch_size),dtype=np.float64)
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			batch_data = self.TData.GetTrainBatch(self.batch_size)
+			actual_mols  = self.batch_size
+			t = time.time()
+			_, _, total_loss_value, loss_value, energy_loss, grads_loss, mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output, self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
+			train_loss = train_loss + loss_value
+			train_energy_loss += energy_loss
+			train_grads_loss += grads_loss
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
+		return
+
+	def test(self, step):
+		"""
+		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		test_loss =  0.0
+		start_time = time.time()
+		Ncase_test = self.TData.NTest
+		num_of_mols = 0
+		test_energy_loss = 0.0
+		test_grads_loss = 0.0
+		for ministep in range (0, int(Ncase_test/self.batch_size)):
+			batch_data=self.TData.GetTestBatch(self.batch_size)
+			feed_dict=self.fill_feed_dict(batch_data)
+			actual_mols  = self.batch_size
+			preds, total_loss_value, loss_value, energy_loss, grads_loss, mol_output, atom_outputs, element_factors, element_pair_factors = self.sess.run([self.output, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output, self.atom_outputs, self.element_factors, self.element_pair_factors],  feed_dict=feed_dict)
+			test_loss += loss_value
+			num_of_mols += actual_mols
+			test_energy_loss += energy_loss
+			test_grads_loss += grads_loss
+		duration = time.time() - start_time
+		print( "testing...")
+		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, num_of_mols, duration)
+		LOGGER.info("Element factors: %s", element_factors)
+ 		LOGGER.info("Element pair factors: %s", element_pair_factors)
+		return test_loss
+
+	def save_chk(self, step):  # We need to merge this with the one in TFInstance
+		self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
+		LOGGER.info("Saving Checkpoint file in the TFMoInstance")
+		self.saver.save(self.sess,  self.chk_file)
+		return
+
+	def print_training(self, step, loss, energy_loss, grads_loss, Ncase, duration, Train=True):
+		if Train:
+			LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f  energy_loss: %.10f  grad_loss: %.10f", step, duration, float(loss)/(Ncase), float(energy_loss)/(Ncase), float(grads_loss)/(Ncase))
+		else:
+			LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f energy_loss: %.10f  grad_loss: %.10f", step, duration, float(loss)/(Ncase), float(energy_loss)/(Ncase), float(grads_loss)/(Ncase))
+		return
 
 	def evaluate(self, batch_data):
 		"""
@@ -1840,7 +1963,7 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=False, dtype=tf.float64)
 			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl, mil_jkt, element_factors, element_pair_factors )
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
-			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
+			self.gradient = tf.gradients(self.output, self.xyzs_pl)
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
@@ -1861,23 +1984,26 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.MaxNAtoms]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]))
-			self.Radp_pl=tf.placeholder(tf.int32, shape=tuple([None,3]))
-			self.Angt_pl=tf.placeholder(tf.int32, shape=tuple([None,4]))
+			self.Radp_Ele_pl=tf.placeholder(tf.int32, shape=tuple([None,4]))
+			self.Angt_Elep_pl=tf.placeholder(tf.int32, shape=tuple([None,5]))
 			self.mil_jk_pl = tf.placeholder(tf.int32, shape=tuple([None,4]))
+			self.n_atoms = tf.placeholder(tf.float64, shape=tuple([self.batch_size]))
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
 			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
 			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
-			Rr_cut   = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
-			Ra_cut   = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
-			zeta   = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
-			eta   = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			self.element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
+			self.element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
+			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, self.element_factors, self.element_pair_factors)
 			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
 			self.check = tf.add_check_numerics_ops()
-			self.gradient  = tf.gradients(self.output, self.xyzs_pl)
-			self.total_loss, self.loss, self.energy_loss, self.grads_loss = self.loss_op(self.output, self.gradient, self.label_pl, self.grads_pl)
+			self.gradient = tf.gradients(self.output, self.xyzs_pl)
+			self.total_loss, self.loss, self.energy_loss, self.grads_loss = self.loss_op(self.output, self.gradient, self.label_pl, self.grads_pl, self.n_atoms)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -1885,8 +2011,6 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
-			if (self.FindLastCheckpoint() != False):
-				self.saver.restore(self.sess, self.FindLastCheckpoint())
 		return
 
 class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):

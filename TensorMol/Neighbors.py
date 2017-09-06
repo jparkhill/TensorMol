@@ -338,7 +338,6 @@ class NeighborListSet:
 		#import time
 		t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		#print ("make pair and triple time:", time.time()-t0)
 		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
@@ -379,16 +378,13 @@ class NeighborListSet:
 				prev_l = current_l
 				prev_atom = current_atom
 				prev_mol = current_mol
-		#print ("time of making l_max:", time.time() - t1)
 		#print ("valance_pair:", valance_pair[:20])
 		#print ("trtE:", trtE_sorted[:20])
 		mil_jk = np.zeros((trt.shape[0],4))
 		mil_jk[:,[0,1,2]]= trtE_sorted[:,[0,1,4]]
 		mil_jk[:,3] = valance_pair
-		#print ("time of after processing..", time.time() - t_start)
 		#print ("mil_jk", mil_jk[:20])
 		jk_max = np.max(valance_pair)
-		#print ("jk_max:", jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
 
 
@@ -403,7 +399,7 @@ class CellList:
 			x_: coordinate array
 			cutoff_: interaction cutoff
 			ele_: element types of each atoms.
-			padding_: padding of the molecule box. 
+			padding_: padding of the molecule box.
 		"""
 		self.natom = x_.shape[0] # includes periodic images.
 		self.x = x_.copy()
@@ -423,10 +419,10 @@ class CellList:
 			[np.min(self.x[:,1])-self.padding, np.max(self.x[:,1])+self.padding],\
 			[np.min(self.x[:,2])-self.padding, np.max(self.x[:,2])+self.padding]])
 		#print ("core_begin_end:", core_begin_end)
-		core_size = core_begin_end[:,1] - core_begin_end[:,0]	
+		core_size = core_begin_end[:,1] - core_begin_end[:,0]
 		n_core = np.array([core_size[0]/self.Rcore, core_size[1]/self.Rcore, core_size[2]/self.Rcore], dtype=int) + 1
 		n_cell = n_core.copy()
-		cell_begin_end = core_begin_end + np.array([-self.Rskin, self.Rskin]) 
+		cell_begin_end = core_begin_end + np.array([-self.Rskin, self.Rskin])
 		#print ("cell_begin_end:", cell_begin_end)
 		#print ("n_core:", n_core)
 		core_index = [[] for i in range(0, np.prod(n_core))]
@@ -441,5 +437,3 @@ class CellList:
 		#print ("core_index:", core_index)
 		#print ("cell_index:", cell_index)
 		return core_index, cell_index
-
-
