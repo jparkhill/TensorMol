@@ -76,11 +76,12 @@ class Mol:
 		c = 0.38088
 		self.vdw = 0.0
 		s6 = S6['B3LYP']
+		self.properties["vdw"] = 0.0
 		for i in range (0, self.NAtoms()):
 			atom1 = self.atoms[i]
-		for j in range (i+1, self.NAtoms()):
-			atom2 = self.atoms[j]
-		self.properties["vdw"] += -s6*c*((C6_coff[atom1]*C6_coff[atom2])**0.5)/(self.DistMatrix[i][j])**6 * (1.0/(1.0+6.0*(self.DistMatrix[i][j]/(atomic_vdw_radius[atom1]+atomic_vdw_radius[atom2]))**-12))
+			for j in range (i+1, self.NAtoms()):
+				atom2 = self.atoms[j]
+				self.properties["vdw"] += -s6*c*((C6_coff[atom1]*C6_coff[atom2])**0.5)/(self.DistMatrix[i][j])**6 * (1.0/(1.0+6.0*(self.DistMatrix[i][j]/(atomic_vdw_radius[atom1]+atomic_vdw_radius[atom2]))**-12))
 		return
 
 	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
