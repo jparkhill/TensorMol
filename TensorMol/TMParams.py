@@ -116,6 +116,7 @@ class TMParams(dict):
 		self["MetaBowlK"] = 0.0
 		self["MetaMaxBumps"] = 2500
 		# parameters of electrostatic embedding
+		self["Poly_Width"] = 4.6
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r

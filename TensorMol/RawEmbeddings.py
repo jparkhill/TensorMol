@@ -1088,6 +1088,61 @@ def TFCoulombPolyLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	return E_ee
 
 
+def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
+	"""
+	Tensorflow implementation of short range cutoff sparse-coulomb
+	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j 
+	damping function in http://pubs.rsc.org/en/content/articlepdf/2008/cp/b810189b is used.	
+
+	Args:
+	    R: a nmol X maxnatom X 3 tensor of coordinates.
+	    c6 : nele. Grimmer C6 coff in a.u.
+	    R_vdw: nele. Grimmer vdw radius in a.u.
+	    R_cut: Radial Cutoff
+	    Radpair: None zero pairs X 3 tensor (mol, i, j)
+	    prec: a precision.
+	Returns:
+	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+	"""
+	R = tf.multiply(R, BOHRPERA)
+	R_width = PARAMS["Poly_Width"]*BOHRPERA
+	R_begin = R_cut
+	R_end =  R_cut+R_width	
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	nele = tf.shape(eles)[0]
+	natom2 = natom*natom
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+	
+	t = (RijRij2 - R_begin)/R_width
+	Cut_step1  = tf.where(tf.greater(t, 0.0), -t*t*(2.0*t-3.0), tf.zeros_like(t))
+	Cut = tf.where(tf.greater(t, 1.0), tf.ones_like(t), Cut_step1)
+	
+	ZAll = AllDoublesSet(Zs, prec=tf.int64)
+	ZPairs1 = tf.slice(ZAll,[0,0,0,1],[nmol,natom,natom,1])
+	ZPairs2 = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1])
+	Ri=tf.gather_nd(ZPairs1, Radpair)
+	Rl=tf.gather_nd(ZPairs2, Radpair)
+	ElemIndex_i = tf.slice(tf.where(tf.equal(Ri, tf.reshape(eles, [1,nele]))),[0,1],[nnz,1])
+	ElemIndex_j = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles, [1,nele]))),[0,1],[nnz,1])
+	
+	c6_i=tf.gather_nd(c6, ElemIndex_i)
+	c6_j=tf.gather_nd(c6, ElemIndex_j)
+	Rvdw_i = tf.gather_nd(R_vdw, ElemIndex_i)
+	Rvdw_j = tf.gather_nd(R_vdw, ElemIndex_j)
+	Kern = -Cut*tf.sqrt(c6_i*c6_j)/tf.pow(RijRij2,6.0)*1.0/(1.0+6.0*tf.pow(RijRij2/(Rvdw_i+Rvdw_j),-12.0))
+		
+	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
+	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
+	sparse_index =tf.stack([mol_index, range_index], axis=1)
+	sp_atomoutputs = tf.SparseTensor(sparse_index, Kern, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
+	E_vdw = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+	return E_vdw
+
 def TFCoulombErfLR(R, Qs, R_cut,  Radpair, prec=tf.float64):
 	"""
 	Tensorflow implementation of long range cutoff sparse-Erf
@@ -2414,6 +2469,11 @@ class ANISym:
 		self.SFPr = None
 		self.SymGrads = None
 		self.TDSSet = None
+		self.vdw_R = np.zeros(2)
+		self.C6 = np.zeros(2)
+		for i, ele in enumerate([1,8]):
+			self.C6[i] = C6_coff[ele]* (BOHRPERA*10.0)**6.0 / JOULEPERHARTREE # convert into a.u.
+			self.vdw_R[i] = atomic_vdw_radius[ele]*BOHRPERA
 
 	def SetANI1Param(self):
 		zetas = np.array([[8.0]], dtype = np.float64)
@@ -2445,7 +2505,7 @@ class ANISym:
 
 		etas_R = np.array([[4.0]], dtype = np.float64)
 		AN1_num_r_Rs = 32
-		AN1_r_Rc = 4.6
+		AN1_r_Rc = 15
 		rs_R =  np.array([ AN1_r_Rc*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
 		Rr_cut = AN1_r_Rc
 		# Create a parameter tensor. 2 x  neta X nr
@@ -2470,15 +2530,17 @@ class ANISym:
 		"""
 		with tf.Graph().as_default():
 			self.xyz_pl=tf.placeholder(tf.float64, shape=tuple([self.MolPerBatch, self.MaxAtoms,3]))
-			self.Z_pl=tf.placeholder(tf.int32, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
-			self.Radp_pl=tf.placeholder(tf.int32, shape=tuple([None,3]))
-			self.Angt_pl=tf.placeholder(tf.int32, shape=tuple([None,4]))
-			self.RadpEle_pl=tf.placeholder(tf.int32, shape=tuple([None,4]))
-			self.AngtEle_pl=tf.placeholder(tf.int32, shape=tuple([None,5]))
-			self.mil_jk_pl=tf.placeholder(tf.int32, shape=tuple([None,4]))
+			self.Z_pl=tf.placeholder(tf.int64, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
+			self.Radp_pl=tf.placeholder(tf.int64, shape=tuple([None,3]))
+			self.Angt_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.RadpEle_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.AngtEle_pl=tf.placeholder(tf.int64, shape=tuple([None,5]))
+			self.mil_jk_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
 			self.Qs_pl=tf.placeholder(tf.float64, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
-			Ele = tf.Variable([[1],[8]], dtype = tf.int32)
-			Elep = tf.Variable([[1,1],[1,8],[8,8]], dtype = tf.int32)
+			Ele = tf.Variable([[1],[8]], dtype = tf.int64)
+			Elep = tf.Variable([[1,1],[1,8],[8,8]], dtype = tf.int64)
+			C6 = tf.Variable(self.C6, tf.float64)
+			R_vdw = tf.Variable(self.vdw_R, tf.float64)
 			#zetas = tf.Variable([[8.0]], dtype = tf.float64)
 			#etas = tf.Variable([[4.0]], dtype = tf.float64)
 			SFPa = tf.Variable(self.SFPa, tf.float64)
@@ -2488,7 +2550,9 @@ class ANISym:
 			#P3 = tf.Variable(self.P3, tf.int32)
 			#P5 = tf.Variable(self.P5, tf.int32)
 			Ra_cut = 3.1
-			Rr_cut = 4.6
+			Rr_cut = 15.0
+			Ree_on = 0.0
+			self.A, self.B, self.C, self.D, self.E, self.F, self.G, self.H, self.I = TFVdwPolyLR(self.xyz_pl,  self.Z_pl, Ele, C6, R_vdw, Ree_on, self.Radp_pl)
 			#self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
@@ -2496,7 +2560,7 @@ class ANISym:
 			#self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs = TFSymSet_Radius_Scattered_Linear_Qs(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep,  self.eta,  self.Radp_pl, self.Qs_pl)
 			#self.Scatter_Sym_Linear, self.Sym_Index_Linear = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			#self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele = TFSymSet_Scattered_Linear_WithEle(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.RadpEle_pl, self.AngtEle_pl, self.mil_jk_pl)
-			self.Scatter_Sym_Linear_tmp, self.Sym_Index_Linear_tmp = TFSymSet_Scattered_Linear_tmp(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.RadpEle_pl, self.AngtEle_pl, self.mil_jk_pl)
+			#self.Scatter_Sym_Linear_tmp, self.Sym_Index_Linear_tmp = TFSymSet_Scattered_Linear_tmp(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.RadpEle_pl, self.AngtEle_pl, self.mil_jk_pl)
 			#self.Eee, self.Kern, self.index = TFCoulombCosLR(self.xyz_pl, tf.cast(self.Z_pl, dtype=tf.float64), Rr_cut, self.Radp_pl)
 			#self.gradient = tf.gradients(self.Scatter_Sym, self.xyz_pl)
 			#self.gradient_update2 = tf.gradients(self.Scatter_Sym_Update2, self.xyz_pl)
@@ -2531,11 +2595,34 @@ class ANISym:
 		t_total = time.time()
 		Ele = np.asarray([1,8])
 		Elep = np.asarray([[1,1],[1,8],[8,8]])
+		m = self.set.mols[0]
+		vdw = 0.0
+		for i in range(0, m.NAtoms()):
+			for j in range(i+1, m.NAtoms()):
+				dist = np.sum(np.square(m.coords[i]-m.coords[j]))**0.5
+				c6_i = C6_coff[m.atoms[i]]*(10.0)**6.0 / JOULEPERHARTREE
+				c6_j = C6_coff[m.atoms[j]]*(10.0)**6.0 / JOULEPERHARTREE
+				Ri = atomic_vdw_radius[m.atoms[i]]
+				Rj = atomic_vdw_radius[m.atoms[j]]
+				if dist > 4.6:
+					cut = 1.0
+				else:
+					t = dist/4.6
+					cut = -t*t*(2.0*t-3.0)
+				print (dist*BOHRPERA, -(c6_i*c6_j)**0.5/dist**6 /(1.0+6*(dist/(Ri+Rj))**-12)*cut, cut, 1.0/(1.0+6*(dist/(Ri+Rj))**-12))
+				vdw += -(c6_i*c6_j)**0.5/dist**6 /(1.0+6*(dist/(Ri+Rj))**-12)*cut
+		print ("vdw:", vdw,"\n\n\n")
+	
+
 		for i in range (0, int(self.nmol/self.MolPerBatch-1)):
 			t = time.time()
 			NL = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], True, True, Zs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], sort_=True)
 			rad_p, ang_t = NL.buildPairsAndTriples(self.Rr_cut, self.Ra_cut)
 			rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(self.Rr_cut, self.Ra_cut, Ele, Elep)
+
+			NLEE = NeighborListSet(xyzs[i*self.MolPerBatch: (i+1)*self.MolPerBatch], nnz_atom[i*self.MolPerBatch: (i+1)*self.MolPerBatch], False, False,  None)
+			rad_p = NLEE.buildPairs(self.Rr_cut)
+			print ("rad_p:", rad_p[:20])
 			#print ("time to build pairs:", time.time() - t)
 			#print ("rad_p_ele:\n", rad_p_ele, "\nang_t_elep:\n", ang_t_elep)
 			#raise Exception("Debug..")
@@ -2553,13 +2640,16 @@ class ANISym:
 
 			#A, B  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			#C, D  = self.sess.run([self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
-			E, F  = self.sess.run([self.Scatter_Sym_Linear_tmp, self.Sym_Index_Linear_tmp], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+			A, B, C, D, E, F, H, G, I = self.sess.run([self.A, self.B, self.C, self.D, self.E, self.F, self.H, self.G, self.I], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 			#A, B, C, D  = self.sess.run([self.Scatter_Sym_Linear, self.Sym_Index_Linear, self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele], feed_dict = feed_dict)
 			#print ("A:\n", A[0].shape, "\nC:\n", C[0].shape)
 			#np.set_printoptions(threshold=np.nan)
-			#print ("A:",A, "B:",B)
-			#print ("C:",C, "D:",D)
+			print ("A:",A, "B:",B)
+			print ("C:",C, "D:",D)
 			print ("E:",E, " F:",F)
+			print ("H:", H, "G:", G)
+			print ("I:", I)
+			return
 			#np.savetxt("rad_sym.dat", A[0][0][:64])
 			#np.savetxt("Zs_sym.dat", C[0][0])
 			#np.savetxt("rad_ang_sym.dat", A[0][0])
