@@ -120,10 +120,13 @@ class BoxingDynamics(VelocityVerlet):
 	def Prop(self):
 		"""
 		Propagate VelocityVerlet
+
+		mindistance_ is a cut off variable.  The box stops crushing if
+		it has reached its minimum intermolecular distance.
 		"""
 		step = 0
 		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
-		while(step < self.maxstep):
+		while(step < self.maxstep): # || self.BoxingLatp_[0][0] < ?????current distance????):
 			t = time.time()
 			self.t = step*self.dt
 
