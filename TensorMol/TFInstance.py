@@ -1221,13 +1221,14 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		return
 
 	def test(self, step):
+		print("testing...")
 		Ncase_test = self.TData.NTest
 		test_loss, n_atoms_epoch = 0.0, 0.0
 		test_start_time = time.time()
 		mean_test_error, std_dev_test_error = 0.0, 0.0
 		sum_abs_error_matrix, sum_square_error_matrix = 0.0, 0.0
 		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
-			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
+			batch_data=self.TData.GetTestBatch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			output, labels, total_loss_value, loss_value, n_atoms_batch, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
 			test_loss += total_loss_value
@@ -1235,7 +1236,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			sum_abs_error_matrix += np.sum(np.abs(output - labels))
 			sum_square_error_matrix += np.sum(np.square(output - labels))
 		duration = time.time() - test_start_time
-		print("testing...")
 		LOGGER.info("MAE: %f", sum_abs_error_matrix / (n_atoms_epoch * 3))
 		LOGGER.info("RMSE: %f", np.sqrt(sum_abs_error_matrix / (n_atoms_epoch * 3)))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
