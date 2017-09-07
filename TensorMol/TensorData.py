@@ -669,18 +669,17 @@ class TensorDataDirect(TensorData):
 
 	def EvaluateTestBatch(self, desired, predicted):
 		try:
-			# print("Evaluating, ", len(desired), " predictions... ")
-			# print(desired.shape, predicted.shape)
+			print("Evaluating, ", len(desired), " predictions... ")
+			print(desired.shape, predicted.shape)
 			if (self.dig.OType=="Disp" or self.dig.OType=="Force" or self.dig.OType == "GoForce" or self.dig.OType == "Del_Force"):
 				err = predicted-desired
 				ders = np.linalg.norm(err, axis=1)
-				# for i in range(20):
-				# 	print("Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:])
-				mean_abs_error, std_dev_error = np.mean(np.absolute(err)), np.std(np.absolute(err))
-				# LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
-				# LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
-				# LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired,axis=0)),str(np.average(predicted,axis=0)))
-				# LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
+				for i in range(20):
+					print("Desired: ",i,desired[i,-3:]," Predicted: ",predicted[i,-3:])
+				LOGGER.info("Test displacement errors direct (mean,std) %f,%f",np.average(ders),np.std(ders))
+				LOGGER.info("MAE and Std. Dev.: %f, %f", np.mean(np.absolute(err)), np.std(np.absolute(err)))
+				LOGGER.info("Average learning target: %s, Average output (direct) %s", str(np.average(desired,axis=0)),str(np.average(predicted,axis=0)))
+				LOGGER.info("Fraction of incorrect directions: %f", np.sum(np.sign(desired[:,-3:])-np.sign(predicted[:,-3:]))/(6.*len(desired)))
 			elif (self.dig.OType == "GoForceSphere" or self.dig.OType == "ForceSphere"):
 				# Convert them back to cartesian
 				desiredc = SphereToCartV(desired)
@@ -729,4 +728,4 @@ class TensorDataDirect(TensorData):
 			print("Something went wrong")
 			print(Ex)
 			pass
-		return mean_abs_error, std_dev_error
+		return
