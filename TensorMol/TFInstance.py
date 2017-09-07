@@ -1234,9 +1234,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			n_atoms_epoch += n_atoms_batch
 			sum_abs_error_matrix += np.sum(np.abs(output - labels))
 			sum_square_error_matrix += np.sum(np.square(output - labels))
-			# batch_mean_error, batch_std_dev_error = self.TData.EvaluateTestBatch(labels, output)
-			# mean_test_error += batch_mean_error
-			# std_dev_test_error += batch_std_dev_error
 		duration = time.time() - test_start_time
 		print("testing...")
 		LOGGER.info("MAE: %f", sum_abs_error_matrix / (n_atoms_epoch * 3))
