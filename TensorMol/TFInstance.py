@@ -1185,7 +1185,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		return feed_dict
 
 	def train(self, mxsteps, continue_training= False):
-		self.prev_total_loss = 0.0
 		self.compute_normalization_constants()
 		self.TrainPrepare()
 		test_freq = PARAMS["test_freq"]
@@ -1214,14 +1213,9 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
 			else:
-				_, total_loss_value, loss_value, n_atoms_batch, labels, norm_inputs = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch, self.labels, self.norm_embedding], feed_dict=feed_dict)
+				_, total_loss_value, loss_value, n_atoms_batch = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch], feed_dict=feed_dict)
 			train_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
-			if total_loss_value / n_atoms_batch > 2 * self.prev_total_loss:
-				print(ministep, total_loss_value / n_atoms_batch, self.prev_total_loss, labels)
-			print(np.amax(np.abs(labels)), np.amin(np.abs(labels)))
-			print(np.amax(np.abs(norm_inputs)), np.amin(np.abs(norm_inputs)))
-			self.prev_total_loss = total_loss_value / n_atoms_batch
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, n_atoms_epoch, duration)
 		return
