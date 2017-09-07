@@ -313,13 +313,13 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# 						[2.3, 0.25], [2.76, 0.25], [3.22, 0.25], [3.68, 0.25],
 	# 						[4.14, 0.25], [4.6, 0.25]])
 	# PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
-	PARAMS["SH_NRAD"] = 10
+	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
 	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 300
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
 	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)

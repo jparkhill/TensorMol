@@ -1032,7 +1032,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.TData.LoadDataToScratch(self.tformer)
 
 	def compute_normalization_constants(self):
-		batch_data = self.TData.GetTrainBatch(4 * self.batch_size)
+		batch_data = self.TData.GetTrainBatch(20 * self.batch_size)
+		self.TData.ScratchPointer = 0
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
 		embedding, labels, _ = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
