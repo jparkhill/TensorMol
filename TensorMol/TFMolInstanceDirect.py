@@ -1713,6 +1713,31 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		self.TData.ele = self.eles_np
 		self.TData.elep = self.eles_pairs_np
 
+	def compute_normalization_constants(self):
+		batch_data = self.TData.GetTrainBatch(self.batch_size)
+		self.TData.ScratchPointer = 0
+		xyzs, Zs, rad_p_ele, ang_t_elep, mil_jk = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec),
+					tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[5]),
+					tf.convert_to_tensor(batch_data[6]), tf.convert_to_tensor(batch_data[7])
+		Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
+		Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+		SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
+		SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
+		Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+		Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+		zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+		eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+		element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
+		element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
+		Scatter_Sym, Sym_Index = TFSymSet_Linear_channel(xyzs, Zs, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, rad_p_ele, ang_t_elep, mil_jk, element_factors, element_pair_factors)
+		with tf.Session() as sess:
+			sess.run(tf.global_variables_initializer())
+			embed, _ = sess.run([Scatter_Sym, Sym_Index])
+		self.inmean, self.instd = np.mean(embed, axis=0), np.std(embed, axis=0)
+		self.outmean, self.outstd = np.mean(batch_data[2]), np.std(batch_data[2])
+		self.gradmean, self.gradstd = np.mean(batch_data[3]), np.std(batch_data[3])
+		return
+
 	def SetANI1Param(self, prec=np.float64):
 		self.Ra_cut = PARAMS["AN1_a_Rc"]
 		self.Rr_cut = PARAMS["AN1_r_Rc"]
@@ -3440,7 +3465,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		for i, ele in enumerate(self.eles):
 			self.C6[i] = C6_coff[ele]* (BOHRPERA*10.0)**6.0 / JOULEPERHARTREE # convert into a.u.
 			self.vdw_R[i] = atomic_vdw_radius[ele]*BOHRPERA
-	
+
 
 
 	def TrainPrepare(self,  continue_training =False):

@@ -431,14 +431,14 @@ def TestTFSym():
 		f.write(chrome_trace)
 
 def train_energy_symm_func_channel():
-	PARAMS["HiddenLayers"] = [512, 512, 512, 512]
-	PARAMS["learning_rate"] = 0.001
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 500
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["tf_prec"] = "tf.float64"
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
@@ -469,9 +469,9 @@ def train_energy_symm_func_channel():
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-train_forces_GauSH_direct("SmallMols")
+# train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
-# train_energy_symm_func_channel()
+train_energy_symm_func_channel()
 # test_gaussian_overlap()
 
 # a=MSet("SmallMols")
