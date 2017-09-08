@@ -134,8 +134,6 @@ def DifferenceVectorsLinear(B, NZP):
 	Rj = tf.gather_nd(B,Ij)
 	A = Ri - Rj
 	return A
-# In[150]:
-
 
 def TFSymASet(R, Zs, eleps_, SFPs_, R_cut, prec=tf.float64):
 	"""
@@ -1091,8 +1089,8 @@ def TFCoulombPolyLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
 	"""
 	Tensorflow implementation of short range cutoff sparse-coulomb
-	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j 
-	damping function in http://pubs.rsc.org/en/content/articlepdf/2008/cp/b810189b is used.	
+	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j
+	damping function in http://pubs.rsc.org/en/content/articlepdf/2008/cp/b810189b is used.
 
 	Args:
 	    R: a nmol X maxnatom X 3 tensor of coordinates.
@@ -1107,7 +1105,7 @@ def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
 	R = tf.multiply(R, BOHRPERA)
 	R_width = PARAMS["Poly_Width"]*BOHRPERA
 	R_begin = R_cut
-	R_end =  R_cut+R_width	
+	R_end =  R_cut+R_width
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
@@ -1117,11 +1115,11 @@ def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
 	nnz = tf.shape(Radpair)[0]
 	Rij = DifferenceVectorsLinear(R, Radpair)
 	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
-	
+
 	t = (RijRij2 - R_begin)/R_width
 	Cut_step1  = tf.where(tf.greater(t, 0.0), -t*t*(2.0*t-3.0), tf.zeros_like(t))
 	Cut = tf.where(tf.greater(t, 1.0), tf.ones_like(t), Cut_step1)
-	
+
 	ZAll = AllDoublesSet(Zs, prec=tf.int64)
 	ZPairs1 = tf.slice(ZAll,[0,0,0,1],[nmol,natom,natom,1])
 	ZPairs2 = tf.slice(ZAll,[0,0,0,2],[nmol,natom,natom,1])
@@ -1129,13 +1127,13 @@ def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
 	Rl=tf.gather_nd(ZPairs2, Radpair)
 	ElemIndex_i = tf.slice(tf.where(tf.equal(Ri, tf.reshape(eles, [1,nele]))),[0,1],[nnz,1])
 	ElemIndex_j = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles, [1,nele]))),[0,1],[nnz,1])
-	
+
 	c6_i=tf.gather_nd(c6, ElemIndex_i)
 	c6_j=tf.gather_nd(c6, ElemIndex_j)
 	Rvdw_i = tf.gather_nd(R_vdw, ElemIndex_i)
 	Rvdw_j = tf.gather_nd(R_vdw, ElemIndex_j)
 	Kern = -Cut*tf.sqrt(c6_i*c6_j)/tf.pow(RijRij2,6.0)*1.0/(1.0+6.0*tf.pow(RijRij2/(Rvdw_i+Rvdw_j),-12.0))
-		
+
 	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
 	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
 	sparse_index =tf.stack([mol_index, range_index], axis=1)
@@ -2612,7 +2610,7 @@ class ANISym:
 				print (dist*BOHRPERA, -(c6_i*c6_j)**0.5/dist**6 /(1.0+6*(dist/(Ri+Rj))**-12)*cut, cut, 1.0/(1.0+6*(dist/(Ri+Rj))**-12))
 				vdw += -(c6_i*c6_j)**0.5/dist**6 /(1.0+6*(dist/(Ri+Rj))**-12)*cut
 		print ("vdw:", vdw,"\n\n\n")
-	
+
 
 		for i in range (0, int(self.nmol/self.MolPerBatch-1)):
 			t = time.time()

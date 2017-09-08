@@ -315,7 +315,6 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
-	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
 	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
@@ -435,7 +434,7 @@ def train_energy_symm_func_channel():
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 500
+	PARAMS["batch_size"] = 300
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["tf_prec"] = "tf.float64"
 	a=MSet("SmallMols_rand")
