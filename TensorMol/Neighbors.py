@@ -336,9 +336,9 @@ class NeighborListSet:
 		# if self.ele == None:
 		# 	raise Exception("Element type of each atom is needed.")
 		#import time
-		t0 = time.time()
+		#t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		t_start = time.time()
+		#t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
 		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
@@ -358,7 +358,7 @@ class NeighborListSet:
 		#print ("time to append and sort element", time.time() - t_start)
 		valance_pair = np.zeros(trt.shape[0])
 		pointer = 0
-		t1 = time.time()
+		#t1 = time.time()
 		prev_l = trtE_sorted[0][4]
 		prev_atom = trtE_sorted[0][1]
 		prev_mol = trtE_sorted[0][0]
@@ -385,6 +385,8 @@ class NeighborListSet:
 		mil_jk[:,3] = valance_pair
 		#print ("mil_jk", mil_jk[:20])
 		jk_max = np.max(valance_pair)
+		#print ("jk_max:", jk_max)
+		#print ("total neigbor time:", time.time() - t0)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
 
 

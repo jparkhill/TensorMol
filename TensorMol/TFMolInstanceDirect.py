@@ -3596,23 +3596,102 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		train_dipole_loss = 0.0
 		train_grads_loss = 0.0
 		num_of_mols = 0
-		pre_output = np.zeros((self.batch_size),dtype=np.float64)
+
+		print_per_mini = 100
+		print_loss = 0.0
+		print_energy_loss = 0.0
+		print_dipole_loss = 0.0
+		print_grads_loss = 0.0
+		print_time = 0.0
+		time_print_mini = time.time()
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			t_mini = time.time()
 			batch_data = self.TData.GetTrainBatch(self.batch_size)+[True]
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, Evdw, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_EandG, self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG, self.Etotal, self.Ecc, self.Evdw,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
-			print ("ministep:  ", ministep, "mini step time EandG:", time.time() - t_mini)
-			#print ("Ecc:", Ecc[:20])
-			#for k, ecc in enumerate(list(Ecc)):
-			#	if ecc > 0.05:
-			#		print ("Ecc:", ecc)
-			#		np.savetxt("test_charge.dat", atom_charge[k])
-			#		np.savetxt("test_xyz.dat", batch_data[0][k])
-			#		raise Exception("end now")
-			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
-			print ("Etotal:", Etotal, " Ecc:", Ecc, "Evdw:", Evdw)
+			print_loss += loss_value
+			print_energy_loss += energy_loss
+			print_grads_loss += grads_loss
+			print_dipole_loss += dipole_loss
+			if (ministep%print_per_mini == 0 and ministep!=0):
+				print ("time:", (time.time() - time_print_mini)/print_per_mini ,  " loss_value: ",  print_loss/print_per_mini, " energy_loss:", print_energy_loss/print_per_mini, " grads_loss:", print_grads_loss/print_per_mini, " dipole_loss:", print_dipole_loss/print_per_mini)
+				print_loss = 0.0
+				print_energy_loss = 0.0
+				print_dipole_loss = 0.0
+				print_grads_loss = 0.0
+				print_time = 0.0
+				time_print_mini = time.time()
+			
+				#print ("Etotal:", Etotal, " Ecc:", Ecc, "Evdw:", Evdw)
+			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
+			#print ("charge:", atom_charge )
+			train_loss = train_loss + loss_value
+			train_energy_loss += energy_loss
+			train_grads_loss += grads_loss
+			train_dipole_loss += dipole_loss
+			duration = time.time() - start_time
+			num_of_mols += actual_mols
+			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
+			#       f.write(chrome_trace)
+		#print ("gradients:", gradients)
+		#print ("labels:", batch_data[2], "\n", "predcits:",mol_output)
+		self.print_training(step, train_loss, train_energy_loss, train_grads_loss, train_dipole_loss, num_of_mols, duration)
+		#self.print_training(step, train_loss,  num_of_mols, duration)
+		return
+
+
+	def train_step_dipole(self, step):
+		"""
+		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_train = self.TData.NTrain
+		start_time = time.time()
+		train_loss =  0.0
+		train_energy_loss = 0.0
+		train_dipole_loss = 0.0
+		train_grads_loss = 0.0
+		num_of_mols = 0
+		pre_output = np.zeros((self.batch_size),dtype=np.float64)
+
+
+		print_per_mini = 100
+		print_loss = 0.0
+		print_energy_loss = 0.0
+		print_dipole_loss = 0.0
+		print_grads_loss = 0.0
+		print_time = 0.0
+		time_print_mini = time.time()
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			#print ("ministep:", ministep)
+			t_mini = time.time()
+			batch_data = self.TData.GetTrainBatch(self.batch_size) + [False]
+			actual_mols  = self.batch_size
+			t = time.time()
+			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_dipole, self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			#print ("ministep:  ", ministep, "mini step time dipole:", time.time() - t_mini )
+			#print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			print_loss += loss_value
+			print_energy_loss += energy_loss
+			print_grads_loss += grads_loss
+			print_dipole_loss += dipole_loss
+			if (ministep%print_per_mini == 0 and ministep!=0):
+				print ("time:", (time.time() - time_print_mini)/print_per_mini ,  " loss_value: ",  print_loss/print_per_mini, " energy_loss:", print_energy_loss/print_per_mini, " grads_loss:", print_grads_loss/print_per_mini, " dipole_loss:", print_dipole_loss/print_per_mini)
+				print_loss = 0.0
+				print_energy_loss = 0.0
+				print_dipole_loss = 0.0
+				print_grads_loss = 0.0
+				print_time = 0.0
+				time_print_mini = time.time()
+			#LOGGER.debug("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			#max_index = np.argmax(np.sum(abs(batch_data[3]-mol_dipole),axis=1))
+			#LOGGER.debug("real dipole:\n", batch_data[3][max_index], "\nmol_dipole:\n", mol_dipole[max_index], "\n xyz:", batch_data[0][max_index], batch_data[1][max_index])
+			#print ("Etotal:", Etotal[:20], " Ecc:", Ecc[:20])
 			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
 			#print ("charge:", atom_charge )
 			train_loss = train_loss + loss_value
