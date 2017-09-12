@@ -1713,6 +1713,31 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		self.TData.ele = self.eles_np
 		self.TData.elep = self.eles_pairs_np
 
+	def compute_normalization_constants(self):
+		batch_data = self.TData.GetTrainBatch(self.batch_size)
+		self.TData.ScratchPointer = 0
+		xyzs, Zs, rad_p_ele, ang_t_elep, mil_jk = tf.Variable(batch_data[0], dtype=self.tf_prec), \
+					tf.Variable(batch_data[1], dtype=tf.int32), tf.Variable(batch_data[5], dtype=tf.int32), \
+					tf.Variable(batch_data[6], dtype=tf.int32), tf.Variable(batch_data[7], dtype=tf.int32)
+		Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
+		Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
+		SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
+		SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
+		Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+		Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+		zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+		eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+		element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
+		element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
+		Scatter_Sym, Sym_Index = TFSymSet_Linear_channel(xyzs, Zs, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, rad_p_ele, ang_t_elep, mil_jk, element_factors, element_pair_factors)
+		with tf.Session() as sess:
+			sess.run(tf.global_variables_initializer())
+			embed, _ = sess.run([Scatter_Sym, Sym_Index])
+		self.inmean, self.instd = np.mean(np.concatenate(embed), axis=0), np.std(np.concatenate(embed), axis=0)
+		self.outmean, self.outstd = np.mean(batch_data[2]), np.std(batch_data[2])
+		self.gradmean, self.gradstd = np.mean(batch_data[3]), np.std(batch_data[3])
+		return
+
 	def SetANI1Param(self, prec=np.float64):
 		self.Ra_cut = PARAMS["AN1_a_Rc"]
 		self.Rr_cut = PARAMS["AN1_r_Rc"]
@@ -1819,7 +1844,6 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
 				output = tf.add(output, ToAdd)
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
-			#tf.Print(output, [output], message="This is output: ",first_n=10000000,summarize=100000000)
 		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), atom_outputs
 
 	def loss_op(self, output, nn_grads, labels, grads, n_atoms):
@@ -1891,6 +1915,21 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		LOGGER.info("Element factors: %s", element_factors)
  		LOGGER.info("Element pair factors: %s", element_pair_factors)
 		return test_loss
+
+	def train(self, mxsteps, continue_training= False):
+		self.compute_normalization_constants()
+		self.TrainPrepare(continue_training)
+		test_freq = PARAMS["test_freq"]
+		mini_test_loss = 100000000 # some big numbers
+		for step in range(1, mxsteps+1):
+			self.train_step(step)
+			if step%test_freq==0 and step!=0 :
+				test_loss = self.test(step)
+				if (test_loss < mini_test_loss):
+					mini_test_loss = test_loss
+					self.save_chk(step)
+		self.SaveAndClose()
+		return
 
 	def save_chk(self, step):  # We need to merge this with the one in TFInstance
 		self.chk_file = os.path.join(self.train_dir,self.name+'-chk-'+str(step))
@@ -1988,6 +2027,12 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			self.Angt_Elep_pl=tf.placeholder(tf.int32, shape=tuple([None,5]))
 			self.mil_jk_pl = tf.placeholder(tf.int32, shape=tuple([None,4]))
 			self.n_atoms = tf.placeholder(tf.float64, shape=tuple([self.batch_size]))
+			inmean = tf.constant(self.inmean, dtype=self.tf_prec)
+			instd = tf.constant(self.instd, dtype=self.tf_prec)
+			outmean = tf.constant(self.outmean, dtype=self.tf_prec)
+			outstd = tf.constant(self.outstd, dtype=self.tf_prec)
+			gradmean = tf.constant(self.gradmean, dtype=self.tf_prec)
+			gradstd = tf.constant(self.gradstd, dtype=self.tf_prec)
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int32)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int32)
 			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
@@ -2000,9 +2045,14 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 			self.element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, self.element_factors, self.element_pair_factors)
-			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
+			self.norm_embedding_list = []
+			for embedding in self.Scatter_Sym:
+				self.norm_embedding_list.append((embedding - inmean) / instd)
+			self.norm_output, self.atom_outputs = self.inference(self.norm_embedding_list, self.Sym_Index)
+			self.output = (self.norm_output * outstd) - outmean
 			self.check = tf.add_check_numerics_ops()
-			self.gradient = tf.gradients(self.output, self.xyzs_pl)
+			self.norm_gradient = tf.gradients(self.output, self.xyzs_pl)
+			self.gradient = (self.norm_gradient * gradstd) - gradmean
 			self.total_loss, self.loss, self.energy_loss, self.grads_loss = self.loss_op(self.output, self.gradient, self.label_pl, self.grads_pl, self.n_atoms)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -3440,7 +3490,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		for i, ele in enumerate(self.eles):
 			self.C6[i] = C6_coff[ele]* (BOHRPERA*10.0)**6.0 / JOULEPERHARTREE # convert into a.u.
 			self.vdw_R[i] = atomic_vdw_radius[ele]*BOHRPERA
-	
+
 
 
 	def TrainPrepare(self,  continue_training =False):
