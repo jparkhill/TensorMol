@@ -55,7 +55,7 @@ if (0):
 	        GM = session.run(tf.gradients(TFSymSet(xyz, Z, eles, SFPr, Rr_cut, eleps, SFPa, Ra_cut), xyz))
 	        print((GM, GM[0].shape))
 
-if (0):
+if (1):
 	mset = MSet("H2O_augmented_more_cutoff5")
         mset.Load()
 	SymMaker = ANISym(mset)
@@ -89,7 +89,7 @@ if (0):
 	#print MBEterms.pairz
 	#print MBEterms.tripz
 
-if (1):
+if (0):
 	mset=MSet("NeigborMB_test")
 	mset.ReadXYZ("NeigborMB_test")
 	m = mset.mols[-1]

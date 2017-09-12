@@ -276,13 +276,28 @@ def TestTFGauSH():
 	labelstack = tf.stack(labelslist)
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
-	tmp = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8], gaussian_params, atomic_embed_factors, 4)
+	element = tf.constant(1, dtype=tf.int32)
+	tmp, tmp2, _ = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 6, orthogonalize=False)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	tmp2, tmp3 = sess.run(tmp)
-	print np.allclose(tmp2, tmp3)
+	tmp3, tmp4, mint = sess.run([tmp, tmp2, _])
+	print tmp3.shape
+	# TreatedAtoms = a.AtomTypes()
+	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	# # tset = TensorData(a,d)
+	# mol_ = a.mols[0]
+	# print d.Emb(mol_, -1, mol_.coords[0], MakeOutputs=False)[0]
+	# print mol_.atoms[0]
+
+def test_gaussian_overlap():
+	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
+	tmp = gaussian_overlap(gaussian_params)
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+	tmp2 = sess.run(tmp)
+	print tmp2
 
 def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
@@ -290,17 +305,20 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# 							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
 	# 							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 	# PARAMS["ANES"] = np.array([1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
-	PARAMS["RBFS"] = np.array([[0.46, 0.25], [0.92, 0.25], [1.38, 0.25], [1.84, 0.25], #10 gaussian evenly spaced grid to 4.6
-							[2.3, 0.25], [2.76, 0.25], [3.22, 0.25], [3.68, 0.25],
-							[4.14, 0.25], [4.6, 0.25]])
-	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
-	PARAMS["SH_NRAD"] = 10
+	PARAMS["RBFS"] = np.array([[0.15, 0.25], [0.25, 0.35], [0.65, 0.35], [0.95, 0.35], [1.10, 0.25], [1.35, 0.15], [1.50, 0.30],
+								[1.90, 0.35], [2.35, 0.35], [2.8, 0.35], [3.25, 0.35], [3.7, 0.35], [4.15, 0.35], [4.6, 0.35], [5.05, 0.35],
+								[5.5, 0.35], [5.95, 0.35], [6.4, 0.35]])
+	PARAMS["ANES"] = np.array([1.00, 1.0, 1.0, 1.0, 1.0, 2.20, 2.70, 3.05])
+	# PARAMS["RBFS"] = np.array([[0.46, 0.25], [0.92, 0.25], [1.38, 0.25], [1.84, 0.25], #10 gaussian evenly spaced grid to 4.6
+	# 						[2.3, 0.25], [2.76, 0.25], [3.22, 0.25], [3.68, 0.25],
+	# 						[4.14, 0.25], [4.6, 0.25]])
+	# PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
+	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
-	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
-	PARAMS["HiddenLayers"] = [256, 256, 256]
-	PARAMS["max_steps"] = 1000
+	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
+	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 330
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
 	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)
@@ -309,7 +327,8 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
+	manager=TFManage("",tset,False,"fc_sqdiff_GauSH_direct")
+	manager.TrainElement(7)
 
 def TestTFSym():
 	t1 = time.time()
@@ -411,14 +430,28 @@ def TestTFSym():
 		f.write(chrome_trace)
 
 def train_energy_symm_func_channel():
-
-
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 1000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 300
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["tf_prec"] = "tf.float64"
+	a=MSet("SmallMols_rand")
+	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="atomization")
+	tset = TensorMolData_BP_Direct_WithEle(a,d, WithGrad_=True)
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt", Trainable_=True)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols_35", 1000)
+# RandomSmallSet("SmallMols", 10000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -434,9 +467,11 @@ def train_energy_symm_func_channel():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-# TestTFGauSH()
-# train_forces_GauSH_direct("benzene_1rot")
-TestTFSym()
+TestTFGauSH()
+# train_forces_GauSH_direct("SmallMols")
+# TestTFSym()
+# train_energy_symm_func_channel()
+# test_gaussian_overlap()
 
 # a=MSet("SmallMols")
 # a.Load()
