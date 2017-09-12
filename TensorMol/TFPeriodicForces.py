@@ -48,7 +48,8 @@ class LinearVoxelBase:
 			self.x0 = tf.Variable([0.,0.,0.],dtype = tf.float64)
 			self.nvox = tf.Variable(0, dtype = tf.int64)
 			self.xv_pl = tf.placeholder(tf.float64, shape=(None,3), name="LVBx_pl")
-			self.VL = self.VoxelList(self.xv_pl)
+			self.nreal_pl = tf.placeholder(tf.int32)
+			self.VL = self.VoxelList(self.xv_pl,self.nreal_pl)
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
@@ -130,7 +131,7 @@ class LinearVoxelBase:
 			toadd = self.TFRaster3()[tf.newaxis,:,:]-tf.ones(shape=[27,3],dtype=tf.int64)[tf.newaxis,:,:]
 			carts = tf.cast(coreis,tf.int64)+toadd
 			return self.IndicesToRasters(carts, x0_, nvox_)
-	def VoxelList(self, x_):
+	def VoxelList(self, x_, nreal_):
 		"""
 		Given a monolithic set of coordinates x_
 		This routine:
@@ -147,20 +148,20 @@ class LinearVoxelBase:
 		with self.g.as_default():
 			xmn = tf.cast(tf.reduce_min(x_),tf.float64)
 			xmx = tf.cast(tf.reduce_max(x_),tf.float64)
-			x0 = tf.ones(3,dtype=tf.float64)*xmn-2.0*self.dxv
+			self.x0 = tf.ones(3,dtype=tf.float64)*xmn-2.0*self.dxv
 			xp = tf.ones(3,dtype=tf.float64)*xmx+2.0*self.dxv
 			diam = tf.reduce_max(xp-self.x0)
 			nvox = tf.round(diam/(self.dx))+1
 			# Determine the voxel each atom belongs to (core and tesselated)
-			vis = self.VoxelIndices(x_,x0,self.dx,nvox)
-			return x0, nvox, self.MemberOfVoxels(vis,x0,self.dx,nvox)
+			vis = self.VoxelIndices(x_, self.x0, self.dx, nvox)
+			return self.x0, nvox, self.MemberOfVoxels(vis, self.x0, self.dx, nvox)
 			# Below can be used to test this is working, which it is.
 			#return xmn,xmx,x0,nvox,self.VoxelCenters(vis,x0,self.dxv),self.MemberOfVoxels(vis,x0,self.dx,nvox), self.VoxelCenters(self.TFRasterN(nvox),x0,self.dxv), vis
-	def MakeVoxelList(self,x_):
+	def MakeVoxelList(self,x_, nreal_):
 		print(np.min(x_),np.max(x_))
-		tmp = self.sess.run(self.VL, feed_dict={self.xv_pl:x_} )
+		tmp = self.sess.run(self.VL, feed_dict={self.xv_pl:x_, self.nreal_pl:nreal_} )
 		return tmp
-	def MakeVoxelMols(self,z_,x_):
+	def MakeVoxelMols(self,z_,x_,nreal_):
 		"""
 		This routine makes a batch of molecules which can be used to
 		form energies in a linear scaling way.
@@ -174,42 +175,53 @@ class LinearVoxelBase:
 		Returns:
 		  mol batches of atoms, coords, NNZ and CoreReal (number of energetic atoms in this mol)
 		"""
-		x0,nvox_,voxs = self.MakeVoxelList(x_)
-		print("nvox, Voxel assignments: ", nvox_, voxs)
+		x0,nvox_,voxs = self.MakeVoxelList(x_,nreal_) # only the first n atoms are periodically real.
+		print("nvox, Voxel assignments: ", nvox_, voxs, np.max(voxs))
+		if (np.max(voxs) > nvox_*nvox_*nvox_):
+			print("Wrong nvox_")
+			raise Exception("Bad NVox")
 		nvox = int(nvox_)
 		nvox3 = nvox*nvox*nvox
 		fvox = voxs.flatten()
 		mxvx = np.max(fvox)
 		mnvx = np.min(fvox)
-		membercounts = np.bincount(fvox)
-		core = voxs[:,13]
-		corec = np.bincount(core)
-		#        print corec, np.sum(corec)
+		membercounts = np.bincount(fvox,minlength=nvox3)
+		print(membercounts)
+		core = voxs[:nreal_,13]
+		corec = np.bincount(core,minlength=nvox3)
 		vxkey = np.zeros(nvox3,dtype=np.int)
 		vxkey -= 1
 		nnzvx = 0
+		coremem=[] # only voxels containing core atoms will be generated.
 		# Determine the number of nonzero voxels (which contain real atoms)
 		for i in range(corec.shape[0]):
 			if corec[i] > 0:
 				vxkey[i] = nnzvx
+				print(i,nnzvx)
+				coremem.append(membercounts[i])
 				nnzvx += 1
-		maxnatom = np.max(membercounts)
-		minnatom = np.min(membercounts)
+		coremem = np.array(coremem)
+		maxnatom = np.max(coremem)
+		print("Max Number of Atoms: ",coremem,maxnatom)
+		minnatom = np.min(coremem)
 		filling = np.zeros(nnzvx,dtype=np.int)
 		coords = np.zeros((nnzvx,maxnatom,3))
+		print("Coords.shape",coords.shape)
 		atoms = np.zeros((nnzvx,maxnatom,1),dtype=np.uint8)
 		absindex = np.zeros((nnzvx,maxnatom,1),dtype=np.uint8)
 		RealOrImage = np.zeros((nnzvx,maxnatom,1),dtype=np.uint8)
 		for i in range(x_.shape[0]):
 			for k,vx in enumerate(voxs[i]):
 				vk = vxkey[vx]
+				if (vk < 0):
+					continue;
+				#print(i, k , vx, vk, filling[vk], membercounts[vx])
 				if (k==13):
-				    RealOrImage[vk,filling[vk],0] += 1
-				if (vk >= 0):
-					coords[vk,filling[vk],:] = x_[i]
-					atoms[vk,filling[vk],:] = z_[i]
-					absindex[vk,filling[vk],:] = i
-					filling[vk] += 1
+				    RealOrImage[vk,filling[vk],0] = 1
+				coords[vk,filling[vk],:] = x_[i]
+				atoms[vk,filling[vk],:] = z_[i]
+				absindex[vk,filling[vk],:] = i
+				filling[vk] += 1
 		return atoms, coords, filling, RealOrImage, absindex
 
 class TFPeriodicLocalForce(LinearVoxelBase):
@@ -233,9 +245,20 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 		# Determine the required tesselations to perform.
 		self.StressDifferentiable = False
 		self.lat = lat_.copy()
-		self.ntess = 2
+		# Ensure the number of tesselations cover the physical interactions.
+		latcenter = (lat_[0]+lat_[1]+lat_[2])/2.0
+		vertices = [(lat_[0]+lat_[1])/2.0,(lat_[2]+lat_[1])/2.0,(lat_[0]+lat_[2])/2.0,lat_[0],lat_[1],lat_[2]]
+		dists = [np.linalg.norm(v-latcenter) for v in vertices]
+		self.ntess = int(rcut_ / np.min(dists))
+		print("ntess", self.ntess)
 		tessrng = range(-self.ntess,self.ntess+1)
-		self.tess = np.array([[[[i,j,k] for k in tessrng] for j in tessrng] for i in tessrng]).reshape((pow(len(tessrng),3),3))
+		tesslist = [[0,0,0]] # Only real atoms are in the first unit cell.
+		for t1 in tessrng:
+			for t2 in tessrng:
+				for t3 in tessrng:
+					if ((t1 != 0) or (t2 != 0) or (t3 != 0) ):
+						tesslist.append([t1,t2,t3])
+		self.tess = np.array(tesslist).reshape((pow(len(tessrng),3),3))
 		LinearVoxelBase.__init__(self, rcut_)
 		self.rcut = rcut_
 		# Placeholders....
@@ -320,27 +343,29 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 			returns the energy, force within the cell, and stress tensor.
 		"""
 		# Step 1: Tesselate the cell.
-		print ("Tess?",self.tess)
 		feeddict = {self.z_pl:z_, self.x_pl:x_, self.lat_pl: lat_, self.tess_pl:self.tess}
 		zp, xp = self.sess.run(self.PW,feed_dict=feeddict)
-		print("z,xp.shape after tess: ", zp.shape, xp.shape)
+		print("z,xp.shape after tess: ", zp.shape, xp.shape, np.max(xp),np.min(xp))
 		# Step 2: Make a voxel batch out of that.
-		ats, crds, fill, roi, inds = self.MakeVoxelMols(zp,xp)
-		print("ats.shape after voxelization: ", crds.shape)
+		ats, crds, fill, roi, inds = self.MakeVoxelMols(zp,xp,x_.shape[0])
+		print("crds.shape after voxelization: ", crds.shape)
+		print("inds.shape after voxelization: ", inds.shape)
 		# Step 3: evaluate the force using quadratic algs. over the voxels.
 		feeddict = {self.zs_pl:ats, self.xs_pl:crds}
 		# This routine returns partial forces partitioned over atoms.
-		Ens,Frc,Strs = self.sess.run([self.energies, self.forces, self.stresses],feed_dict=feeddict)
+		Ens,Frc = self.sess.run([self.energies, self.forces],feed_dict=feeddict)
 		# Grab back out the desired paritial energy and force due to the real atoms in the unit cell.
+		print("Nreal atoms:", x_.shape, Frc.shape)
 		nrealat = x_.shape[0]
 		FrcToRe = np.zeros(x_.shape)
 		EnToRe = 0.0
-		StrsToRe = np.zeros(3,3)
-		for i in range(crds.shape):
-			if (inds[i]<nrealat and roi[i] ==1):
-				FrcToRe[inds[i]] = Frc[i]
-				EnToRe += Ens[i]
-		return En, JOULEPERHARTREE*Frc[0], JOULEPERHARTREE*Strs[0] # Returns energies and forces and stresses
+		StrsToRe = np.zeros((3,3))
+		for m in range(crds.shape[0]):
+			for i in range(crds.shape[1]):
+				if (inds[m,i]<nrealat and roi[m,i] ==1):
+					FrcToRe[inds[m,i]] = Frc[m,i]
+					EnToRe += Ens[m,i]
+		return EnToRe, JOULEPERHARTREE*FrcToRe, JOULEPERHARTREE*StrsToRe[0] # Returns energies and forces and stresses
 
 	def LJEnergies(self,XYZs_):
 		"""
@@ -359,7 +384,7 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 		zeros = tf.zeros(tf.shape(Ds),dtype = tf.float64)
 		ZeroTensor = tf.where(tf.less_equal(Ds,0.000000001),ones,zeros)
 		Ds += ZeroTensor
-		R = 0.8/Ds
+		R = 0.5/Ds
 		Ks = 0.5*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
 		# Use the ZeroTensors to mask the output for zero dist or AN.
 		Ks = tf.where(tf.equal(ZeroTensor,1.0),tf.zeros_like(Ks),Ks)
