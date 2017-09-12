@@ -11,13 +11,6 @@ import numpy as np
 from MolEmb import Make_NListNaive, Make_NListLinear
 import time
 
-#
-# I excised the K-D tree because it had some weird bugs.
-# we will have to do our own Octree implementation sometime.
-# for now I just coded the naive (quadratic) thing in C++ and seems fast enough IMHO.
-# JAP
-#
-
 class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
@@ -395,6 +388,7 @@ class NeighborListSet:
 class CellList:
 	"""
 	TODO: CellList updates.
+	- Determine optimal number of Voxels.
 	"""
 	def __init__(self, x_, cutoff_ = 5.0, ele_ = None, padding_ = 1.0):
 		"""
@@ -403,7 +397,7 @@ class CellList:
 			x_: coordinate array
 			cutoff_: interaction cutoff
 			ele_: element types of each atoms.
-			padding_: padding of the molecule box. 
+			padding_: padding of the molecule box.
 		"""
 		self.natom = x_.shape[0] # includes periodic images.
 		self.x = x_.copy()
@@ -423,10 +417,10 @@ class CellList:
 			[np.min(self.x[:,1])-self.padding, np.max(self.x[:,1])+self.padding],\
 			[np.min(self.x[:,2])-self.padding, np.max(self.x[:,2])+self.padding]])
 		#print ("core_begin_end:", core_begin_end)
-		core_size = core_begin_end[:,1] - core_begin_end[:,0]	
+		core_size = core_begin_end[:,1] - core_begin_end[:,0]
 		n_core = np.array([core_size[0]/self.Rcore, core_size[1]/self.Rcore, core_size[2]/self.Rcore], dtype=int) + 1
 		n_cell = n_core.copy()
-		cell_begin_end = core_begin_end + np.array([-self.Rskin, self.Rskin]) 
+		cell_begin_end = core_begin_end + np.array([-self.Rskin, self.Rskin])
 		#print ("cell_begin_end:", cell_begin_end)
 		#print ("n_core:", n_core)
 		core_index = [[] for i in range(0, np.prod(n_core))]
@@ -441,5 +435,3 @@ class CellList:
 		#print ("core_index:", core_index)
 		#print ("cell_index:", cell_index)
 		return core_index, cell_index
-
-
