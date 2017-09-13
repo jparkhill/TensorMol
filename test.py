@@ -33,10 +33,12 @@ def TestPeriodicLJOpt():
 	PGO.OptWCell(m,"PeriodicOpt")
 	return
 
-def TestBoxing(molecule_="Ammonia", mindistance_=3.10432, ntess_=4, t_=50.):
+def TestBoxing(molecule_="Ammonia", mindistance_=10, ntess_=4, t_=5.):
 	"""
-	Makes a box of 64 water molecules
-	The final lattice spacing would be 1water/3.10432 Angstroms.
+	Makes a box of molecules
+
+	Water:
+	The final lattice spacing should be 1water/3.10432 Angstroms.
 
 	Args:
 
@@ -67,6 +69,14 @@ def TestBoxing(molecule_="Ammonia", mindistance_=3.10432, ntess_=4, t_=50.):
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
 
+	#print("Rastering Over The Box Potential")
+	#Boxer = TFForces.BoxHolder(1)
+	#lat = np.eye(3)*5.0
+	#for x in range(-10,11):
+	#	for y in range(-10,11):
+	#		for z in range(-10,11):
+	#			print(x,y,z,Boxer(np.array([[x,y,z]]),lat))
+
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
 	tset = TensorMolData(a,d)
@@ -76,6 +86,18 @@ def TestBoxing(molecule_="Ammonia", mindistance_=3.10432, ntess_=4, t_=50.):
 	# Convert from hartree/ang to joules/mol ang.
 	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[1]
 	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
+
+	print("Testing Lennard-Jones")
+	for xi in range(0,81):
+		x = xi/10.0
+		a = Mol(np.array([x,x]),np.array([[0.,0.,0.],[0.,0.,x]]))
+		tset = TensorMolData(a,d)
+		tset.MaxNAtoms = 2
+		ins = MolInstance_DirectForce(tset,None,False,"LJ")
+		ins.TrainPrepare()
+		print(ins.EvalForce(Mol(np.array([x,x]),np.array([[0.,0.,0.],[0.,0.,x]]))))
+	exit()
+
 
 	Box = BoxingDynamics(ForceField, m, "BoxingMD", EnergyForceField, lat0, latp, t)
 	Box.Prop()

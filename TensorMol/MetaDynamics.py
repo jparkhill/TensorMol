@@ -110,6 +110,7 @@ class BoxingDynamics(VelocityVerlet):
 		self.Tstat = NoseThermostat(self.m,self.v)
 		self.Boxer = TFForces.BoxHolder(self.natoms)
 	def BoxForce(self, x_ ):
+		print("self.boxnow", self.boxnow)
 		BE, BF = self.Boxer(x_, self.boxnow)
 		print("Mass Vector", self.m[:,None])
 		BF *= -500.0*JOULEPERHARTREE*(self.m[:,None]/np.sqrt(np.sum(self.m*self.m)))
@@ -131,7 +132,8 @@ class BoxingDynamics(VelocityVerlet):
 			self.t = step*self.dt
 
 			if (self.t>self.BoxingT):
-				self.boxnow = self.BoxingLatp
+				print("Exceeded Boxtime\n",self.BoxingLatp)
+				self.boxnow = self.BoxingLatp.copy()
 			else:
 				self.boxnow = ((self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLat0+(1.0-(self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLatp
 
