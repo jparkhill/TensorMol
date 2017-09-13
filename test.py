@@ -1116,8 +1116,8 @@ def Test_LJMD():
 	Test TensorFlow LJ fluid Molecular dynamics
 	"""
 	a=MSet("Test")
-	ParticlesPerEdge = 2
-	EdgeSize = 2
+	ParticlesPerEdge = 20
+	EdgeSize = 18
 	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
 	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
@@ -1456,7 +1456,7 @@ def TestMBNeighborList():
 #TestANI1()
 #TestBP_WithGrad()
 #Test_ULJ()
-#Test_LJMD()
+Test_LJMD()
 #TestDipole()
 #TestJohnson()
 #TestIR()
@@ -1465,7 +1465,7 @@ def TestMBNeighborList():
 #david_HarmonicAnalysis()
 #TestMetadynamics()
 #PullFreqData()
-# Test_Periodic_LJMD()
+#Test_Periodic_LJMD()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
@@ -1480,7 +1480,8 @@ def TestMBNeighborList():
 #TestMD()
 #TestRandom()
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
-TestBowl()
+#TestBowl()
+
 
 # This visualizes the go potential and projections on to basis vectors.
 if (0):
