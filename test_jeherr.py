@@ -277,7 +277,7 @@ def TestTFGauSH():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 	element = tf.constant(1, dtype=tf.int32)
-	tmp, tmp2, _ = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 6, orthogonalize=False)
+	tmp, tmp2, _ = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 8, orthogonalize=False)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
