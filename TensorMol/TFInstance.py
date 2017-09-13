@@ -10,7 +10,11 @@ from TensorMol.TensorData import *
 from TensorMol.RawEmbeddings import *
 import numpy as np
 import math
-import time, os, sys, numbers
+import time
+import os
+import sys
+import numbers
+import random
 if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
@@ -1028,7 +1032,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.TData.LoadDataToScratch(self.tformer)
 
 	def compute_normalization_constants(self):
-		batch_data = self.TData.GetTrainBatch(4 * self.batch_size)
+		batch_data = self.TData.GetTrainBatch(20 * self.batch_size)
+		self.TData.ScratchPointer = 0
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
 		embedding, labels, _ = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
@@ -1221,23 +1226,35 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		return
 
 	def test(self, step):
+		print("testing...")
 		Ncase_test = self.TData.NTest
 		test_loss, n_atoms_epoch = 0.0, 0.0
 		test_start_time = time.time()
 		mean_test_error, std_dev_test_error = 0.0, 0.0
-		sum_abs_error_matrix, sum_square_error_matrix = 0.0, 0.0
+		test_epoch_labels, test_epoch_outputs = [], []
 		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
-			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
+			batch_data=self.TData.GetTestBatch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			output, labels, total_loss_value, loss_value, n_atoms_batch, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
+<<<<<<< HEAD
 			sum_abs_error_matrix += np.sum(np.abs(output - labels))
 			sum_square_error_matrix += np.sum(np.square(output - labels))
+=======
+			test_epoch_labels.append(labels)
+			test_epoch_outputs.append(output)
+		test_epoch_labels = np.concatenate(test_epoch_labels)
+		test_epoch_outputs = np.concatenate(test_epoch_outputs)
+		test_epoch_errors = test_epoch_labels - test_epoch_outputs
+>>>>>>> 0fff61562a910222c24e4847a7a0a8d77f48b8fc
 		duration = time.time() - test_start_time
-		print("testing...")
-		LOGGER.info("MAE: %f", sum_abs_error_matrix / (n_atoms_epoch * 3))
-		LOGGER.info("RMSE: %f", np.sqrt(sum_abs_error_matrix / (n_atoms_epoch * 3)))
+		for i in range(20):
+			LOGGER.info("Label: %s  Output: %s", test_epoch_labels[i], test_epoch_outputs[i])
+		LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
+		LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
+		LOGGER.info("RMSE: %f", np.sqrt(np.mean(np.square(test_epoch_errors))))
+		LOGGER.info("Std. Dev.: %f", np.std(test_epoch_errors))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
 		self.print_testing(step, test_loss, n_atoms_epoch, duration)

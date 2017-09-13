@@ -48,6 +48,7 @@ from TensorMol.BFGS import *
 from TensorMol.NeighborsMB import *
 from TensorMol.Electrostatics import *
 from TensorMol.ElectrostaticsTF import *
+from TensorMol.TFPeriodicForces import * 
 from TensorMol.SimpleMD import *
 from TensorMol.InfraredMD import *
 from TensorMol.MetaDynamics import *

@@ -9,6 +9,20 @@ import os
 import numpy as np
 #os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
+def TestPeriodicLJVoxel():
+	"""
+	Tests a Simple Periodic optimization.
+	Trying to find the HCP minimum for the LJ crystal.
+	"""
+	m = Mol(np.array([1,1,1,1,1,1]),5.0*np.array([[0.01,0.1,0.01],[0.03,1.,0.4],[0.1,2.,1.],[1.,0.6,0.05],[1.,1.,0.01],[1.,0.05,0.3],]))
+	print("Original six coords:", m.coords)
+	# Generate a Periodic Force field.
+	lat = 5.0*np.eye(3)
+	PF = TFPeriodicLocalForce(10.0,lat)
+	tmp = PF(m.atoms,m.coords,lat)
+	print("Original Force: ", tmp)
+	return
+
 def TestPeriodicLJOpt():
 	"""
 	Tests a Simple Periodic optimization.
@@ -1201,8 +1215,8 @@ def Test_LJMD():
 	Test TensorFlow LJ fluid Molecular dynamics
 	"""
 	a=MSet("Test")
-	ParticlesPerEdge = 2
-	EdgeSize = 2
+	ParticlesPerEdge = 20
+	EdgeSize = 18
 	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
 	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
@@ -1537,7 +1551,7 @@ def TestMBNeighborList():
 #TestANI1()
 #TestBP_WithGrad()
 #Test_ULJ()
-#Test_LJMD()
+Test_LJMD()
 #TestDipole()
 #TestJohnson()
 #TestIR()
@@ -1548,7 +1562,8 @@ def TestMBNeighborList():
 #PullFreqData()
 #TestPeriodicLJMD()
 #TestPeriodicLJOpt()
-TestBoxing()
+#TestBoxing()
+TestPeriodicLJVoxel()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
