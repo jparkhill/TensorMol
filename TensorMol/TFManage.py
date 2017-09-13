@@ -351,39 +351,3 @@ class TFManage:
 			logP += math.log10(p)
 		print(("logP:", logP))
 		return logP
-
-class TFManage_Queue(TFManage):
-	def __init__(self, Name_="", TrainData_=None, TestData_=None, Train_=True, NetType_="fc_sqdiff", RandomTData_=True, Trainable_ = True):
-		TFManage.__init__(self, Name_, TrainData_, Train_, NetType_, RandomTData_, Trainable_)
-		self.TestData = TestData_
-
-	def TrainElement(self, ele):
-		print("Training Element:", ele)
-		if (self.TData.dig.eshape==None):
-			raise Exception("Must Have Digester")
-		# It's up the TensorData to provide the batches and input output shapes.
-		if (self.NetType == "fc_classify" or PARAMS["Classify"]):
-			self.Instances[ele] = Instance_fc_classify(self.TData, ele, None)
-		elif (self.NetType == "fc_sqdiff"):
-			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
-		elif (self.NetType == "del_fc_sqdiff"):
-			self.Instances[ele] = Instance_fc_sqdiff(self.TData, ele, None)
-		elif (self.NetType == "fc_sqdiff_selu"):
-			self.Instances[ele] = Instance_fc_sqdiff_selu(self.TData, ele, None)
-		elif (self.NetType == "3conv_sqdiff"):
-			self.Instances[ele] = Instance_3dconv_sqdiff(self.TData, ele, None)
-		elif (self.NetType == "KRR_sqdiff"):
-			self.Instances[ele] = Instance_KRR(self.TData, ele, None)
-		elif (self.NetType == "fc_sqdiff_queue"):
-			self.Instances[ele] = Queue_Instance(self.TData, self.TestData, ele, None)
-		else:
-			raise Exception("Unknown Network Type!")
-		self.Instances[ele].train(self.n_train) # Just for the sake of debugging.
-		nm = self.Instances[ele].name
-		if self.TrainedNetworks.count(nm)==0:
-			self.TrainedNetworks.append(nm)
-		if self.TrainedAtoms.count(ele)==0:
-			self.TrainedAtoms.append(ele)
-		self.Save()
-		gc.collect()
-		return

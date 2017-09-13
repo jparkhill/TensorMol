@@ -276,13 +276,28 @@ def TestTFGauSH():
 	labelstack = tf.stack(labelslist)
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
-	tmp = TF_gaussian_spherical_harmonics(xyzstack, zstack, labelstack, [1,6,7,8], gaussian_params, atomic_embed_factors, 4)
+	element = tf.constant(1, dtype=tf.int32)
+	tmp, tmp2, _ = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 8, orthogonalize=False)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	tmp2, tmp3 = sess.run(tmp)
-	print np.allclose(tmp2, tmp3)
+	tmp3, tmp4, mint = sess.run([tmp, tmp2, _])
+	print tmp3.shape
+	# TreatedAtoms = a.AtomTypes()
+	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	# # tset = TensorData(a,d)
+	# mol_ = a.mols[0]
+	# print d.Emb(mol_, -1, mol_.coords[0], MakeOutputs=False)[0]
+	# print mol_.atoms[0]
+
+def test_gaussian_overlap():
+	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
+	tmp = gaussian_overlap(gaussian_params)
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+	tmp2 = sess.run(tmp)
+	print tmp2
 
 def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
@@ -290,17 +305,20 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# 							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
 	# 							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
 	# PARAMS["ANES"] = np.array([1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
-	PARAMS["RBFS"] = np.array([[0.46, 0.25], [0.92, 0.25], [1.38, 0.25], [1.84, 0.25], #10 gaussian evenly spaced grid to 4.6
-							[2.3, 0.25], [2.76, 0.25], [3.22, 0.25], [3.68, 0.25],
-							[4.14, 0.25], [4.6, 0.25]])
-	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
-	PARAMS["SH_NRAD"] = 10
+	PARAMS["RBFS"] = np.array([[0.15, 0.25], [0.25, 0.35], [0.65, 0.35], [0.95, 0.35], [1.10, 0.25], [1.35, 0.15], [1.50, 0.30],
+								[1.90, 0.35], [2.35, 0.35], [2.8, 0.35], [3.25, 0.35], [3.7, 0.35], [4.15, 0.35], [4.6, 0.35], [5.05, 0.35],
+								[5.5, 0.35], [5.95, 0.35], [6.4, 0.35]])
+	PARAMS["ANES"] = np.array([1.00, 1.0, 1.0, 1.0, 1.0, 2.20, 2.70, 3.05])
+	# PARAMS["RBFS"] = np.array([[0.46, 0.25], [0.92, 0.25], [1.38, 0.25], [1.84, 0.25], #10 gaussian evenly spaced grid to 4.6
+	# 						[2.3, 0.25], [2.76, 0.25], [3.22, 0.25], [3.68, 0.25],
+	# 						[4.14, 0.25], [4.6, 0.25]])
+	# PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
+	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
-	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
-	PARAMS["HiddenLayers"] = [256, 256, 256]
-	PARAMS["max_steps"] = 1000
+	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
+	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 330
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
 	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)
@@ -309,37 +327,35 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct_all")
+	manager=TFManage("",tset,False,"fc_sqdiff_GauSH_direct")
+	manager.TrainElement(7)
 
 def TestTFSym():
-	np.set_printoptions(threshold=100000)
+	t1 = time.time()
+	np.set_printoptions(threshold=1000000)
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
-	a=MSet("SmallMols_rand")
+	a=MSet("SmallMols")
 	a.Load()
+	t1 = time.time()
 	maxnatoms = a.MaxNAtoms()
 	zlist = []
 	xyzlist = []
-	natom = np.zeros((2), dtype=np.int32)
+	natom = np.zeros((4000), dtype=np.int32)
 	for i, mol in enumerate(a.mols):
 		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
-		paddedz = np.zeros((maxnatoms), dtype=np.int64)
+		paddedz = np.zeros((maxnatoms), dtype=np.int32)
 		paddedz[:mol.atoms.shape[0]] = mol.atoms
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		natom[i] = mol.NAtoms()
-		if i == 1:
+		if i == 3999:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
 	xyz_np = np.stack(xyzlist)
 	z_np = np.stack(zlist)
-	NL = NeighborListSet(xyz_np, natom, True, True, z_np)
-	rad_p, ang_t = NL.buildPairsAndTriples(Rr_cut, Ra_cut)
-	Radp_pl=tf.Variable(rad_p, dtype=tf.int64,name="RadialPairs")
-	Angt_pl=tf.Variable(ang_t, dtype=tf.int64,name="AngularTriples")
-
 	eles = [1,6,7,8]
 	n_eles = len(eles)
 	eles_np = np.asarray(eles).reshape((n_eles,1))
@@ -348,8 +364,13 @@ def TestTFSym():
 		for j in range(i, len(eles)):
 			eles_pairs.append([eles[i], eles[j]])
 	eles_pairs_np = np.asarray(eles_pairs)
-	Ele = tf.Variable(eles_np, trainable=False, dtype = tf.int64)
-	Elep = tf.Variable(eles_pairs_np, trainable=False, dtype = tf.int64)
+	NL = NeighborListSet(xyz_np, natom, True, True, ele_= z_np, sort_ = True)
+	rad_p, ang_t, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, ele = eles_np, elep = eles_pairs_np)
+	Radp_pl=tf.Variable(rad_p, dtype=tf.int32,name="RadialPairs")
+	Angt_pl=tf.Variable(ang_t, dtype=tf.int32,name="AngularTriples")
+	mil_jkt = tf.Variable(mil_jk, dtype=tf.int32)
+	Ele = tf.Variable(eles_np, trainable=False, dtype = tf.int32)
+	Elep = tf.Variable(eles_pairs_np, trainable=False, dtype = tf.int32)
 
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
@@ -359,32 +380,19 @@ def TestTFSym():
 	AN1_num_a_Rs = PARAMS["AN1_num_a_Rs"]
 	thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = np.float64)
 	rs =  np.array([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = np.float64)
-	# Create a parameter tensor. 4 x nzeta X neta X ntheta X nr
-	p1 = np.tile(np.reshape(zetas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
-	p2 = np.tile(np.reshape(etas,[1,1,1,1,1]),[1,1,AN1_num_a_As,AN1_num_a_Rs,1])
-	p3 = np.tile(np.reshape(thetas,[1,1,AN1_num_a_As,1,1]),[1,1,1,AN1_num_a_Rs,1])
-	p4 = np.tile(np.reshape(rs,[1,1,1,AN1_num_a_Rs,1]),[1,1,AN1_num_a_As,1,1])
-	SFPa = np.concatenate([p1,p2,p3,p4],axis=4)
-	SFPa = np.transpose(SFPa, [4,0,1,2,3])
+
 	etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
 	AN1_num_r_Rs = PARAMS["AN1_num_r_Rs"]
 	rs_R =  np.array([ Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
-	# Create a parameter tensor. 2 x  neta X nr
-	p1_R = np.tile(np.reshape(etas_R,[1,1,1]),[1,AN1_num_r_Rs,1])
-	p2_R = np.tile(np.reshape(rs_R,[1,AN1_num_r_Rs,1]),[1,1,1])
-	SFPr = np.concatenate([p1_R,p2_R],axis=2)
-	SFPr = np.transpose(SFPr, [2,0,1])
-	# self.inshape = int(len(self.eles)*AN1_num_r_Rs + len(self.eles_pairs)*AN1_num_a_Rs*AN1_num_a_As)
-	# self.inshape_withencode = int(self.inshape + AN1_num_r_Rs)
-	#self.inshape = int(len(self.eles)*AN1_num_r_Rs)
+
+
 	p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
 	p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
-	# SFPa2 = np.concatenate([p1,p2],axis=2)
-	# self.SFPa2 = np.transpose(SFPa2, [2,0,1])
-	# p1_new = np.reshape(rs_R,[AN1_num_r_Rs,1])
-	# self.SFPr2 = np.transpose(p1_new, [1,0])
+
 	zeta = PARAMS["AN1_zeta"]
 	eta = PARAMS["AN1_eta"]
+	PARAMS["ANES"] = np.array([2.20, 2.55, 3.04, 3.44])
+
 	# self.HasANI1PARAMS = True
 
 	SFPa2 = tf.Variable(np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1]), trainable= False, dtype = tf.float64)
@@ -393,33 +401,57 @@ def TestTFSym():
 	Ra_cut = tf.Variable(PARAMS["AN1_a_Rc"], trainable=False, dtype = tf.float64)
 	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
 	eta = tf.Variable(PARAMS["AN1_eta"], trainable=False, dtype = tf.float64)
+	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
+	element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	# sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	tmp = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
+	sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
+	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
+	# tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
 
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 	run_metadata = tf.RunMetadata()
 
-	# tmp, tmp2, tmp3, tmp4 = sess.run([Scatter_Sym, Sym_Index, sym_tmp, idx_tmp])
-	# print np.allclose(tmp[0], tmp3[0])
-	# print np.allclose(tmp2[0], tmp4[0])
-	tmp2 = sess.run([tmp])
-	print tmp2
+	# tmp, tmp2, tmp3, tmp4 = sess.run([sym_tmp, idx_tmp, sym_tmp2, idx_tmp2])
+	# print np.isclose(tmp[2], tmp3[2])
+	# print tmp[0][np.where(np.logical_not(np.isclose(tmp[0], tmp3[0])))][-20:]
+	# print tmp3[0][np.where(np.logical_not(np.isclose(tmp[0], tmp3[0])))][-20:]
+	# print np.isclose(tmp2[0], tmp4[0])
+	# tmp2 = sess.run([tmp])
+	# print tmp2[0].shape
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
-	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
-	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-	# chrome_trace = fetched_timeline.generate_chrome_trace_format()
-	# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-	# 	f.write(chrome_trace)
+	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp])
+	tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
+
+def train_energy_symm_func_channel():
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 1000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 300
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["tf_prec"] = "tf.float64"
+	a=MSet("SmallMols_rand")
+	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="atomization")
+	tset = TensorMolData_BP_Direct_WithEle(a,d, WithGrad_=True)
+	manager=TFMolManage("",tset,True,"fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt", Trainable_=True)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("chemspider_all_60", 500000)
+# RandomSmallSet("SmallMols", 10000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -435,6 +467,13 @@ def TestTFSym():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-# TestTFGauSH()
-# train_forces_GauSH_direct("benzene_1rot")
-TestTFSym()
+TestTFGauSH()
+# train_forces_GauSH_direct("SmallMols")
+# TestTFSym()
+# train_energy_symm_func_channel()
+# test_gaussian_overlap()
+
+# a=MSet("SmallMols")
+# a.Load()
+# a.cut_max_n_atoms(35)
+# a.Save("SmallMols_35")

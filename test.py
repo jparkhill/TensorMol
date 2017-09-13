@@ -9,6 +9,79 @@ import os
 import numpy as np
 #os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
+def TestPeriodicLJVoxel():
+	"""
+	Tests a Simple Periodic optimization.
+	Trying to find the HCP minimum for the LJ crystal.
+	"""
+	m = Mol(np.array([1,1,1,1,1,1]),5.0*np.array([[0.01,0.1,0.01],[0.03,1.,0.4],[0.1,2.,1.],[1.,0.6,0.05],[1.,1.,0.01],[1.,0.05,0.3],]))
+	print("Original six coords:", m.coords)
+	# Generate a Periodic Force field.
+	lat = 5.0*np.eye(3)
+	PF = TFPeriodicLocalForce(10.0,lat)
+	tmp = PF(m.atoms,m.coords,lat)
+	print("Original Force: ", tmp)
+	return
+
+def TestPeriodicLJOpt():
+	"""
+	Tests a Simple Periodic optimization.
+	Trying to find the HCP minimum for the LJ crystal.
+	"""
+	m = Mol(np.array([1,1,1,1,1,1]),np.array([[0.,0.,0.],[0.,1.,0.],[0.,0.,1.],[1.,0.,0.],[1.,1.,0.],[1.,0.,1.],]))
+	m.Distort(0.01)
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
+	tset = TensorMolData(a,d)
+	ins = MolInstance_DirectForce(tset,None,False,"LJ")
+	ins.TrainPrepare()
+	# Generate a Periodic Force field.
+	BoxSize=2.8
+	m.WriteXYZfile("./results/", "before")
+	PF = PeriodicForce(m, np.array([[BoxSize,0.0,0.0],[0.0,BoxSize,0.0],[0.,0.,BoxSize]]))
+	m = PF.mol0
+	PF.AddLocal(ins.CallLinearLJForce,15.0)
+	PARAMS["OptMaxCycles"] = 600
+	PARAMS["OptStepSize"] = 0.03
+	PGO = PeriodicGeomOptimizer(PF)
+	PGO.OptWCell(m,"PeriodicOpt")
+	return
+
+def TestBoxing():
+	"""
+	Makes a box of 64 water molecules
+	The final lattice spacing would be 1water/3.10432 Angstroms.
+	"""
+	a = MSet("h2o")
+	a.ReadXYZ("h2o")
+	m = a.mols[0]
+	latv = np.array([[10.0,0.,0.],[0.,10.,0.],[0.,0.,10.]])
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(m)
+	print(mc.coords)
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,4))
+	print(mt.coords)
+	mt.coords += np.min(mt.coords)
+	lat0 = np.array([[np.max(mt.coords),0.,0.],[0.,np.max(mt.coords),0.],[0.,0.,np.max(mt.coords)]])*4.0
+	latp = np.array([[3.10432,0.,0.],[0.,3.10432,0.],[0.,0.,3.10432]])
+	print(lat0,latp)
+	m = Lattice(lat0).CenteredInLattice(mt)
+	print(m.coords)
+
+	TreatedAtoms = a.AtomTypes()
+	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
+	tset = TensorMolData(a,d)
+	tset.MaxNAtoms = m.NAtoms()
+	ins = MolInstance_DirectForce(tset,None,False,"LJ")
+	ins.TrainPrepare()
+	# Convert from hartree/ang to joules/mol ang.
+	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[1]
+	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
+
+	Box = BoxingDynamics(ForceField, m, "BoxingMD", EnergyForceField, lat0, latp, 500.)
+	Box.Prop()
+	return
+
 def TestBPDirectWater():
 	a=MSet("H2O_force_test", center_=False)
 	a.ReadXYZ("H2O_force_test")
@@ -1026,7 +1099,6 @@ def PullFreqData():
 	np.save("morphine_nm.npy", nm)
 	f.close()
 
-
 def TestPotential():
 	"""
 	Makes volumetric data for looking at how potentials behave near and far from equilibrium.
@@ -1144,14 +1216,14 @@ def Test_LJMD():
 	md.Prop()
 	return
 
-def Test_Periodic_LJMD():
+def TestPeriodicLJMD():
 	"""
 	Test TensorFlow LJ fluid Molecular dynamics with periodic BC
 	This version also tests linear-scaling-ness of the neighbor list
 	"""
 	a=MSet("Test")
-	ParticlesPerEdge = 7
-	EdgeSize = 7
+	ParticlesPerEdge = 6
+	EdgeSize = 9
 	a.mols=[Mol(np.ones(ParticlesPerEdge*ParticlesPerEdge*ParticlesPerEdge,dtype=np.uint8),MakeUniform([0.0,0.0,0.0],EdgeSize,ParticlesPerEdge))]
 	#a.mols=[Mol(np.ones(512),MakeUniform([0.0,0.0,0.0],4.0,8))]
 	m = a.mols[0]
@@ -1172,9 +1244,9 @@ def Test_Periodic_LJMD():
 		md = VelocityVerlet(ForceField,m,"LJLinearTest", EnergyForceField)
 		md.Prop()
 	# Generate a Periodic Force field.
-	BoxSize=8.1
+	BoxSize=EdgeSize+1
 	PF = PeriodicForce(m, np.array([[BoxSize,0.0,0.0],[0.0,BoxSize,0.0],[0.,0.,BoxSize]]))
-	PF.AddLocal(ins.CallLinearLJForce,10.0)
+	PF.AddLocal(ins.CallLinearLJForce,8.0)
 	PARAMS["MDTemp"] = 300.0
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None
@@ -1294,7 +1366,6 @@ def TestMD(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	md.Prop()
 	return
 
-
 def TestEE():
 	"""
 	Test an electrostatically embedded Behler-Parinello
@@ -1317,36 +1388,33 @@ def TestEE():
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=1500)
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
-                #manager.Continue_Training(maxsteps=2)
+		#manager.Continue_Training(maxsteps=2)
 	if (0):
 		a = MSet("gradient_test_0")
-                a.ReadXYZ("gradient_test_0")
-                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		a.ReadXYZ("gradient_test_0")
+		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		optimizer  = Optimizer(manager)
 		optimizer.OptANI1(a.mols[0])
 	if (0):
-                a = MSet("gradient_test_0")
-                a.ReadXYZ("gradient_test_0")
-                manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
-                print(manager.Eval_BP(a))
-
-                a = MSet("gradient_test_1")
-                a.ReadXYZ("gradient_test_1")
+		a = MSet("gradient_test_0")
+		a.ReadXYZ("gradient_test_0")
+		manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		print(manager.Eval_BP(a))
+		a = MSet("gradient_test_1")
+		a.ReadXYZ("gradient_test_1")
 		t = time.time()
-                print(manager.Eval_BP(a))
+		print(manager.Eval_BP(a))
 		print("time cost to eval:", time.time() -t)
-
 		a = MSet("gradient_test_2")
-                a.ReadXYZ("gradient_test_2")
-                t = time.time()
-                print(manager.Eval_BP(a))
-                print("time cost to eval:", time.time() -t)
-
+		a.ReadXYZ("gradient_test_2")
+		t = time.time()
+		print(manager.Eval_BP(a))
+		print("time cost to eval:", time.time() -t)
 	if (1):
 		a = MSet("md_test")
 		a.ReadXYZ("md_test")
 		m = a.mols[0]
-	        tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
+		tfm= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
 		# Convert the forces from kcal/mol ang to joules/mol ang.
 		ForceField = lambda x: 4183.9953*tfm.Eval_BPForce(Mol(m.atoms,x))
 		PARAMS["MNHChain"] = 0
@@ -1465,7 +1533,10 @@ Test_LJMD()
 #david_HarmonicAnalysis()
 #TestMetadynamics()
 #PullFreqData()
-#Test_Periodic_LJMD()
+#TestPeriodicLJMD()
+#TestPeriodicLJOpt()
+#TestBoxing()
+TestPeriodicLJVoxel()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()
@@ -1481,7 +1552,6 @@ Test_LJMD()
 #TestRandom()
 #TestNebGLBFGS() # Not working... for some reason.. I'll try DIIS next.
 #TestBowl()
-
 
 # This visualizes the go potential and projections on to basis vectors.
 if (0):

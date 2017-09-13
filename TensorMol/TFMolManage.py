@@ -79,12 +79,18 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
 			self.Instances = MolInstance_DirectBP_Grad_Linear(self.TData)
-		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
-			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_EmbOpt(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_Update"):
+			self.Instances = MolInstance_DirectBP_EE_Update(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1210,6 +1216,32 @@ class TFMolManage(TFManage):
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
 		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
 
+
+	def EvalBPDirectEEUpdateSingle(self, mol, Rr_cut, Ra_cut, Ree_cut):
+		"""
+		The energy, force and dipole routine for BPs_EE.
+		"""
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		dummy_dipole = np.zeros((nmols, 3))
+		self.TData.MaxNAtoms = mol.NAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
+		rad_eep = NLEE.buildPairs(Ree_cut)
+		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
+		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
+
 	def Prepare(self):
 		self.Load()
 		self.Instances= None # In order of the elements in TData
@@ -1233,12 +1265,18 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_Grad_NewIndex(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear"):
 			self.Instances = MolInstance_DirectBP_Grad_Linear(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
-		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_Queue"):
-			self.Instances = MolInstance_DirectBP_Grad_Linear_Queue(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt"):
+			self.Instances = MolInstance_DirectBP_Grad_Linear_EmbOpt(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE"):
 			self.Instances = MolInstance_DirectBP_EE(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_Update"):
+			self.Instances = MolInstance_DirectBP_EE_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):
