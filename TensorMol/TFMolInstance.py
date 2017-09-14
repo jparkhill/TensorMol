@@ -40,6 +40,7 @@ class MolInstance(Instance):
 		self.batch_size = PARAMS["batch_size"]
 		self.summary_op =None
 		self.summary_writer=None
+		self.max_checkpoints = 100000000
 		return
 
 	def inference(self, inputs):

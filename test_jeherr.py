@@ -277,7 +277,7 @@ def TestTFGauSH():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 	element = tf.constant(1, dtype=tf.int32)
-	tmp, tmp2, _ = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 6, orthogonalize=False)
+	tmp, tmp2, _ = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 8, orthogonalize=False)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	# for i in range(a.mols[0].atoms.shape[0]):
@@ -315,10 +315,18 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
+<<<<<<< HEAD
+	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
+	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
+	PARAMS["max_steps"] = 2000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 300
+=======
 	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
+>>>>>>> 0fff61562a910222c24e4847a7a0a8d77f48b8fc
 	PARAMS["NeuronType"] = "elu"
 	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)

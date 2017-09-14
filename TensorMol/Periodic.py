@@ -64,21 +64,23 @@ class Lattice:
 		"""
 		ntess = ntess_
 		natom = atoms_.shape[0]
-		nimages = pow(2*self.ntess+1,3)
+		nimages = pow(ntess_,3)
 		#print("Doing",nimages,"images... of ",natom)
 		newAtoms = np.zeros(nimages*natom,dtype=np.uint8)
 		newCoords = np.zeros((nimages*natom,3))
 		newAtoms[:natom] = atoms_
 		newCoords[:natom,:3] = coords_
 		ind = 1
-		for i in range(-self.ntess,self.ntess+1):
-			for j in range(-self.ntess,self.ntess+1):
-				for k in range(-self.ntess,self.ntess+1):
+		for i in range(ntess):
+			for j in range(ntess):
+				for k in range(ntess):
 					if (i==0 and j==0 and k ==0):
 						continue
 					newAtoms[ind*natom:(ind+1)*natom] = atoms_
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
+					print(i,j,k,ind,nimages)
 					ind = ind + 1
+		print(newAtoms, newCoords.shape)
 		return newAtoms, newCoords
 	def TessLattice(self, atoms_, coords_, rng_):
 		"""

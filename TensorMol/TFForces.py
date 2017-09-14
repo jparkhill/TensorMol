@@ -104,7 +104,7 @@ class BoxHolder(ForceHolder):
 #		print("lat",lat_)
 #		print("Xinlat",self.sess.run([XInLat(self.x_pl,self.lat_pl)], feed_dict = {self.x_pl:x_, self.lat_pl:lat_}))
 		e,f = self.sess.run([self.Energy,self.Force], feed_dict = {self.x_pl:x_, self.lat_pl:lat_})
-		print("Min max and lat", np.min(x_), np.max(x_), lat_, e ,f)
+		#print("Min max and lat", np.min(x_), np.max(x_), lat_, e ,f)
 		return e, f[0]
 
 class BumpHolder(ForceHolder):
