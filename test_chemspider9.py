@@ -687,7 +687,7 @@ def EvalForceField():
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
 
-	if (0):
+	if (1):
 		os.environ["CUDA_VISIBLE_DEVICES"]="0"
 		a = MSet("chemspider9_metady_force")
 		a.Load()
@@ -769,7 +769,7 @@ def EvalForceField():
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
 
-	if (1):
+	if (0):
 		os.environ["CUDA_VISIBLE_DEVICES"]="0"
 		a = MSet("chemspider9_metady_force")
 		a.Load()

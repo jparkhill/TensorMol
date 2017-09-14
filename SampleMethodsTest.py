@@ -101,7 +101,7 @@ def TestOptimization(MName_):
 	# a.Load()
 	a.ReadXYZ()
 	# shuffle(a.mols)
-	mol = a.mols[10]
+	mol = a.mols[-2]
 	PARAMS["hidden1"] = 200
 	PARAMS["hidden2"] = 200
 	PARAMS["hidden3"] = 200
