@@ -2044,8 +2044,8 @@ def TF_spherical_harmonics_7(delta_xyzs, inverse_distance_tensor):
 				* (tf.square(delta_xyzs[:,:,0]) + tf.square(delta_xyzs[:,:,1]) - 12. * tf.square(delta_xyzs[:,:,2]))),
 			(4.151324629762083 * delta_xyzs[:,:,0] * delta_xyzs[:,:,1] * (tf.square(delta_xyzs[:,:,0]) - 1. \
 				* tf.square(delta_xyzs[:,:,1])) * delta_xyzs[:,:,2] * (3. * tf.square(delta_xyzs[:,:,0]) + 3. \
-				* tf.square(delta_xyzs[:,:,1]) - 10. * tf.square(delta_xyzs[:,:,2]))),tf.square(delta_xyzs[:,:,0]) \
-				+ tf.square(delta_xyzs[:,:,1])) * (3. * tf.pow(delta_xyzs[:,:,0], 4) + 3. * tf.pow(delta_xyzs[:,:,1], 4) \
+				* tf.square(delta_xyzs[:,:,1]) - 10. * tf.square(delta_xyzs[:,:,2])),tf.square(delta_xyzs[:,:,0]) \
+				+ tf.square(delta_xyzs[:,:,1]) * (3. * tf.pow(delta_xyzs[:,:,0], 4) + 3. * tf.pow(delta_xyzs[:,:,1], 4) \
 				- 60. * tf.square(delta_xyzs[:,:,1]) * tf.square(delta_xyzs[:,:,2]) + 80. * tf.pow(delta_xyzs[:,:,2], 4) \
 				+ 6. * tf.square(delta_xyzs[:,:,0]) * (tf.square(delta_xyzs[:,:,1]) - 10. * tf.square(delta_xyzs[:,:,2])))),
 			(-0.4425326924449826 * delta_xyzs[:,:,0] * delta_xyzs[:,:,1] * delta_xyzs[:,:,2] * (15. * tf.pow(delta_xyzs[:,:,0], 4) \

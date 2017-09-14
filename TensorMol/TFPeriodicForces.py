@@ -240,10 +240,9 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 
 		Args:
 			rcut_: a cutoff radius (A) used for softness.
-			lat_: in
+			lat_: a 3x3 ndarray of initial lattice vectors.
 		"""
 		# Determine the required tesselations to perform.
-		self.StressDifferentiable = False
 		self.lat = lat_.copy()
 		# Ensure the number of tesselations cover the physical interactions.
 		latcenter = (lat_[0]+lat_[1]+lat_[2])/2.0
@@ -259,6 +258,8 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 					if ((t1 != 0) or (t2 != 0) or (t3 != 0) ):
 						tesslist.append([t1,t2,t3])
 		self.tess = np.array(tesslist).reshape((pow(len(tessrng),3),3))
+		# The number of tesselations should probably be variable....
+		# or at least checked, but not for now.
 		LinearVoxelBase.__init__(self, rcut_)
 		self.rcut = rcut_
 		# Placeholders....
@@ -299,8 +300,24 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
-
-	def PeriodicWrapping(self, z_, xyz_, lat_, tess_):
+	def GetLatMetrics(self,lat_):
+		"""
+		Returns <lat_i| lat_j>**-0.5, and **0.5
+		These are the change of basis matrices into and out-of lattice coordinates.
+		"""
+		return TFMatrixSqrt(tf.matmul(lat_, tf.transpose(lat_)))
+	def InLat(self,xyz_,lat_):
+		"""
+		Converts xyz_ into linear combination of the row vectors in lat_
+		"""
+		latmet = tf.matrix_inverse(tf.matmul(lat_, tf.transpose(lat_)))
+		return tf.matmul(xyz_,tf.matmul(tf.transpose(lat_),latmet))
+	def FromLat(self,abc_,lat_):
+		"""
+		Converts abc_ from lattice to cartesian.
+		"""
+		return tf.matmul(abc_,lat_)
+	def PeriodicWrapping(self,z_, xyz_, lat_, tess_):
 		"""
 		This tesselates xyz_ using the lattice vectors lat_
 		according to tess_, so that lat_ can be differentiable tensorflow varaiables.
@@ -309,24 +326,26 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 		the remainder are images.
 
 		Args:
-			z_: vector of atomic numbers
-			xyz_: nprimitive atoms X 3 coordinates.
-			lat_: 3x3 lattice matrix.
-			tess_: an ntess X 3 matrix of tesselations to perform. The identity is the assumed initial state.
+		    z_: vector of atomic numbers
+		    xyz_: nprimitive atoms X 3 coordinates.
+		    lat_: 3x3 lattice matrix.
+		    tess_: an ntess X 3 matrix of tesselations to perform. The identity is the assumed initial state.
 		"""
-		with self.g.as_default():
-			ntess = tf.shape(tess_)[0]
-			i0 = tf.zeros(1,tf.int32)[0]
-			natold = tf.shape(z_)[0]
-			natnew = tf.shape(z_)*ntess
-			outz = tf.TensorArray(tf.float64, size=ntess)
-			outx = tf.TensorArray(tf.float64, size=ntess)
-			cond = lambda i,z,x: tf.less(i,ntess)
-			body = lambda i,z,x: [i+1, outz.write(i,z_) ,outx.write(i,xyz_+tess_[i,0]*lat_[0]+tess_[i,1]*lat_[1]+tess_[i,2]*lat_[2])]
-			inital = (0,outz,outx)
-			i,zr,xr = tf.while_loop(cond,body,inital)
-			return zr.concat(),xr.concat()
-
+		# Move into the lattice frame and tesselate there.
+		x_lat = self.InLat(xyz_,lat_)
+		ntess = tf.shape(tess_)[0]
+		i0 = tf.zeros(1,tf.int32)[0]
+		tess=tf.cast(tess_,dtype=tf.float64)
+		natold = tf.shape(z_)[0]
+		natnew = tf.shape(z_)*ntess
+		outz = tf.TensorArray(tf.float64, size=ntess)
+		outx = tf.TensorArray(tf.float64, size=ntess)
+		cond = lambda i,z,x: tf.less(i,ntess)
+		body = lambda i,z,x: [i+1, outz.write(i,z_) ,outx.write(i,x_lat+tess[i,0])]
+		inital = (0,outz,outx)
+		i,zr,xr = tf.while_loop(cond,body,inital)
+		xcart = self.FromLat(xr.concat(),lat_)
+		return zr.concat(), xcart
 	def __call__(self, z_, x_, lat_):
 		"""
 		This doesn't support direct calculation of
@@ -366,7 +385,6 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 					FrcToRe[inds[m,i]] = Frc[m,i]
 					EnToRe += Ens[m,i]
 		return EnToRe, JOULEPERHARTREE*FrcToRe, JOULEPERHARTREE*StrsToRe[0] # Returns energies and forces and stresses
-
 	def LJEnergies(self,XYZs_):
 		"""
 		Returns LJ Energies batched over molecules.
@@ -392,98 +410,3 @@ class TFPeriodicLocalForce(LinearVoxelBase):
 		Ks = tf.matrix_band_part(Ks, 0, -1)
 		Ens = tf.reduce_sum(Ks,[2])
 		return Ens
-
-class PeriodicLJ(TFPeriodicLocalForce):
-	def __init__(self, rcut_ = 18.0):
-		"""
-		Holds a periodic lennard-jones tensorflow Evaluator.
-		This version tries to make the stress tensor analytically differentiable.
-		And serves as a prototype for other simple differentiable
-		periodic forces. properly softens the force at it's cutoff.
-
-		There are two ingredients:
-
-		This relies on LinearVoxelBase to divide a system into padded voxels.
-		In linear time. Then dense routines are used on each 'molecule' = 'voxel'
-
-		Args:
-			rcut_: a cutoff radius (A) used for softness.
-			lat_: in
-		"""
-		self.sess = None
-		self.rcut = rcut_
-		self.lat_pl = None
-		self.tess_pl = None
-		self.nzp_pl = None
-		self.Prepare()
-		return
-
-	def Prepare(self):
-		with tf.Graph().as_default():
-			self.z_pl=tf.placeholder(tf.float64, shape=tuple([None,3]))
-			self.xyz_pl=tf.placeholder(tf.float64, shape=tuple([None,3]))
-			self.lat_pl=tf.placeholder(tf.float64, shape=tuple([3,3]))
-			self.tess_pl=tf.placeholder(tf.float64, shape=tuple([None,3]))
-			self.nzp_pl=tf.placeholder(tf.float64, shape=tuple([None,2]))
-			self.Rc = tf.Variable(rcut,dtype = tf.float64)
-
-			self.energy,self.force,self.stress = self.LJLinear(xyz_pl, lat_pl, tess_pl, nzp_pl)
-
-			init = tf.global_variables_initializer()
-			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			self.sess.run(init)
-		return
-
-	def __call__(self, x_, lat_, tess_, nz_):
-		"""
-		Gives all the stuff needed to do variable cell dynamics.
-
-		Args:
-			x_: Coordinates within the unit cell.
-			lat_: 3x3 matrix of lattice coords.
-			tess_: List of non-identity tesselations to perform.
-		Returns:
-			returns the energy, force within the cell, and stress tensor.
-		"""
-		feeddict = {self.x_pl:x_, self.nzp_pl:nz_, self.lat_pl:lat_, self.tess_pl:tess_}
-		En,Frc,Strs = self.sess.run([self.energy, self.force, self.stress],feed_dict=feeddict)
-		return En, JOULEPERHARTREE*Frc[0], JOULEPERHARTREE*Strs[0] # Returns energies and forces and stresses
-
-	def LJLinear(self, x_pl, lat_pl, tess_pl, nzp_pl):
-		"""
-
-		Args:
-			x_pl: placeholder for the Natom X 3 tensor of x,y,z
-			lat_pl: placeholder for the 3 lattice vectors
-			tess_pl: placeholder for the ntess X 3 tesselations.
-			nzp_pl: placeholder for the NMol X 3 tensor of nonzero pairs.
-
-		Returns:
-			The energy force and stress for the periodic system with the appropriate cutoff.
-		"""
-		tessx = self.PeriodicWrapping(tf.zeros((tf.shape(x_pl)[0],1)),x_pl, lat_pl, tess_pl)
-		x_shp = tf.shape(tessx)
-		xpl = tf.reshape(x,[1,x_plshp[0],x_plshp[1]])
-		Ens = LJEnergyLinear(xpl, nzp_pl)
-		frcs = -1.0*(tf.gradients(Ens, xpl)[0])
-		stress = -1.0*(tf.gradients(Ens, lat_pl)[0])
-		return Ens, frcs, stress
-
-	def LJEnergyLinear(self,XYZs,NZP):
-		"""
-		Linear Scaling Lennard-Jones Energy for a single Molecule.
-
-		Args:
-			Ds: Distances Enumerated by NZP (flat)
-			NZP: a list of nonzero atom pairs NNZ X 2 = (i, j).
-		Returns
-			LJ energy.
-		"""
-		Ds = TFDistanceLinear(XYZs_[0,:,:], NZP)
-		Cut = 0.5*(1.0-tf.erf(Ds - self.rcut))
-		R = 1.0/Ds
-		K = 0.2*Cut*(tf.pow(R,12.0)-2.0*tf.pow(R,6.0))
-		K = tf.where(tf.is_nan(K),tf.zeros_like(K),K)
-		K = tf.reduce_sum(K,axis=0)
-		return K
