@@ -10,7 +10,7 @@
 - Keep classes to < 20 member variables.
 - Keep loops to a depth < 6
 - Use functional programming constructs whenever possible.
-- Use docstrings, you asshole and use Args: and Returns:
+- Use Google-style docstrings, you asshole and use Args: and Returns:
 - Commit your changes once a day at least.
 - Use np.array rather than python list whenever possible.
 - It's NOT okay to put default parameters in __init__() and change them all the time instead add them to TMPARAMS.py so they become logged parameters attached to results.
@@ -21,6 +21,7 @@ Violators are subject to having their code and reproductive fitness mocked publi
 
 from __future__ import absolute_import
 from __future__ import print_function
+__version__="0.1"
 from TensorMol.Util import *
 from TensorMol.PhysicalData import *
 from TensorMol.Sets import *
@@ -35,6 +36,7 @@ from TensorMol.TensorMolDataEE import *
 from TensorMol.TFInstance import *
 from TensorMol.TFMolInstance import *
 from TensorMol.TFMolInstanceDirect import *
+from TensorMol.TFForces import *
 from TensorMol.TFManage import *
 from TensorMol.TFMolManage import *
 from TensorMol.Ipecac import *
@@ -46,9 +48,12 @@ from TensorMol.BFGS import *
 from TensorMol.NeighborsMB import *
 from TensorMol.Electrostatics import *
 from TensorMol.ElectrostaticsTF import *
+from TensorMol.TFPeriodicForces import * 
 from TensorMol.SimpleMD import *
 from TensorMol.InfraredMD import *
 from TensorMol.MetaDynamics import *
+from TensorMol.Periodic import *
+from TensorMol.OptPeriodic import *
 from TensorMol.PeriodicMD import *
 from TensorMol.LinearOperations import *
 from TensorMol.AbInitio import *

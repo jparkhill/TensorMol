@@ -10,7 +10,11 @@ from TensorMol.TensorData import *
 from TensorMol.RawEmbeddings import *
 import numpy as np
 import math
-import time, os, sys, numbers
+import time
+import os
+import sys
+import numbers
+import random
 if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
@@ -417,7 +421,6 @@ class Instance:
 		"""
 		tf.summary.scalar(loss.op.name, loss)
 		optimizer = tf.train.AdamOptimizer(learning_rate)
-		#optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
 		train_op = optimizer.minimize(loss, global_step=global_step)
 		return train_op
@@ -439,7 +442,6 @@ class Instance:
 	def train_step(self,step):
 		raise Exception("Cannot Train base...")
 		return
-
 
 	def TrainPrepare(self,  continue_training =False):
 		"""Train for a number of steps."""
@@ -749,6 +751,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
 		self.Trainable = Trainable_
+		self.orthogonalize = False
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 
@@ -756,7 +759,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		batch_data = self.TData.GetTrainBatch(4 * self.batch_size)
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
-		embedding_list, labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, Zs, rotated_labels,
+		embedding_list, labels_list, _ = TF_gaussian_spherical_harmonics(rotated_xyzs, Zs, rotated_labels,
 											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
 											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
 											tf.Variable(self.l_max, trainable=False, dtype=tf.int32))
@@ -776,9 +779,10 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]))
 			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
-			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
 			l_max = tf.constant(self.l_max, dtype=tf.int32)
+			orthogonalize = tf.constant(PARAMS["SH_ORTH"], dtype=tf.uint8)
 			embedding_mean_std = []
 			labels_mean_std = []
 			for i in range(len(self.element)):
@@ -787,18 +791,24 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 				labels_mean_std.append([tf.constant(self.labels_mean_std[i][0], dtype=self.tf_prec),
 									tf.constant(self.labels_mean_std[i][1], dtype=self.tf_prec)])
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
-			self.embedding_list, self.labels_list = TF_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, rotated_labels,
-											self.element, self.gaussian_params, self.atomic_embed_factors, l_max)
+			self.embedding_list, self.labels_list, min_eigenvalue = TF_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, rotated_labels,
+											self.element, self.gaussian_params, self.atomic_embed_factors, l_max, self.orthogonalize)
 			norm_embed_list, norm_labels_list = [], []
 			for i in range(len(self.element)):
 				norm_embed_list.append((self.embedding_list[i] - embedding_mean_std[i][0]) / embedding_mean_std[i][1])
 				norm_labels_list.append((self.labels_list[i] - labels_mean_std[i][0]) / labels_mean_std[i][1])
 			self.norm_output_list = self.inference(norm_embed_list)
 			self.output_list = []
+			self.n_atoms_batch_list = []
 			for i in range(len(self.element)):
 				self.output_list.append((self.norm_output_list[i] * labels_mean_std[i][1]) + labels_mean_std[i][0])
+				self.n_atoms_batch_list.append(tf.shape(self.output_list[-1])[0])
 			self.total_loss, self.loss = self.loss_op(self.norm_output_list, norm_labels_list)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
+			r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
+			# gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss #Doesn't work due to gradient of eigenvalue
+			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint
+			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
@@ -894,6 +904,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		self.xyzs_pl = None
 		self.output_list = None
 		self.embedding_list = None
+		self.n_atoms_batch_list = None
 		return
 
 	def save_chk(self,  step):  # this can be included in the Instance
@@ -934,7 +945,7 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 		mini_test_loss = 1.e16 # some big numbers
 		for step in range(1, mxsteps+1):
 			self.train_step(step)
-			if step%test_freq==0 and step!=0 :
+			if step%test_freq==0:
 				test_loss = self.test(step)
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
@@ -945,50 +956,50 @@ class Instance_fc_sqdiff_GauSH_direct_all(Instance):
 	def train_step(self,step):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
-		train_loss =  0.0
+		train_loss, n_atoms_epoch = 0.0, 0.0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.TData.GetTrainBatch(self.batch_size) #advances the case pointer in TData...
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.profiling:
-				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
+				_, total_loss_value, loss_value, n_atoms_batch_list = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch_list], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
 				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
 				chrome_trace = fetched_timeline.generate_chrome_trace_format()
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
-				train_loss += total_loss_value
 			else:
-				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-				train_loss += total_loss_value
+				total_loss_value, loss_value, n_atoms_batch_list = self.sess.run([self.total_loss, self.loss, self.n_atoms_batch_list], feed_dict=feed_dict)
+			train_loss += total_loss_value
+			n_atoms_epoch += sum(n_atoms_batch_list)
 		duration = time.time() - start_time
-		self.print_training(step, train_loss, Ncase_train, duration)
+		self.print_training(step, train_loss, n_atoms_epoch, duration)
 		return
 
 	def test(self, step):
 		Ncase_test = self.TData.NTest
-		test_loss =  0.0
 		test_start_time = time.time()
+		test_loss, n_atoms_epoch = 0.0, 0.0
 		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
 			feed_dict = self.fill_feed_dict(batch_data)
-			preds, labels, total_loss_value, loss_value, gaussian_params, atomic_embed_factors = self.sess.run([self.output_list, self.labels_list, self.total_loss,  self.loss, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
+			preds, labels, total_loss_value, loss_value, n_atoms_batch_list, gaussian_params, atomic_embed_factors = self.sess.run([self.output_list, self.labels_list, self.total_loss,  self.loss, self.n_atoms_batch_list, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
 			test_loss += total_loss_value
+			n_atoms_epoch += sum(n_atoms_batch_list)
 		for i in range(len(self.output_list)):
 			self.TData.EvaluateTestBatch(labels[i], preds[i])
 		duration = time.time() - test_start_time
 		print("testing...")
-		# LOGGER.info("Gaussian paramaters: %s", gaussian_params)
-		# LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
-		self.print_testing(step, test_loss, Ncase_test, duration)
+		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
+		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
+		self.print_testing(step, test_loss, n_atoms_epoch, duration)
 		return test_loss
 
-	def print_training(self, step, loss, Ncase, duration):
-		denom = max((int(Ncase/self.batch_size)),1)
-		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+	def print_training(self, step, loss, n_cases, duration):
+		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(loss / float(n_cases)))
 		return
 
-	def print_testing(self, step, loss, Ncase, duration):
-		denom = max((int(Ncase/self.batch_size)),1)
-		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+	def print_testing(self, step, loss, n_cases, duration):
+		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(loss / float(n_cases)))
+		return
 
 	def PrepareData(self, batch_data):
 		if (batch_data[0].shape[0]==self.batch_size):
@@ -1016,17 +1027,19 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
 		self.Trainable = Trainable_
+		self.orthogonalize = True
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 
 	def compute_normalization_constants(self):
-		batch_data = self.TData.GetTrainBatch(4 * self.batch_size)
+		batch_data = self.TData.GetTrainBatch(20 * self.batch_size)
+		self.TData.ScratchPointer = 0
 		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
 		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, labels)
-		embedding, labels = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
+		embedding, labels, _ = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
 											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
 											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
-											tf.Variable(self.l_max, trainable=False, dtype=tf.int32))
+											tf.Variable(self.l_max, trainable=False, dtype=tf.int32), self.orthogonalize)
 		with tf.Session() as sess:
 			sess.run(tf.global_variables_initializer())
 			embed, label = sess.run([embedding, labels])
@@ -1034,7 +1047,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.outmean, self.outstd = np.mean(label), np.std(label)
 		return
 
-	def TrainPrepare(self, continue_training =False):
+	def TrainPrepare(self):
 		""" Builds the graphs by calling inference """
 		with tf.Graph().as_default():
 			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
@@ -1043,19 +1056,25 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
 			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
 			l_max = tf.constant(self.l_max, dtype=tf.int32)
+			element = tf.constant(self.element, dtype=tf.int32)
 			inmean = tf.constant(self.inmean, dtype=self.tf_prec)
 			instd = tf.constant(self.instd, dtype=self.tf_prec)
 			outmean = tf.constant(self.outmean, dtype=self.tf_prec)
 			outstd = tf.constant(self.outstd, dtype=self.tf_prec)
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
-			self.embedding, self.labels = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
-											self.element, self.gaussian_params, self.atomic_embed_factors, l_max)
+			self.embedding, self.labels, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+							element, self.gaussian_params, self.atomic_embed_factors, l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
 			self.norm_output = self.inference(self.norm_embedding)
 			self.output = (self.norm_output * outstd) + outmean
+			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
+			sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
+			r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
+			gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
+			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint + gaussian_overlap_constraint
+			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
@@ -1081,13 +1100,13 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			if i == 0:
 				with tf.name_scope('hidden1'):
 					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]],
-																var_stddev=1.0 / math.sqrt(float(self.inshape)), var_wd=0.001)
+																var_stddev=1.0 / math.sqrt(float(self.inshape)), var_wd=0.00)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 					layers.append(self.activation_function(tf.matmul(inputs, weights) + biases))
 			else:
 				with tf.name_scope('hidden'+str(i+1)):
 					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1],self.HiddenLayers[i]],
-																var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd=0.001)
+																var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd=0.00)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 					layers.append(self.activation_function(tf.matmul(layers[-1], weights) + biases))
 		with tf.name_scope('regression_linear'):
@@ -1143,6 +1162,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.xyzs_pl = None
 		self.output = None
 		self.embedding = None
+		self.n_atoms_batch = None
 		return
 
 	def loss_op(self, output, labels):
@@ -1171,12 +1191,12 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 
 	def train(self, mxsteps, continue_training= False):
 		self.compute_normalization_constants()
-		self.TrainPrepare(continue_training)
+		self.TrainPrepare()
 		test_freq = PARAMS["test_freq"]
-		mini_test_loss = 100000000 # some big numbers
+		mini_test_loss = 1.e16
 		for step in range(1, mxsteps+1):
 			self.train_step(step)
-			if step%test_freq==0 and step!=0 :
+			if step%test_freq==0:
 				test_loss = self.test(step)
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
@@ -1187,48 +1207,66 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 	def train_step(self,step):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
-		train_loss =  0.0
-		for ministep in range (0, int(Ncase_train/self.batch_size)):
+		train_loss, n_atoms_epoch = 0.0, 0.0
+		for ministep in xrange(0, int(Ncase_train/self.batch_size)):
 			batch_data = self.TData.GetTrainBatch(self.batch_size) #advances the case pointer in TData...
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.profiling:
-				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
+				_, total_loss_value, loss_value, n_atoms_batch = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
 				fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
 				chrome_trace = fetched_timeline.generate_chrome_trace_format()
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
 			else:
-				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=feed_dict)
-				train_loss += total_loss_value
+				_, total_loss_value, loss_value, n_atoms_batch = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch], feed_dict=feed_dict)
+			train_loss += total_loss_value
+			n_atoms_epoch += n_atoms_batch
 		duration = time.time() - start_time
-		self.print_training(step, train_loss, Ncase_train, duration)
+		self.print_training(step, train_loss, n_atoms_epoch, duration)
 		return
 
 	def test(self, step):
-		Ncase_test = self.TData.NTest
-		test_loss =  0.0
-		test_start_time = time.time()
-		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
-			batch_data=self.TData.GetTestBatch(self.batch_size)#, ministep)
-			feed_dict = self.fill_feed_dict(batch_data)
-			preds, labels, total_loss_value, loss_value, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss,  self.loss, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
-			test_loss += total_loss_value
-		self.TData.EvaluateTestBatch(labels, preds)
-		duration = time.time() - test_start_time
 		print("testing...")
+		Ncase_test = self.TData.NTest
+		test_loss, n_atoms_epoch = 0.0, 0.0
+		test_start_time = time.time()
+		mean_test_error, std_dev_test_error = 0.0, 0.0
+		test_epoch_labels, test_epoch_outputs = [], []
+		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
+			batch_data=self.TData.GetTestBatch(self.batch_size)
+			feed_dict = self.fill_feed_dict(batch_data)
+			output, labels, total_loss_value, loss_value, n_atoms_batch, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
+			test_loss += total_loss_value
+			n_atoms_epoch += n_atoms_batch
+<<<<<<< HEAD
+			sum_abs_error_matrix += np.sum(np.abs(output - labels))
+			sum_square_error_matrix += np.sum(np.square(output - labels))
+=======
+			test_epoch_labels.append(labels)
+			test_epoch_outputs.append(output)
+		test_epoch_labels = np.concatenate(test_epoch_labels)
+		test_epoch_outputs = np.concatenate(test_epoch_outputs)
+		test_epoch_errors = test_epoch_labels - test_epoch_outputs
+>>>>>>> 0fff61562a910222c24e4847a7a0a8d77f48b8fc
+		duration = time.time() - test_start_time
+		for i in range(20):
+			LOGGER.info("Label: %s  Output: %s", test_epoch_labels[i], test_epoch_outputs[i])
+		LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
+		LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
+		LOGGER.info("RMSE: %f", np.sqrt(np.mean(np.square(test_epoch_errors))))
+		LOGGER.info("Std. Dev.: %f", np.std(test_epoch_errors))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
-		self.print_testing(step, test_loss, Ncase_test, duration)
+		self.print_testing(step, test_loss, n_atoms_epoch, duration)
 		return test_loss
 
-	def print_training(self, step, loss, Ncase, duration):
-		denom = max((int(Ncase/self.batch_size)),1)
-		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+	def print_training(self, step, loss, n_cases, duration):
+		LOGGER.info("step: %7d  duration: %.5f train loss: %.10f", step, duration,(loss / float(n_cases)))
 		return
 
-	def print_testing(self, step, loss, Ncase, duration):
-		denom = max((int(Ncase/self.batch_size)),1)
-		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(float(loss)/(denom*self.batch_size)))
+	def print_testing(self, step, loss, n_cases, duration):
+		LOGGER.info("step: %7d  duration: %.5f test loss: %.10f", step, duration,(loss / float(n_cases)))
+		return
 
 	def PrepareData(self, batch_data):
 		if (batch_data[0].shape[0]==self.batch_size):

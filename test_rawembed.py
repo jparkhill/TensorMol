@@ -88,3 +88,10 @@ if (0):
 	#print MBEterms.trips
 	#print MBEterms.pairz
 	#print MBEterms.tripz
+
+if (0):
+	mset=MSet("NeigborMB_test")
+	mset.ReadXYZ("NeigborMB_test")
+	m = mset.mols[-1]
+	cl = CellList(m.coords, 5.0)
+	cl.Update(m.coords)

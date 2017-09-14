@@ -18,8 +18,8 @@ class TMParams(dict):
 		self["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=4
-		self["SH_NRAD"]=7
-		self["SH_ORTH"]=0
+		self["SH_NRAD"]=12
+		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
@@ -116,6 +116,7 @@ class TMParams(dict):
 		self["MetaBowlK"] = 0.0
 		self["MetaMaxBumps"] = 2500
 		# parameters of electrostatic embedding
+		self["Poly_Width"] = 4.6
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
