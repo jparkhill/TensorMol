@@ -53,7 +53,7 @@ class NeighborList:
 		"""
 		self.x = x_.copy()
 		if (self.DoTriples):
-			self.pairs, self.triples = self.buildPairsAndTriples(rcut_pairs,rcut_triples,molind_)
+			self.pairs, self.triples = self.buildPairsAndTriples(rcut_pairs,rcut_triples,molind_, nreal_)
 			self.npairs = self.pairs.shape[0]
 			self.ntriples = self.triples.shape[0]
 		else:
@@ -209,7 +209,7 @@ class NeighborListSet:
 		self.nlist = []
 		self.nmol = x_.shape[0]
 		self.maxnatom = x_.shape[1]
-		self.alg = 0 if self.maxnatom < 500 else 1
+		self.alg = 0 if self.maxnatom < 20000 else 1
 		if (alg_ != None):
 			self.alg = alg_
 		# alg=0 naive quadratic.
@@ -250,7 +250,7 @@ class NeighborListSet:
 		else:
 			self.UpdateCounter = 0
 
-	def buildPairs(self, rcut=5.0):
+	def buildPairs(self, rcut=5.0, nreal_=None):
 		"""
 		builds nonzero pairs and triples for current x.
 
@@ -261,7 +261,7 @@ class NeighborListSet:
 		"""
 		if self.alg < 2:
 			for i,mol in enumerate(self.nlist):
-				mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i)
+				mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i, nreal_)
 		else:
 			return self.PairMaker(self.x,rcut,self.nnz)
 		nzp = sum([mol.npairs for mol in self.nlist])
@@ -272,7 +272,7 @@ class NeighborListSet:
 			pp += mol.npairs
 		return trp
 
-	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0):
+	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0, nreal_=None):
 		"""
 		builds nonzero pairs and triples for current x.
 
@@ -296,7 +296,7 @@ class NeighborListSet:
 			return trp, np.array(tore)
 		else:
 			for i,mol in enumerate(self.nlist):
-				mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
+				mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i, nreal_)
 			nzp = sum([mol.npairs for mol in self.nlist])
 			nzt = sum([mol.ntriples for mol in self.nlist])
 			trp = np.zeros((nzp,3),dtype=np.uint64)
@@ -310,7 +310,7 @@ class NeighborListSet:
 				tp += mol.ntriples
 			return trp, trt
 
-	def buildPairsAndTriplesWithEleIndex(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
+	def buildPairsAndTriplesWithEleIndex(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None, nreal_=None):
 		"""
 		generate sorted pairs and triples with index of correspoding ele or elepair append to it.
 		sorted order: mol, i (center atom), l (ele or elepair index), j (connected atom 1), k (connected atom 2 for triples)
@@ -329,9 +329,11 @@ class NeighborListSet:
 		# if self.ele == None:
 		# 	raise Exception("Element type of each atom is needed.")
 		#import time
-		#t0 = time.time()
-		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		#t_start = time.time()
+		t0 = time.time()
+		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples, nreal_)
+		print ("build P and T time:", time.time()-t0)
+		print ("trp:", trp, "trt:", trt)
+		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
 		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
@@ -379,7 +381,8 @@ class NeighborListSet:
 		#print ("mil_jk", mil_jk[:20])
 		jk_max = np.max(valance_pair)
 		#print ("jk_max:", jk_max)
-		#print ("total neigbor time:", time.time() - t0)
+		print ("after processing time:", time.time() - t_start)
+		#print (trpE_sorted, trtE_sorted, jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
 
 
