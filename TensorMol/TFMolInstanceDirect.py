@@ -3492,8 +3492,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.C6[i] = C6_coff[ele]* (BOHRPERA*10.0)**6.0 / JOULEPERHARTREE # convert into a.u.
 			self.vdw_R[i] = atomic_vdw_radius[ele]*BOHRPERA
 
-
-
 	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
@@ -3673,7 +3671,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 				print_grads_loss = 0.0
 				print_time = 0.0
 				time_print_mini = time.time()
-			
+
 				#print ("Etotal:", Etotal, " Ecc:", Ecc, "Evdw:", Evdw)
 			#print ("energy_wb[1]:", energy_wb[1], "\ndipole_wb[1]", dipole_wb[1])
 			#print ("charge:", atom_charge )
@@ -3802,8 +3800,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.AddEcc_pl = tf.placeholder(tf.bool, shape=())
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
-			#SFPa = tf.Variable(self.SFPa, trainable=False, dtype = self.tf_prec)
-			#SFPr = tf.Variable(self.SFPr, trainable=False, dtype = self.tf_prec)
 			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
 			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
 			Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
@@ -3814,24 +3810,15 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			C6 = tf.Variable(self.C6,trainable=False, dtype = self.tf_prec)
 			vdw_R = tf.Variable(self.vdw_R,trainable=False, dtype = self.tf_prec)
-			#self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear(self.xyzs_pl, self.Zs_pl, Ele, self.SFPr2_vary, Rr_cut, Elep, self.SFPa2_vary, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl)
-#			with tf.name_scope("MakeDescriptors"):
-			#with tf.device('/job:localhost/replica:0/task:0/gpu:1'):
-			#with tf.device('/cpu:0'):
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear_WithEle(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl)
 			self.Ecc, self.dipole, self.charge, self.dipole_wb = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl, self.AddEcc_pl)
 			self.Radp_pl  = self.Radp_Ele_pl[:,:3]
 			self.Radius_Qs_Encode, self.Radius_Qs_Encode_Index = TFSymSet_Radius_Scattered_Linear_Qs(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, eta,  self.Radp_pl, self.charge)
-#			with tf.name_scope("behler"):
 			self.Etotal, self.Ebp, self.Evdw,  self.energy_wb, self.Ebp_atom = self.energy_inference(self.Scatter_Sym, self.Sym_Index, self.Radius_Qs_Encode, self.Ecc, self.xyzs_pl, self.Zs_pl, Ele, C6, vdw_R, self.Reep_pl, Ree_on, Ree_off)
-			#self.Etotal,  self.energy_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad")
 			#self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad", colocate_gradients_with_ops=True)
 #			with tf.name_scope("losses"):
-			self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.dipole_loss = self.loss_op(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole = self.loss_op_dipole(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
-			self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG = self.loss_op_EandG(self.Etotal, self.gradient, self.dipole, self.Elabel_pl, self.grads_pl, self.Dlabel_pl)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
