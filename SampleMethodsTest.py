@@ -12,6 +12,7 @@ import numpy as np
 from math import *
 from random import *
 from TensorMol.ElectrostaticsTF import *
+PARAMS["Profiling"] = 0
 
 def GetEnergyAndForceFromManager(MName_, a):
 	"""
@@ -63,7 +64,7 @@ def CompareAllData():
 	the managers.
 	"""
 	f = open("/media/sdb1/dtoth/TensorMol/results/SamplingData.txt", 'w')
-	print "File opened"
+	# print "File opened"
 	managers = ["Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidNM_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_DavidRandom_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_Hybrid_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1","Mol_GoldStd_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"]
 	SetNames = ["DavidMD","DavidMetaMD","DavidNM","DavidRandom", "Hybrid","GoldStd"]
 	MSets = [MSet(name) for name in SetNames]
@@ -76,15 +77,11 @@ def CompareAllData():
 		for j in range(len(MSets)):
 			en, f = GetEnergyAndForceFromManager(i,MSets[j])
 			results[(i,SetNames[j])] = (en, f)
-<<<<<<< HEAD
-	print results
+	print(results)
 	try:
 		f.write(results)
 	except:
 		f.write(str(results))
-=======
-	print(results)
->>>>>>> fc625dfc4af8c1908f6e48ff6330f55b5e5e8681
 
 def TestOptimization(MName_):
 	"""
@@ -100,12 +97,17 @@ def TestOptimization(MName_):
 		np.mean(rms_list): Average value of all of the RMS errors for all molecules
 	"""
 
-	a = MSet("DavidMD")
-	a.Load()
-	shuffle(a.mols)
-	mol = a.mols[0]
+	a = MSet("david_test")
+	# a.Load()
+	a.ReadXYZ()
+	# shuffle(a.mols)
+	mol = a.mols[-2]
+	PARAMS["hidden1"] = 200
+	PARAMS["hidden2"] = 200
+	PARAMS["hidden3"] = 200
 	PARAMS["Hidden layers"] = [200,200,200]
 	TreatedAtoms = a.AtomTypes()
+	print ("TreatedAtoms:", TreatedAtoms)
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
 	tset = TensorMolData_BP_Direct_Linear(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 	manager = TFMolManage(MName_ , tset, False, RandomTData_=False, Trainable_=False)
@@ -142,6 +144,6 @@ def GetEnergyVariance(MName_):
 
 
 # GetEnergyAndForceFromManager("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1", "Hybrid")
-CompareAllData()
-# print TestOptimization("Mol_DavidMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1")
+# CompareAllData()
+print(TestOptimization("Mol_DavidMetaMD_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_Grad_Linear_1"))
 # GetEnergyVariance()

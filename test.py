@@ -47,26 +47,50 @@ def TestPeriodicLJOpt():
 	PGO.OptWCell(m,"PeriodicOpt")
 	return
 
-def TestBoxing():
+def TestBoxing(molecule_="Ammonia", mindistance_=10, ntess_=4, t_=5.):
 	"""
-	Makes a box of 64 water molecules
-	The final lattice spacing would be 1water/3.10432 Angstroms.
+	Makes a box of molecules
+
+	Water:
+	The final lattice spacing should be 1water/3.10432 Angstroms.
+
+	Args:
+
+	molecule_ = xyz file of molecule
+	mindistance_ = minimum distance b/t molecules to collapse lattice to
+	ntess_ = number of tesselations (i.e. 4 makes a 4x4x4 box)
+	t_ = amount of time taken to crush box (fs)
+
 	"""
-	a = MSet("h2o")
-	a.ReadXYZ("h2o")
+	molecule = molecule_
+	mindistance = mindistance_
+	ntess = ntess_
+	t = t_
+
+	a = MSet(molecule)
+	a.ReadXYZ(molecule)
 	m = a.mols[0]
 	latv = np.array([[10.0,0.,0.],[0.,10.,0.],[0.,0.,10.]])
 	lat = Lattice(latv)
 	mc = lat.CenteredInLattice(m)
 	print(mc.coords)
-	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,4))
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
 	print(mt.coords)
 	mt.coords += np.min(mt.coords)
 	lat0 = np.array([[np.max(mt.coords),0.,0.],[0.,np.max(mt.coords),0.],[0.,0.,np.max(mt.coords)]])*4.0
-	latp = np.array([[3.10432,0.,0.],[0.,3.10432,0.],[0.,0.,3.10432]])
+	latp = np.array([[mindistance,0.,0.],[0.,mindistance,0.],[0.,0.,mindistance]])
 	print(lat0,latp)
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
+
+	#print("Rastering Over The Box Potential")
+	#Boxer = TFForces.BoxHolder(1)
+	#lat = np.eye(3)*5.0
+	#for x in range(-10,11):
+	#	for y in range(-10,11):
+	#		for z in range(-10,11):
+	#			print(x,y,z,Boxer(np.array([[x,y,z]]),lat))
+	#exit()
 
 	TreatedAtoms = a.AtomTypes()
 	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Force")
@@ -78,7 +102,18 @@ def TestBoxing():
 	ForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))[1]
 	EnergyForceField = lambda x: ins.EvalForce(Mol(m.atoms,x))
 
-	Box = BoxingDynamics(ForceField, m, "BoxingMD", EnergyForceField, lat0, latp, 500.)
+	#print("Testing Lennard-Jones")
+	#for xi in range(0,81):
+	#	x = xi/10.0
+	#	a = Mol(np.array([x,x]),np.array([[0.,0.,0.],[0.,0.,x]]))
+	#	tset = TensorMolData(a,d)
+	#	tset.MaxNAtoms = 2
+	#	ins = MolInstance_DirectForce(tset,None,False,"LJ")
+	#	ins.TrainPrepare()
+	#	print(ins.EvalForce(Mol(np.array([x,x]),np.array([[0.,0.,0.],[0.,0.,x]]))))
+	#exit()
+
+	Box = BoxingDynamics(ForceField, m, "BoxingMD", EnergyForceField, lat0, latp, t)
 	Box.Prop()
 	return
 
@@ -249,7 +284,7 @@ def TestBPDirect():
 	Test Behler-Parrinello with gradient learning and direct descriptor.
 	"""
 	a=MSet("H2O_force_test")
-        a.ReadXYZ("H2O_force_test")
+	a.ReadXYZ("H2O_force_test")
 	#a = MSet("H2O_augmented_more_cutoff5_b3lyp_force")
 	#a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -293,14 +328,6 @@ def TestBPDirect():
 	##traj.Prop()
 
 	#PARAMS["MDdt"] = 0.2
-        #PARAMS["RemoveInvariant"]=True
-        #PARAMS["MDMaxStep"] = 10000
-        #PARAMS["MDThermostat"] = "Nose"
-        #PARAMS["MDV0"] = None
-        #PARAMS["MDTemp"]= 1.0
-	#PARAMS["MDAnnealSteps"] = 2000
-	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
-        #anneal.Prop()
 	#m.coords = anneal.Minx.copy()
 	#m = GeomOptimizer(EnergyForceField).Opt(m)
 	#m.WriteXYZfile("./results/", "H2O_trimer_opt")
@@ -377,7 +404,7 @@ def TestANI1():
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP") # Initialzie a manager than manage the training of neural network.
 		manager.Train(maxstep=1500)
 		#manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False)
-                #manager.Continue_Training(maxsteps=2)
+		#manager.Continue_Training(maxsteps=2)
 	if (0):
 		a = MSet("CH3OH_dimer_noHbond")
 		a.ReadXYZ("CH3OH_dimer_noHbond")
