@@ -3441,16 +3441,13 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update(MolInstance_DirectBP_EE_Charge
 			self.sess = tf.Session(config=config)
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess.run(init)
-
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			if (PARAMS["Profiling"]>0):
 				print("logging with FULL TRACE")
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
 				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
-
 			self.sess.graph.finalize()
-
 
 	def fill_feed_dict(self, batch_data):
 		"""
@@ -3472,9 +3469,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update(MolInstance_DirectBP_EE_Charge
 
 class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_ChargeEncode_Update):
 	"""
-	Electrostatic embedding Behler Parinello with van der waals interaction implemented with Grimmer C6 scheme.
+	Electrostatic embedding Behler Parinello with van der waals interaction implemented with Grimme C6 scheme.
 	"""
-
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
 		"""
 		Args:
@@ -3569,8 +3565,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
 
 			self.sess.graph.finalize()
-
-
 
 	def energy_inference(self, inp, indexs, charge_encode, cc_energy, xyzs, Zs, eles, c6, R_vdw, Reep, EE_cuton, EE_cutoff):
 		"""
