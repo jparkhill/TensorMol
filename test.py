@@ -40,13 +40,12 @@ def TestPeriodicLJOpt():
 	m.WriteXYZfile("./results/", "before")
 	PF = PeriodicForce(m, np.array([[BoxSize,0.0,0.0],[0.0,BoxSize,0.0],[0.,0.,BoxSize]]))
 	m = PF.mol0
-	PF.AddLocal(ins.CallLinearLJForce,15.0)
+	PF.BindForce(ins.CallLinearLJForce,15.0)
 	PARAMS["OptMaxCycles"] = 600
 	PARAMS["OptStepSize"] = 0.03
 	PGO = PeriodicGeomOptimizer(PF)
 	PGO.OptWCell(m,"PeriodicOpt")
 	return
-
 def TestBoxing(molecule_="Ammonia", mindistance_=10, ntess_=4, t_=5.):
 	"""
 	Makes a box of molecules
@@ -1273,7 +1272,7 @@ def TestPeriodicLJMD():
 	# Generate a Periodic Force field.
 	BoxSize=EdgeSize+1
 	PF = PeriodicForce(m, np.array([[BoxSize,0.0,0.0],[0.0,BoxSize,0.0],[0.,0.,BoxSize]]))
-	PF.AddLocal(ins.CallLinearLJForce,8.0)
+	PF.BindForce(ins.CallLinearLJForce,8.0)
 	PARAMS["MDTemp"] = 300.0
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDV0"] = None

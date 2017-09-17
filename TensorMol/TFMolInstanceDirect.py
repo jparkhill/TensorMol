@@ -3761,7 +3761,12 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		"""
 		# Check sanity of input
 		nmol = batch_data[2].shape[0]
-		self.MaxNAtoms = batch_data[0].shape[1]
+		if (batch_data[0].shape[1] != self.MaxNAtoms):
+			self.MaxNAtoms = batch_data[0].shape[1]
+			self.batch_size = nmol
+			print ("self.batch_size:", self.batch_size, "  self.MaxNAtoms:", self.MaxNAtoms)
+			print ("loading the session..")
+			self.EvalPrepare()
 		LOGGER.debug("nmol: %i", batch_data[2].shape[0])
 		self.batch_size = nmol
 		if not self.sess:

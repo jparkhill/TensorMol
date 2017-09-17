@@ -1265,6 +1265,7 @@ class TFMolManage(TFManage):
 		dummy_energy = np.zeros((nmols))
 		dummy_dipole = np.zeros((nmols, 3))
 		nreal = np.zeros((nmols))
+		print("NREAL NREAL NREAL", nreal_) 
 		nreal[0] = nreal_
 		self.TData.MaxNAtoms = mol.NAtoms()
 		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)

@@ -500,14 +500,14 @@ def BoxAndDensity():
 		return en, f
 
 	# opt the first water.
-	PARAMS["OptMaxCycles"]=200
+	PARAMS["OptMaxCycles"]=20
 	Opt = GeomOptimizer(EnAndForceAPeriodic)
 	a.mols[-1] = Opt.Opt(a.mols[-1])
 	m = a.mols[-1]
 
-	# Tesselate that water to create a box of 64
-	ntess = 4
-	latv = np.array([[10.0,0.,0.],[0.,10.,0.],[0.,0.,10.]])
+	# Tesselate that water to create a box of 27
+	ntess = 2
+	latv = np.array([[5.0,0.,0.],[0.,5.,0.],[0.,0.,5.]])
 	# Start with a water in a ten angstrom box.
 	lat = Lattice(latv)
 	mc = lat.CenteredInLattice(m)
@@ -516,12 +516,7 @@ def BoxAndDensity():
 	mt.coords += np.min(mt.coords)
 	nreal = mt.NAtoms()
 
-	# Try optimizing that....
-	PARAMS["OptMaxCycles"]=20
-	POpt = PeriodicGeomOptimizer(EnAndForce)
-	mt = POpt.Opt(mt)
-
-	# finally start boxing it up
+	# Optimize the tesselated system.
 	mindistance = 2.0
 	lat0 = np.array([[np.max(mt.coords),0.,0.],[0.,np.max(mt.coords),0.],[0.,0.,np.max(mt.coords)]])*4.0
 	latp = np.array([[mindistance,0.,0.],[0.,mindistance,0.],[0.,0.,mindistance]])
@@ -529,7 +524,14 @@ def BoxAndDensity():
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
 	PF = PeriodicForce(mt,lat0)
-	PF.BindForce(EnAndForce,15.0)
+	PF.BindForce(EnAndForce,10.0)
+
+	# Try optimizing that....
+	PARAMS["OptMaxCycles"]=20
+	POpt = PeriodicGeomOptimizer(PF)
+	mt = POpt.Opt(mt)
+
+	# finally start boxing it up
 	Box = PeriodicBoxingDynamics(PF, latp, "BoxingMD")
 	Box.Prop()
 

@@ -135,12 +135,14 @@ class LocalForce:
 		tmp = self.func(z, x, NZ)
 		return tmp
 
-class PeriodicForce:
+class PeriodicForceWithNeighborList:
 	def __init__(self, pm_, lat_):
 		"""
 		A periodic force evaluator. The force consists of two components
 		Short-Ranged forces, and long-ranged forces. Short ranged forces are
 		evaluated by tesselation. Long-range forces are not supported yet.
+		This version manages and passes Neighbor lists.
+
 
 		Args:
 			pm_: a molecule.
@@ -204,6 +206,68 @@ class PeriodicForce:
 		# Compute forces and energies.
 		for f in self.LocalForces:
 			einc, finc = f(z,x,self.NL.pairs)
+			etore += np.sum(einc)
+			ftore += finc[:self.natomsReal]
+		return etore, ftore
+
+class PeriodicForce:
+	def __init__(self, pm_, lat_):
+		"""
+		A periodic force evaluator. The force consists of two components
+		Short-Ranged forces, and long-ranged forces. Short ranged forces are
+		evaluated by tesselation. Long-range forces are not supported yet.
+		This version manages and passes Neighbor lists.
+
+
+		Args:
+			pm_: a molecule.
+			lat_: lattice vectors.
+		"""
+		self.lattice = Lattice(lat_)
+		self.NL = None
+		self.mol0 = self.lattice.CenteredInLattice(pm_)
+		self.atoms = self.mol0.atoms.copy()
+		self.natoms = self.mol0.NAtoms()
+		self.natomsReal = pm_.NAtoms()
+		self.maxrng = 0.0
+		self.LocalForces = []
+		self.lastx = np.zeros(pm_.coords.shape)
+		self.nlthresh = 0.05 #per-atom Threshold for NL rebuild. (A)
+		#self.LongForces = [] Everything is real-space courtesy of DSF.
+		return
+	def AdjustLattice(m, lat_):
+		"""
+		Adjusts the lattice and rescales the coordinates of m relative to previous lattice.
+		"""
+		il = self.lattice.InLat(m.coords)
+		self.lattice = Lattice(lat_)
+		m.coords = self.lattice.FromLat(il)
+		return m
+	def BindForce(self, lf_, rng_):
+		"""
+		Adds a local force to be computed when the PeriodicForce is called.
+
+		Args:
+			lf_: a function which takes z,x and returns atom energies, atom forces.
+		"""
+		self.LocalForces.append(LocalForce(lf_,rng_))
+	def __call__(self,x_):
+		"""
+		Returns the Energy per unit cell and force on all primitive atoms
+
+		Args:
+			x_: a primitive geometry of atoms matching self.atoms.
+		"""
+		# Compute local energy.
+		etore = 0.0
+		ftore = np.zeros((self.natomsReal,3))
+		if (self.maxrng == 0.0):
+			self.maxrng = max([f.range for f in self.LocalForces])
+		# Tesselate atoms.
+		z,x = self.lattice.TessLattice(self.atoms,x_, self.maxrng)
+		# Compute forces and energies.
+		for f in self.LocalForces:
+			einc, finc = f(z,x,self.natomsReal)
 			etore += np.sum(einc)
 			ftore += finc[:self.natomsReal]
 		return etore, ftore
