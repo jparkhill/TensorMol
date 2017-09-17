@@ -6,63 +6,152 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
+from TensorMol.TMIPIinterface import *
 import random
 
 def TrainPrepare():
 	if (1):	
-		import math
-		a=MSet("H2O_cluster_meta", center_=False)
-		a.ReadXYZ("H2O_cluster_meta")
-		m=a.mols[2]
+		import math, random
+		a = MSet("H2O_wb97xd_1to21")
+		a.Load()
+		random.shuffle(a.mols)	
+		#a=MSet("H2O_cluster_meta", center_=False)
+		#a.ReadXYZ("H2O_cluster_meta")
+		
 		Hbondcut = 2.0
-		Hbondangle = 15.0*math.pi/180.0
+		Hbondangle = 20.0*math.pi/180.0
 		HOcut = 1.1
-		for i in range (0, m.NAtoms()):
-			if m.atoms[i] == 8: #it is a O:
-				H1_index = -1
-				H2_index = -1
-				for j in range (0, m.NAtoms()):
+
+
+		singlemax = 0.04 * len(a.mols) 
+		doublemax = 0.02 * len(a.mols)
+		
+		single_record = np.zeros((21,2))
+		single_record[:,0] = range(1,22)
+		double_record = np.zeros((21,2))
+		double_record[:,0] = range(1,22)
+		def MakeH3O(mol, Hbonds_set, xyzname="H2O_meta_with_H3O", doublepro = False):
+			new_m = Mol(mol.atoms, mol.coords)
+			for i, Hbonds in enumerate(Hbonds_set):
+				O1_index = Hbonds[0]
+				H_index = Hbonds[1]
+				O2_index = Hbonds[2]
+				O2_H_index = []
+				for j in range (0, mol.NAtoms()):
+					if mol.atoms[j] == 1 and len(O2_H_index) <=2 :
+						dist = np.sum(np.square(mol.coords[O2_index] - mol.coords[j]))**0.5
+						if dist < HOcut:
+							O2_H_index.append(j)
+				if len(O2_H_index) != 2:
+					return 
+				O2H_1 = mol.coords[O2_index] - mol.coords[O2_H_index[0]]
+				O2H_2 = mol.coords[O2_index] - mol.coords[O2_H_index[1]]			
+				y_axis = np.cross(O2H_1, O2H_2)
+				y_axis = y_axis/np.sum(np.square(y_axis))**0.5
+
+
+				x_axis = mol.coords[O2_index] - (mol.coords[O2_H_index[0]]+mol.coords[O2_H_index[1]])/2.0
+				x_axis = x_axis/np.sum(np.square(x_axis))**0.5			
+				OH_vec = mol.coords[O1_index] - mol.coords[H_index]
+
+				angle_cri = math.pi/3
+
+				if np.dot(x_axis, OH_vec)/np.sum(np.square(OH_vec))**0.5 < math.cos(math.pi/3):
+					return 
+	
+				t_angle = math.pi/180.0*(180.0-131.75 + 10*(2.0*random.random() - 1.0))
+
+				t_length = (1.0 + 0.1*(2.0*random.random() - 1.0))
+		
+				#print y_axis, x_axis	
+				vec1 =(math.tan(t_angle)*y_axis + x_axis)
+				vec1 = vec1/np.sum(np.square(vec1))**0.5
+				vec1 = vec1*t_length + mol.coords[O2_index]
+				
+				vec2 = -(math.tan(t_angle)*y_axis) + x_axis
+				vec2 = vec2/np.sum(np.square(vec2))**0.5
+				vec2 = vec2*t_length + mol.coords[O2_index]
+				
+				if np.sum(np.square(mol.coords[H_index] - vec1))**0.5 < np.sum(np.square(mol.coords[H_index] - vec2))**0.5:
+					vec = vec1
+				else:
+					vec = vec2
+				
+				if (not doublepro and i==0) or i==1: 
+					vec =  random.random()*(vec - mol.coords[H_index]) + mol.coords[H_index]
+				new_m.coords[H_index] = vec
+			new_m.WriteXYZfile(fname=xyzname)
+			if doublepro:
+				double_record[int(mol.NAtoms())/3-1,1] += 1
+			else:
+				single_record[int(mol.NAtoms())/3-1,1] += 1
+			return 1	
+
+		singlepro = 0
+		doublepro = 0
+		for mol_index, m in enumerate(a.mols):	
+			i_ran = random.randint(0, m.NAtoms()-1)
+			for i_ini in range (0, m.NAtoms()):
+				i  = i_ini + i_ran
+				if i > m.NAtoms()-1:
+					i = i - m.NAtoms() + 1
+				if m.atoms[i] == 8: #it is a O:
+					H1_index = -1
+					H2_index = -1
+					Hbonds = []
+					for j in range (0, m.NAtoms()):
+						if H1_index != -1 and H2_index != -1:
+							break
+						if m.atoms[j] == 1:
+							dist = np.sum(np.square(m.coords[i] - m.coords[j]))**0.5
+							if dist < HOcut and H1_index == -1:
+								H1_index = j
+							elif dist < HOcut and H1_index != -1:
+								H2_index = j
+							else:
+								continue
 					if H1_index != -1 and H2_index != -1:
+						Hbondflag1 = False
+						for j in range (0, m.NAtoms()):
+							if j==i:
+								continue
+							if m.atoms[j] == 8:
+								Hbonddist = np.sum(np.square(m.coords[H1_index] - m.coords[j]))**0.5
+								if Hbonddist < Hbondcut:
+									OOdist = np.sum(np.square(m.coords[i] - m.coords[j]))**0.5
+									HOdist = np.sum(np.square(m.coords[H1_index] - m.coords[i]))**0.5
+									angle = (OOdist**2 + HOdist**2 - Hbonddist**2)/(2*OOdist*HOdist)
+									if angle > math.cos(Hbondangle):
+										Hbondflag1 = True
+										Hbonds.append([i, H1_index, j])
+						Hbondflag2 = False
+						for j in range (0, m.NAtoms()):
+							if j==i:
+								continue
+							if m.atoms[j] == 8:
+								Hbonddist = np.sum(np.square(m.coords[H2_index] - m.coords[j]))**0.5
+								if Hbonddist < Hbondcut:
+									OOdist = np.sum(np.square(m.coords[i] - m.coords[j]))**0.5
+									HOdist = np.sum(np.square(m.coords[H2_index] - m.coords[i]))**0.5
+									angle = (OOdist**2 + HOdist**2 - Hbonddist**2)/(2*OOdist*HOdist)
+									if angle > math.cos(Hbondangle):
+										Hbondflag2 = True
+										Hbonds.append([i, H2_index, j])
+					if len(Hbonds) == 1 and singlepro < singlemax:
+						if MakeH3O(m, Hbonds, xyzname="H2O_meta_with_H3O_single", doublepro=False):
+							singlepro += 1
+							print (single_record)
+							print ("single pronated...", singlepro, " mol_index:", mol_index)
 						break
-					if m.atoms[j] == 1:
-						dist = np.sum(np.square(m.coords[i] - m.coords[j]))**0.5
-						if dist < HOcut and H1_index == -1:
-							H1_index = j
-						elif dist < HOcut and H1_index != -1:
-							H2_index = j
-						else:
-							continue
-				print H1_index, H2_index
-				if H1_index != -1 and H2_index != -1:
-					Hbondflag1 = False
-					for j in range (0, m.NAtoms()):
-						if j==i:
-							continue
-						if m.atoms[j] == 8:
-							print m.coords[H1_index], m.coords[j], m.atoms[H1_index], m.atoms[j], H1_index, j
-							Hbonddist = np.sum(np.square(m.coords[H1_index] - m.coords[j]))**0.5
-							print Hbonddist
-							if Hbonddist < Hbondcut:
-								OOdist = np.sum(np.square(m.coords[i] - m.coords[j]))**0.5
-								HOdist = np.sum(np.square(m.coords[H1_index] - m.coords[i]))**0.5
-								angle = (OOdist**2 + HOdist**2 - Hbonddist**2)/(2*OOdist*HOdist)
-								print angle
-								if angle > math.cos(Hbondangle):
-									Hbondflag1 = True
-					Hbondflag2 = False
-					for j in range (0, m.NAtoms()):
-						if j==i:
-							continue
-						if m.atoms[j] == 8:
-							print np.sum(np.square(m.coords[H2_index] - m.coords[j]))**0.5, m.coords[H2_index], m.coords[j], m.atoms[H2_index], m.atoms[j], H2_index, j
-							Hbonddist = np.sum(np.square(m.coords[H2_index] - m.coords[j]))**0.5
-							if Hbonddist < Hbondcut:
-								OOdist = np.sum(np.square(m.coords[i] - m.coords[j]))**0.5
-								HOdist = np.sum(np.square(m.coords[H2_index] - m.coords[i]))**0.5
-								angle = (OOdist**2 + HOdist**2 - Hbonddist**2)/(2*OOdist*HOdist)
-								if angle > math.cos(Hbondangle):
-									Hbondflag2 = True
-					print i, Hbondflag1, Hbondflag2
+					elif len(Hbonds) == 2 and doublepro < doublemax:
+						continue
+						#if MakeH3O(m, Hbonds, xyzname="H2O_meta_with_H3O_double", doublepro=True):
+						#	doublepro += 1
+						#	print (double_record)
+						#	print ("double pronated...", doublepro, " mol_index:", mol_index)
+						#break
+					else:
+						continue
 					
 
 	if (0):
@@ -208,7 +297,7 @@ def Train():
 		manager.Train(1)
 
 def Eval():
-	if (1):
+	if (0):
 		a=MSet("H2O_cluster_meta", center_=False)
 		a.ReadXYZ("H2O_cluster_meta")
 		TreatedAtoms = a.AtomTypes()
@@ -237,8 +326,8 @@ def Eval():
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
 		m = a.mols[-1]
-		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
-		#return
+		print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		return
 		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
 		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
 		#for i in range (0, m.NAtoms()):
@@ -275,28 +364,28 @@ def Eval():
 		#m=Opt.Opt(m)
 
 
-                PARAMS["MDThermostat"] = "Nose"
-                PARAMS["MDTemp"] = 100
-                PARAMS["MDdt"] = 0.2
-                PARAMS["RemoveInvariant"]=True
-                PARAMS["MDV0"] = None
-                PARAMS["MDMaxStep"] = 10000
-                md = VelocityVerlet(None, m, "water_cluster_small_opt",EnergyForceField)
-                md.Prop()
-		return
+                #PARAMS["MDThermostat"] = "Nose"
+                #PARAMS["MDTemp"] = 100
+                #PARAMS["MDdt"] = 0.2
+                #PARAMS["RemoveInvariant"]=True
+                #PARAMS["MDV0"] = None
+                #PARAMS["MDMaxStep"] = 10000
+                #md = VelocityVerlet(None, m, "water_cluster_small_opt",EnergyForceField)
+                #md.Prop()
+		#return
 
-		PARAMS["OptMaxCycles"]=1000
-		Opt = GeomOptimizer(EnergyForceField)
-		m=Opt.Opt(m)
+		#PARAMS["OptMaxCycles"]=1000
+		#Opt = GeomOptimizer(EnergyForceField)
+		#m=Opt.Opt(m)
 
 		PARAMS["MDdt"] = 0.2
 		PARAMS["RemoveInvariant"]=True
 		PARAMS["MDMaxStep"] = 2000
 		PARAMS["MDThermostat"] = "Nose"
 		PARAMS["MDV0"] = None
-		PARAMS["MDAnnealTF"] = 300.0
-		PARAMS["MDAnnealT0"] = 30.0
-		PARAMS["MDAnnealSteps"] = 8000	
+		PARAMS["MDAnnealTF"] = 1.0
+		PARAMS["MDAnnealT0"] = 300.0
+		PARAMS["MDAnnealSteps"] = 1000	
 		anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		anneal.Prop()
 		m.coords = anneal.Minx.copy()
@@ -345,6 +434,63 @@ def Eval():
 		print ("Ecc manual:", Ecc)
 
 	if (1):
+		a=MSet("H2O_cluster_meta", center_=False)
+		a.ReadXYZ("H2O_cluster_meta")
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		PARAMS["Poly_Width"] = 4.6
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
+		m = a.mols[9]
+		print (m.coords)
+		def EnAndForce(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return energy, force
+
+		def EnForceCharge(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return energy, force, atom_charge
+
+		def ChargeField(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return atom_charge[0]
+
+		ForceField = lambda x: EnAndForce(x)[-1]
+		EnergyField = lambda x: EnAndForce(x)[0]
+		EnergyForceField = lambda x: EnAndForce(x)
+		interface = TMIPIManger(EnergyForceField, TCP_IP="localhost", TCP_PORT= 31415)
+		interface.md_run()
+	
+	if (0):
 		a=MSet("H2O_cluster_meta", center_=False)
 		a.ReadXYZ("H2O_cluster_meta")
 		TreatedAtoms = a.AtomTypes()
@@ -462,6 +608,6 @@ def Eval():
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
-TrainPrepare()
+#TrainPrepare()
 #Train()
-#Eval()
+Eval()

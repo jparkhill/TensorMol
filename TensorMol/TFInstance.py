@@ -1238,16 +1238,13 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			output, labels, total_loss_value, loss_value, n_atoms_batch, gaussian_params, atomic_embed_factors = self.sess.run([self.output, self.labels, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_params, self.atomic_embed_factors],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
-<<<<<<< HEAD
 			sum_abs_error_matrix += np.sum(np.abs(output - labels))
 			sum_square_error_matrix += np.sum(np.square(output - labels))
-=======
 			test_epoch_labels.append(labels)
 			test_epoch_outputs.append(output)
 		test_epoch_labels = np.concatenate(test_epoch_labels)
 		test_epoch_outputs = np.concatenate(test_epoch_outputs)
 		test_epoch_errors = test_epoch_labels - test_epoch_outputs
->>>>>>> 0fff61562a910222c24e4847a7a0a8d77f48b8fc
 		duration = time.time() - test_start_time
 		for i in range(20):
 			LOGGER.info("Label: %s  Output: %s", test_epoch_labels[i], test_epoch_outputs[i])
