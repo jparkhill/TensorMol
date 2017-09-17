@@ -1049,7 +1049,7 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	double rng;
 	int nreal;
 	int DoPerms;
-	if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &rng, &nreal,&DoPerms))
+	if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &rng, &nreal, &DoPerms))
 		return NULL;
 	double *xyz_data;
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
