@@ -224,7 +224,126 @@ class LinearVoxelBase:
 				filling[vk] += 1
 		return atoms, coords, filling, RealOrImage, absindex
 
-class TFPeriodicLocalForce(LinearVoxelBase):
+class TFPeriodic():
+	def __init__(self , rcut_ = 16.0, lat_ = np.array(np.eye(3))):
+		"""
+		Args:
+			rcut_: a cutoff radius (A) used for softness.
+			lat_: a 3x3 ndarray of initial lattice vectors.
+		"""
+		# Determine the required tesselations to perform.
+		self.AssignLat(lat_)
+		# or at least checked, but not for now.
+		self.rcut = rcut_
+		# Placeholders....
+		self.x_pl = None
+		self.z_pl = None
+		self.lat_pl = None
+		self.tess_pl = None
+		# Molwise-voxel batch placeholders.
+		xs_pl = None
+		zs_pl = None
+		# Graphs of desired outputs produced by __call__
+		self.energy = None
+		self.force = None
+		self.stress = None
+		# Graphs of desired outputs produced by __call__
+		self.PW = None
+		self.energies = None
+		self.forces = None
+		self.stresses = None
+		self.Prepare()
+		return
+	def AssignLat(self,lat_):
+		self.lat = lat_.copy()
+		latcenter = (lat_[0]+lat_[1]+lat_[2])/2.0
+		vertices = [(lat_[0]+lat_[1])/2.0,(lat_[2]+lat_[1])/2.0,(lat_[0]+lat_[2])/2.0,lat_[0],lat_[1],lat_[2]]
+		dists = [np.linalg.norm(v-latcenter) for v in vertices]
+		self.ntess = int((rcut_ -  np.min(dists))/np.min(np.sum(np.square(lat_), axis=1)**0.5)) + 1  # this may only work for
+		print("ntess", self.ntess)
+		tessrng = range(-self.ntess,self.ntess+1)
+		tesslist = [[0,0,0]] # Only real atoms are in the first unit cell.
+		for t1 in tessrng:
+			for t2 in tessrng:
+				for t3 in tessrng:
+					if ((t1 != 0) or (t2 != 0) or (t3 != 0) ):
+						tesslist.append([t1,t2,t3])
+		self.tess = np.array(tesslist).reshape((pow(len(tessrng),3),3))
+		return
+	def Prepare(self):
+		with self.g.as_default():
+			self.z_pl = tf.placeholder(tf.float64, shape=tuple([None]))
+			self.x_pl = tf.placeholder(tf.float64, shape=tuple([None,3]))
+			self.lat_pl = tf.placeholder(tf.float64, shape=tuple([3,3]))
+			self.tess_pl = tf.placeholder(tf.float64, shape=tuple([None,3]))
+			self.xs_pl = tf.placeholder(tf.float64, shape=tuple([None, None, 3]))
+			self.zs_pl = tf.placeholder(tf.float64, shape=tuple([None, None, 1]))
+			self.Rc = tf.Variable(self.rcut,dtype = tf.float64)
+			self.PW = self.PeriodicWrapping(self.z_pl, self.x_pl, self.lat_pl, self.tess_pl)
+			init = tf.global_variables_initializer()
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.sess.run(init)
+		return
+	def GetLatMetrics(self,lat_):
+		"""
+		Returns <lat_i| lat_j>**-0.5, and **0.5
+		These are the change of basis matrices into and out-of lattice coordinates.
+		"""
+		return TFMatrixSqrt(tf.matmul(lat_, tf.transpose(lat_)))
+	def InLat(self,xyz_,lat_):
+		"""
+		Converts xyz_ into linear combination of the row vectors in lat_
+		"""
+		latmet = tf.matrix_inverse(tf.matmul(lat_, tf.transpose(lat_)))
+		return tf.matmul(xyz_,tf.matmul(tf.transpose(lat_),latmet))
+	def FromLat(self,abc_,lat_):
+		"""
+		Converts abc_ from lattice to cartesian.
+		"""
+		return tf.matmul(abc_,lat_)
+	def PeriodicWrapping(self,z_, xyz_, lat_, tess_):
+		"""
+		This tesselates xyz_ using the lattice vectors lat_
+		according to tess_, so that lat_ can be differentiable tensorflow varaiables.
+		ie: the stress tensor can be calculated. The first block of atoms are
+		the 'real' atoms (ie: atoms whose forces will be calculated)
+		the remainder are images.
+
+		Args:
+		    z_: vector of atomic numbers
+		    xyz_: nprimitive atoms X 3 coordinates.
+		    lat_: 3x3 lattice matrix.
+		    tess_: an ntess X 3 matrix of tesselations to perform. The identity is the assumed initial state.
+		"""
+		# Move into the lattice frame and tesselate there.
+		x_lat = self.InLat(xyz_,lat_)
+		ntess = tf.shape(tess_)[0]
+		i0 = tf.zeros(1,tf.int32)[0]
+		tess=tf.cast(tess_,dtype=tf.float64)
+		natold = tf.shape(z_)[0]
+		natnew = tf.shape(z_)*ntess
+		outz = tf.TensorArray(tf.float64, size=ntess)
+		outx = tf.TensorArray(tf.float64, size=ntess)
+		cond = lambda i,z,x: tf.less(i,ntess)
+		body = lambda i,z,x: [i+1, outz.write(i,z_) ,outx.write(i,x_lat+tess[i,0])]
+		inital = (0,outz,outx)
+		i,zr,xr = tf.while_loop(cond,body,inital)
+		xcart = self.FromLat(xr.concat(),lat_)
+		return zr.concat(), xcart
+	def MakeTess(self, z_, x_, lat_):
+		"""
+		Perform the tesselation if you want to call this externally.
+		This is not desireable. Efficient periodic forces should inherit this class
+		and over-ride the call method, so that the tesselation is in the same
+		graph as the evaluation of the force.
+		"""
+		# Step 1: Tesselate the cell.
+		feeddict = {self.z_pl:z_, self.x_pl:x_, self.lat_pl: lat_, self.tess_pl:self.tess}
+		zp, xp = self.sess.run(self.PW,feed_dict=feeddict)
+		return zp, xp
+
+class TFPeriodicVoxelForce(LinearVoxelBase, TFPeriodic):
 	def __init__(self , rcut_ = 16.0, lat_ = np.array(np.eye(3))):
 		"""
 		Base periodic local tensorflow evaluator.

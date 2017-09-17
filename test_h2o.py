@@ -17,7 +17,6 @@ def TrainPrepare():
 		random.shuffle(a.mols)	
 		#a=MSet("H2O_cluster_meta", center_=False)
 		#a.ReadXYZ("H2O_cluster_meta")
-		
 		Hbondcut = 2.0
 		Hbondangle = 20.0*math.pi/180.0
 		HOcut = 1.1
@@ -331,8 +330,7 @@ def Eval():
 		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
 		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
 		#for i in range (0, m.NAtoms()):
-		#	print i+1, charge[0][i],bp_atom[0][i] 
-#		np.set_printoptions(suppress=True)
+		#	print i+1, charge[0][i],bp_atom[0][i]
 
 		def EnAndForce(x_):
 			m.coords = x_
@@ -524,7 +522,7 @@ def Eval():
 		m = a.mols[-2]
 		outlist =  manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		print outlist[4]
-		return 
+		return
 		print "self.Ree_on:", manager.Instances.Ree_on
 		print outlist
 		print np.sum(outlist[4].reshape((-1,3)),axis=-1)
@@ -544,7 +542,7 @@ def Eval():
 				Ecc +=  cut*charge[0][i]*charge[0][j]/dist
 		print ("Ecc manual:", Ecc)
 		return
-	
+
 		def EnAndForce(x_):
 			m.coords = x_
 			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
@@ -581,7 +579,7 @@ def Eval():
 		#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 0.0
 		#PARAMS["MDAnnealT0"] = 300.0
-		#PARAMS["MDAnnealSteps"] = 1000	
+		#PARAMS["MDAnnealSteps"] = 1000
 		#anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		#anneal.Prop()
 		#m.coords = anneal.Minx.copy()
@@ -608,6 +606,81 @@ def Eval():
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
+def BoxAndDensity():
+	# Prepare a Box of water at a desired density
+	# from a rough water molecule.
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	TreatedAtoms = a.AtomTypes()
+	m = a.mols[0]
+	# Prepare the force field.
+	PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	PARAMS["Poly_Width"] = 4.6
+	PARAMS["EECutoffOff"] = 15.0
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
+
+	def EnAndForceAPeriodic(x_):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(m.atoms,x_)
+		en,f = manager.EvalBPDirectEEPeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		print("EnAndForceAPeriodic: ", en,f)
+		return en, f
+
+	def EnAndForce(z_, x_, nreal_):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(z_,x_)
+		en,f = manager.EvalBPDirectEEPeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_)
+		print("EnAndForce: ", en,f)
+		return en, f
+
+	# opt the first water.
+	PARAMS["OptMaxCycles"]=20
+	Opt = GeomOptimizer(EnAndForceAPeriodic)
+	a.mols[-1] = Opt.Opt(a.mols[-1])
+	m = a.mols[-1]
+
+	# Tesselate that water to create a box of 27
+	ntess = 2
+	latv = np.array([[5.0,0.,0.],[0.,5.,0.],[0.,0.,5.]])
+	# Start with a water in a ten angstrom box.
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(m)
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+	print(mt.coords)
+	mt.coords += np.min(mt.coords)
+	nreal = mt.NAtoms()
+
+	# Optimize the tesselated system.
+	mindistance = 2.0
+	lat0 = np.array([[np.max(mt.coords),0.,0.],[0.,np.max(mt.coords),0.],[0.,0.,np.max(mt.coords)]])*4.0
+	latp = np.array([[mindistance,0.,0.],[0.,mindistance,0.],[0.,0.,mindistance]])
+	print(lat0,latp)
+	m = Lattice(lat0).CenteredInLattice(mt)
+	print(m.coords)
+	PF = PeriodicForce(mt,lat0)
+	PF.BindForce(EnAndForce,10.0)
+
+	# Try optimizing that....
+	PARAMS["OptMaxCycles"]=20
+	POpt = PeriodicGeomOptimizer(PF)
+	mt = POpt.Opt(mt)
+
+	# finally start boxing it up
+	Box = PeriodicBoxingDynamics(PF, latp, "BoxingMD")
+	Box.Prop()
+
 #TrainPrepare()
 #Train()
 Eval()
+#BoxAndDensity()
