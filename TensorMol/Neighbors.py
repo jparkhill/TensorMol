@@ -360,7 +360,10 @@ class NeighborListSet:
 			#print ("current: ", current_l)
 			if current_l == prev_l and current_atom == prev_atom and current_mol == prev_mol:
 				pointer += 1
-				pass
+				if i == trt.shape[0]-1:
+					valance_pair[i-pointer+1:]=range(0, pointer)
+				else:
+					pass
 			else:
 				valance_pair[i-pointer:i]=range(0, pointer)
 				pointer = 1
@@ -372,9 +375,8 @@ class NeighborListSet:
 		mil_jk = np.zeros((trt.shape[0],4))
 		mil_jk[:,[0,1,2]]= trtE_sorted[:,[0,1,4]]
 		mil_jk[:,3] = valance_pair
-		#print ("mil_jk", mil_jk[:20])
+		#print ("mil_jk", mil_jk)
 		jk_max = np.max(valance_pair)
-		#print ("jk_max:", jk_max)
 		print ("after processing time:", time.time() - t_start)
 		#print (trpE_sorted, trtE_sorted, jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
