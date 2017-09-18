@@ -1145,12 +1145,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 					self.gaussian_params, self.atomic_embed_factors, self.rotation_constraint],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
-<<<<<<< HEAD
 			test_rotation_constraint += rotation_constraint
-=======
-			sum_abs_error_matrix += np.sum(np.abs(output - labels))
-			sum_square_error_matrix += np.sum(np.square(output - labels))
->>>>>>> b30e2b6ef47512031dfb16a84a562a76fb723863
 			test_epoch_labels.append(labels)
 			test_epoch_outputs.append(output)
 		test_epoch_labels = np.concatenate(test_epoch_labels)

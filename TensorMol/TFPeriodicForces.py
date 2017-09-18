@@ -15,11 +15,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from TensorMol.Periodic import *
-<<<<<<< HEAD
 # from TensorMol.PeriodicTF import *
-=======
-#from TensorMol.PeriodicTF import *
->>>>>>> b30e2b6ef47512031dfb16a84a562a76fb723863
 from TensorMol.TFMolInstanceDirect import *
 
 class LinearVoxelBase:
