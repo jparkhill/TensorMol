@@ -7,7 +7,7 @@ from TensorMol.RawEmbeddings import *
 from TensorMol.Neighbors import *
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 if (0):
 	import numpy as np
@@ -59,7 +59,8 @@ if (1):
 	mset = MSet("H2O_augmented_more_cutoff5")
         mset.Load()
 	SymMaker = ANISym(mset)
-	SymMaker.Generate_ANISYM()
+	SymMaker.TestPeriodic()
+	#SymMaker.Generate_ANISYM()
 
 if (0):
 	mset = MSet("Neigbor_test")	
