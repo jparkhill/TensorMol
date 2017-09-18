@@ -110,6 +110,7 @@ class BoxingDynamics(VelocityVerlet):
 		self.Tstat = NoseThermostat(self.m,self.v)
 		self.Boxer = TFForces.BoxHolder(self.natoms)
 	def BoxForce(self, x_ ):
+		print("self.boxnow", self.boxnow)
 		BE, BF = self.Boxer(x_, self.boxnow)
 		print("Mass Vector", self.m[:,None])
 		BF *= -500.0*JOULEPERHARTREE*(self.m[:,None]/np.sqrt(np.sum(self.m*self.m)))
@@ -120,15 +121,19 @@ class BoxingDynamics(VelocityVerlet):
 	def Prop(self):
 		"""
 		Propagate VelocityVerlet
+
+		mindistance_ is a cut off variable.  The box stops crushing if
+		it has reached its minimum intermolecular distance.
 		"""
 		step = 0
 		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
-		while(step < self.maxstep):
+		while(step < self.maxstep): # || self.BoxingLatp_[0][0] < ?????current distance????):
 			t = time.time()
 			self.t = step*self.dt
 
 			if (self.t>self.BoxingT):
-				self.boxnow = self.BoxingLatp
+				print("Exceeded Boxtime\n",self.BoxingLatp)
+				self.boxnow = self.BoxingLatp.copy()
 			else:
 				self.boxnow = ((self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLat0+(1.0-(self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLatp
 

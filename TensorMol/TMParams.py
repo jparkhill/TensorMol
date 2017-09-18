@@ -59,7 +59,7 @@ class TMParams(dict):
 		self["max_steps"] = 1001
 		self["batch_size"] = 1000
 		self["test_freq"] = 10
-		self["HiddenLayers"] = [512, 512, 512]
+		self["HiddenLayers"] = [200, 200, 200]
 		self["hidden1"] = 512
 		self["hidden2"] = 512
 		self["hidden3"] = 512
@@ -116,6 +116,7 @@ class TMParams(dict):
 		self["MetaBowlK"] = 0.0
 		self["MetaMaxBumps"] = 2500
 		# parameters of electrostatic embedding
+		self["AddEcc"] = True
 		self["Poly_Width"] = 4.6
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.

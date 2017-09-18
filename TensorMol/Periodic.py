@@ -25,18 +25,19 @@ class Lattice:
 		return
 	def CenteredInLattice(self, mol):
 		return Mol(mol.atoms,self.ModuloLattice(mol.coords - mol.Center() + self.latticeCenter))
-	def InLatCoords(self,crds):
+	def InLat(self,crds):
 		"""
 		Express coordinates (atom X 3 cart)
 		In units of the lattice vectors.
 		"""
-		return np.einsum("ij,jk->ij", crds, self.latticeMetric ) # atom X lattice.
-	def InCartCoords(self,crds):
+		latmet = MatrixPower(np.dot(self.lattice, self.lattice.T),-1)
+		return 	np.dot(crds,np.dot(self.lattice.T,latmet))
+	def FromLat(self,crds):
 		"""
 		Express coordinates (atom X 3 lat)
 		In cartesian units.
 		"""
-		return np.einsum("ij,jk->ik", crds, self.lattice) # atom X lattice.
+		return np.dot(crds,self.lattice)
 	def ModuloLattice(self, crds):
 		"""
 		Transports all coordinates into the primitive cell.
@@ -46,11 +47,11 @@ class Lattice:
 		Returns:
 			crds modulo the primitive lattice.
 		"""
-		tmp = self.InLatCoords(crds)
+		tmp = self.InLat(crds)
 		fpart = np.fmod(tmp,1.0)
 		revs=np.where(fpart < 0.0)
 		fpart[revs] = 1.0 + fpart[revs]
-		return self.InCartCoords(fpart)
+		return self.FromLat(fpart)
 	def TessNTimes(self, atoms_, coords_, ntess_):
 		"""
 		Enlarges a molecule to allow for accurate calculation of a short-ranged force
@@ -64,21 +65,23 @@ class Lattice:
 		"""
 		ntess = ntess_
 		natom = atoms_.shape[0]
-		nimages = pow(2*self.ntess+1,3)
+		nimages = pow(ntess_,3)
 		#print("Doing",nimages,"images... of ",natom)
 		newAtoms = np.zeros(nimages*natom,dtype=np.uint8)
 		newCoords = np.zeros((nimages*natom,3))
 		newAtoms[:natom] = atoms_
 		newCoords[:natom,:3] = coords_
 		ind = 1
-		for i in range(-self.ntess,self.ntess+1):
-			for j in range(-self.ntess,self.ntess+1):
-				for k in range(-self.ntess,self.ntess+1):
+		for i in range(ntess):
+			for j in range(ntess):
+				for k in range(ntess):
 					if (i==0 and j==0 and k ==0):
 						continue
 					newAtoms[ind*natom:(ind+1)*natom] = atoms_
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
+					print(i,j,k,ind,nimages)
 					ind = ind + 1
+		print(newAtoms, newCoords.shape)
 		return newAtoms, newCoords
 	def TessLattice(self, atoms_, coords_, rng_):
 		"""
@@ -132,12 +135,14 @@ class LocalForce:
 		tmp = self.func(z, x, NZ)
 		return tmp
 
-class PeriodicForce:
+class PeriodicForceWithNeighborList:
 	def __init__(self, pm_, lat_):
 		"""
 		A periodic force evaluator. The force consists of two components
 		Short-Ranged forces, and long-ranged forces. Short ranged forces are
 		evaluated by tesselation. Long-range forces are not supported yet.
+		This version manages and passes Neighbor lists.
+
 
 		Args:
 			pm_: a molecule.
@@ -157,13 +162,13 @@ class PeriodicForce:
 		return
 	def AdjustLattice(m, lat_):
 		"""
-		Adjusts the lattice and rescales the coordinates of m accordingly
+		Adjusts the lattice and rescales the coordinates of m relative to previous lattice.
 		"""
-		il = self.lattice.InLatCoords(m.coords)
+		il = self.lattice.InLat(m.coords)
 		self.lattice = Lattice(lat_)
-		m.coords = self.lattice.InCartCoords(il)
+		m.coords = self.lattice.FromLat(il)
 		return m
-	def AddLocal(self, lf_,rng_):
+	def BindForce(self, lf_, rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.
 
@@ -204,8 +209,65 @@ class PeriodicForce:
 			etore += np.sum(einc)
 			ftore += finc[:self.natomsReal]
 		return etore, ftore
-	def Ewald(self):
+
+class PeriodicForce:
+	def __init__(self, pm_, lat_):
 		"""
-		http://thynnine.github.io/pysic/coulombsummation%20class.html
+		A periodic force evaluator. The force consists of two components
+		Short-Ranged forces, and long-ranged forces. Short ranged forces are
+		evaluated by tesselation. Long-range forces are not supported yet.
+		This version manages and passes Neighbor lists.
+
+
+		Args:
+			pm_: a molecule.
+			lat_: lattice vectors.
 		"""
+		self.lattice = Lattice(lat_)
+		self.NL = None
+		self.mol0 = self.lattice.CenteredInLattice(pm_)
+		self.atoms = self.mol0.atoms.copy()
+		self.natoms = self.mol0.NAtoms()
+		self.natomsReal = pm_.NAtoms()
+		self.maxrng = 0.0
+		self.LocalForces = []
+		self.lastx = np.zeros(pm_.coords.shape)
+		self.nlthresh = 0.05 #per-atom Threshold for NL rebuild. (A)
+		#self.LongForces = [] Everything is real-space courtesy of DSF.
 		return
+	def AdjustLattice(m, lat_):
+		"""
+		Adjusts the lattice and rescales the coordinates of m relative to previous lattice.
+		"""
+		il = self.lattice.InLat(m.coords)
+		self.lattice = Lattice(lat_)
+		m.coords = self.lattice.FromLat(il)
+		return m
+	def BindForce(self, lf_, rng_):
+		"""
+		Adds a local force to be computed when the PeriodicForce is called.
+
+		Args:
+			lf_: a function which takes z,x and returns atom energies, atom forces.
+		"""
+		self.LocalForces.append(LocalForce(lf_,rng_))
+	def __call__(self,x_):
+		"""
+		Returns the Energy per unit cell and force on all primitive atoms
+
+		Args:
+			x_: a primitive geometry of atoms matching self.atoms.
+		"""
+		# Compute local energy.
+		etore = 0.0
+		ftore = np.zeros((self.natomsReal,3))
+		if (self.maxrng == 0.0):
+			self.maxrng = max([f.range for f in self.LocalForces])
+		# Tesselate atoms.
+		z,x = self.lattice.TessLattice(self.atoms,x_, self.maxrng)
+		# Compute forces and energies.
+		for f in self.LocalForces:
+			einc, finc = f(z,x,self.natomsReal)
+			etore += np.sum(einc)
+			ftore += finc[:self.natomsReal]
+		return etore, ftore

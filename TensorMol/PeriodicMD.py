@@ -127,3 +127,75 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
 			print(("per step cost:", time.time() -t ))
 		return
+
+class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
+	def __init__(self, Force_, BoxingLatp_=np.eye(3), name_ ="PdicBoxMD", BoxingT_= 200):
+		"""
+		Periodically Crushes a molecule by shrinking it's lattice to obtain a desired density.
+
+		Args:
+			Force_: A PeriodicForce object
+			BoxingLatp_ : Final Lattice.
+			BoxingT_: amount of time for the boxing dynamics in fs.
+			PARAMS["MDMaxStep"]: Number of steps to take.
+			PARAMS["MDTemp"]: Temperature to initialize or Thermostat to.
+			PARAMS["MDdt"]: Timestep.
+			PARAMS["MDV0"]: Sort of velocity initialization (None, or "Random")
+			PARAMS["MDLogTrajectory"]: Write MD Trajectory.
+		Returns:
+			Nothing.
+		"""
+		self.PForce = Force_
+		self.BoxingLat0 = Force_.lattice.lattice.copy()
+		self.BoxingLatp = BoxingLatp_.copy()
+		self.BoxingT = BoxingT_
+		VelocityVerlet.__init__(self, None, self.PForce.mol0, name_, self.PForce.__call__)
+		if (PARAMS["MDThermostat"]=="Nose"):
+			self.Tstat = PeriodicNoseThermostat(self.m,self.v)
+		else:
+			print("Unthermostated Periodic Velocity Verlet.")
+		return
+
+	def Density(self):
+		"""
+		Returns the density in g/cm**3 of the bulk.
+		"""
+		latvol = np.linalg.det(self.PForce.lattice.lat) # in A**3
+		return np.sum(self.m/0.000999977)/latvol*(pow(10.0,-24))*AVOCONST
+
+	def Prop(self):
+		"""
+		Propagate VelocityVerlet
+		"""
+		step = 0
+		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
+		while(step < self.maxstep):
+			t = time.time()
+			self.t = step*self.dt
+			self.KE = KineticEnergy(self.v,self.m)
+
+			if (self.t>self.BoxingT):
+				print("Exceeded Boxtime\n",self.BoxingLatp)
+			else:
+				self.PForce.AdjustLattice(((self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLat0+(1.0-(self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLatp)
+			print("Density:", self.Density())
+
+			Teff = (2./3.)*self.KE/IDEALGASR
+			if (PARAMS["MDThermostat"]==None):
+				self.x , self.v, self.a, self.EPot = PeriodicVelocityVerletStep(self.PForce, self.a, self.x, self.v, self.m, self.dt)
+			else:
+				self.x , self.v, self.a, self.EPot = self.Tstat.step(self.PForce, self.a, self.x, self.v, self.m, self.dt)
+			self.md_log[step,0] = self.t
+			self.md_log[step,4] = self.KE
+			self.md_log[step,5] = self.EPot
+			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
+
+			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+				self.WriteTrajectory()
+			if (step%500==0):
+				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
+
+			step+=1
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+			print(("per step cost:", time.time() -t ))
+		return

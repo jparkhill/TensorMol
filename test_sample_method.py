@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 
 def TrainPrepare():
@@ -138,7 +138,13 @@ def TestIRLinearDirect():
 	md.Prop()
 	WriteDerDipoleCorrelationFunction(md.mu_his,"THP_udp_grad_IR.txt")
 
+a=MSet("SmallMols")
+a.Load()
+for mol in a.mols:
+	mol.properties["gradients"] = -1 * mol.properties["forces"]
+a.Save()
+
 #TestCoulomb()
 #FTrainPrepare()
-TrainForceField()
+TrainForceField(SetName_ = "SmallMols")
 # TestIRLinearDirect()

@@ -1189,7 +1189,6 @@ class TFMolManage(TFManage):
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
 		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
 
-
 	def EvalBPDirectEESet(self, mol_set, Rr_cut=PARAMS["AN1_r_Rc"], Ra_cut=PARAMS["AN1_a_Rc"], Ree_cut=PARAMS["EECutoffOff"]):
 		"""
 		The energy, force and dipole routine for BPs_EE.
@@ -1216,8 +1215,7 @@ class TFMolManage(TFManage):
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
 		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
 
-
-	def EvalBPDirectEEUpdateSingle(self, mol, Rr_cut, Ra_cut, Ree_cut):
+	def EvalBPDirectEEUpdateSingle(self, mol, Rr_cut, Ra_cut, Ree_cut, HasVdw = False):
 		"""
 		The energy, force and dipole routine for BPs_EE.
 		"""
@@ -1239,8 +1237,51 @@ class TFMolManage(TFManage):
 		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
 		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
 		rad_eep = NLEE.buildPairs(Ree_cut)
-		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
-		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
+		if not HasVdw:
+			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
+			return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
+		else:
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
+			return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
+
+	def EvalBPDirectEEPeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal_, HasVdw = False):
+		"""
+		The energy, force and dipole routine for BPs_EE
+		This one properly only embeds the energy for real atoms.
+		Kun:
+		We need to adjust how the graph is made so that only the real atoms have their BP and charge-charge
+		interactions evaluated.
+
+		Args:
+			mol: a molecule
+			Rr_cut: Cutoff for radial pairwise part of the embedding.
+			Ra_cut: Cutoff for the angular triples.
+			Ree_cut: Cutoff for the electrostatic embedding.
+			nreal_: number of non-image atoms. These are the first nreal_ atoms in mol.
+		"""
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		dummy_dipole = np.zeros((nmols, 3))
+		nreal = np.zeros((nmols))
+		print("NREAL NREAL NREAL", nreal_) 
+		nreal[0] = nreal_
+		self.TData.MaxNAtoms = mol.NAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSetWithImages(xyzs, natom, nreal,True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		NLEE = NeighborListSetWithImages(xyzs, natom, nreal, False, False,  None)
+		rad_eep = NLEE.buildPairs(Ree_cut)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
+		return Etotal[0], -JOULEPERHARTREE*((gradient[0])[0,:nreal_])
 
 	def Prepare(self):
 		self.Load()

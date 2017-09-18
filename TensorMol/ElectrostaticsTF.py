@@ -18,9 +18,22 @@ if (HAS_TF):
 def TFMatrixPower(mat_,exp_):
 	"""
 	General Matrix Power in Tensorflow.
+	This is NOT differentiable as of 1.2.
+	tf.matrix_inverse and tf.matrix_determinant are though.
 	"""
 	s,u,v = tf.svd(mat_,full_matrices=True,compute_uv=True)
 	return tf.transpose(tf.matmul(u,tf.matmul(tf.diag(tf.pow(s,exp_)),tf.transpose(v))))
+
+def TFMatrixSqrt(mat_):
+	"""
+	Use Denman-Beavers iteration to compute a
+	Matrix Square root differentiably.
+	"""
+	cond = lambda i,y,z: i<10
+	body = lambda i,y,z: [i+1,0.5*(y+tf.matrix_inverse(z)),0.5*(z+tf.matrix_inverse(y))]
+	initial = (0,a,tf.eye(tf.shape(a)[0]))
+	I,Y,Z = tf.while_loop(cond,body,initial)
+	return Y,Z
 
 def TFDistance(A):
 	"""

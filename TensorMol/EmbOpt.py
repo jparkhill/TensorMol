@@ -16,7 +16,11 @@ if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
 	import _pickle as pickle
-from . import LinearOperations, DigestMol, Digest, Opt, Ipecac
+from .LinearOperations import *
+from .DigestMol import *
+from .Digest import *
+from .Opt import *
+from .Ipecac import *
 
 class EmbeddingOptimizer:
 	"""

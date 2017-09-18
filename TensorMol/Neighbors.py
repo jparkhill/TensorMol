@@ -53,11 +53,11 @@ class NeighborList:
 		"""
 		self.x = x_.copy()
 		if (self.DoTriples):
-			self.pairs, self.triples = self.buildPairsAndTriples(rcut_pairs,rcut_triples,molind_)
+			self.pairs, self.triples = self.buildPairsAndTriples(rcut_pairs,rcut_triples, molind_, nreal_=nreal_)
 			self.npairs = self.pairs.shape[0]
 			self.ntriples = self.triples.shape[0]
 		else:
-			self.pairs = self.buildPairs(rcut_pairs,molind_,nreal_)
+			self.pairs = self.buildPairs(rcut_pairs, molind_, nreal_=nreal_)
 			self.npairs = self.pairs.shape[0]
 		return
 
@@ -75,7 +75,7 @@ class NeighborList:
 		pair = []
 		ntodo = self.natom
 		if (nreal_ != None):
-			ntodo = nreal_
+			ntodo = int(nreal_)
 		pair = None
 		if (self.alg==0):
 			pair = Make_NListNaive(self.x,rcut,ntodo,int(self.DoPerms))
@@ -119,24 +119,16 @@ class NeighborList:
 		tpair = [] # since these may have different cutoff
 		ntodo = self.natom
 		if (nreal_ != None):
-			ntodo = nreal_
+			ntodo = int(nreal_)
 		pair = None
 		tpair = None
 
-		# this works...
-		#print "TEST"
-		#pair = Make_NListNaive(self.x,rcut_pairs,ntodo)
-		#print pair
-		#pair = Make_NListLinear(self.x,rcut_pairs,ntodo)
-		#print pair
-		#print "~~TEST"
-
 		if (self.alg==0):
-			pair = Make_NListNaive(self.x,rcut_pairs,ntodo,int(self.DoPerms))
-			tpair = Make_NListNaive(self.x,rcut_triples,ntodo,int(self.DoPerms))
+			pair = Make_NListNaive(self.x,rcut_pairs,int(ntodo),int(self.DoPerms))
+			tpair = Make_NListNaive(self.x,rcut_triples,int(ntodo),int(self.DoPerms))
 		else:
-			pair = Make_NListLinear(self.x,rcut_pairs,ntodo,int(self.DoPerms))
-			tpair = Make_NListLinear(self.x,rcut_triples,ntodo,int(self.DoPerms))
+			pair = Make_NListLinear(self.x,rcut_pairs,int(ntodo),int(self.DoPerms))
+			tpair = Make_NListLinear(self.x,rcut_triples,int(ntodo),int(self.DoPerms))
 		npairi = map(len,pair)
 		npair = sum(npairi)
 		npairi = map(len,tpair)
@@ -209,14 +201,15 @@ class NeighborListSet:
 		self.nlist = []
 		self.nmol = x_.shape[0]
 		self.maxnatom = x_.shape[1]
-		self.alg = 0 if self.maxnatom < 500 else 1
+		self.alg = 0 if self.maxnatom < 20000 else 1
 		if (alg_ != None):
 			self.alg = alg_
 		# alg=0 naive quadratic.
 		# alg=1 linear scaling
-		# alg=2 PairProvider.
-		self.x = x_
-		self.nnz = nnz_
+		# alg=2 PairProvider
+		self.x = x_.copy()
+		self.nnz = nnz_.copy()
+		self.nreal = nnz_.copy() # Over-ridden in the WithImages child of this class.
 		self.ele = ele_
 		self.sort = sort_
 		self.pairs = None
@@ -234,6 +227,7 @@ class NeighborListSet:
 				for i in range(self.nmol):
 					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]], self.alg, self.sort))
 		else:
+			raise Exception("Using fucked up old code.")
 			self.PairMaker = PairProvider(self.nmol,self.maxnatom)
 		return
 
@@ -261,7 +255,7 @@ class NeighborListSet:
 		"""
 		if self.alg < 2:
 			for i,mol in enumerate(self.nlist):
-				mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i)
+				mol.Update(self.x[i,:self.nnz[i]],rcut,rcut,i, self.nreal[i])
 		else:
 			return self.PairMaker(self.x,rcut,self.nnz)
 		nzp = sum([mol.npairs for mol in self.nlist])
@@ -296,7 +290,7 @@ class NeighborListSet:
 			return trp, np.array(tore)
 		else:
 			for i,mol in enumerate(self.nlist):
-				mol.Update(self.x[i,:self.nnz[i]],rcut_pairs,rcut_triples,i)
+				mol.Update(self.x[i,:self.nnz[i]], rcut_pairs, rcut_triples, i, nreal_=self.nreal[i])
 			nzp = sum([mol.npairs for mol in self.nlist])
 			nzt = sum([mol.ntriples for mol in self.nlist])
 			trp = np.zeros((nzp,3),dtype=np.uint64)
@@ -329,9 +323,11 @@ class NeighborListSet:
 		# if self.ele == None:
 		# 	raise Exception("Element type of each atom is needed.")
 		#import time
-		#t0 = time.time()
+		t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		#t_start = time.time()
+		print ("build P and T time:", time.time()-t0)
+		print ("trp:", trp, "trt:", trt)
+		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
 		Z = self.ele[trp[:, 0], trp[:, 2]]
 		pair_mask = np.equal(Z.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
@@ -364,7 +360,10 @@ class NeighborListSet:
 			#print ("current: ", current_l)
 			if current_l == prev_l and current_atom == prev_atom and current_mol == prev_mol:
 				pointer += 1
-				pass
+				if i == trt.shape[0]-1:
+					valance_pair[i-pointer+1:]=range(0, pointer)
+				else:
+					pass
 			else:
 				valance_pair[i-pointer:i]=range(0, pointer)
 				pointer = 1
@@ -376,12 +375,29 @@ class NeighborListSet:
 		mil_jk = np.zeros((trt.shape[0],4))
 		mil_jk[:,[0,1,2]]= trtE_sorted[:,[0,1,4]]
 		mil_jk[:,3] = valance_pair
-		#print ("mil_jk", mil_jk[:20])
+		#print ("mil_jk", mil_jk)
 		jk_max = np.max(valance_pair)
-		#print ("jk_max:", jk_max)
-		#print ("total neigbor time:", time.time() - t0)
+		print ("after processing time:", time.time() - t_start)
+		#print (trpE_sorted, trtE_sorted, jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
 
+class NeighborListSetWithImages(NeighborListSet):
+	def __init__(self, x_, nnz_, nreal_,  DoTriples_=False, DoPerms_=False, ele_=None, alg_ = None, sort_ = False):
+		"""
+		A neighborlist for a set which avoids calculating the energy of "image" atoms,
+		which are generated only for the periodic components of a force, and
+		do not contribute to energy or force.
+
+		Args:
+			x_: NMol X MaxNAtom X 3 tensor of coordinates.
+			nnz_: NMol vector of maximum atoms in each mol.
+			nreal_: NMol vector of real atoms in each mol.
+			ele_: element type of each atom.
+			sort_: whether sort jk in triples by atom index
+		"""
+		NeighborListSet.__init__(self, x_,nnz_,DoTriples_,DoPerms_,ele_,alg_ ,sort_)
+		self.nreal = nreal_
+		return
 
 class CellList:
 	"""

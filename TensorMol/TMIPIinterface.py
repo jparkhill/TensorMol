@@ -29,21 +29,20 @@ class TMIPIManger():
 			elif data.strip() == "POSDATA":
 					print ("server is sending positon.")
 					buf_ = self.s.recv(9*8) # cellh np.float64 
-					cellh = np.fromstring(buf_, np.float64)
+					cellh = np.fromstring(buf_, np.float64)/BOHRPERA
 					buf_ = self.s.recv(9*8) # cellih np.float64 
-        		                cellih = np.fromstring(buf_, np.float64)
+        		                cellih = np.fromstring(buf_, np.float64)*BOHRPERA
 					buf_ = self.s.recv(4) # natom
 					natom = np.fromstring(buf_, np.int32)[0]
 					buf_ = self.s.recv(3*natom*8) # position
-					position = np.fromstring(buf_, np.float64) 
+					position = (np.fromstring(buf_, np.float64)/BOHRPERA).reshape((-1, 3)) 
 					print ("cellh:", cellh, "  cellih:", cellih, " natom:", natom)
 					print ("position:", position)
 					print ("now is running the client to calculate force...")
 
 					energy, force=self.EnergyForceField(position)
-					force = force/JOULEPERHARTREE	
+					force = force/JOULEPERHARTREE/BOHRPERA	
 					# some dummyy function to calculte the energy, natom, 
-					force = np.zeros((natom, 3))
 					vir = np.zeros((3,3))
 					
 					self.hasdata = True
@@ -61,5 +60,3 @@ class TMIPIManger():
 			else:
 				raise Exception("wrong message from server")			
 
-interface = TMIPIManger(TCP_IP="localhost", TCP_PORT= 31415)
-interface.md_run()

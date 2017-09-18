@@ -322,10 +322,18 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	# PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
+<<<<<<< HEAD
+	PARAMS["SRBF"] = MatrixPower(MolEmb.Overlap_RBF(PARAMS),-1./2)
+	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
+	PARAMS["max_steps"] = 2000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 300
+=======
 	PARAMS["HiddenLayers"] = [1024, 1024, 1024]
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
+>>>>>>> 0fff61562a910222c24e4847a7a0a8d77f48b8fc
 	PARAMS["NeuronType"] = "elu"
 	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)
