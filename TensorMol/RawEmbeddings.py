@@ -16,6 +16,7 @@ from TensorMol.ElectrostaticsTF import *
 from tensorflow.python.client import timeline
 import numpy as np
 import math, time, os, sys, os.path
+from tensorflow.python.framework import function
 if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
@@ -2381,46 +2382,54 @@ def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 	num_mols = tf.shape(Zs)[0]
 	max_num_atoms = tf.shape(Zs)[1]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
-	element_mask = tf.where(tf.equal(Zs, element))
-	num_batch_elements = tf.shape(element_mask)[0]
-	element_delta_xyzs = tf.gather_nd(delta_xyzs, element_mask)
-	element_Zs = tf.gather(Zs, element_mask[:,0])
-	element_labels = tf.gather_nd(labels, element_mask)
-	distance_tensor = tf.norm(element_delta_xyzs,axis=2)
+	element_indices = tf.cast(tf.where(tf.equal(Zs, element)), tf.int32)
+	num_batch_elements = tf.shape(element_indices)[0]
+	element_delta_xyzs = tf.gather_nd(delta_xyzs, element_indices)
+	element_Zs = tf.gather(Zs, element_indices[:,0])
+	element_labels = tf.gather_nd(labels, element_indices)
+	distance_tensor = tf.norm(element_delta_xyzs+1.e-16,axis=2)
 	atom_scaled_gaussians, min_eigenval = TF_gaussians(tf.expand_dims(distance_tensor, axis=-1), element_Zs, gaussian_params, atomic_embed_factors, orthogonalize)
 	spherical_harmonics = TF_spherical_harmonics(element_delta_xyzs, distance_tensor, l_max)
 	element_embedding = tf.reshape(tf.einsum('jkg,jkl->jgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_batch_elements, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
-	return element_embedding, element_labels, min_eigenval
+	return element_embedding, element_labels, element_indices, min_eigenval
 
-def TF_random_rotate(xyzs, labels = None):
+def TF_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False):
 	"""
 	Rotates molecules and optionally labels in a uniformly random fashion
 
 	Args:
 		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
-		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
+		labels (tf.float, optional): NMol x MaxNAtoms x label shape tensor of learning targets
+		return_matrix (bool): Returns rotation tensor if True
 
 	Returns:
 		new_xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor of randomly rotated molecules
-		new_labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of randomly rotated learning targets
+		new_labels (tf.float): NMol x MaxNAtoms x label shape tensor of randomly rotated learning targets
 	"""
 	num_mols = tf.shape(xyzs)[0]
-	theta = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
-	phi = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
-	z = tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
-	r = tf.sqrt(z)
-	v = tf.stack([tf.sin(phi) * r, tf.cos(phi) * r, tf.sqrt(2.0 - z)], axis=-1)
-	zero_tensor = tf.zeros_like(phi)
-	R1 = tf.stack([tf.cos(theta), tf.sin(theta), zero_tensor], axis=-1)
-	R2 = tf.stack([-tf.sin(theta), tf.cos(theta), zero_tensor], axis=-1)
-	R3 = tf.stack([zero_tensor, zero_tensor, tf.ones_like(phi)], axis=-1)
+	# theta = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
+	# phi = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
+	# z = tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
+	r = tf.sqrt(rotation_params[:,2]+1.0e-26)
+	v = tf.stack([tf.sin(rotation_params[:,1]) * r, tf.cos(rotation_params[:,1]) * r, tf.sqrt(2.0 - rotation_params[:,2]+1.0e-26)], axis=-1)
+	zero_tensor = tf.zeros_like(rotation_params[:,1])
+	R1 = tf.stack([tf.cos(rotation_params[:,0]), tf.sin(rotation_params[:,0]), zero_tensor], axis=-1)
+	R2 = tf.stack([-tf.sin(rotation_params[:,0]), tf.cos(rotation_params[:,0]), zero_tensor], axis=-1)
+	R3 = tf.stack([zero_tensor, zero_tensor, tf.ones_like(rotation_params[:,1])], axis=-1)
 	R = tf.stack([R1, R2, R3], axis=1)
 	M = tf.matmul((tf.expand_dims(v, axis=1) * tf.expand_dims(v, axis=2)) - tf.eye(3, dtype=eval(PARAMS["tf_prec"])), R)
 	new_xyzs = tf.einsum("lij,lkj->lki",M, xyzs)
 	if labels != None:
 		new_labels = tf.einsum("lij,lkj->lki",M, (xyzs + labels)) - new_xyzs
-	return new_xyzs, new_labels
+		if return_matrix:
+			return new_xyzs, new_labels, M
+		else:
+			return new_xyzs, new_labels
+	elif return_matrix:
+		return new_xyzs, M
+	else:
+		return new_xyzs
 
 def TFSymSet_Scattered_Linear_tmp(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk):
 	"""

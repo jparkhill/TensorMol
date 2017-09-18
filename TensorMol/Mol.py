@@ -169,6 +169,51 @@ class Mol:
 			if (random.uniform(0, 1)<movechance):
 				self.atoms[i] = random.random_integers(1,PARAMS["MAX_ATOMIC_NUMBER"])
 
+	def read_xyz_with_properties(self, path, properties):
+		try:
+			f=open(path,"r")
+			lines=f.readlines()
+			natoms=int(lines[0])
+			self.atoms.resize((natoms))
+			self.coords.resize((natoms,3))
+			for i in range(natoms):
+				line = lines[i+2].split()
+				self.atoms[i]=AtomicNumber(line[0])
+				for j in range(3):
+					try:
+						self.coords[i,j]=float(line[j+1])
+					except:
+						self.coords[i,j]=scitodeci(line[j+1])
+			properties_line = lines[1]
+			for i, mol_property in enumerate(properties):
+				if mol_property == "name":
+					self.properties["name"] = properties_line.split(";")[i]
+				if mol_property == "energy":
+					self.properties["energy"] = float(properties_line.split(";")[i])
+				if mol_property == "forces":
+					self.properties['forces'] = np.zeros((natoms, 3))
+					read_forces = (properties_line.split(";")[i]).split(",")
+					for j in range(natoms):
+						for k in range(3):
+							self.properties['forces'][j,k] = float(read_forces[j*3+k])
+				if mol_property == "dipoles":
+					self.properties['dipoles'] = np.zeros((3))
+					read_dipoles = (properties_line.split(";")[i]).split(",")
+					for j in range(3):
+						self.properties['dipoles'][j] = float(read_dipoles[j])
+				if mol_property == "mulliken_charges":
+					self.properties["mulliken_charges"] = np.zeros((natoms))
+					read_charges = (properties_line.split(";")[i]).split(",")
+					for j in range(natoms):
+						self.properties["mulliken_charges"] = float(read_charges[j])
+			f.close()
+		except Exception as Ex:
+			print("Read Failed.", Ex)
+			raise Ex
+		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
+			self.CalculateAtomization()
+		return
+
 	def ReadGDB9(self,path,filename):
 		try:
 			f=open(path,"r")

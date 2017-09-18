@@ -27,6 +27,13 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	print len(a.mols), " Molecules"
 	a.Save()
 
+def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "forces", "dipoles"]):
+	import glob
+	a=MSet(set_name)
+	for path in glob.iglob(paths):
+		a.read_xyz_set_with_properties(path, properties)
+	print len(a.mols), " Molecules"
+	a.Save()
 
 def TrainKRR(set_ = "SmallMols", dig_ = "GauSH", OType_ ="Force"):
 	a=MSet("SmallMols_rand")
@@ -269,7 +276,7 @@ def TestTFGauSH():
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		labelslist.append(paddedlabels)
-		if i == 1:
+		if i == 99:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
@@ -455,6 +462,37 @@ def train_energy_symm_func_channel():
 	tset = TensorMolData_BP_Direct_WithEle(a,d, WithGrad_=True)
 	manager=TFMolManage("",tset,True,"fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt", Trainable_=True)
 
+def train_forces_rotation_constraint(set_ = "SmallMols"):
+	# PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
+	#  							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
+	# 							[2.35, 0.8], [2.8, 0.8], [3.25, 0.8], [3.7, 0.8], [4.15, 0.8], [4.6, 0.8], [5.05, 0.8], [5.5, 0.8], [5.95, 0.8],
+	# 							[6.4, 0.8], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
+	# PARAMS["ANES"] = np.array([1.02539286, 1.0, 1.0, 1.0, 1.0, 2.18925953, 2.71734044, 3.03417733])
+	# PARAMS["RBFS"] = np.array([[0.15, 0.25], [0.25, 0.35], [0.65, 0.35], [0.95, 0.35], [1.10, 0.25], [1.35, 0.15], [1.50, 0.30],
+	# 							[1.90, 0.35], [2.35, 0.35], [2.8, 0.35], [3.25, 0.35], [3.7, 0.35], [4.15, 0.35], [4.6, 0.35], [5.05, 0.35],
+	# 							[5.5, 0.35], [5.95, 0.35], [6.4, 0.35]])
+	# PARAMS["ANES"] = np.array([1.00, 1.0, 1.0, 1.0, 1.0, 2.20, 2.70, 3.05])
+	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
+								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
+	PARAMS["SH_NRAD"] = 14
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["HiddenLayers"] = [512, 512, 512, 512, 512, 512, 512]
+	PARAMS["max_steps"] = 5000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 200
+	PARAMS["NeuronType"] = "elu"
+	PARAMS["learning_rate"] = 0.00001
+	# PARAMS["tf_prec"] = "tf.float64"
+	a=MSet(set_)
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	tset = TensorDataDirect(a,d)
+	manager=TFManage("",tset,False,"fc_sqdiff_GauSH_direct_constrain_rotation")
+	manager.TrainElement(6)
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
@@ -475,11 +513,13 @@ def train_energy_symm_func_channel():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
+# TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
+# train_forces_rotation_constraint("SmallMols")
+read_unpacked_set()
 
 # a=MSet("SmallMols")
 # a.Load()
