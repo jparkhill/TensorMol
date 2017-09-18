@@ -27,6 +27,13 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	print len(a.mols), " Molecules"
 	a.Save()
 
+def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "forces", "dipoles"]):
+	import glob
+	a=MSet(set_name)
+	for path in glob.iglob(paths):
+		a.read_xyz_set_with_properties(path, properties)
+	print len(a.mols), " Molecules"
+	a.Save()
 
 def TrainKRR(set_ = "SmallMols", dig_ = "GauSH", OType_ ="Force"):
 	a=MSet("SmallMols_rand")
@@ -467,11 +474,13 @@ def train_energy_symm_func_channel():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
+# TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
+# train_forces_rotation_constraint("SmallMols")
+read_unpacked_set()
 
 # a=MSet("SmallMols")
 # a.Load()

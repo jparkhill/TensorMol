@@ -13,7 +13,7 @@ if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
 	import _pickle as pickle
-	
+
 class MSet:
 	""" A molecular database which
 		provides structures """
@@ -147,6 +147,37 @@ class MSet:
 
 	def BondTypes(self):
 		return np.asarray([x for x in itertools.product(self.AtomTypes().tolist(), repeat=2)])
+
+	def read_xyz_set_with_properties(self, path, properties=[]):
+		"""
+		Reads xyz files from a directory with properties in the comment line and adds them to the
+		set.mols list
+
+		Args:
+			path (string): The location of the xyz files to be read
+			properties (list of strings): A list of properties in the comment line of the file.
+
+		Notes:
+			Properties in the xyz file must be semi-colon delimited and in the same order as specified in
+			the properties variable.
+
+			Components of properties must be comma delimited and are expected in the same order as the atoms
+			with ordering of x, y, z if necessary.
+
+			Currently only valid properties are "name", "energy", "forces", "dipole", and "mulliken_charges".
+			Other properties to be added as needed.
+		"""
+		from os import listdir
+		from os.path import isfile, join
+		onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+		for file in onlyfiles:
+			if ( file[-4:]!='.xyz' ):
+					continue
+			self.mols.append(Mol())
+			self.mols[-1].read_xyz_with_properties(path+file, properties)
+		if (self.center):
+			self.CenterSet()
+		return
 
 	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, has_charge=False, has_mmff94=False):
 		"""
