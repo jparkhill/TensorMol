@@ -1031,14 +1031,17 @@ def TFSymASet_Linear_WithElePeriodic(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, Ang
 	fac1 = tf.pow(tf.cast(2.0, prec),1.0-zeta)*tf.pow((1.0+Tijk),zeta)
 	rtmp = tf.cast(tf.reshape(SFPs_[1],[1,ntheta,nr]),prec) # ijk X zeta X eta ....
 	ToExp = ((RijRij2+RikRik2)/2.0)
-	tet = tf.tile(tf.reshape(ToExp,[nnzt,1,1]),[1,ntheta,nr]) - rtmp
+	tet = tf.reshape(ToExp,[nnzt,1,1]) - rtmp
+	#tet = tf.tile(tf.reshape(ToExp,[nnzt,1,1]),[1,ntheta,nr]) - rtmp
 	fac2 = tf.exp(-eta*tet*tet)
 	# And finally the last two factors
 	fac3 = 0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0)
 	fac4 = 0.5*(tf.cos(3.14159265359*RikRik2/R_cut)+1.0)
 	## assemble the full symmetry function for all triples.
-	fac34t =  tf.tile(tf.reshape(fac3*fac4,[nnzt,1,1]),[1,ntheta,nr])
-	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
+	fac34t = tf.reshape(fac3*fac4,[nnzt,1,1])
+	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt, nsym]) # nnz X nzeta X neta X ntheta X nr
+	#fac34t =  tf.tile(tf.reshape(fac3*fac4,[nnzt,1,1]),[1,ntheta,nr])
+	#Gm = tf.reshape(fac1*fac2*fac34t,[nnzt*ntheta*nr]) # nnz X nzeta X neta X ntheta X nr
 	## Finally scatter out the symmetry functions where they belong.
 	#jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), tf.cast(natom, dtype=tf.int64)), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
 	#mil_jk2 = tf.concat([tf.slice(AngtriEle,[0,0],[nnzt,2]),tf.slice(AngtriEle,[0,4],[nnzt,1]),tf.reshape(jk2,[nnzt,1])],axis=-1)
@@ -1210,6 +1213,57 @@ def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
 	Rl=tf.gather_nd(ZPairs2, Radpair)
 	ElemIndex_i = tf.slice(tf.where(tf.equal(Ri, tf.reshape(eles, [1,nele]))),[0,1],[nnz,1])
 	ElemIndex_j = tf.slice(tf.where(tf.equal(Rl, tf.reshape(eles, [1,nele]))),[0,1],[nnz,1])
+
+	c6_i=tf.gather_nd(c6, ElemIndex_i)
+	c6_j=tf.gather_nd(c6, ElemIndex_j)
+	Rvdw_i = tf.gather_nd(R_vdw, ElemIndex_i)
+	Rvdw_j = tf.gather_nd(R_vdw, ElemIndex_j)
+	Kern = -Cut*tf.sqrt(c6_i*c6_j)/tf.pow(RijRij2,6.0)*1.0/(1.0+6.0*tf.pow(RijRij2/(Rvdw_i+Rvdw_j),-12.0))
+
+	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
+	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
+	sparse_index =tf.stack([mol_index, range_index], axis=1)
+	sp_atomoutputs = tf.SparseTensor(sparse_index, Kern, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
+	E_vdw = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+	return E_vdw
+
+def TFVdwPolyLRWithEle(R, Zs, eles, c6, R_vdw, R_cut, Radpair_E1E2, prec=tf.float64):
+	"""
+	Tensorflow implementation of short range cutoff sparse-coulomb
+	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j
+	damping function in http://pubs.rsc.org/en/content/articlepdf/2008/cp/b810189b is used.
+
+	Args:
+	    R: a nmol X maxnatom X 3 tensor of coordinates.
+	    c6 : nele. Grimmer C6 coff in a.u.
+	    R_vdw: nele. Grimmer vdw radius in a.u.
+	    R_cut: Radial Cutoff
+	    Radpair: None zero pairs X 3 tensor (mol, i, j)
+	    prec: a precision.
+	Returns:
+	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+	"""
+	Radpair = Radpair_E1E2[:,:3]
+	R = tf.multiply(R, BOHRPERA)
+	R_width = PARAMS["Poly_Width"]*BOHRPERA
+	R_begin = R_cut
+	R_end =  R_cut+R_width
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	nele = tf.shape(eles)[0]
+	natom2 = natom*natom
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+
+	t = (RijRij2 - R_begin)/R_width
+	Cut_step1  = tf.where(tf.greater(t, 0.0), -t*t*(2.0*t-3.0), tf.zeros_like(t))
+	Cut = tf.where(tf.greater(t, 1.0), tf.ones_like(t), Cut_step1)
+
+	ElemIndex_i = tf.reshape(Radpair_E1E2[:,3],[nnz, 1])
+	ElemIndex_j = tf.reshape(Radpair_E1E2[:,4],[nnz, 1])
 
 	c6_i=tf.gather_nd(c6, ElemIndex_i)
 	c6_j=tf.gather_nd(c6, ElemIndex_j)
@@ -1565,6 +1619,65 @@ def TFSymRSet_Linear_Qs(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, Qs, prec=tf.fl
 
 
 
+def TFSymRSet_Linear_Qs_Periodic(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, Qs, mil_j, nreal, prec=tf.float64):
+	"""
+	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
+	Here j,k are all other atoms, but implicitly the output
+	is separated across elements as well. eleps_ is a list of element pairs
+	G = 2**(1-zeta) \sum_{j,k \neq i} (Angular triple) (radial triple) f_c(R_{ij}) f_c(R_{ik})
+	a-la MolEmb.cpp. Also depends on PARAMS for zeta, eta, theta_s r_s
+	This version improves on the previous by avoiding some
+	heavy tiles.
+
+	Args:
+	    R: a nmol X maxnatom X 3 tensor of coordinates.
+	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+	    eles_: a nelepairs X 1 tensor of elements present in the data.
+	    SFP: A symmetry function parameter tensor having the number of elements
+	    as the SF output. 2 X neta  X nRs.
+	    R_cut: Radial Cutoff
+	    Radpair: None zero pairs X 3 tensor (mol, i, j)
+	    Qs: charge of each atom. nmol X maxnatom
+	    prec: a precision.
+	Returns:
+	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+	"""
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	nele = tf.shape(eles_)[0]
+	pshape = tf.shape(SFPs_)
+	nr = pshape[1]
+	nsym = nr
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	#Rtmp = tf.concat([tf.slice(Radpair,[0,0],[nnz,1]), tf.slice(Radpair,[0,2],[nnz,1])], axis=-1)
+	#Rreverse = tf.concat([Rtmp, tf.slice(Radpair,[0,1],[nnz,1])], axis=-1)
+	#Rboth = tf.concat([Radpair, Rreverse], axis=0)
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+
+	Qii = tf.slice(Radpair,[0,0],[-1,2])
+	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
+	Qi = tf.gather_nd(Qs,Qii)
+	Qj = tf.gather_nd(Qs,Qji)
+	Qit = tf.tile(tf.reshape(Qi,[nnz,1]),[1, nr])
+	Qjt = tf.tile(tf.reshape(Qj,[nnz,1]),[1, nr])
+
+	rtmp = tf.cast(tf.reshape(SFPs_[0],[1,nr]),prec) # ijk X zeta X eta ....
+	tet = tf.tile(tf.reshape(RijRij2,[nnz,1]),[1,nr]) - rtmp
+	fac1 = tf.exp(-eta*tet*tet)
+	# And finally the last two factors
+	fac2 = 0.5*(tf.cos(3.14159265359*RijRij2/R_cut)+1.0)
+	fac2t = tf.tile(tf.reshape(fac2,[nnz,1]),[1,nr])
+	## assemble the full symmetry function for all triples.
+	Gm = tf.reshape(fac1*fac2t*Qit*Qjt,[nnz, nr]) # nnz X nzeta X neta X ntheta X nr
+	## Finally scatter out the symmetry functions where they belong.
+	## So the above is Mol, i, l... now must outer nzeta,neta,ntheta,nr to finish the indices.
+	j_max = tf.reduce_max(tf.slice(mil_j, [0,3], [nnz, 1])) + 1
+	to_reduce2 = tf.scatter_nd(mil_j, Gm, tf.cast([nmol, tf.cast(nreal, tf.int32), nele, tf.cast(j_max, tf.int32), nsym], dtype=tf.int64))
+	return tf.reduce_sum(tf.reduce_sum(to_reduce2, axis=3), axis=2)
+
+
 def TFSymSet(R, Zs, eles_, SFPsR_, Rr_cut, eleps_, SFPsA_, Ra_cut):
 	"""
 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
@@ -1912,6 +2025,46 @@ def TFSymSet_Radius_Scattered_Linear_Qs(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_,  
 	GatherList = []
 	for e in range(num_ele):
 		GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,natom,1]),[nmol, natom])))
+		NAtomOfEle=tf.shape(GatherList[-1])[0]
+		SymList.append(tf.gather_nd(GM, tf.slice(GatherList[-1],[0,0],[NAtomOfEle,2])))
+		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
+		atom_index = tf.reshape(tf.slice(GatherList[-1],[0,2],[NAtomOfEle,1]),[NAtomOfEle, 1])
+		IndexList.append(tf.concat([mol_index, atom_index], axis = -1))
+	return SymList, IndexList
+
+def TFSymSet_Radius_Scattered_Linear_Qs_Periodic(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_,  eta,  Radp, Qs, mil_j, nreal):
+	"""
+	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
+	Args:
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a neles X 1 tensor of elements present in the data.
+		SFPsR_: A symmetry function parameter of radius part
+		Rr_cut: Radial Cutoff of radius part
+		eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+		SFPsA_: A symmetry function parameter of angular part
+		RA_cut: Radial Cutoff of angular part
+	Returns:
+		Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+	"""
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	nele = tf.shape(eles_)[0]
+	nelep = tf.shape(eleps_)[0]
+	GM = tf.reshape(TFSymRSet_Linear_Qs_Periodic(R, Zs, eles_, SFPsR_, eta, Rr_cut, Radp, Qs, mil_j, nreal),[nmol, nreal,-1])
+	#GM = tf.identity(GMA)
+	num_ele, num_dim = eles_.get_shape().as_list()
+	Zs_real = Zs[:,:nreal]
+	MaskAll = tf.equal(tf.reshape(Zs_real,[nmol,nreal,1]),tf.reshape(eles_,[1,1,nele]))
+	ToMask1 = AllSinglesSet(tf.cast(tf.tile(tf.reshape(tf.range(nreal),[1,nreal]),[nmol,1]),dtype=tf.int64), prec=tf.int64)
+	v = tf.cast(tf.reshape(tf.range(nmol*nreal), [nmol, nreal, 1]), dtype=tf.int64)
+	ToMask = tf.concat([ToMask1, v], axis = -1)
+	IndexList = []
+	SymList= []
+	GatherList = []
+	for e in range(num_ele):
+		GatherList.append(tf.boolean_mask(ToMask,tf.reshape(tf.slice(MaskAll,[0,0,e],[nmol,nreal,1]),[nmol, nreal])))
 		NAtomOfEle=tf.shape(GatherList[-1])[0]
 		SymList.append(tf.gather_nd(GM, tf.slice(GatherList[-1],[0,0],[NAtomOfEle,2])))
 		mol_index = tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle, 1])
@@ -2950,7 +3103,7 @@ class ANISym:
 			self.AngtEle_pl=tf.placeholder(tf.int64, shape=tuple([None,5]))
 			self.mil_j_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
 			self.mil_jk_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
-			self.nreal = tf.Variable(self.Num_Real, dtype = tf.int32)
+			#self.nreal = tf.Variable(self.Num_Real, dtype = tf.int32)
 			self.Qs_pl=tf.placeholder(tf.float64, shape=tuple([self.MolPerBatch, self.MaxAtoms]))
 			Ele = tf.Variable([[1],[8]], dtype = tf.int64)
 			Elep = tf.Variable([[1,1],[1,8],[8,8]], dtype = tf.int64)
@@ -2967,12 +3120,15 @@ class ANISym:
 			Ra_cut = 3.1
 			Rr_cut = 4.6
 			Ree_on = 0.0
+			self.Radp_pl = self.RadpEle_pl[:,:3]
 			#self.A, self.B, self.C, self.D, self.E, self.F, self.G, self.H, self.I = TFVdwPolyLR(self.xyz_pl,  self.Z_pl, Ele, C6, R_vdw, Ree_on, self.Radp_pl)
 			#self.Scatter_Sym, self.Sym_Index = TFSymSet_Scattered(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update(self.xyz_pl, self.Z_pl, Ele, SFPr, Rr_cut, Elep, SFPa, Ra_cut)
 			#self.Scatter_Sym_Update2, self.Sym_Index_Update2 = TFSymSet_Scattered_Update2(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
 			#self.Scatter_Sym_Update, self.Sym_Index_Update = TFSymSet_Scattered_Update_Scatter(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut)
-			#self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs = TFSymSet_Radius_Scattered_Linear_Qs(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep,  self.eta,  self.Radp_pl, self.Qs_pl)
+			self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs = TFSymSet_Radius_Scattered_Linear_Qs(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep,  self.eta,  self.Radp_pl, self.Qs_pl)
+
+			self.Scatter_Sym_Linear_Qs_Periodic, self.Sym_Index_Linear_Qs_Periodic = TFSymSet_Radius_Scattered_Linear_Qs_Periodic(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep,  self.eta,  self.Radp_pl, self.Qs_pl, self.mil_j_pl, self.nreal)
 			#self.Scatter_Sym_Linear, self.Sym_Index_Linear = TFSymSet_Scattered_Linear(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.Radp_pl, self.Angt_pl)
 
 			self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele = TFSymSet_Scattered_Linear_WithEle(self.xyz_pl, self.Z_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, self.zeta, self.eta, Ra_cut, self.RadpEle_pl, self.AngtEle_pl, self.mil_jk_pl)
@@ -2993,8 +3149,8 @@ class ANISym:
 	#	return {coord_pl: batch_data[0], atom_pl: batch_data[1], radp_pl:batch_data[2], angt_pl:batch_data[3], Qs_pl:batch_data[4], radpEle_pl:batch_data[5], angtEle_pl:batch_data[6], mil_j_pl:batch_data[7], mil_jk_pl:batch_data[8]}
 
 
-	def fill_feed_dict(self, batch_data, coord_pl, atom_pl, radpEle_pl,  angtEle_pl, mil_j_pl, mil_jk_pl):
-		return {coord_pl: batch_data[0], atom_pl: batch_data[1], radpEle_pl:batch_data[2], angtEle_pl:batch_data[3], mil_j_pl:batch_data[4], mil_jk_pl:batch_data[5]}
+	def fill_feed_dict(self, batch_data, coord_pl, atom_pl, radpEle_pl,  angtEle_pl, mil_j_pl, mil_jk_pl, Qs_pl):
+		return {coord_pl: batch_data[0], atom_pl: batch_data[1], radpEle_pl:batch_data[2], angtEle_pl:batch_data[3], mil_j_pl:batch_data[4], mil_jk_pl:batch_data[5], Qs_pl:batch_data[6]}
 
 	def TestPeriodic(self):
 		"""
@@ -3020,7 +3176,16 @@ class ANISym:
 			xp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.coords + cellsize*PF.tess[i]
 	
 		self.MaxAtoms = xp.shape[0]
-		self.Num_Real = m.NAtoms()
+		self.nreal = m.NAtoms()
+
+		qs = np.zeros((1, self.MaxAtoms))
+		for j in range (0, m.NAtoms()):
+			if m.atoms[j] == 1:
+				qs[0][j] = 0.5
+			else:
+				qs[0][j] = -1.0
+
+		#self.Num_Real = m.NAtoms()
 		self.SetANI1Param()
 		self.Prepare()
 		t_total = time.time()
@@ -3031,9 +3196,10 @@ class ANISym:
 		NL = NeighborListSetWithImages(xp.reshape((1,-1,3)), np.array([zp.shape[0]]), np.array([m.NAtoms()]), True, True, zp.reshape((1,-1)), sort_=True)
 		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexPeriodic(4.6, 3.1, np.array([1,8]), np.array([[1,1],[1,8],[8,8]]))
 		print ("python time cost:", time.time() - t0)
-		batch_data = [xp.reshape((1,-1,3)), zp.reshape((1,-1)), rad_p_ele, ang_t_elep, mil_j, mil_jk]
-		feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.RadpEle_pl, self.AngtEle_pl, self.mil_j_pl, self.mil_jk_pl)
-		A, B, C, D = self.sess.run([self.Scatter_Sym_Linear_Ele, self.Sym_Index_Linear_Ele, self.Scatter_Sym_Linear_Ele_Periodic, self.Sym_Index_Linear_Ele_Periodic], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
+		batch_data = [xp.reshape((1,-1,3)), zp.reshape((1,-1)), rad_p_ele, ang_t_elep, mil_j, mil_jk, qs]
+		feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.RadpEle_pl, self.AngtEle_pl, self.mil_j_pl, self.mil_jk_pl, self.Qs_pl)
+		
+		A, B, C, D = self.sess.run([self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs, self.Scatter_Sym_Linear_Qs_Periodic, self.Sym_Index_Linear_Qs_Periodic], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 		print ("A:\n",A[0].shape, len(A))
 		print ("B:\n",B[0].shape)
 		print ("C:\n",C[0].shape, len(C))

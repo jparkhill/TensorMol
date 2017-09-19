@@ -296,7 +296,7 @@ def Train():
 		manager.Train(1)
 
 def Eval():
-	if (0):
+	if (1):
 		a=MSet("H2O_cluster_meta", center_=False)
 		a.ReadXYZ("H2O_cluster_meta")
 		TreatedAtoms = a.AtomTypes()
@@ -325,7 +325,8 @@ def Eval():
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
 		m = a.mols[-1]
-		print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
 		return
 		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
 		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
@@ -431,7 +432,7 @@ def Eval():
 				Ecc +=  cut*charge[0][i]*charge[0][j]/dist
 		print ("Ecc manual:", Ecc)
 
-	if (1):
+	if (0):  # i-pi test
 		a=MSet("H2O_cluster_meta", center_=False)
 		a.ReadXYZ("H2O_cluster_meta")
 		TreatedAtoms = a.AtomTypes()

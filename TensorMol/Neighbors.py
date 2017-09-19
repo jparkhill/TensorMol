@@ -304,6 +304,17 @@ class NeighborListSet:
 				tp += mol.ntriples
 			return trp, trt
 
+	def buildPairsWithBothEleIndex(self, rcut=5.0, ele=None):
+		trp  = self.buildPairs(rcut)
+		Z1 = self.ele[trp[:, 0], trp[:, 1]]
+		Z2 = self.ele[trp[:, 0], trp[:, 2]]
+		pair_mask1 = np.equal(Z1.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
+		pair_mask2 = np.equal(Z2.reshape(trp.shape[0],1,1), ele.reshape(ele.shape[0],1))
+		pair_index1 = np.where(np.all(pair_mask1, axis=-1))[1]
+		pair_index2 = np.where(np.all(pair_mask2, axis=-1))[1]
+		trpE1E2 = np.concatenate((trp, pair_index1.reshape((-1,1)), pair_index2.reshape((-1,1))), axis=-1)
+		return trpE1E2
+
 	def buildPairsAndTriplesWithEleIndex(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
 		"""
 		generate sorted pairs and triples with index of correspoding ele or elepair append to it.
@@ -420,6 +431,7 @@ class NeighborListSet:
 				prev_mol = current_mol
 		mil_j[:,[0,1,2]] = trpE_sorted[:,[0,1,3]]
 		mil_j[:,3] = pair_pair
+		#print ("trpE_sorted, trtE_sorted",trpE_sorted.shape, trtE_sorted.shape)
 		return trpE_sorted, trtE_sorted, mil_j, mil_jk
 
 class NeighborListSetWithImages(NeighborListSet):
