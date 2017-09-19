@@ -297,8 +297,10 @@ def Train():
 
 def Eval():
 	if (1):
-		a=MSet("H2O_cluster_meta", center_=False)
-		a.ReadXYZ("H2O_cluster_meta")
+		a = MSet("water_tiny", center_=False)
+		a.ReadXYZ("water_tiny")
+		#a=MSet("H2O_cluster_meta", center_=False)
+		#a.ReadXYZ("H2O_cluster_meta")
 		TreatedAtoms = a.AtomTypes()
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
@@ -325,9 +327,8 @@ def Eval():
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
 		m = a.mols[-1]
-		print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		#print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
 		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
-		return
 		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
 		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
 		#for i in range (0, m.NAtoms()):
@@ -358,9 +359,9 @@ def Eval():
 		EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
 
-		#PARAMS["OptMaxCycles"]=200
-		#Opt = GeomOptimizer(EnergyForceField)
-		#m=Opt.Opt(m)
+		PARAMS["OptMaxCycles"]=200
+		Opt = GeomOptimizer(EnergyForceField)
+		m=Opt.Opt(m)
 
 
                 #PARAMS["MDThermostat"] = "Nose"
@@ -645,6 +646,17 @@ def BoxAndDensity():
 		print("EnAndForce: ", en,f)
 		return en, f
 
+	def EnAndForce2(z_, x_, nreal_):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(z_,x_)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient  = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		energy = Etotal[0]
+		force = gradient[0]
+		print ("energy:", energy)
+		return energy, force
+
 	# opt the first water.
 	PARAMS["OptMaxCycles"]=20
 	Opt = GeomOptimizer(EnAndForceAPeriodic)
@@ -670,7 +682,7 @@ def BoxAndDensity():
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
 	PF = PeriodicForce(mt,lat0)
-	PF.BindForce(EnAndForce,10.0)
+	PF.BindForce(EnAndForce2,10.0)
 
 	# Try optimizing that....
 	PARAMS["OptMaxCycles"]=20
@@ -683,5 +695,5 @@ def BoxAndDensity():
 
 #TrainPrepare()
 #Train()
-Eval()
-#BoxAndDensity()
+#Eval()
+BoxAndDensity()

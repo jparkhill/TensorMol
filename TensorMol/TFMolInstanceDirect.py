@@ -3864,13 +3864,13 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.EvalPrepare_Periodic()
 		t0 = time.time()
 		feed_dict=self.fill_feed_dict_periodic(batch_data+[PARAMS["AddEcc"]])
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict, options=self.options, run_metadata=self.run_metadata)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
 
-		fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-		chrome_trace = fetched_timeline.generate_chrome_trace_format()
-		with open('timeline_evalutaion.json', 'w') as f:
-			f.write(chrome_trace)
-		print ("evaluation time:", time.time() - t0)
+		#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+		#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+		#with open('timeline_evalutaion.json', 'w') as f:
+		#	f.write(chrome_trace)
+		#print ("evaluation time:", time.time() - t0)
 		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
 
 	def EvalPrepare_Periodic(self,  continue_training =False):
@@ -3919,8 +3919,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
-			self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			self.run_metadata = tf.RunMetadata()
+			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+			#self.run_metadata = tf.RunMetadata()
 			self.sess.graph.finalize()
 		print("Prepared for Evaluation...")
 
