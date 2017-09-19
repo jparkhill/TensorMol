@@ -788,8 +788,11 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			instd = tf.constant(self.instd, dtype=self.tf_prec)
 			outmean = tf.constant(self.outmean, dtype=self.tf_prec)
 			outstd = tf.constant(self.outstd, dtype=self.tf_prec)
-			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, self.labels_pl)
-			self.embedding, self.labels, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
+					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
+					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
+			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
+			self.embedding, self.labels, _, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd

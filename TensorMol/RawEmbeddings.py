@@ -2532,8 +2532,6 @@ def TF_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 		embedding (tf.float): atom embeddings for element
 		labels (tf.float): atom labels for element
 	"""
-	num_mols = tf.shape(Zs)[0]
-	max_num_atoms = tf.shape(Zs)[1]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 	element_indices = tf.cast(tf.where(tf.equal(Zs, element)), tf.int32)
 	num_batch_elements = tf.shape(element_indices)[0]
@@ -2560,10 +2558,6 @@ def TF_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False
 		new_xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor of randomly rotated molecules
 		new_labels (tf.float): NMol x MaxNAtoms x label shape tensor of randomly rotated learning targets
 	"""
-	num_mols = tf.shape(xyzs)[0]
-	# theta = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
-	# phi = np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
-	# z = tf.random_uniform([num_mols], maxval=2.0, dtype=eval(PARAMS["tf_prec"]))
 	r = tf.sqrt(rotation_params[:,2]+1.0e-26)
 	v = tf.stack([tf.sin(rotation_params[:,1]) * r, tf.cos(rotation_params[:,1]) * r, tf.sqrt(2.0 - rotation_params[:,2]+1.0e-26)], axis=-1)
 	zero_tensor = tf.zeros_like(rotation_params[:,1])
