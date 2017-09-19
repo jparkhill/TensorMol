@@ -119,9 +119,8 @@ class MSet:
 		"""
 		Translates every Mol such that the center is at 0.
 		"""
-		ord = range(len(self.mols))
-		for j in ord:
-			self.mols[j].coords -= self.mols[j].Center()
+		for mol in self.mols:
+			mol.coords -= mol.Center()
 
 	def cut_max_n_atoms(self, max_n_atoms):
 		cut_down_mols = []
@@ -174,9 +173,7 @@ class MSet:
 			if ( file[-4:]!='.xyz' ):
 					continue
 			self.mols.append(Mol())
-			self.mols[-1].read_xyz_with_properties(path+file, properties)
-		if (self.center):
-			self.CenterSet()
+			self.mols[-1].read_xyz_with_properties(path+file, properties, self.center)
 		return
 
 	def ReadXYZUnpacked(self, path="/Users/johnparkhill/gdb9/", has_energy=False, has_force=False, has_charge=False, has_mmff94=False):
