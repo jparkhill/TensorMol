@@ -169,7 +169,7 @@ class Mol:
 			if (random.uniform(0, 1)<movechance):
 				self.atoms[i] = random.random_integers(1,PARAMS["MAX_ATOMIC_NUMBER"])
 
-	def read_xyz_with_properties(self, path, properties):
+	def read_xyz_with_properties(self, path, properties, center=True):
 		try:
 			f=open(path,"r")
 			lines=f.readlines()
@@ -184,6 +184,8 @@ class Mol:
 						self.coords[i,j]=float(line[j+1])
 					except:
 						self.coords[i,j]=scitodeci(line[j+1])
+			if center:
+				self.coords -= self.Center()
 			properties_line = lines[1]
 			for i, mol_property in enumerate(properties):
 				if mol_property == "name":
@@ -210,8 +212,6 @@ class Mol:
 		except Exception as Ex:
 			print("Read Failed.", Ex)
 			raise Ex
-		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
-			self.CalculateAtomization()
 		return
 
 	def ReadGDB9(self,path,filename):
