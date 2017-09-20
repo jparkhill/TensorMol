@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
