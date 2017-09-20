@@ -160,7 +160,7 @@ class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
 		"""
 		Returns the density in g/cm**3 of the bulk.
 		"""
-		latvol = np.linalg.det(self.PForce.lattice.lat) # in A**3
+		latvol = np.linalg.det(self.PForce.lattice.lattice) # in A**3
 		return np.sum(self.m/0.000999977)/latvol*(pow(10.0,-24))*AVOCONST
 
 	def Prop(self):
@@ -177,7 +177,7 @@ class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
 			if (self.t>self.BoxingT):
 				print("Exceeded Boxtime\n",self.BoxingLatp)
 			else:
-				self.PForce.AdjustLattice(((self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLat0+(1.0-(self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLatp)
+				self.x = self.PForce.AdjustLattice(self.x, ((self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLat0+(1.0-(self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLatp)
 			print("Density:", self.Density())
 
 			Teff = (2./3.)*self.KE/IDEALGASR
@@ -194,6 +194,8 @@ class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
+
+			Mol(*self.PForce.lattice.TessLattice(self.atoms, self.x, self.PForce.maxrng)).WriteXYZfile("./results/", "TessMD.xyz")
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)

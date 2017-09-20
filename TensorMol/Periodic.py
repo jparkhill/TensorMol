@@ -18,7 +18,6 @@ class Lattice:
 			latvec_: A 3x3 tensor of lattice vectors.
 		"""
 		self.lattice = latvec_.copy()
-		self.latticeMetric = MatrixPower(np.array([[np.dot(self.lattice[i],self.lattice[j]) for j in range(3)] for i in range(3)]),-1/2.)
 		self.latticeCenter = (self.lattice[0]+self.lattice[1]+self.lattice[2])/2.0
 		self.latticeMinDiameter = 2.0*min([np.linalg.norm(self.lattice[0]-self.latticeCenter),np.linalg.norm(self.lattice[1]-self.latticeCenter),np.linalg.norm(self.lattice[2]-self.latticeCenter)])
 		self.ntess = 1 # number of shells over which to tesselate.
@@ -160,7 +159,7 @@ class PeriodicForceWithNeighborList:
 		self.nlthresh = 0.05 #per-atom Threshold for NL rebuild. (A)
 		#self.LongForces = [] Everything is real-space courtesy of DSF.
 		return
-	def AdjustLattice(m, lat_):
+	def AdjustLattice(self, x_, lat_):
 		"""
 		Adjusts the lattice and rescales the coordinates of m relative to previous lattice.
 		"""
@@ -235,14 +234,14 @@ class PeriodicForce:
 		self.nlthresh = 0.05 #per-atom Threshold for NL rebuild. (A)
 		#self.LongForces = [] Everything is real-space courtesy of DSF.
 		return
-	def AdjustLattice(m, lat_):
+	def AdjustLattice(self, x_, lat_):
 		"""
 		Adjusts the lattice and rescales the coordinates of m relative to previous lattice.
 		"""
-		il = self.lattice.InLat(m.coords)
 		self.lattice = Lattice(lat_)
-		m.coords = self.lattice.FromLat(il)
-		return m
+		il = self.lattice.InLat(x_)
+		self.lattice = Lattice(lat_)
+		return self.lattice.FromLat(il)
 	def BindForce(self, lf_, rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.

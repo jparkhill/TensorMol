@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from TensorMol.Periodic import *
-#from TensorMol.PeriodicTF import *
+# from TensorMol.PeriodicTF import *
 from TensorMol.TFMolInstanceDirect import *
 
 class LinearVoxelBase:
@@ -259,8 +259,7 @@ class TFPeriodic():
 		latcenter = (lat_[0]+lat_[1]+lat_[2])/2.0
 		vertices = [(lat_[0]+lat_[1])/2.0,(lat_[2]+lat_[1])/2.0,(lat_[0]+lat_[2])/2.0,lat_[0],lat_[1],lat_[2]]
 		dists = [np.linalg.norm(v-latcenter) for v in vertices]
-		self.ntess = int((rcut_ -  np.min(dists))/np.min(np.sum(np.square(lat_), axis=1)**0.5)) + 1  # this may only work for
-		print("ntess", self.ntess)
+		self.ntess = max(int((rcut_ -  np.min(dists))/np.min(np.sum(np.square(lat_), axis=1)**0.5)),0) + 1  # this may only work for
 		tessrng = range(-self.ntess,self.ntess+1)
 		tesslist = [[0,0,0]] # Only real atoms are in the first unit cell.
 		for t1 in tessrng:
@@ -370,7 +369,6 @@ class TFPeriodicVoxelForce(LinearVoxelBase, TFPeriodic):
 		#self.ntess = int(rcut_ / np.min(dists))
 		#print ("mini:", np.min(np.sum(np.square(lat_), axis=1)**0.5))
 		self.ntess = int((rcut_ -  np.min(dists))/np.min(np.sum(np.square(lat_), axis=1)**0.5)) + 1  # this may only work for cubic cell
-		print("ntess", self.ntess)
 		tessrng = range(-self.ntess,self.ntess+1)
 		tesslist = [[0,0,0]] # Only real atoms are in the first unit cell.
 		for t1 in tessrng:
