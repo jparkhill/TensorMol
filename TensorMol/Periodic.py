@@ -80,7 +80,6 @@ class Lattice:
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
 					#print(i,j,k,ind,nimages)
 					ind = ind + 1
-		print(newAtoms, newCoords.shape)
 		return newAtoms, newCoords
 	def TessLattice(self, atoms_, coords_, rng_):
 		"""
@@ -244,6 +243,31 @@ class PeriodicForce:
 		latmet = MatrixPower(np.dot(lat0_, lat0_.T),-1)
 		inlat = np.dot(x_,np.dot(lat0_.T,latmet))
 		return np.dot(inlat, latp_)
+	def LatticeStep(self,x_):
+		"""
+		Displace all lattice coordinates by 0.001.
+		Relattice if the energy decreases.
+		"""
+		e,f = self.__call__(x_)
+		for i in range(3):
+			for j in range(3):
+				tmp = self.lattice.lattice.copy()
+				tmp[i,j] += 0.005
+				latt = Lattice(tmp)
+				z,x = latt.TessLattice(self.atoms,x_, self.maxrng)
+				et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
+				if (et < e):
+					self.ReLattice(tmp)
+					print("LatStep: ",self.lattice.lattice)
+				tmp = self.lattice.lattice.copy()
+				tmp[i,j] -= 0.005
+				latt = Lattice(tmp)
+				z,x = latt.TessLattice(self.atoms,x_, self.maxrng)
+				et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
+				if (et < e):
+					self.ReLattice(tmp)
+					print("LatStep: ",self.lattice.lattice)
+		return
 	def BindForce(self, lf_, rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.

@@ -23,8 +23,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		self.step = self.maxstep
 		self.EnergyAndForce = f_
 		return
-
-	def Opt(self,m, filename="OptLog",Debug=False):
+	def Opt(self,m, filename="PdicOptLog",Debug=False):
 		"""
 		Optimize using An EnergyAndForce Function.
 
@@ -46,6 +45,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		Energy = lambda x_: self.EnergyAndForce(x_)[0]
 		while( step < self.max_opt_step and rmsgrad > self.thresh):
 			prev_m = Mol(m.atoms, m.coords)
+			self.EnergyAndForce.LatticeStep(m.coords)
 			energy, frc = self.EnergyAndForce(m.coords)
 			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
 			frc /= JOULEPERHARTREE
@@ -61,7 +61,6 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
 		print("Final Energy:", Energy(prev_m.coords))
 		return prev_m
-
 	def OptWCell(self,m, filename="OptLog", Debug=False):
 		"""
 		Optimize using An EnergyAndForce Function.
@@ -141,7 +140,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 			print("step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
-			Mol(*self.EnergyAndForce.lattice.TessLattice(prev_m.atoms,prev_m.coords,self.EnergyAndForce.maxrng)).WriteXYZfile("./results/", "Tess"+filename)
+			Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename)
 			step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)

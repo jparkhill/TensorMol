@@ -97,7 +97,20 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		else:
 			print("Unthermostated Periodic Velocity Verlet.")
 		return
-
+	def Density(self):
+		"""
+		Returns the density in g/cm**3 of the bulk.
+		"""
+		latvol = np.linalg.det(self.PForce.lattice.lattice) # in A**3
+		return np.sum(self.m/0.000999977)/latvol*(pow(10.0,-24))*AVOCONST
+	def WriteTrajectory(self):
+		m=Mol(self.atoms,self.x)
+		m.properties["Time"]=self.t
+		m.properties["KineticEnergy"]=self.KE
+		m.properties["PotEnergy"]=self.EPot
+		m.WriteXYZfile("./results/", "MDTrajectory"+self.name)
+		Mol(*self.PForce.lattice.TessNTimes(self.atoms, self.x, 2)).WriteXYZfile("./results/", "MDTess"+self.name)
+		return
 	def Prop(self):
 		"""
 		Propagate VelocityVerlet
@@ -129,7 +142,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		return
 
 class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
-	def __init__(self, Force_, BoxingLatp_=np.eye(3), name_ ="PdicBoxMD", BoxingT_= 100):
+	def __init__(self, Force_, BoxingLatp_=np.eye(3), name_ ="PdicBoxMD", BoxingT_= 400):
 		"""
 		Periodically Crushes a molecule by shrinking it's lattice to obtain a desired density.
 
@@ -155,13 +168,6 @@ class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
 		else:
 			print("Unthermostated Periodic Velocity Verlet.")
 		return
-
-	def Density(self):
-		"""
-		Returns the density in g/cm**3 of the bulk.
-		"""
-		latvol = np.linalg.det(self.PForce.lattice.lattice) # in A**3
-		return np.sum(self.m/0.000999977)/latvol*(pow(10.0,-24))*AVOCONST
 
 	def Prop(self):
 		"""
@@ -199,7 +205,75 @@ class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
 
-			Mol(*self.PForce.lattice.TessLattice(self.atoms, self.x, self.PForce.maxrng)).WriteXYZfile("./results/", "TessMD.xyz")
+			step+=1
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+			print(("per step cost:", time.time() -t ))
+		return
+
+
+class PeriodicAnnealer(PeriodicVelocityVerlet):
+	def __init__(self, Force_, name_ ="PdicAnneal",AnnealThresh_ = 0.000009):
+		"""
+		Anneals a periodic molecule.
+
+		Args:
+			Force_: A PeriodicForce object
+			PARAMS["MDMaxStep"]: Number of steps to take.
+			PARAMS["MDTemp"]: Temperature to initialize or Thermostat to.
+			PARAMS["MDdt"]: Timestep.
+			PARAMS["MDV0"]: Sort of velocity initialization (None, or "Random")
+			PARAMS["MDLogTrajectory"]: Write MD Trajectory.
+		Returns:
+			Nothing.
+		"""
+		PeriodicVelocityVerlet.__init__(self, Force_, name_)
+		self.dt = 0.1
+		self.v *= 0.0
+		self.AnnealT0 = PARAMS["MDAnnealT0"]
+		self.AnnealSteps = PARAMS["MDAnnealSteps"]
+		self.MinS = 0
+		self.MinE = 0.0
+		self.Minx = None
+		self.AnnealThresh = AnnealThresh_
+		self.Tstat = PeriodicNoseThermostat(self.m,self.v)
+		return
+	def Prop(self):
+		"""
+		Propagate VelocityVerlet
+		"""
+		step = 0
+		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
+		while(step < self.maxstep):
+			t = time.time()
+			self.t = step*self.dt
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/IDEALGASR
+
+			AnnealFrac = float(self.AnnealSteps - step)/self.AnnealSteps
+			self.Tstat.T = self.AnnealT0*AnnealFrac + PARAMS["MDAnnealTF"]*(1.0-AnnealFrac) + pow(10.0,-10.0)
+
+			self.x , self.v, self.a, self.EPot = self.Tstat.step(self.PForce, self.a, self.x, self.v, self.m, self.dt)
+
+			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh and step>1):
+				self.PForce.LatticeStep()
+				self.MinE = self.EPot
+				self.Minx = self.x.copy()
+				self.MinS = step
+				LOGGER.info("   -- cycling annealer -- ")
+				if (PARAMS["MDAnnealT0"] > PARAMS["MDAnnealTF"]):
+					self.AnnealT0 = self.Tstat.T+PARAMS["MDAnnealKickBack"]
+				print(self.x)
+				step=0
+
+			self.md_log[step,0] = self.t
+			self.md_log[step,4] = self.KE
+			self.md_log[step,5] = self.EPot
+			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
+
+			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+				self.WriteTrajectory()
+			if (step%500==0):
+				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
