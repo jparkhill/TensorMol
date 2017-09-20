@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -38,7 +38,7 @@ def Train():
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
 		PARAMS["max_steps"] = 401
-		PARAMS["batch_size"] = 100
+		PARAMS["batch_size"] = 200
 		PARAMS["test_freq"] = 10
 		PARAMS["tf_prec"] = "tf.float64"
 		#PARAMS["AN1_num_r_Rs"] = 16
