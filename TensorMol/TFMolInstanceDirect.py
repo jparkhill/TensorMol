@@ -1178,7 +1178,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			#dump_, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs   = self.sess.run([self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs   = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "\n self.SFPr2_vary :", SFPr2_vary )
+			print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
 			#print ("all time:", time.time() - t0, " get batch time:", batchtime)
 			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
 			#print ("SFPr2:", SFPr2_vary, "\n SFPa2:", SFPa2_vary)
