@@ -129,7 +129,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		return
 
 class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
-	def __init__(self, Force_, BoxingLatp_=np.eye(3), name_ ="PdicBoxMD", BoxingT_= 200):
+	def __init__(self, Force_, BoxingLatp_=np.eye(3), name_ ="PdicBoxMD", BoxingT_= 100):
 		"""
 		Periodically Crushes a molecule by shrinking it's lattice to obtain a desired density.
 
@@ -177,7 +177,11 @@ class PeriodicBoxingDynamics(PeriodicVelocityVerlet):
 			if (self.t>self.BoxingT):
 				print("Exceeded Boxtime\n",self.BoxingLatp)
 			else:
-				self.x = self.PForce.AdjustLattice(self.x, ((self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLat0+(1.0-(self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLatp)
+				newlattice = ((self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLat0+(1.0-(self.BoxingT-self.t)/(self.BoxingT))*self.BoxingLatp
+				self.x = self.PForce.AdjustLattice(self.x, self.PForce.lattice.lattice,newlattice)
+				self.v = self.PForce.AdjustLattice(self.v, self.PForce.lattice.lattice,newlattice)
+				self.a = self.PForce.AdjustLattice(self.a, self.PForce.lattice.lattice,newlattice)
+				self.PForce.ReLattice(newlattice)
 			print("Density:", self.Density())
 
 			Teff = (2./3.)*self.KE/IDEALGASR

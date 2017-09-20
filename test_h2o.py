@@ -10,11 +10,11 @@ from TensorMol.TMIPIinterface import *
 import random
 
 def TrainPrepare():
-	if (1):	
+	if (1):
 		import math, random
 		a = MSet("H2O_wb97xd_1to21")
 		a.Load()
-		random.shuffle(a.mols)	
+		random.shuffle(a.mols)
 		#a=MSet("H2O_cluster_meta", center_=False)
 		#a.ReadXYZ("H2O_cluster_meta")
 		Hbondcut = 2.0
@@ -22,9 +22,9 @@ def TrainPrepare():
 		HOcut = 1.1
 
 
-		singlemax = 0.04 * len(a.mols) 
+		singlemax = 0.04 * len(a.mols)
 		doublemax = 0.02 * len(a.mols)
-		
+
 		single_record = np.zeros((21,2))
 		single_record[:,0] = range(1,22)
 		double_record = np.zeros((21,2))
@@ -42,41 +42,41 @@ def TrainPrepare():
 						if dist < HOcut:
 							O2_H_index.append(j)
 				if len(O2_H_index) != 2:
-					return 
+					return
 				O2H_1 = mol.coords[O2_index] - mol.coords[O2_H_index[0]]
-				O2H_2 = mol.coords[O2_index] - mol.coords[O2_H_index[1]]			
+				O2H_2 = mol.coords[O2_index] - mol.coords[O2_H_index[1]]
 				y_axis = np.cross(O2H_1, O2H_2)
 				y_axis = y_axis/np.sum(np.square(y_axis))**0.5
 
 
 				x_axis = mol.coords[O2_index] - (mol.coords[O2_H_index[0]]+mol.coords[O2_H_index[1]])/2.0
-				x_axis = x_axis/np.sum(np.square(x_axis))**0.5			
+				x_axis = x_axis/np.sum(np.square(x_axis))**0.5
 				OH_vec = mol.coords[O1_index] - mol.coords[H_index]
 
 				angle_cri = math.pi/3
 
 				if np.dot(x_axis, OH_vec)/np.sum(np.square(OH_vec))**0.5 < math.cos(math.pi/3):
-					return 
-	
+					return
+
 				t_angle = math.pi/180.0*(180.0-131.75 + 10*(2.0*random.random() - 1.0))
 
 				t_length = (1.0 + 0.1*(2.0*random.random() - 1.0))
-		
-				#print y_axis, x_axis	
+
+				#print y_axis, x_axis
 				vec1 =(math.tan(t_angle)*y_axis + x_axis)
 				vec1 = vec1/np.sum(np.square(vec1))**0.5
 				vec1 = vec1*t_length + mol.coords[O2_index]
-				
+
 				vec2 = -(math.tan(t_angle)*y_axis) + x_axis
 				vec2 = vec2/np.sum(np.square(vec2))**0.5
 				vec2 = vec2*t_length + mol.coords[O2_index]
-				
+
 				if np.sum(np.square(mol.coords[H_index] - vec1))**0.5 < np.sum(np.square(mol.coords[H_index] - vec2))**0.5:
 					vec = vec1
 				else:
 					vec = vec2
-				
-				if (not doublepro and i==0) or i==1: 
+
+				if (not doublepro and i==0) or i==1:
 					vec =  random.random()*(vec - mol.coords[H_index]) + mol.coords[H_index]
 				new_m.coords[H_index] = vec
 			new_m.WriteXYZfile(fname=xyzname)
@@ -84,11 +84,11 @@ def TrainPrepare():
 				double_record[int(mol.NAtoms())/3-1,1] += 1
 			else:
 				single_record[int(mol.NAtoms())/3-1,1] += 1
-			return 1	
+			return 1
 
 		singlepro = 0
 		doublepro = 0
-		for mol_index, m in enumerate(a.mols):	
+		for mol_index, m in enumerate(a.mols):
 			i_ran = random.randint(0, m.NAtoms()-1)
 			for i_ini in range (0, m.NAtoms()):
 				i  = i_ini + i_ran
@@ -151,7 +151,7 @@ def TrainPrepare():
 						#break
 					else:
 						continue
-					
+
 
 	if (0):
 		WB97XDAtom={}
@@ -385,7 +385,7 @@ def Eval():
 		PARAMS["MDV0"] = None
 		PARAMS["MDAnnealTF"] = 1.0
 		PARAMS["MDAnnealT0"] = 300.0
-		PARAMS["MDAnnealSteps"] = 1000	
+		PARAMS["MDAnnealSteps"] = 1000
 		anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		anneal.Prop()
 		m.coords = anneal.Minx.copy()
@@ -489,7 +489,7 @@ def Eval():
 		EnergyForceField = lambda x: EnAndForce(x)
 		interface = TMIPIManger(EnergyForceField, TCP_IP="localhost", TCP_PORT= 31415)
 		interface.md_run()
-	
+
 	if (0):
 		a=MSet("H2O_cluster_meta", center_=False)
 		a.ReadXYZ("H2O_cluster_meta")
@@ -663,33 +663,31 @@ def BoxAndDensity():
 	a.mols[-1] = Opt.Opt(a.mols[-1])
 	m = a.mols[-1]
 
-	# Tesselate that water to create a box of 27
+	# Tesselate that water to create a box
 	ntess = 2
-	latv = np.array([[5.0,0.,0.],[0.,5.,0.],[0.,0.,5.]])
+	latv = 4.0*np.eye(3)
 	# Start with a water in a ten angstrom box.
 	lat = Lattice(latv)
 	mc = lat.CenteredInLattice(m)
 	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
-	print(mt.coords)
-	mt.coords += np.min(mt.coords)
 	nreal = mt.NAtoms()
 
 	# Optimize the tesselated system.
-	mindistance = 2.0
-	lat0 = np.array([[np.max(mt.coords),0.,0.],[0.,np.max(mt.coords),0.],[0.,0.,np.max(mt.coords)]])*4.0
-	latp = np.array([[mindistance,0.,0.],[0.,mindistance,0.],[0.,0.,mindistance]])
+	lat0 = ntess*latv
+	latp = np.eye(3)*6.0
 	print(lat0,latp)
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
-	PF = PeriodicForce(mt,lat0)
+	PF = PeriodicForce(m,lat0)
 	PF.BindForce(EnAndForce2,10.0)
 
 	# Try optimizing that....
 	PARAMS["OptMaxCycles"]=20
 	POpt = PeriodicGeomOptimizer(PF)
-	mt = POpt.Opt(mt)
+	mt = POpt.Opt(m)
 
 	# finally start boxing it up
+	PARAMS["MDThermostat"]="Nose"
 	Box = PeriodicBoxingDynamics(PF, latp, "BoxingMD")
 	Box.Prop()
 

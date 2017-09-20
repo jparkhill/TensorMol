@@ -78,7 +78,7 @@ class Lattice:
 						continue
 					newAtoms[ind*natom:(ind+1)*natom] = atoms_
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
-					print(i,j,k,ind,nimages)
+					#print(i,j,k,ind,nimages)
 					ind = ind + 1
 		print(newAtoms, newCoords.shape)
 		return newAtoms, newCoords
@@ -234,14 +234,16 @@ class PeriodicForce:
 		self.nlthresh = 0.05 #per-atom Threshold for NL rebuild. (A)
 		#self.LongForces = [] Everything is real-space courtesy of DSF.
 		return
-	def AdjustLattice(self, x_, lat_):
-		"""
-		Adjusts the lattice and rescales the coordinates of m relative to previous lattice.
-		"""
+	def ReLattice(self,lat_):
 		self.lattice = Lattice(lat_)
-		il = self.lattice.InLat(x_)
-		self.lattice = Lattice(lat_)
-		return self.lattice.FromLat(il)
+		return
+	def AdjustLattice(self, x_, lat0_, latp_):
+		"""
+		rescales the coordinates of m relative to previous lattice.
+		"""
+		latmet = MatrixPower(np.dot(lat0_, lat0_.T),-1)
+		inlat = np.dot(x_,np.dot(lat0_.T,latmet))
+		return np.dot(inlat, latp_)
 	def BindForce(self, lf_, rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.
