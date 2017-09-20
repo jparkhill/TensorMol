@@ -325,7 +325,7 @@ class NeighborListSet:
 		#import time
 		t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		print ("build P and T time:", time.time()-t0)
+		#print ("build P and T time:", time.time()-t0)
 		print ("trp:", trp, "trt:", trt)
 		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
