@@ -633,8 +633,8 @@ def BoxAndDensity():
 		This is the primitive form of force routine required by PeriodicForce.
 		"""
 		mtmp = Mol(m.atoms,x_)
-		en,f = manager.EvalBPDirectEEPeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
-		print("EnAndForceAPeriodic: ", en,f)
+		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		#print("EnAndForceAPeriodic: ", en,f)
 		return en, f
 
 	def EnAndForce(z_, x_, nreal_):
@@ -642,20 +642,9 @@ def BoxAndDensity():
 		This is the primitive form of force routine required by PeriodicForce.
 		"""
 		mtmp = Mol(z_,x_)
-		en,f = manager.EvalBPDirectEEPeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_)
-		print("EnAndForce: ", en,f)
+		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_)
+		#print("EnAndForce: ", en,f)
 		return en, f
-
-	def EnAndForce2(z_, x_, nreal_):
-		"""
-		This is the primitive form of force routine required by PeriodicForce.
-		"""
-		mtmp = Mol(z_,x_)
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient  = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
-		energy = Etotal[0]
-		force = gradient[0]
-		print ("energy:", energy)
-		return energy, force
 
 	# opt the first water.
 	PARAMS["OptMaxCycles"]=20
@@ -664,27 +653,41 @@ def BoxAndDensity():
 	m = a.mols[-1]
 
 	# Tesselate that water to create a box
-	ntess = 2
-	latv = 4.0*np.eye(3)
+	ntess = 3
+	latv = 3.0*np.eye(3)
 	# Start with a water in a ten angstrom box.
 	lat = Lattice(latv)
 	mc = lat.CenteredInLattice(m)
 	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
 	nreal = mt.NAtoms()
 
+	# Anneal the tesselation.
+	EnAndForceAPeriodic = lambda x_: manager.EvalBPDirectEEUpdateSinglePeriodic(Mol(mt.atoms,x_), PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
+	PARAMS["MDAnnealT0"] = 60.0
+	PARAMS["MDAnnealSteps"] = 500
+	aper = Annealer(EnAndForceAPeriodic,None,mt)
+	aper.Prop()
+	mt.coords = aper.Minx
+
 	# Optimize the tesselated system.
-	lat0 = ntess*latv
-	latp = np.eye(3)*6.0
+	lat0 = (np.max(mt.coords)+0.5)*np.eye(3)
+	latp = np.eye(3)*4.8
 	print(lat0,latp)
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
 	PF = PeriodicForce(m,lat0)
-	PF.BindForce(EnAndForce2,10.0)
+	PF.BindForce(EnAndForce,15.0)
 
 	# Try optimizing that....
-	PARAMS["OptMaxCycles"]=20
+	PARAMS["OptMaxCycles"]=100
 	POpt = PeriodicGeomOptimizer(PF)
 	mt = POpt.Opt(m)
+	exit(0)
+
+	PARAMS["MDAnnealT0"] = 60.0
+	PARAMS["MDAnnealSteps"] = 500
+	traj = PeriodicAnnealer(PF)
+	traj.Prop()
 
 	# finally start boxing it up
 	PARAMS["MDThermostat"]="Nose"
