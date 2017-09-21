@@ -409,7 +409,7 @@ class NeighborListSet:
 		trpE_sorted, trtE_sorted, mil_jk, jk_max = self.buildPairsAndTriplesWithEleIndex(rcut_pairs, rcut_triples, ele, elep)
 		mil_j = np.zeros((trpE_sorted.shape[0], 4))
 		pair_pair = np.zeros(trpE_sorted.shape[0])
-		
+
 		prev_l = trpE_sorted[0][3]
 		prev_atom = trpE_sorted[0][1]
 		prev_mol = trpE_sorted[0][0]

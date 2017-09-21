@@ -507,7 +507,7 @@ class Annealer(IRTrajectory):
 		PARAMS["MDThermostat"] = None
 		PARAMS["MDV0"] = None
 		IRTrajectory.__init__(self, f_, q_, g0_, name_)
-		self.dt = 0.2
+		#self.dt = 0.2
 		self.v *= 0.0
 		self.AnnealT0 = PARAMS["MDAnnealT0"]
 		self.AnnealSteps = PARAMS["MDAnnealSteps"]

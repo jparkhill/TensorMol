@@ -54,7 +54,6 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		self.dbg2 = None
 		self.batch_data = self.TData.RawBatch(nmol=30000)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
-
 	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
@@ -80,7 +79,6 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
-
 	def LJER(self,inp_pl,E_pl,R_pl):
 		"""
 		with the current LJe, and LJr.
@@ -103,7 +101,6 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		Ens = LJEnergies(XYZs, Zs, LJe2, LJr2)
 		#Ens = tf.Print(Ens,[Ens],"Energies",5000,5000)
 		return Ens
-
 	def LJFrc(self, params):
 		"""
 		Compute forces for a batch of molecules
@@ -1181,7 +1178,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 			#dump_, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs   = self.sess.run([self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			#dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs   = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  mol_output, atom_outputs = self.sess.run([self.check, self.train_op, self.total_loss, self.loss, self.energy_loss, self.grads_loss, self.output,  self.atom_outputs], feed_dict=self.fill_feed_dict(batch_data))
-			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss, "\n self.SFPr2_vary :", SFPr2_vary )
+			print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
 			#print ("all time:", time.time() - t0, " get batch time:", batchtime)
 			#print ("loss_value:", loss_value, "grads_loss:", grads_loss, "energy_loss:", energy_loss)
 			#print ("SFPr2:", SFPr2_vary, "\n SFPa2:", SFPa2_vary)
@@ -3543,7 +3540,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			tf.summary.scalar("loss", self.loss)
 			tf.summary.scalar("loss_dip", self.loss_dipole)
 			tf.summary.scalar("loss_EG", self.loss_EandG)
-
 #			with tf.name_scope("training"):
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum, )
 			self.train_op_dipole = self.training(self.total_loss_dipole, self.learning_rate_dipole, self.momentum, self.dipole_wb)
@@ -3556,14 +3552,12 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.sess = tf.Session(config=config)
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess.run(init)
-
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			if (PARAMS["Profiling"]>0):
 				print("logging with FULL TRACE")
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
 				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
-
 			self.sess.graph.finalize()
 
 	def energy_inference(self, inp, indexs, charge_encode, cc_energy, xyzs, Zs, eles, c6, R_vdw, Reep, EE_cuton, EE_cutoff):
@@ -3753,7 +3747,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
 
-
 	def evaluate(self, batch_data):
 		"""
 		Evaluate the energy, atom energies, and IfGrad = True the gradients
@@ -3774,8 +3767,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			print ("loading the session..")
 			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data+[PARAMS["AddEcc"]])
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, Scatter_Sym = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.Scatter_Sym], feed_dict=feed_dict)
-		#print ("Scatter_Sym:", Scatter_Sym[0][0])
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient= self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
 		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
 
 	def EvalPrepare(self,  continue_training =False):
@@ -3822,6 +3814,12 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
+			if (PARAMS["Profiling"]>0):
+				print("logging with FULL TRACE")
+				self.summary_writer = tf.summary.FileWriter('./networks/PROFILE', self.sess.graph)
+				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+				self.run_metadata = tf.RunMetadata()
+				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
 			self.sess.graph.finalize()
 		print("Prepared for Evaluation...")
 
