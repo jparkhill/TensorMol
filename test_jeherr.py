@@ -27,11 +27,11 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	print len(a.mols), " Molecules"
 	a.Save()
 
-def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "forces", "dipoles"]):
-	import glob
+def read_unpacked_set(set_name="nicotine_metamd", paths="/home/ryker/TensorMol/datasets/nicotine_data/nicotine_metamd/", properties=["name", "energy", "forces"]):
+	#import glob
 	a=MSet(set_name)
-	for path in glob.iglob(paths):
-		a.read_xyz_set_with_properties(path, properties)
+	#for path in glob.iglob(paths):
+	a.read_xyz_set_with_properties(paths, properties)
 	print len(a.mols), " Molecules"
 	a.Save()
 
@@ -489,7 +489,7 @@ def train_forces_rotation_constraint(set_ = "SmallMols"):
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 10000)
+RandomSmallSet("nicotine_aimd", 2500)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -506,14 +506,17 @@ def train_forces_rotation_constraint(set_ = "SmallMols"):
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-train_forces_GauSH_direct("SmallMols")
+# train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
 # train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 
-# a=MSet("SmallMols")
-# a.Load()
+#a=MSet("nicotine_aimd")
+#a.Load()
+#m = a.mols[0]
+#for key in m.__dict__.keys():
+#	print (m.__dict__[key])
 # a.cut_max_n_atoms(35)
 # a.Save("SmallMols_35")

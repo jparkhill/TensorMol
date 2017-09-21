@@ -313,6 +313,7 @@ class NeighborListSet:
 		pair_index1 = np.where(np.all(pair_mask1, axis=-1))[1]
 		pair_index2 = np.where(np.all(pair_mask2, axis=-1))[1]
 		trpE1E2 = np.concatenate((trp, pair_index1.reshape((-1,1)), pair_index2.reshape((-1,1))), axis=-1)
+		#print ("trpE1E2:", trpE1E2.shape)
 		return trpE1E2
 
 	def buildPairsAndTriplesWithEleIndex(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):

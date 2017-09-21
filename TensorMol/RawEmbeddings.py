@@ -1172,6 +1172,54 @@ def TFCoulombPolyLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	return E_ee
 
 
+def TFCoulombPolyLRSR(R, Qs, R_cut, Radpair, prec=tf.float64):
+	"""
+	Tensorflow implementation of short range and long range cutoff sparse-coulomb
+	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j
+
+	Args:
+	    R: a nmol X maxnatom X 3 tensor of coordinates.
+	    Qs : nmol X maxnatom X 1 tensor of atomic charges.
+	    R_cut: Radial Cutoff
+	    Radpair: None zero pairs X 3 tensor (mol, i, j)
+	    prec: a precision.
+	Returns:
+	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+	"""
+	R_width = PARAMS["Poly_Width"]*BOHRPERA
+	R_begin = R_cut
+	R_end =  R_cut+R_width
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	natom2 = natom*natom
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+	t = (RijRij2 - R_begin)/R_width
+	Cut_step1  = tf.where(tf.greater(t, 0.0), -t*t*(2.0*t-3.0), tf.zeros_like(t))
+	Cut = tf.where(tf.greater(t, 1.0), tf.ones_like(t), Cut_step1)
+
+	R_off = PARAMS["EECutoffOff"]*BOHRPERA
+	t_off = (RijRij2 - (R_off-R_width))/R_width
+	Cut_off_step1  = tf.where(tf.greater(t_off, 0.0), 1+t_off*t_off*(2.0*t_off-3.0), tf.ones_like(t_off))
+	Cut_off  = tf.where(tf.greater(t_off, 1.0), tf.zeros_like(t), Cut_off_step1)
+	# Grab the Q's.
+	Qii = tf.slice(Radpair,[0,0],[-1,2])
+	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
+	Qi = tf.gather_nd(Qs,Qii)
+	Qj = tf.gather_nd(Qs,Qji)
+	# Finish the Kernel.
+	Kern = Qi*Qj/RijRij2*Cut*Cut_off
+	# Scatter Back
+	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
+	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
+	sparse_index =tf.stack([mol_index, range_index], axis=1)
+	sp_atomoutputs = tf.SparseTensor(sparse_index, Kern, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
+	E_ee = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+	return E_ee
+
 def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
 	"""
 	Tensorflow implementation of short range cutoff sparse-coulomb
@@ -3178,6 +3226,8 @@ class ANISym:
 				qs[0][j] = 0.5
 			else:
 				qs[0][j] = -1.0
+
+		
 
 		#self.Num_Real = m.NAtoms()
 		self.SetANI1Param()
