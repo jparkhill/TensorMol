@@ -298,13 +298,13 @@ def Train():
 	if (1):
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
-		#random.shuffle(a.mols)
-		#for i in range(300000):
-		#	a.mols.pop()
+		random.shuffle(a.mols)
+		for i in range(340000):
+			a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
-		PARAMS["max_steps"] = 101
+		PARAMS["max_steps"] = 5
 		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
 		PARAMS["test_freq"] = 1
 		PARAMS["tf_prec"] = "tf.float64"
@@ -324,7 +324,7 @@ def Train():
 		PARAMS["AddEcc"] = True
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 15
+		PARAMS["SwitchEpoch"] = 2
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu")
