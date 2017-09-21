@@ -31,6 +31,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 			m: A distorted molecule to optimize
 		"""
 		# Sweeps one at a time
+		PARAMS["OptLatticeStep"] = 0.050
 		rmsdisp = 10.0
 		maxdisp = 10.0
 		rmsgrad = 10.0
@@ -43,7 +44,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		veloc=np.zeros(m.coords.shape)
 		old_veloc=np.zeros(m.coords.shape)
 		Energy = lambda x_: self.EnergyAndForce(x_)[0]
-		while( step < self.max_opt_step and rmsgrad > self.thresh):
+		while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001 ):
 			prev_m = Mol(m.atoms, m.coords)
 			self.EnergyAndForce.LatticeStep(m.coords)
 			energy, frc = self.EnergyAndForce(m.coords)
@@ -55,7 +56,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 			print("step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
-			Mol(*self.EnergyAndForce.lattice.TessLattice(prev_m.atoms,prev_m.coords,self.EnergyAndForce.maxrng)).WriteXYZfile("./results/", "Tess"+filename)
+			Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename)
 			step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
