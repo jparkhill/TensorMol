@@ -3774,7 +3774,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			print ("loading the session..")
 			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data+[PARAMS["AddEcc"]])
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, Scatter_Sym = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.Scatter_Sym], feed_dict=feed_dict)
+		#print ("Scatter_Sym:", Scatter_Sym[0][0])
 		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
 
 	def EvalPrepare(self,  continue_training =False):
@@ -3864,8 +3865,11 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.EvalPrepare_Periodic()
 		t0 = time.time()
 		feed_dict=self.fill_feed_dict_periodic(batch_data+[PARAMS["AddEcc"]])
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, gradient_bp, gradient_cc, scatter_sym = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.gradient_bp, self.gradient_cc, self.Scatter_Sym], feed_dict=feed_dict)
 
+		#print ("gradient_bp:", gradient_bp, "nzz:", np.count_nonzero(gradient_bp))
+		#print ("gradient_cc:", gradient_cc, "nzz:", np.count_nonzero(gradient_cc), "shape:", gradient_cc[0].shape)
+		#print ("Scatter_Sym:", Scatter_Sym[0][0])
 		#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
 		#chrome_trace = fetched_timeline.generate_chrome_trace_format()
 		#with open('timeline_evalutaion.json', 'w') as f:
@@ -3913,7 +3917,10 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.Radius_Qs_Encode, self.Radius_Qs_Encode_Index = TFSymSet_Radius_Scattered_Linear_Qs_Periodic(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, eta, self.Radp_pl, self.charge, self.mil_j_pl,  self.nreal)
 			self.Etotal, self.Ebp, self.Evdw,  self.energy_wb, self.Ebp_atom = self.energy_inference_periodic(self.Scatter_Sym, self.Sym_Index, self.Radius_Qs_Encode, self.Ecc, self.xyzs_pl, self.Zs_pl, Ele, C6, vdw_R, self.Reep_e1e2_pl, Ree_on, Ree_off)
 			self.check = tf.add_check_numerics_ops()
+			self.gradient_sym = tf.gradients(self.Scatter_Sym[0][0], self.xyzs_pl, name="SymGrad")
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad")
+			self.gradient_bp  = tf.gradients(self.Ebp, self.xyzs_pl, name="BPGrad")
+			self.gradient_cc  = tf.gradients(self.Ecc, self.xyzs_pl, name="CCGrad")
 			#self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad", colocate_gradients_with_ops=True)
 #			with tf.name_scope("losses"):
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -3989,7 +3996,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 
 		ntess = tf.cast(tf.div(self.MaxNAtoms, self.nreal), dtype=tf.int32)
 		scaled_charge_all = tf.tile(scaled_charge, [1, ntess])
-		def f1(): return TFCoulombPolyLR(xyzsInBohr, scaled_charge_all, EE_cuton*BOHRPERA, Reep)
+		def f1(): return TFCoulombPolyLRSR(xyzsInBohr, scaled_charge_all, EE_cuton*BOHRPERA, Reep)
 		#def f1(): return TFCoulombErfLR(xyzsInBohr, scaled_charge, EE_cuton*BOHRPERA, Reep)
 		#def f1(): return  TFCoulombErfSRDSFLR(xyzsInBohr, scaled_charge, EE_cuton*BOHRPERA, EE_cutoff*BOHRPERA, Reep, self.DSFAlpha)
 		def f2(): return  tf.zeros([self.batch_size], dtype=self.tf_prec)

@@ -313,6 +313,7 @@ class NeighborListSet:
 		pair_index1 = np.where(np.all(pair_mask1, axis=-1))[1]
 		pair_index2 = np.where(np.all(pair_mask2, axis=-1))[1]
 		trpE1E2 = np.concatenate((trp, pair_index1.reshape((-1,1)), pair_index2.reshape((-1,1))), axis=-1)
+		#print ("trpE1E2:", trpE1E2.shape)
 		return trpE1E2
 
 	def buildPairsAndTriplesWithEleIndex(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
@@ -336,7 +337,7 @@ class NeighborListSet:
 		#import time
 		t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
-		print ("build P and T time:", time.time()-t0)
+		#print ("build P and T time:", time.time()-t0)
 		#print ("trp:", trp, "trt:", trt)
 		t_start = time.time()
 		eleps = np.hstack((elep, np.flip(elep, axis=1))).reshape((elep.shape[0], 2, -1))
@@ -388,7 +389,7 @@ class NeighborListSet:
 		mil_jk[:,3] = valance_pair
 		#print ("mil_jk", mil_jk)
 		jk_max = np.max(valance_pair)
-		print ("after processing time:", time.time() - t_start)
+		#print ("after processing time:", time.time() - t_start)
 		#print (trpE_sorted, trtE_sorted, jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
 

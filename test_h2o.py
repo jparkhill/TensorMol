@@ -326,9 +326,10 @@ def Eval():
 
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
-		m = a.mols[-1]
+		m = a.mols[0]
 		#print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
 		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		#return
 		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
 		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
 		#for i in range (0, m.NAtoms()):
@@ -359,20 +360,20 @@ def Eval():
 		EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
 
-		PARAMS["OptMaxCycles"]=200
-		Opt = GeomOptimizer(EnergyForceField)
-		m=Opt.Opt(m)
+		#PARAMS["OptMaxCycles"]=200
+		#Opt = GeomOptimizer(EnergyForceField)
+		#m=Opt.Opt(m)
 
 
-                #PARAMS["MDThermostat"] = "Nose"
-                #PARAMS["MDTemp"] = 100
-                #PARAMS["MDdt"] = 0.2
-                #PARAMS["RemoveInvariant"]=True
-                #PARAMS["MDV0"] = None
-                #PARAMS["MDMaxStep"] = 10000
-                #md = VelocityVerlet(None, m, "water_cluster_small_opt",EnergyForceField)
-                #md.Prop()
-		#return
+                PARAMS["MDThermostat"] = "Nose"
+                PARAMS["MDTemp"] = 1000
+                PARAMS["MDdt"] = 0.2
+                PARAMS["RemoveInvariant"]=True
+                PARAMS["MDV0"] = None
+                PARAMS["MDMaxStep"] = 10000
+                md = VelocityVerlet(None, m, "water_tiny_noperi",EnergyForceField)
+                md.Prop()
+		return
 
 		#PARAMS["OptMaxCycles"]=1000
 		#Opt = GeomOptimizer(EnergyForceField)
@@ -695,5 +696,5 @@ def BoxAndDensity():
 
 #TrainPrepare()
 #Train()
-#Eval()
-BoxAndDensity()
+Eval()
+#BoxAndDensity()

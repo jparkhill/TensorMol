@@ -15,6 +15,8 @@ def TestPeriodicLJVoxel():
 	Trying to find the HCP minimum for the LJ crystal.
 	"""
 	if (1):
+		#a=MSet("H2O_cluster_meta", center_=False)
+		#a.ReadXYZ("H2O_cluster_meta")
 		a=MSet("water_tiny", center_=False)
 		a.ReadXYZ("water_tiny")
 		m = a.mols[-1]
@@ -38,6 +40,7 @@ def TestPeriodicLJVoxel():
 		#PARAMS["AN1_r_Rc"] = 8.0
 		#PARAMS["AN1_num_r_Rs"] = 64
 		PARAMS["EECutoffOff"] = 15.0
+		#PARAMS["EECutoffOff"] = 15.0
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
 		PARAMS["SwitchEpoch"] = 15
@@ -48,22 +51,113 @@ def TestPeriodicLJVoxel():
 		#print np.sum(manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())[6])
 		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
 
+		#cellsize = 6.0
 		cellsize = 9.3215
 		lat = cellsize*np.eye(3)
 		PF = TFPeriodicVoxelForce(15.0,lat)
 		#zp, xp = PF(m.atoms,m.coords,lat)  # tessilation in TFPeriodic seems broken   
 		
+		#PF.tess = np.array([[0,0,0]])
 		zp = np.zeros(m.NAtoms()*PF.tess.shape[0], dtype=np.int32)
 		xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
 		for i in range(0, PF.tess.shape[0]):
 			zp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.atoms
 			xp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.coords + cellsize*PF.tess[i]
-		print (zp.shape, xp)
+		#print (zp.shape, xp)
 		m_periodic = Mol(zp, xp)
-		#print ("nreal:", m.NAtoms())
-		print manager.EvalBPDirectEEUpdateSinglePeriodic(m_periodic, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
-		return
+		#output =  manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		#output =  manager.EvalBPDirectEEUpdateSinglePeriodic(m_periodic, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		#print ("energy:", output[0])#, " gradient:", -output[-1]/JOULEPERHARTREE)
+		#print ("output[-1][0][50:60]", -output[-1][0][50:60]/JOULEPERHARTREE)
+	
+		#origin_coords = m_periodic.coords.copy()	
+		#disp = 0.0001
+		#step = 0.01
+		#m.coords[:30] = m.coords[:30] + output[-1][0][:30]/JOULEPERHARTREE*step
+		#m.coords[:m.NAtoms()] = m.coords[:m.NAtoms()] + output[-1]/JOULEPERHARTREE*step
+		#m_periodic.coords[50][0] = m_periodic.coords[50][0] + disp
+		#m_periodic.coords[:30] = origin_coords[:30] + output[-1][0][:30]/JOULEPERHARTREE*step
+		#m_periodic.coords[:m.NAtoms()] = m_periodic.coords[:m.NAtoms()] + output[-1][0]/JOULEPERHARTREE*step
+		##zp = np.zeros(m.NAtoms()*PF.tess.shape[0], dtype=np.int32)
+		##xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
+		##for i in range(0, PF.tess.shape[0]):
+		##	zp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.atoms
+		##	xp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.coords + cellsize*PF.tess[i]
+		##print (zp.shape, xp)
+		##m_periodic = Mol(zp, xp)
+		#output1 =  manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		#output1 =  manager.EvalBPDirectEEUpdateSinglePeriodic(m_periodic, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		#print ("energy:", output1[0])#, " gradient:", -output1[-1]/JOULEPERHARTREE)
+		#print ("num gradient:", (output1[0]-output[0])/disp)
+		#print ("gradient rms:", np.sum(np.square(output[-1][0]/JOULEPERHARTREE-output1[-1][0]/JOULEPERHARTREE))**0.5)
+		#print ("num bp gradient:", (output1[1]-output[1])/disp)
+		#print ("num cc gradient:", (output1[3]-output[3])/disp)
+		##output =  manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		#print ("energy:", output[0], " gradient:", -output[-1]/JOULEPERHARTREE)
 
+		#step = 0.0001
+		#print ("before move:", m_periodic.coords[50])
+		#m_periodic.coords[50] = coords1[50] + output1[-1][0][50]/JOULEPERHARTREE*step
+		##print ("diff from 1:", np.equal(coords1[:m.NAtoms()], m_periodic.coords[:m.NAtoms()]))
+		#print ("after move:", m_periodic.coords[50])
+		##m_periodic.coords[50] = m_periodic.coords[50] + output1[-1][0][50]/JOULEPERHARTREE*step
+		#np.set_printoptions(threshold=np.nan)
+		#output2 =  manager.EvalBPDirectEEUpdateSinglePeriodic(m_periodic, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		##print ("diff !:", coords1 - m_periodic.coords)
+		#print ("after evaluation:", m_periodic.coords[50])
+		#print ("energy:", output2[0])#, " gradient:", -output2[-1]/JOULEPERHARTREE)
+		#print ("output2[-1][0][50:60]", -output2[-1][0][50:60]/JOULEPERHARTREE)
+		#print ("output2[0]-output1[0]",output2[:4], output1[:4])
+		#print ("charge diff:", output2[2] - output1[2])
+		#print ("num gradient:", (output2[0]-output1[0])/disp)
+		#return
+
+
+		def EnAndForce(x_):
+			x_ = np.mod(x_, cellsize)
+			xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
+			for i in range(0, PF.tess.shape[0]):
+				xp[i*m.NAtoms():(i+1)*m.NAtoms()] = x_ + cellsize*PF.tess[i]
+			m_periodic.coords = xp
+			m_periodic.coords[:m.NAtoms()] = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient  = manager.EvalBPDirectEEUpdateSinglePeriodic(m_periodic, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+			energy = Etotal[0]
+			force = gradient[0]
+			print ("energy:", energy)
+			return energy, force
+		
+		ForceField = lambda x: EnAndForce(x)[-1]
+		EnergyField = lambda x: EnAndForce(x)[0]
+		EnergyForceField = lambda x: EnAndForce(x)
+
+		#EnergyForceField(m.coords)
+		#return
+		#PARAMS["OptMaxCycles"]=200
+		#Opt = GeomOptimizer(EnergyForceField)
+		#m=Opt.Opt(m)
+		#return
+
+		#PARAMS["MDdt"] = 0.2
+		#PARAMS["RemoveInvariant"]=True
+		#PARAMS["MDMaxStep"] = 2000
+		#PARAMS["MDThermostat"] = "Nose"
+		#PARAMS["MDV0"] = None
+		#PARAMS["MDAnnealTF"] = 1.0
+		#PARAMS["MDAnnealT0"] = 300.0
+		#PARAMS["MDAnnealSteps"] = 2000	
+		#anneal = Annealer(EnergyForceField, None, m, "Anneal")
+		#anneal.Prop()
+		#m.coords = anneal.Minx.copy()
+
+                PARAMS["MDThermostat"] = "Nose"
+                PARAMS["MDTemp"] = 200
+                PARAMS["MDdt"] = 0.1
+                PARAMS["RemoveInvariant"]=True
+                PARAMS["MDV0"] = None
+                PARAMS["MDMaxStep"] = 10000
+                md = VelocityVerlet(None, m, "water_peri_10cut",EnergyForceField)
+                md.Prop()
+		return
 	if (0):
 		a=MSet("water_tiny", center_=False)
 		a.ReadXYZ("water_tiny")
