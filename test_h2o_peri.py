@@ -66,7 +66,8 @@ def TestPeriodicLJVoxel():
 		#print (zp.shape, xp)
 		m_periodic = Mol(zp, xp)
 		#output =  manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
-		#output =  manager.EvalBPDirectEEUpdateSinglePeriodic(m_periodic, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		output =  manager.EvalBPDirectEEUpdateSinglePeriodic(m_periodic, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		return
 		#print ("energy:", output[0])#, " gradient:", -output[-1]/JOULEPERHARTREE)
 		#print ("output[-1][0][50:60]", -output[-1][0][50:60]/JOULEPERHARTREE)
 	
@@ -150,6 +151,10 @@ def TestPeriodicLJVoxel():
 		#anneal.Prop()
 		#m.coords = anneal.Minx.copy()
 
+		interface = TMIPIManger(EnergyForceField, TCP_IP="localhost", TCP_PORT= 31415)
+		interface.md_run()
+		
+		return
                 PARAMS["MDThermostat"] = "Nose"
                 PARAMS["MDTemp"] = 200
                 PARAMS["MDdt"] = 0.1

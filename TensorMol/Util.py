@@ -154,4 +154,31 @@ def nCr(n, r):
 	f = math.factorial
 	return int(f(n)/f(r)/f(n-r))
 
+def DSF(R, R_c, alpha):	# http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/10.1063/1.2206581 damp shifted force
+	if R > R_c:
+		return 0.0
+	else:
+		twooversqrtpi = 1.1283791671
+		XX = alpha*R_c
+		ZZ = scipy.special.erfc(XX)/R_c
+		YY = twooversqrtpi*alpha*math.exp(-XX*XX)/R_c
+		LR = (scipy.special.erfc(alpha*R)/R - ZZ + (R-R_c)*(ZZ/R_c+YY))
+		return LR 
+
+def DSF_Gradient(R, R_c, alpha):
+	if R > R_c:
+		return 0.0
+	else:
+		twooversqrtpi = 1.1283791671
+		XX = alpha*R_c
+		ZZ = scipy.special.erfc(XX)/R_c
+		YY = twooversqrtpi*alpha*math.exp(-XX*XX)/R_c
+		grads = -((scipy.special.erfc(alpha*R)/R/R + twooversqrtpi*alpha*math.exp(-alpha*R*alpha*R)/R)-(ZZ/R_c + YY))
+		return grads
+def EluAjust(x, a, x0, shift):
+	if x > x0:
+		return a*(x-x0)+shift
+	else:
+		return a*(math.exp(x-x0)-1.0)+shift 
+
 signstep = np.vectorize(SignStep)
