@@ -16,17 +16,17 @@ def TrainPrepare():
 		WB97XDAtom[6]=-37.8387398698
 		WB97XDAtom[7]=-54.5806161811
 		WB97XDAtom[8]=-75.0586028656
-                a = MSet("nicotine_aimd_rand")
+		a = MSet("nicotine_aimd_rand")
 		a.Load()
 		b = MSet("nicotine_aimd_rand_train")
-                for mol_index, mol in enumerate(a.mols):
+		for mol_index, mol in enumerate(a.mols):
 			print ("mol_index:", mol_index)
-                        mol.properties['gradients'] = -mol.properties['forces']
-			mol.properties['atomization'] =  mol.properties['energy'] 
+			mol.properties['gradients'] = -mol.properties['forces']
+			mol.properties['atomization'] =  mol.properties['energy']
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= WB97XDAtom[mol.atoms[i]]
-                        b.mols.append(mol)
-                b.Save()
+				b.mols.append(mol)
+				b.Save()
 
 def Train():
 	if (1):

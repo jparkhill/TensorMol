@@ -3,14 +3,14 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
 import random
 
 def TrainPrepare():
-	if (1):
+	if (0):
 		import math, random
 		a = MSet("H2O_wb97xd_1to21")
 		a.Load()
@@ -153,14 +153,14 @@ def TrainPrepare():
 						continue
 
 
-	if (0):
+	if (1):
 		WB97XDAtom={}
 		WB97XDAtom[1]=-0.5026682866
 		WB97XDAtom[6]=-37.8387398698
 		WB97XDAtom[7]=-54.5806161811
 		WB97XDAtom[8]=-75.0586028656
-                a = MSet("H2O_wb97xd_1to21")
-                dic_list = pickle.load(open("./datasets/H2O_wb97xd_1to21.dat", "rb"))
+                a = MSet("H2O_wb97xd_1to21_with_prontonated")
+                dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated.dat", "rb"))
                 for mol_index, dic in enumerate(dic_list):
                         atoms = []
 			print ("mol_index:", mol_index)
@@ -179,8 +179,8 @@ def TrainPrepare():
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= WB97XDAtom[mol.atoms[i]]
                         a.mols.append(mol)
-		a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
-		print(a.mols[100].properties)
+		#a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
+		#print(a.mols[100].properties)
                 a.Save()
 
 def Train():
@@ -262,7 +262,7 @@ def Train():
 		manager.Train(1)
 
 
-	if (1):
+	if (0):
 		a = MSet("H2O_wb97xd_1to21")
 		a.Load()
 		#random.shuffle(a.mols)
@@ -295,6 +295,41 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
+	if (1):
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		for i in range(340000):
+			a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 5
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.15
+		PARAMS["AddEcc"] = True
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 2
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu")
+		PARAMS['Profiling']=0
+		manager.Train(1)
 def Eval():
 	if (1):
 		a = MSet("water_tiny", center_=False)
@@ -328,8 +363,8 @@ def Eval():
 		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
 		m = a.mols[0]
 		#print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
-		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
-		#return
+		print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		return
 		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
 		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
 		#for i in range (0, m.NAtoms()):
