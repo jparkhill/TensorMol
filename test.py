@@ -46,7 +46,7 @@ def TestPeriodicLJOpt():
 	PGO = PeriodicGeomOptimizer(PF)
 	PGO.OptWCell(m,"PeriodicOpt")
 	return
-def TestBoxing(molecule_="H2O2", mindistance_=10, ntess_=4, t_=5.):
+def TestBoxing(molecule_="C2H4", mindistance_=10, ntess_=4, t_=5.):
 	"""
 	Makes a box of molecules
 
@@ -924,14 +924,14 @@ def TestDipole():
 
 	if (1):
 		PARAMS["hidden1"] = 100
-                PARAMS["hidden2"] = 100
-                PARAMS["hidden3"] = 100
-                PARAMS["learning_rate"] = 0.0001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 501
-                PARAMS["batch_size"] = 10000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["hidden2"] = 100
+		PARAMS["hidden3"] = 100
+		PARAMS["learning_rate"] = 0.0001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 501
+		PARAMS["batch_size"] = 10000
+		PARAMS["test_freq"] = 10
+		PARAMS["tf_prec"] = "tf.float64"
 		tset = TensorMolData_BP_Multipole_2(MSet(),MolDigester([]),"chemspider9_multipole3_float64_ANI1_Sym")
 		manager=TFMolManage("",tset,False,"Dipole_BP_2")
 		manager.Train()
@@ -964,7 +964,7 @@ def TestDipole():
 		fixed_charge_dipole = np.zeros((len(a.mols),3))
 		for i, mol in enumerate(a.mols):
 			center_ = np.average(mol.coords,axis=0)
-        		fixed_charge_dipole[i] = np.einsum("ax,a", mol.coords-center_ , charge)/AUPERDEBYE
+			fixed_charge_dipole[i] = np.einsum("ax,a", mol.coords-center_ , charge)/AUPERDEBYE
 		np.savetxt("./results/furan_md_nn_fixed_charge_dipole.dat", fixed_charge_dipole)
 	if (0):
 		a = MSet("thf_dimer_flip")
@@ -1013,7 +1013,7 @@ def TestDipole():
 			f.write("$molecule\n0 1\n")
 			for i in range (0, mol.NAtoms()):
 				atom_name =  atoi.keys()[atoi.values().index(mol.atoms[i])]
-                		f.write(atom_name+"   "+str(mol.coords[i][0])+ "  "+str(mol.coords[i][1])+ "  "+str(mol.coords[i][2])+"\n")
+				f.write(atom_name+"   "+str(mol.coords[i][0])+ "  "+str(mol.coords[i][1])+ "  "+str(mol.coords[i][2])+"\n")
 			f.write("$end\n\n$rem\njobtype sp\nexchange b3lyp\nbasis 6-31g(d)\nSYM_IGNORE True\n$end\n\n\n@@@\n\n")
 		f.close()
 
