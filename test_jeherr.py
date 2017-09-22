@@ -27,11 +27,11 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	print len(a.mols), " Molecules"
 	a.Save()
 
-def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "forces", "dipoles"]):
-	import glob
+def read_unpacked_set(set_name="nicotine_metamd", paths="/home/ryker/TensorMol/datasets/nicotine_data/nicotine_metamd/", properties=["name", "energy", "forces"]):
+	#import glob
 	a=MSet(set_name)
-	for path in glob.iglob(paths):
-		a.read_xyz_set_with_properties(path, properties)
+	#for path in glob.iglob(paths):
+	a.read_xyz_set_with_properties(paths, properties)
 	print len(a.mols), " Molecules"
 	a.Save()
 

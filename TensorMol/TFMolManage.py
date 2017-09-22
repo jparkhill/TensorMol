@@ -91,6 +91,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1259,13 +1261,14 @@ class TFMolManage(TFManage):
 			Ree_cut: Cutoff for the electrostatic embedding.
 			nreal_: number of non-image atoms. These are the first nreal_ atoms in mol.
 		"""
+		t0 = time.time()
 		mol_set=MSet()
 		mol_set.mols.append(mol)
 		nmols = len(mol_set.mols)
 		dummy_energy = np.zeros((nmols))
 		dummy_dipole = np.zeros((nmols, 3))
 		nreal = np.zeros((nmols))
-		print("NREAL NREAL NREAL", nreal_) 
+		print("NREAL NREAL NREAL", nreal_)
 		nreal[0] = nreal_
 		self.TData.MaxNAtoms = mol.NAtoms()
 		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
@@ -1276,11 +1279,21 @@ class TFMolManage(TFManage):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
 			natom[i] = mol.NAtoms()
+		t1 = time.time()
+		print("Garbage time", t1-t0)
 		NL = NeighborListSetWithImages(xyzs, natom, nreal,True, True, Zs, sort_=True)
+		t2 = time.time()
+		print("Garbage time1", t2-t1)
 		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		t3 = time.time()
+		print("BPNLbuild time", t3-t2)
 		NLEE = NeighborListSetWithImages(xyzs, natom, nreal, False, False,  None)
 		rad_eep = NLEE.buildPairs(Ree_cut)
+		t4 = time.time()
+		print("EENLbuild time", t4-t3)
 		Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
+		t5 = time.time()
+		print("Inference time", t5-t4)
 		return Etotal[0], -JOULEPERHARTREE*((gradient[0])[0,:nreal_])
 
 #NL.buildPairsAndTriplesWithEleIndexPeriodic
@@ -1308,7 +1321,8 @@ class TFMolManage(TFManage):
 		NLEE = NeighborListSetWithImages(xyzs, np.array([mol.NAtoms()]), np.array([nreal]), False, False,  Zs)
 		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(Ree_cut, self.Instances.eles_np)
 		Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal)
-		return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
+		#return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
+		return Etotal, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
 
 
 	def Prepare(self):
@@ -1346,6 +1360,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):

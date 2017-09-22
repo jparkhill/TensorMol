@@ -40,6 +40,8 @@ python test.py
  - ```import TensorMol as tm```
  - TensorMol assumes a directory structure executing path which mirrors the git.
  - Please also refer to IPython notebooks in /notebooks.
+ - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py 
+
 
 ### Sample Results
 ![](water.png)
