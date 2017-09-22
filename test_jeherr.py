@@ -27,11 +27,11 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	print len(a.mols), " Molecules"
 	a.Save()
 
-def read_unpacked_set(set_name="nicotine_metamd", paths="/home/ryker/TensorMol/datasets/nicotine_data/nicotine_metamd/", properties=["name", "energy", "forces"]):
-	#import glob
+def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "forces", "dipole"]):
+	import glob
 	a=MSet(set_name)
-	#for path in glob.iglob(paths):
-	a.read_xyz_set_with_properties(paths, properties)
+	for path in glob.iglob(paths):
+		a.read_xyz_set_with_properties(paths, properties)
 	print len(a.mols), " Molecules"
 	a.Save()
 
@@ -489,7 +489,7 @@ def train_forces_rotation_constraint(set_ = "SmallMols"):
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-RandomSmallSet("nicotine_aimd", 2500)
+# RandomSmallSet("SmallMols", 100)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -513,10 +513,77 @@ RandomSmallSet("nicotine_aimd", 2500)
 # train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 
-#a=MSet("nicotine_aimd")
-#a.Load()
-#m = a.mols[0]
-#for key in m.__dict__.keys():
-#	print (m.__dict__[key])
-# a.cut_max_n_atoms(35)
-# a.Save("SmallMols_35")
+def test_tf_neighbor():
+	np.set_printoptions(threshold=100000)
+	a=MSet("SmallMols_rand")
+	a.Load()
+	maxnatoms = a.MaxNAtoms()
+	zlist = []
+	xyzlist = []
+	labelslist = []
+	for i, mol in enumerate(a.mols):
+		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float32)
+		paddedxyz[:mol.atoms.shape[0]] = mol.coords
+		paddedz = np.zeros((maxnatoms), dtype=np.int32)
+		paddedz[:mol.atoms.shape[0]] = mol.atoms
+		paddedlabels = np.zeros((maxnatoms, 3), dtype=np.float32)
+		paddedlabels[:mol.atoms.shape[0]] = mol.properties["forces"]
+		xyzlist.append(paddedxyz)
+		zlist.append(paddedz)
+		labelslist.append(paddedlabels)
+		if i == 0:
+			break
+	xyzstack = tf.stack(xyzlist)
+	zstack = tf.stack(zlist)
+	labelstack = tf.stack(labelslist)
+	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
+	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
+	element = tf.constant(1, dtype=tf.int32)
+	r_cutoff = tf.constant(5.0, dtype=tf.float32)
+	element_pairs = tf.constant([[1,1,1], [1,1,6], [1,1,7], [1,1,8], [1,6,6], [1,6,7], [1,6,8], [1,7,7], [1,7,8], [1,8,8],
+								[6,6,6], [6,6,7], [6,6,8], [6,7,7], [6,7,8], [6,8,8], [7,7,7], [7,7,8], [7,8,8], [8,8,8]], dtype=tf.int32)
+	tmp = tf_triples_list(xyzstack, zstack, r_cutoff, element_pairs)
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+	run_metadata = tf.RunMetadata()
+	# for i in range(a.mols[0].atoms.shape[0]):
+	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
+	tmp3 = sess.run([tmp], options=options, run_metadata=run_metadata)
+	print tmp3[0]
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
+	# print tmp3[1]
+	# print tmp4[1]
+	# print tmp4
+	# TreatedAtoms = a.AtomTypes()
+	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
+	# # tset = TensorData(a,d)
+	# mol_ = a.mols[0]
+	# print d.Emb(mol_, -1, mol_.coords[0], MakeOutputs=False)[0]
+	# print mol_.atoms[0]
+
+test_tf_neighbor()
+
+# a=MSet("chemspider_aimd_forcecut")
+# a.Load()
+# # force_cut_mols = []
+# # for i, mol in enumerate(a.mols):
+# # 	if not np.any(np.abs(mol.properties["forces"]) > 2.0):
+# # 		force_cut_mols.append(mol)
+# # a.mols = force_cut_mols
+# # a.Save("chemspider_aimd_forcecut")
+#
+# for mol in a.mols:
+# 	mol.CalculateAtomization()
+# aes = np.array([mol.properties["atomization"] for mol in a.mols])
+# print np.mean(aes)
+# print np.std(aes)
+# energy_cut_mols = []
+# for i, mol in enumerate(a.mols):
+# 	if not (mol.properties["atomization"] > (np.mean(aes) + 6.0 * np.std(aes))) or (mol.properties["atomization"] < (np.mean(aes) - 6.0 * np.std(aes))):
+# 		energy_cut_mols.append(mol)
+# a.mols = energy_cut_mols
+# a.Save()

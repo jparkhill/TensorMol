@@ -1262,7 +1262,7 @@ def TFCoulombEluSRDSFLR(R, Qs, R_cut, Radpair, alpha, elu_a, elu_shift, prec=tf.
 	LR = Qij*(tf.erfc(alpha*RijRij2)/RijRij2 - ZZ + (RijRij2-R_lrcut)*(ZZ/R_lrcut+YY))
 	LR= tf.where(tf.is_nan(LR), tf.zeros_like(LR), LR)
 	LR = tf.where(tf.greater(RijRij2,R_lrcut), tf.zeros_like(LR), LR)
-	
+
 	SR = Qij*SR_sub
 
 	K = tf.where(tf.greater(RijRij2, R_cut), LR, SR)
@@ -2205,32 +2205,55 @@ def NNInterface(R, Zs, eles_, GM):
 		IndexList.append(tf.reshape(tf.slice(GatherList[-1],[0,0],[NAtomOfEle,1]),[NAtomOfEle]))
 	return SymList, IndexList
 
-def TFBond(Zxyzs, BndIdxMat, ElemPairs_):
-	"""
-	Tensorflow embedding of bond descriptor
-	Args:
-		Zxyzs: a nmol X maxnatom X 4 tensor of atomic Zs and coordinates.
-		BndIdxMat: nbond X 3 matrix of (molecule, atom1, atom2) indices.
-		ElemPairs_: a NumElementPairs X 2 of elements pairs present in the data.
-	"""
-	inp_shp = tf.shape(Zxyzs)
-	nmol = inp_shp[0]
-	natom = inp_shp[1]
-	nelemp = tf.shape(ElemPairs_)[0]
-	RMatrix = TFDistancesLinear(Zxyzs[:,:,1:], BndIdxMat)
-	ZPairs = tf.cast(tf.stack([tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,:2]),tf.gather_nd(Zxyzs[:,:,0], BndIdxMat[:,::2])],axis=1),dtype=tf.int32)
-	# tf.nn.top_k is slow, next lines faster for sorting nx2 array of atomic Zs
-	TmpZ1 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmin(ZPairs, axis=1), tf.int32)],axis=1))
-	TmpZ2 = tf.gather_nd(ZPairs, tf.stack([tf.range(tf.shape(ZPairs)[0]),tf.cast(tf.argmax(ZPairs, axis=1), tf.int32)],axis=1))
-	SortedZPairs = tf.stack([TmpZ1,TmpZ2],axis=1)
-	BondTypeMask = tf.reduce_all(tf.equal(tf.reshape(SortedZPairs, [tf.shape(ZPairs)[0],1,tf.shape(ZPairs)[1]]),tf.reshape(ElemPairs_,[1,nelemp,2])),2)
-	rlist = []
-	indexlist = []
-	num_ele, num_dim = ElemPairs_.get_shape().as_list()
-	for e in range(num_ele):
-		rlist.append(tf.boolean_mask(RMatrix,BondTypeMask[:,e]))
-		indexlist.append(tf.boolean_mask(BndIdxMat,BondTypeMask[:,e]))
-	return rlist, indexlist
+def tf_pairs_list(xyzs, Zs, r_cutoff, element_pairs):
+	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
+	distance_tensor = tf.norm(delta_xyzs,axis=3)
+	padding_mask = tf.not_equal(Zs, 0)
+	pair_indices = tf.where(tf.logical_and(tf.logical_and(tf.less(distance_tensor, r_cutoff),
+					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1)))
+	permutation_identity_mask = tf.where(tf.less(pair_indices[:,1], pair_indices[:,2]))
+	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, permutation_identity_mask)), tf.int32)
+	pair_distances = tf.gather_nd(distance_tensor, pair_indices)
+	pair_elements = tf.stack([tf.gather_nd(Zs, pair_indices[:,0:2]), tf.gather_nd(Zs, pair_indices[:,0:3:2])], axis=-1)
+	element_pair_mask = tf.cast(tf.where(tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(pair_elements, axis=1), tf.expand_dims(element_pairs, axis=0)), axis=2),
+						tf.reduce_all(tf.equal(tf.expand_dims(pair_elements, axis=1), tf.expand_dims(element_pairs[:,::-1], axis=0)), axis=2))), tf.int32)
+	num_element_pairs = element_pairs.get_shape().as_list()[0]
+	element_pair_distances = tf.dynamic_partition(pair_distances, element_pair_mask[:,1], num_element_pairs)
+	mol_indices = tf.dynamic_partition(pair_indices[:,0], element_pair_mask[:,1], num_element_pairs)
+	return element_pair_distances, mol_indices
+
+def tf_triples_list(xyzs, Zs, r_cutoff, element_triples):
+	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
+	distance_tensor = tf.norm(delta_xyzs,axis=3)
+	padding_mask = tf.not_equal(Zs, 0)
+	pair_indices = tf.where(tf.logical_and(tf.logical_and(tf.less(distance_tensor, r_cutoff),
+					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1)))
+	permutation_identity_mask = tf.where(tf.less(pair_indices[:,1], pair_indices[:,2]))
+	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, permutation_identity_mask)), tf.int32)
+	common_atom_indices = tf.where(tf.reduce_all(tf.equal(tf.expand_dims(pair_indices[:,0:2], axis=0), tf.expand_dims(pair_indices[:,0:2], axis=1)), axis=2))
+	permutation_pairs_mask = tf.where(tf.less(common_atom_indices[:,0], common_atom_indices[:,1]))
+	common_atom_indices = tf.squeeze(tf.gather(common_atom_indices, permutation_pairs_mask))
+	triples_indices = tf.concat([tf.gather(pair_indices, common_atom_indices[:,0]), tf.gather(pair_indices, common_atom_indices[:,1])[:,2:3]], axis=1)
+	triples_distances = tf.stack([tf.gather_nd(distance_tensor, triples_indices[:,:3]),
+						tf.gather_nd(distance_tensor, tf.concat([triples_indices[:,:2], triples_indices[:,3:]], axis=1)),
+						tf.gather_nd(distance_tensor, tf.concat([triples_indices[:,0:1], triples_indices[:,2:]], axis=1))], axis=-1)
+	cos_thetas = tf.stack([(tf.square(triples_distances[:,0]) + tf.square(triples_distances[:,1]) - tf.square(triples_distances[:,2])) \
+							/ (2 * triples_distances[:,0] * triples_distances[:,1]),
+						(tf.square(triples_distances[:,0]) - tf.square(triples_distances[:,1]) + tf.square(triples_distances[:,2])) \
+							/ (2 * triples_distances[:,0] * triples_distances[:,2]),
+						(-tf.square(triples_distances[:,0]) + tf.square(triples_distances[:,1]) + tf.square(triples_distances[:,2])) \
+							/ (2 * triples_distances[:,1] * triples_distances[:,2])], axis=-1)
+	cos_thetas = tf.where(tf.greater_equal(cos_thetas, 1.0), tf.ones_like(cos_thetas) * (1.0 - 1.0e-24), cos_thetas)
+	cos_thetas = tf.where(tf.less_equal(cos_thetas, -1.0), -1.0 * tf.ones_like(cos_thetas) * (1.0 - 1.0e-24), cos_thetas)
+	theta_ijk_jik_kij = tf.acos(cos_thetas)
+	triples_elements = tf.stack([tf.gather_nd(Zs, triples_indices[:,0:2]), tf.gather_nd(Zs, triples_indices[:,0:3:2]), tf.gather_nd(Zs, triples_indices[:,0:4:3])], axis=-1)
+	# element_triples_mask = tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2),
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	return triples_elements
+
 
 def matrix_power(matrix, power):
 	"""
@@ -3262,14 +3285,14 @@ class ANISym:
 		lat = cellsize*np.eye(3)
 		self.MolPerBatch = 1
 		PF = TensorMol.TFPeriodicForces.TFPeriodicVoxelForce(15.0,lat)
-		#zp, xp = PF(m.atoms,m.coords,lat)  # tessilation in TFPeriodic seems broken   
-		
+		#zp, xp = PF(m.atoms,m.coords,lat)  # tessilation in TFPeriodic seems broken
+
 		zp = np.zeros(m.NAtoms()*PF.tess.shape[0], dtype=np.int32)
 		xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
 		for i in range(0, PF.tess.shape[0]):
 			zp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.atoms
 			xp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.coords + cellsize*PF.tess[i]
-	
+
 		self.MaxAtoms = xp.shape[0]
 		self.nreal = m.NAtoms()
 
@@ -3280,7 +3303,7 @@ class ANISym:
 			else:
 				qs[0][j] = -1.0
 
-		
+
 
 		#self.Num_Real = m.NAtoms()
 		self.SetANI1Param()
@@ -3295,22 +3318,22 @@ class ANISym:
 		print ("python time cost:", time.time() - t0)
 		batch_data = [xp.reshape((1,-1,3)), zp.reshape((1,-1)), rad_p_ele, ang_t_elep, mil_j, mil_jk, qs]
 		feed_dict = self.fill_feed_dict(batch_data, self.xyz_pl, self.Z_pl, self.RadpEle_pl, self.AngtEle_pl, self.mil_j_pl, self.mil_jk_pl, self.Qs_pl)
-		
+
 		A, B, C, D = self.sess.run([self.Scatter_Sym_Linear_Qs, self.Sym_Index_Linear_Qs, self.Scatter_Sym_Linear_Qs_Periodic, self.Sym_Index_Linear_Qs_Periodic], feed_dict = feed_dict, options=self.options, run_metadata=self.run_metadata)
 		print ("A:\n",A[0].shape, len(A))
 		print ("B:\n",B[0].shape)
 		print ("C:\n",C[0].shape, len(C))
-		print ("D:\n",D[0].shape)	
+		print ("D:\n",D[0].shape)
 		#print ("A==C:", A[0]==C[0])
-		#print ("B==D", B[0]==D[0])	
+		#print ("B==D", B[0]==D[0])
 		print ("total time cost:", time.time() - t0)
 		np.set_printoptions(threshold=np.nan)
 		print (A[0][54],A[0][53])
 		for i in range(0, 54):
-			print (np.array_equal(A[0][i], C[0][i])) 
-		
+			print (np.array_equal(A[0][i], C[0][i]))
+
 		for i in range(0, 27):
-			print (np.array_equal(A[1][i], C[1][i])) 
+			print (np.array_equal(A[1][i], C[1][i]))
 		#print ("B:",B[0][:200])
 
 

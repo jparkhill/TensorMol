@@ -313,10 +313,11 @@ def LineSearch(f_, x0_, p_, thresh = 0.00001):
 			#print fa,fc,fd,fb
 			#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
 			print("Line Search: Overstep")
-			if (PARAMS["GSSearchAlpha"] > 0.00005):
+			if (PARAMS["GSSearchAlpha"] > 0.00001):
 				PARAMS["GSSearchAlpha"] /= 1.71
 			else:
 				print("Keeping step")
+				return a
 			a = x0_
 			b = x0_ + PARAMS["GSSearchAlpha"]*p_
 			c = b - (b - a) / GOLDENRATIO

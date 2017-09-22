@@ -245,29 +245,49 @@ class PeriodicForce:
 		return np.dot(inlat, latp_)
 	def LatticeStep(self,x_):
 		"""
-		Displace all lattice coordinates by 0.001.
+		Displace all lattice coordinates by dlat.
 		Relattice if the energy decreases.
 		"""
-		e,f = self.__call__(x_)
-		for i in range(3):
-			for j in range(3):
-				tmp = self.lattice.lattice.copy()
-				tmp[i,j] += 0.005
-				latt = Lattice(tmp)
-				z,x = latt.TessLattice(self.atoms,x_, self.maxrng)
-				et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
-				if (et < e):
-					self.ReLattice(tmp)
-					print("LatStep: ",self.lattice.lattice)
-				tmp = self.lattice.lattice.copy()
-				tmp[i,j] -= 0.005
-				latt = Lattice(tmp)
-				z,x = latt.TessLattice(self.atoms,x_, self.maxrng)
-				et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
-				if (et < e):
-					self.ReLattice(tmp)
-					print("LatStep: ",self.lattice.lattice)
-		return
+		xx = x_.copy()
+		e,f = self.__call__(xx)
+		ifstepped = True
+		ifsteppedoverall = False
+		dlat = PARAMS["OptLatticeStep"]
+		while (ifstepped):
+			ifstepped = False
+			for i in range(3):
+				for j in range(3):
+					tmp = self.lattice.lattice.copy()
+					tmp[i,j] += dlat
+					latt = Lattice(tmp)
+					xtmp = latt.ModuloLattice(xx)
+					z,x = latt.TessLattice(self.atoms,xtmp, self.maxrng)
+					et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
+					if (et < e):
+						e = et
+						self.ReLattice(tmp)
+						xx = xtmp
+						ifstepped=True
+						ifsteppedoverall=True
+						print("LatStep: ",e,self.lattice.lattice)
+						Mol(z,x).WriteXYZfile("./results","LatOpt")
+					tmp = self.lattice.lattice.copy()
+					tmp[i,j] -= dlat
+					latt = Lattice(tmp)
+					xtmp = latt.ModuloLattice(xx)
+					z,x = latt.TessLattice(self.atoms, xtmp, self.maxrng)
+					et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
+					if (et < e):
+						e = et
+						self.ReLattice(tmp)
+						xx = xtmp
+						ifstepped=True
+						ifsteppedoverall=True
+						print("LatStep: ",e,self.lattice.lattice)
+						Mol(z,x).WriteXYZfile("./results","LatOpt")
+		if (not ifsteppedoverall):
+			PARAMS["OptLatticeStep"] = PARAMS["OptLatticeStep"]/10.0
+		return xx
 	def BindForce(self, lf_, rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.
@@ -289,7 +309,7 @@ class PeriodicForce:
 		if (self.maxrng == 0.0):
 			self.maxrng = max([f.range for f in self.LocalForces])
 		# Tesselate atoms.
-		z,x = self.lattice.TessLattice(self.atoms,x_, self.maxrng)
+		z,x = self.lattice.TessLattice(self.atoms,self.lattice.ModuloLattice(x_), self.maxrng)
 		# Compute forces and energies.
 		for f in self.LocalForces:
 			einc, finc = f(z,x,self.natomsReal)
