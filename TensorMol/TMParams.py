@@ -118,6 +118,7 @@ class TMParams(dict):
 		# parameters of electrostatic embedding
 		self["AddEcc"] = True
 		self["Poly_Width"] = 4.6
+		self["Elu_Width"] = 4.6
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
@@ -127,7 +128,7 @@ class TMParams(dict):
 		self["EECutoffOn"] = 4.4 # switch on between 0 and 1/r occurs at Angstroms.
 		self["EECutoffOff"] = 15.0 # switch off between 0 and 1/r occurs at Angstroms.
 		self["Erf_Width"] = 0.2
-		self["DSFAlpha"] = 0.15
+		self["DSFAlpha"] = 0.18
 		#paths
 		self["sets_dir"] = "./datasets/"
 		self["results_dir"] = "./results/"

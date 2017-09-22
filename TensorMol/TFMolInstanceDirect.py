@@ -3617,6 +3617,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 
 	def Clean(self):
 		MolInstance_DirectBP_EE_ChargeEncode_Update.Clean(self)
+		self.Ebp_atom = None
 		self.Evdw = None
 
 	def train_step_EandG(self, step):
@@ -3651,6 +3652,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			print_energy_loss += energy_loss
 			print_grads_loss += grads_loss
 			print_dipole_loss += dipole_loss
+			#print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			#print ("Ecc:", Ecc, " Etotal:", Etotal)
 			if (ministep%print_per_mini == 0 and ministep!=0):
 				print ("time:", (time.time() - time_print_mini)/print_per_mini ,  " loss_value: ",  print_loss/print_per_mini, " energy_loss:", print_energy_loss/print_per_mini, " grads_loss:", print_grads_loss/print_per_mini, " dipole_loss:", print_dipole_loss/print_per_mini)
 				print_loss = 0.0
@@ -3712,8 +3715,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			t = time.time()
 			dump_, dump_2, total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.check, self.train_op_dipole, self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole, self.Etotal, self.Ecc,  self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
 			#print ("ministep:  ", ministep, "mini step time dipole:", time.time() - t_mini )
-			print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
-			print ("Ecc:", Ecc, " Etotal:", Etotal)
+			#print ("loss_value: ", loss_value, " energy_loss:", energy_loss, " grads_loss:", grads_loss, " dipole_loss:", dipole_loss)
+			#print ("Ecc:", Ecc, " Etotal:", Etotal)
 			print_loss += loss_value
 			print_energy_loss += energy_loss
 			print_grads_loss += grads_loss
@@ -4081,6 +4084,13 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(MolInstance_Direct
 		self.elu_alpha = DSF_Gradient(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.DSFAlpha)
 		print ("self.elu_shift: ",self.elu_shift)
 		print ("self.elu_alpha: ",self.elu_alpha)
+
+	def Clean(self):
+		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw.Clean(self)
+		self.elu_width = None
+		self.elu_shift = None
+		self.elu_alpha = None
+
 
 	def TrainPrepare(self,  continue_training =False):
 		"""
