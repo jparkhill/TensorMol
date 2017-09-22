@@ -45,8 +45,8 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		old_veloc=np.zeros(m.coords.shape)
 		Energy = lambda x_: self.EnergyAndForce(x_)[0]
 		while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001 ):
+			m.coords = self.EnergyAndForce.LatticeStep(m.coords)
 			prev_m = Mol(m.atoms, m.coords)
-			self.EnergyAndForce.LatticeStep(m.coords)
 			energy, frc = self.EnergyAndForce(m.coords)
 			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
 			frc /= JOULEPERHARTREE

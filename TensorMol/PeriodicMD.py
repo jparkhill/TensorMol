@@ -255,7 +255,7 @@ class PeriodicAnnealer(PeriodicVelocityVerlet):
 			self.x , self.v, self.a, self.EPot = self.Tstat.step(self.PForce, self.a, self.x, self.v, self.m, self.dt)
 
 			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh and step>1):
-				self.PForce.LatticeStep()
+				self.x = self.PForce.LatticeStep(self.x)
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
 				self.MinS = step
