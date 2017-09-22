@@ -1262,7 +1262,7 @@ def TFCoulombEluSRDSFLR(R, Qs, R_cut, Radpair, alpha, elu_a, elu_shift, prec=tf.
 	LR = Qij*(tf.erfc(alpha*RijRij2)/RijRij2 - ZZ + (RijRij2-R_lrcut)*(ZZ/R_lrcut+YY))
 	LR= tf.where(tf.is_nan(LR), tf.zeros_like(LR), LR)
 	LR = tf.where(tf.greater(RijRij2,R_lrcut), tf.zeros_like(LR), LR)
-	
+
 	SR = Qij*SR_sub
 
 	K = tf.where(tf.greater(RijRij2, R_cut), LR, SR)
@@ -2247,9 +2247,11 @@ def tf_triples_list(xyzs, Zs, r_cutoff, element_triples):
 	cos_thetas = tf.where(tf.less_equal(cos_thetas, -1.0), -1.0 * tf.ones_like(cos_thetas) * (1.0 - 1.0e-24), cos_thetas)
 	theta_ijk_jik_kij = tf.acos(cos_thetas)
 	triples_elements = tf.stack([tf.gather_nd(Zs, triples_indices[:,0:2]), tf.gather_nd(Zs, triples_indices[:,0:3:2]), tf.gather_nd(Zs, triples_indices[:,0:4:3])], axis=-1)
-	element_triples_mask = tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2),
-						tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
-						tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	# element_triples_mask = tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2),
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
 	return triples_elements
 
 
@@ -3301,7 +3303,7 @@ class ANISym:
 			else:
 				qs[0][j] = -1.0
 
-		
+
 
 		#self.Num_Real = m.NAtoms()
 		self.SetANI1Param()
