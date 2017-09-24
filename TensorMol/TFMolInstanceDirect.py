@@ -3865,7 +3865,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		t0 = time.time()
 		feed_dict=self.fill_feed_dict_periodic(batch_data+[PARAMS["AddEcc"]])
 		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, gradient_bp, gradient_cc, scatter_sym = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.gradient_bp, self.gradient_cc, self.Scatter_Sym], feed_dict=feed_dict)
-		print ("atom_charge:", atom_charge)
+		#print ("atom_charge:", atom_charge)
 		#print ("gradient_bp:", gradient_bp, "nzz:", np.count_nonzero(gradient_bp))
 		#print ("gradient_cc:", gradient_cc, "nzz:", np.count_nonzero(gradient_cc), "shape:", gradient_cc[0].shape)
 		#print ("Scatter_Sym:", Scatter_Sym[0][0])
@@ -4236,7 +4236,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(MolInstance_Direct
 		"""
 		# convert the index matrix from bool to float
 		xyzsInBohr = tf.multiply(xyzs,BOHRPERA)
-		xyzs_real = xyzsInBohr[:,:self.nreal] 
+		xyzs_real = xyzsInBohr[:,:self.nreal]
 
 		Dbranches=[]
 		atom_outputs_charge = []
@@ -4296,4 +4296,3 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(MolInstance_Direct
 		cc_energy = tf.cond(AddEcc, f1, f2)
 		#dipole_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="DipoleNet")
 		return  cc_energy, dipole, scaled_charge_all, dipole_wb
-

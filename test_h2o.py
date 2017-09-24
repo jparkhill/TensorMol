@@ -683,23 +683,36 @@ def BoxAndDensity():
 		return en[0], f[0]
 
 	# opt the first water.
-	PARAMS["OptMaxCycles"]=20
+	PARAMS["OptMaxCycles"]=60
 	Opt = GeomOptimizer(EnAndForceAPeriodic)
 	a.mols[-1] = Opt.Opt(a.mols[-1])
 	m = a.mols[-1]
 
 	# Tesselate that water to create a box
-	ntess = 2
-	latv = 2.4*np.eye(3)
+	ntess = 4
+	latv = 2.8*np.eye(3)
 	# Start with a water in a ten angstrom box.
 	lat = Lattice(latv)
 	mc = lat.CenteredInLattice(m)
 	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
 	nreal = mt.NAtoms()
 
+	def EnAndForceAPeriodic(x_):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(mt.atoms,x_)
+		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
+		#print("EnAndForceAPeriodic: ", en,f)
+		return en[0], f[0]
+
+	PARAMS["OptMaxCycles"]=20
+	Opt = GeomOptimizer(EnAndForceAPeriodic)
+	mt = Opt.Opt(mt,"UCopt")
+
 	# Anneal the tesselation.
 	EnAndForceAPeriodic = lambda x_: EnAndForce(mt.atoms,x_,mt.NAtoms())
-	PARAMS["MDAnnealT0"] = 60.0
+	PARAMS["MDAnnealT0"] = 20.0
 	PARAMS["MDAnnealSteps"] = 200
 	aper = Annealer(EnAndForceAPeriodic,None,mt)
 	aper.Prop()
@@ -711,12 +724,12 @@ def BoxAndDensity():
 	lat0[1,0] -= 0.01
 	lat0[0,2] = 0.01
 	lat0[2,0] -= 0.01
-	latp = np.eye(3)*4.8
+	latp = np.eye(3)*8.0
 	print(lat0,latp)
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
 	PF = PeriodicForce(m,lat0)
-	PF.BindForce(EnAndForce,34.0)
+	PF.BindForce(EnAndForce,20.0)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
 	for i in range(20):
@@ -726,7 +739,7 @@ def BoxAndDensity():
 		print("En:"+str(i), PF(m.coords)[0])
 		Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
 	# Try optimizing that....
-	PARAMS["OptMaxCycles"]=100
+	PARAMS["OptMaxCycles"]=10
 	POpt = PeriodicGeomOptimizer(PF)
 	mt = POpt.Opt(m)
 
