@@ -263,7 +263,7 @@ class PeriodicForce:
 					xtmp = latt.ModuloLattice(xx)
 					z,x = latt.TessLattice(self.atoms,xtmp, self.maxrng)
 					et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
-					if (et < e):
+					if (et < e and abs(e-et) > 0.00001):
 						e = et
 						self.ReLattice(tmp)
 						xx = xtmp
@@ -277,7 +277,7 @@ class PeriodicForce:
 					xtmp = latt.ModuloLattice(xx)
 					z,x = latt.TessLattice(self.atoms, xtmp, self.maxrng)
 					et,ft = (self.LocalForces[-1])(z,x,self.natomsReal)
-					if (et < e):
+					if (et < e and abs(e-et) > 0.00001):
 						e = et
 						self.ReLattice(tmp)
 						xx = xtmp

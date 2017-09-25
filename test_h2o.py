@@ -886,7 +886,7 @@ def BoxAndDensity():
 	m = a.mols[-1]
 
 	# Tesselate that water to create a box
-	ntess = 4
+	ntess = 3
 	latv = 2.8*np.eye(3)
 	# Start with a water in a ten angstrom box.
 	lat = Lattice(latv)
