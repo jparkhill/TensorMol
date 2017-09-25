@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -421,6 +421,90 @@ def Train():
 		manager.Train(1)
 def Eval():
 	if (1):
+		#a = MSet("water_tiny", center_=False)
+		#a.ReadXYZ("water_tiny")
+		a=MSet("H2O_cluster_meta", center_=False)
+		a.ReadXYZ("H2O_cluster_meta")
+		TreatedAtoms = a.AtomTypes()
+
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu",False,False)
+		m = a.mols[-2]
+		#print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		#return
+		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
+		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
+		#for i in range (0, m.NAtoms()):
+		#	print i+1, charge[0][i],bp_atom[0][i]
+
+		def EnAndForce(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return energy, force
+
+		def EnForceCharge(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return energy, force, atom_charge
+
+		def ChargeField(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return atom_charge[0]
+
+		ForceField = lambda x: EnAndForce(x)[-1]
+		EnergyField = lambda x: EnAndForce(x)[0]
+		EnergyForceField = lambda x: EnAndForce(x)
+
+		#PARAMS["OptMaxCycles"]=200
+		#Opt = GeomOptimizer(EnergyForceField)
+		#m=Opt.Opt(m)
+
+
+                PARAMS["MDThermostat"] = "Nose"
+                PARAMS["MDTemp"] = 300
+                PARAMS["MDdt"] = 0.2
+                PARAMS["RemoveInvariant"]=True
+                PARAMS["MDV0"] = None
+                PARAMS["MDMaxStep"] = 10000
+                md = VelocityVerlet(None, m, "water_tiny_noperi",EnergyForceField)
+                md.Prop()
+		return
+
+
+	if (0):
 		a = MSet("water_tiny", center_=False)
 		a.ReadXYZ("water_tiny")
 		#a=MSet("H2O_cluster_meta", center_=False)
@@ -751,7 +835,9 @@ def BoxAndDensity():
 	PARAMS["EECutoffOff"] = 15.0
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
+	#manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
+			
+	manager =  TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False) 
 
 	def EnAndForceAPeriodic(x_):
 		"""
@@ -805,7 +891,7 @@ def BoxAndDensity():
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
 	PF = PeriodicForce(m,lat0)
-	PF.BindForce(EnAndForce,34.0)
+	PF.BindForce(EnAndForce, 20.0)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
 	for i in range(20):

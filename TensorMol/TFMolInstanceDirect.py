@@ -3868,7 +3868,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		t0 = time.time()
 		feed_dict=self.fill_feed_dict_periodic(batch_data+[PARAMS["AddEcc"]])
 		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, gradient_bp, gradient_cc, scatter_sym = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.gradient_bp, self.gradient_cc, self.Scatter_Sym], feed_dict=feed_dict)
-		print ("atom_charge:", atom_charge)
+		print ("atom_charge:", atom_charge, " Etotal:", Etotal, " Ebp:", Ebp, " Ecc:", Ecc, " Evdw:", Evdw)
 		#print ("gradient_bp:", gradient_bp, "nzz:", np.count_nonzero(gradient_bp))
 		#print ("gradient_cc:", gradient_cc, "nzz:", np.count_nonzero(gradient_cc), "shape:", gradient_cc[0].shape)
 		#print ("Scatter_Sym:", Scatter_Sym[0][0])
@@ -4307,3 +4307,112 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(MolInstance_Direct
 		#dipole_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="DipoleNet")
 		return  cc_energy, dipole, scaled_charge_all, dipole_wb
 
+	def EvalPrepare(self,  continue_training =False):
+		"""
+		Get placeholders, graph and losses in order to begin training.
+		Also assigns the desired padding.
+
+		Args:
+			continue_training: should read the graph variables from a saved checkpoint.
+		"""
+		with tf.Graph().as_default():
+			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]),name="InputCoords")
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]),name="InputZs")
+			self.Elabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]),name="DesEnergy")
+			self.Dlabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, 3]),name="DesDipoles")
+			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]),name="DesGrads")
+			self.Radp_Ele_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.Angt_Elep_pl=tf.placeholder(tf.int64, shape=tuple([None,5]))
+			self.mil_jk_pl = tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.Reep_pl=tf.placeholder(tf.int64, shape=tuple([None,3]),name="RadialElectros")
+			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+			self.AddEcc_pl = tf.placeholder(tf.bool, shape=())
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
+			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
+			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
+			Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			Ree_on = tf.Variable(self.Ree_on, trainable=False, dtype = self.tf_prec)
+			elu_width  = tf.Variable(self.elu_width, trainable=False, dtype = self.tf_prec)
+			Ree_off = tf.Variable(self.Ree_off, trainable=False, dtype = self.tf_prec)
+			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			C6 = tf.Variable(self.C6,trainable=False, dtype = self.tf_prec)
+			vdw_R = tf.Variable(self.vdw_R,trainable=False, dtype = self.tf_prec)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear_WithEle(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl)
+			self.Ecc, self.dipole, self.charge, self.dipole_wb = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, elu_width, Ree_off, self.Reep_pl, self.AddEcc_pl)
+			self.Radp_pl  = self.Radp_Ele_pl[:,:3]
+			self.Radius_Qs_Encode, self.Radius_Qs_Encode_Index = TFSymSet_Radius_Scattered_Linear_Qs(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, eta,  self.Radp_pl, self.charge)
+#			with tf.name_scope("behler"):
+			self.Etotal, self.Ebp, self.Evdw,  self.energy_wb, self.Ebp_atom = self.energy_inference(self.Scatter_Sym, self.Sym_Index, self.Radius_Qs_Encode, self.Ecc, self.xyzs_pl, self.Zs_pl, Ele, C6, vdw_R, self.Reep_pl, Ree_on, Ree_off)
+			#self.Etotal,  self.energy_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
+			self.check = tf.add_check_numerics_ops()
+			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad")
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
+			self.saver.restore(self.sess, self.chk_file)
+			if (PARAMS["Profiling"]>0):
+				print("logging with FULL TRACE")
+				self.summary_writer = tf.summary.FileWriter('./networks/PROFILE', self.sess.graph)
+				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+				self.run_metadata = tf.RunMetadata()
+				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
+			self.sess.graph.finalize()
+		print("Prepared for Evaluation...")
+
+
+	def EvalPrepare_Periodic(self,  continue_training =False):
+		"""
+		Get placeholders, graph and losses in order to begin training.
+		Also assigns the desired padding.
+
+		Args:
+			continue_training: should read the graph variables from a saved checkpoint.
+		"""
+		with tf.Graph().as_default():
+			self.xyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]),name="InputCoords")
+			self.Zs_pl=tf.placeholder(tf.int64, shape=tuple([self.batch_size, self.MaxNAtoms]),name="InputZs")
+			self.Elabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]),name="DesEnergy")
+			self.Dlabel_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, 3]),name="DesDipoles")
+			self.grads_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.MaxNAtoms,3]),name="DesGrads")
+			self.Radp_Ele_pl=tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.Angt_Elep_pl=tf.placeholder(tf.int64, shape=tuple([None,5]))
+			self.mil_j_pl = tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.mil_jk_pl = tf.placeholder(tf.int64, shape=tuple([None,4]))
+			self.Reep_e1e2_pl=tf.placeholder(tf.int64, shape=tuple([None,5]),name="RadialElectros")
+			self.Reep_pl = self.Reep_e1e2_pl[:,:3]
+			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
+			self.AddEcc_pl = tf.placeholder(tf.bool, shape=())
+			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
+			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
+			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_prec)
+			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_prec)
+			Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_prec)
+			Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_prec)
+			Ree_on = tf.Variable(self.Ree_on, trainable=False, dtype = self.tf_prec)
+			elu_width  = tf.Variable(self.elu_width, trainable=False, dtype = self.tf_prec)
+			Ree_off = tf.Variable(self.Ree_off, trainable=False, dtype = self.tf_prec)
+			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
+			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
+			C6 = tf.Variable(self.C6,trainable=False, dtype = self.tf_prec)
+			vdw_R = tf.Variable(self.vdw_R,trainable=False, dtype = self.tf_prec)
+			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear_WithEle_Periodic(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_j_pl, self.mil_jk_pl, self.nreal)
+			self.Ecc, self.dipole, self.charge, self.dipole_wb = self.dipole_inference_periodic(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, elu_width, Ree_off, self.Reep_pl, self.AddEcc_pl)
+			self.Radp_pl  = self.Radp_Ele_pl[:,:3]
+			self.Radius_Qs_Encode, self.Radius_Qs_Encode_Index = TFSymSet_Radius_Scattered_Linear_Qs_Periodic(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, eta, self.Radp_pl, self.charge, self.mil_j_pl,  self.nreal)
+			self.Etotal, self.Ebp, self.Evdw,  self.energy_wb, self.Ebp_atom = self.energy_inference_periodic(self.Scatter_Sym, self.Sym_Index, self.Radius_Qs_Encode, self.Ecc, self.xyzs_pl, self.Zs_pl, Ele, C6, vdw_R, self.Reep_e1e2_pl, Ree_on, Ree_off)
+			self.check = tf.add_check_numerics_ops()
+			self.gradient_sym = tf.gradients(self.Scatter_Sym[0][0], self.xyzs_pl, name="SymGrad")
+			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad")
+			self.gradient_bp  = tf.gradients(self.Ebp, self.xyzs_pl, name="BPGrad")
+			self.gradient_cc  = tf.gradients(self.Ecc, self.xyzs_pl, name="CCGrad")
+			#self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad", colocate_gradients_with_ops=True)
+#			with tf.name_scope("losses"):
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
+			self.saver.restore(self.sess, self.chk_file)
+			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+			#self.run_metadata = tf.RunMetadata()
+			self.sess.graph.finalize()
+		print("Prepared for Evaluation...")
