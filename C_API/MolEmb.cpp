@@ -1064,8 +1064,10 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 			if (dij < rng)
 			{
 				tmp[i].push_back(j);
-				if (j<nreal && DoPerms==1)
+				if (j<nreal && DoPerms==1) {
+
 					tmp[j].push_back(i);
+				}
 			}
 		}
 	}

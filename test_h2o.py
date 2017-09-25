@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -153,7 +153,7 @@ def TrainPrepare():
 						continue
 
 
-	if (1):
+	if (0):
 		WB97XDAtom={}
 		WB97XDAtom[1]=-0.5026682866
 		WB97XDAtom[6]=-37.8387398698
@@ -179,6 +179,60 @@ def TrainPrepare():
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= WB97XDAtom[mol.atoms[i]]
                         a.mols.append(mol)
+		#a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
+		#print(a.mols[100].properties)
+                a.Save()
+
+	if (0):
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		total_water = 0.0
+		total_atomization = 0.0
+		for mol in a.mols:
+			total_water += mol.NAtoms()/3
+			total_atomization += mol.properties['atomization']
+		avg_atomization = total_atomization/total_water
+		print ("avg_atomization:", avg_atomization)  # ('avg_atomization:', -0.35551059977287547)
+		for mol in a.mols:
+			mol.properties['atomization_old'] = mol.properties['atomization']
+			mol.properties['atomization'] = mol.properties['atomization']-mol.NAtoms()/3.0*avg_atomization
+			print ("mol.properties['atomization']:,mol.properties['atomization_old']", mol.properties['atomization'], mol.properties['atomization_old'])
+		a.Save()
+
+
+	if (1):
+		WB97XDAtom={}
+		WB97XDAtom[1]=-0.5026682866
+		WB97XDAtom[6]=-37.8387398698
+		WB97XDAtom[7]=-54.5806161811
+		WB97XDAtom[8]=-75.0586028656
+		ch4_min_atomization = -0.6654760227400112
+		water_avg_atomization = -0.35551059977287
+                a = MSet("H2O_wb97xd_1to21_with_prontonated_with_ch4")
+                dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated_with_ch4.dat", "rb"))
+                for mol_index, dic in enumerate(dic_list):
+                        atoms = []
+			print ("mol_index:", mol_index)
+                        for atom in dic['atoms']:
+                                atoms.append(AtomicNumber(atom))
+                        atoms = np.asarray(atoms, dtype=np.uint8)
+			#print (dic.keys())
+			#print (dic['xyz'])
+                        mol = Mol(atoms, dic['xyz'])
+                        #mol.properties['charges'] = dic['charges']
+                        mol.properties['dipole'] = np.asarray(dic['dipole'])
+                        #mol.properties['quadropole'] = dic['quad']
+                        mol.properties['energy'] = dic['scf_energy']
+                        mol.properties['gradients'] = dic['gradients']
+			mol.properties['atomization_old'] = dic['scf_energy']
+			for i in range (0, mol.NAtoms()):
+				mol.properties['atomization_old'] -= WB97XDAtom[mol.atoms[i]]
+                        a.mols.append(mol)
+			if 6 in mol.atoms: # contain one CH4
+				mol.properties['atomization'] = mol.properties['atomization_old'] - (mol.NAtoms()-5)/3*water_avg_atomization - ch4_min_atomization
+			else:
+				mol.properties['atomization'] = mol.properties['atomization_old'] - mol.NAtoms()/3*water_avg_atomization
+			print ("mol.properties['atomization']:", mol.properties['atomization'])
 		#a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
 		#print(a.mols[100].properties)
                 a.Save()
@@ -295,16 +349,16 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (1):
+	if (0):
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
-		for i in range(340000):
-			a.mols.pop()
+		#for i in range(360000):
+		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
-		PARAMS["max_steps"] = 5
+		PARAMS["max_steps"] = 101
 		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
 		PARAMS["test_freq"] = 1
 		PARAMS["tf_prec"] = "tf.float64"
@@ -320,18 +374,137 @@ def Train():
 		#PARAMS["AN1_r_Rc"] = 8.0
 		#PARAMS["AN1_num_r_Rs"] = 64
 		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["DSFAlpha"] = 0.15
+		PARAMS["DSFAlpha"] = 0.18
 		PARAMS["AddEcc"] = True
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 2
+		PARAMS["SwitchEpoch"] = 15
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu")
 		PARAMS['Profiling']=0
 		manager.Train(1)
+
+
+	if (1):
+		a = MSet("H2O_wb97xd_1to21_with_prontonated_with_ch4")
+		a.Load()
+		random.shuffle(a.mols)
+		#for i in range(680000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 71
+		PARAMS["batch_size"] =  80   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		PARAMS["Poly_Width"] = 4.6
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["AddEcc"] = False
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 10
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw")
+		PARAMS['Profiling']=0
+		manager.Train(1)
 def Eval():
 	if (1):
+		#a = MSet("water_tiny", center_=False)
+		#a.ReadXYZ("water_tiny")
+		a=MSet("H2O_cluster_meta", center_=False)
+		a.ReadXYZ("H2O_cluster_meta")
+		TreatedAtoms = a.AtomTypes()
+
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu",False,False)
+		m = a.mols[-2]
+		#print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		#return
+		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
+		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
+		#for i in range (0, m.NAtoms()):
+		#	print i+1, charge[0][i],bp_atom[0][i]
+
+		def EnAndForce(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return energy, force
+
+		def EnForceCharge(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return energy, force, atom_charge
+
+		def ChargeField(x_):
+			m.coords = x_
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			return atom_charge[0]
+
+		ForceField = lambda x: EnAndForce(x)[-1]
+		EnergyField = lambda x: EnAndForce(x)[0]
+		EnergyForceField = lambda x: EnAndForce(x)
+
+		#PARAMS["OptMaxCycles"]=200
+		#Opt = GeomOptimizer(EnergyForceField)
+		#m=Opt.Opt(m)
+
+
+                PARAMS["MDThermostat"] = "Nose"
+                PARAMS["MDTemp"] = 300
+                PARAMS["MDdt"] = 0.2
+                PARAMS["RemoveInvariant"]=True
+                PARAMS["MDV0"] = None
+                PARAMS["MDMaxStep"] = 10000
+                md = VelocityVerlet(None, m, "water_tiny_noperi",EnergyForceField)
+                md.Prop()
+		return
+
+
+	if (0):
 		a = MSet("water_tiny", center_=False)
 		a.ReadXYZ("water_tiny")
 		#a=MSet("H2O_cluster_meta", center_=False)
@@ -753,7 +926,7 @@ def BoxAndDensity():
 	m = Lattice(lat0).CenteredInLattice(mt)
 	print(m.coords)
 	PF = PeriodicForce(m,lat0)
-	PF.BindForce(EnAndForce,20.0)
+	PF.BindForce(EnAndForce, 20.0)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
 	for i in range(20):
