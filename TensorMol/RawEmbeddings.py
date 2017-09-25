@@ -2223,6 +2223,7 @@ def tf_pairs_list(xyzs, Zs, r_cutoff, element_pairs):
 	return element_pair_distances, mol_indices
 
 def tf_triples_list(xyzs, Zs, r_cutoff, element_triples):
+
 	num_mols = Zs.get_shape().as_list()[0]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 	distance_tensor = tf.norm(delta_xyzs,axis=3)
@@ -2255,12 +2256,15 @@ def tf_triples_list(xyzs, Zs, r_cutoff, element_triples):
 	triples_angles = tf.acos(cos_thetas)
 	triples_distances_angles = tf.concat([triples_distances, triples_angles], axis=1)
 	triples_elements = tf.stack([tf.gather_nd(Zs, triples_indices[:,0:2]), tf.gather_nd(Zs, triples_indices[:,0:3:2]), tf.gather_nd(Zs, triples_indices[:,0:4:3])], axis=-1)
-	element_triples_mask = tf.cast(tf.where(tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2),
-						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,0], element_triples[:,2], element_triples[:,1]], axis=-1), axis=0)), axis=2),
-						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,1], element_triples[:,0], element_triples[:,2]], axis=-1), axis=0)), axis=2),
-						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,1], element_triples[:,2], element_triples[:,0]], axis=-1), axis=0)), axis=2),
-						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,2], element_triples[:,0], element_triples[:,1]], axis=-1), axis=0)), axis=2),
-						tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2))))))), tf.int32)
+	# sorted_element_triples, _ = tf.nn.top_k(element_triples, k=3)
+	sorted_triples_elements, _ = tf.nn.top_k(triples_elements, k=3)
+	element_triples_mask = tf.cast(tf.where(tf.reduce_all(tf.equal(tf.expand_dims(sorted_triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2)), tf.int32)
+	# element_triples_mask = tf.cast(tf.where(tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2),
+	# 					tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,0], element_triples[:,2], element_triples[:,1]], axis=-1), axis=0)), axis=2),
+	# 					tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,1], element_triples[:,0], element_triples[:,2]], axis=-1), axis=0)), axis=2),
+	# 					tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,1], element_triples[:,2], element_triples[:,0]], axis=-1), axis=0)), axis=2),
+	# 					tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,2], element_triples[:,0], element_triples[:,1]], axis=-1), axis=0)), axis=2),
+	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2))))))), tf.int32)
 	num_element_triples = element_triples.get_shape().as_list()[0]
 	element_triples_distances_angles = tf.dynamic_partition(triples_distances_angles, element_triples_mask[:,1], num_element_triples)
 	mol_indices = tf.dynamic_partition(triples_indices[:,0], element_triples_mask[:,1], num_element_triples)

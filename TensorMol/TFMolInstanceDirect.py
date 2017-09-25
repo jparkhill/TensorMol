@@ -1005,7 +1005,7 @@ class MolPairsTriples(MolInstance):
 			pairs_distance_cutoff = tf.constant(5.0, dtype=self.tf_prec)
 			triples_distance_cutoff = tf.constant(5.0, dtype=self.tf_prec)
 			element_pairs = tf.Variable(self.element_pairs, trainable=False, dtype = tf.int32)
-			element_triples = tf.Variable(self.element_triples, trainable=False, dtype = tf.int32)
+			element_triples, _ = tf.nn.top_k(tf.Variable(self.element_triples, trainable=False, dtype = tf.int32), k=3)
 			self.element_pairs_embedding, element_pairs_indices = tf_pairs_list(self.xyzs_pl, self.Zs_pl, pairs_distance_cutoff, element_pairs)
 			self.element_triples_embedding, element_triples_indices = tf_triples_list(self.xyzs_pl, self.Zs_pl, triples_distance_cutoff, element_triples)
 			mol_pairs_outputs = self.pairs_inference(self.element_pairs_embedding, element_pairs_indices)
@@ -1153,9 +1153,6 @@ class MolPairsTriples(MolInstance):
 			else:
 				_, total_loss_value, loss_value = self.sess.run([self.train_op, self.total_loss, self.loss], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss += total_loss_value
-			# pairs_emb = self.sess.run([self.element_pairs_embedding], feed_dict=self.fill_feed_dict(batch_data))
-			# print(np.shape(pairs_emb[0][0]))
-			# break
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, num_train_cases, duration)
 		return
@@ -1171,17 +1168,27 @@ class MolPairsTriples(MolInstance):
 		test_loss =  0.0
 		start_time = time.time()
 		num_test_cases = self.TData.NTest
+		# test_epoch_labels, test_epoch_outputs = [], []
 		for ministep in xrange (0, int(num_test_cases / self.batch_size)):
 			batch_data = self.TData.GetTestBatch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			_, total_loss_value, loss_value, mol_outputs, labels = self.sess.run([self.train_op, self.total_loss, self.loss, self.mol_outputs, self.labels_pl], feed_dict=feed_dict)
 			test_loss += total_loss_value
+		# 	test_epoch_labels.append(labels)
+		# 	test_epoch_outputs.append(mol_outputs)
+		# test_epoch_labels = np.concatenate(test_epoch_labels)
+		# test_epoch_outputs = np.concatenate(test_epoch_outputs)
+		# test_epoch_errors = test_epoch_labels - test_epoch_outputs
+		# LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
+		# LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
+		# LOGGER.info("RMSE: %f", np.sqrt(np.mean(np.square(test_epoch_errors))))
+		# LOGGER.info("Std. Dev.: %f", np.std(test_epoch_errors))
 		duration = time.time() - start_time
 		self.print_testing(mol_outputs, labels, test_loss, num_test_cases, duration)
 		return test_loss
 
 	def print_testing(self, output, labels, loss, num_cases, duration):
-		for i in xrange(50):
+		for i in xrange(20):
 			LOGGER.info("Label: %.5f   Prediction: %.5f", labels[i], output[i])
 		LOGGER.info("Duration: %.5f  Test Loss: %.10f", duration, (float(loss)/(num_cases)))
 		return

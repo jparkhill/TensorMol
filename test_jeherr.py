@@ -542,9 +542,10 @@ def train_energy_pairs_triples():
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 400
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "relu"
 	# PARAMS["tf_prec"] = "tf.float64"
+	# PARAMS["self.profiling"] = True
 	a=MSet("SmallMols_rand")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
