@@ -4246,7 +4246,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(MolInstance_Direct
 		"""
 		# convert the index matrix from bool to float
 		xyzsInBohr = tf.multiply(xyzs,BOHRPERA)
-		xyzs_real = xyzsInBohr[:,:self.nreal] 
+		xyzs_real = xyzsInBohr[:,:self.nreal]
 
 		Dbranches=[]
 		atom_outputs_charge = []
