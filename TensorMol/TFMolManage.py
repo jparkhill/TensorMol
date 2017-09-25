@@ -101,6 +101,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_BP_Dipole_2_Direct(self.TData)
 		elif (self.NetType == "LJForce"):
 			self.Instances = MolInstance_LJForce(self.TData)
+		elif (self.NetType == "pairs_triples"):
+			self.Instances = MolPairsTriples(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
 		if (PARAMS["Profiling"]>0):

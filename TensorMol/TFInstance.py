@@ -206,6 +206,8 @@ class Instance:
 		self.PreparedFor = 0
 		self.summary_op = None
 		self.activation_function = None
+		self.options = None
+		self.run_metadata = None
 		return
 
 	def SaveAndClose(self):

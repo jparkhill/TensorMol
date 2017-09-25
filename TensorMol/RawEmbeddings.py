@@ -2213,7 +2213,7 @@ def tf_pairs_list(xyzs, Zs, r_cutoff, element_pairs):
 					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1)))
 	permutation_identity_mask = tf.where(tf.less(pair_indices[:,1], pair_indices[:,2]))
 	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, permutation_identity_mask)), tf.int32)
-	pair_distances = tf.gather_nd(distance_tensor, pair_indices)
+	pair_distances = tf.expand_dims(tf.gather_nd(distance_tensor, pair_indices), axis=1)
 	pair_elements = tf.stack([tf.gather_nd(Zs, pair_indices[:,0:2]), tf.gather_nd(Zs, pair_indices[:,0:3:2])], axis=-1)
 	element_pair_mask = tf.cast(tf.where(tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(pair_elements, axis=1), tf.expand_dims(element_pairs, axis=0)), axis=2),
 						tf.reduce_all(tf.equal(tf.expand_dims(pair_elements, axis=1), tf.expand_dims(element_pairs[:,::-1], axis=0)), axis=2))), tf.int32)
@@ -2223,6 +2223,7 @@ def tf_pairs_list(xyzs, Zs, r_cutoff, element_pairs):
 	return element_pair_distances, mol_indices
 
 def tf_triples_list(xyzs, Zs, r_cutoff, element_triples):
+	num_mols = Zs.get_shape().as_list()[0]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 	distance_tensor = tf.norm(delta_xyzs,axis=3)
 	padding_mask = tf.not_equal(Zs, 0)
@@ -2230,10 +2231,16 @@ def tf_triples_list(xyzs, Zs, r_cutoff, element_triples):
 					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1)))
 	permutation_identity_mask = tf.where(tf.less(pair_indices[:,1], pair_indices[:,2]))
 	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, permutation_identity_mask)), tf.int32)
-	common_atom_indices = tf.where(tf.reduce_all(tf.equal(tf.expand_dims(pair_indices[:,0:2], axis=0), tf.expand_dims(pair_indices[:,0:2], axis=1)), axis=2))
-	permutation_pairs_mask = tf.where(tf.less(common_atom_indices[:,0], common_atom_indices[:,1]))
-	common_atom_indices = tf.squeeze(tf.gather(common_atom_indices, permutation_pairs_mask))
-	triples_indices = tf.concat([tf.gather(pair_indices, common_atom_indices[:,0]), tf.gather(pair_indices, common_atom_indices[:,1])[:,2:3]], axis=1)
+	mol_pair_indices = tf.dynamic_partition(pair_indices, pair_indices[:,0], num_mols)
+	mol_triples_indices = []
+	tmp = []
+	for i in xrange(num_mols):
+		mol_common_atom_indices = tf.where(tf.reduce_all(tf.equal(tf.expand_dims(mol_pair_indices[i][:,0:2], axis=0), tf.expand_dims(mol_pair_indices[i][:,0:2], axis=1)), axis=2))
+		permutation_pairs_mask = tf.where(tf.less(mol_common_atom_indices[:,0], mol_common_atom_indices[:,1]))
+		mol_common_atom_indices = tf.squeeze(tf.gather(mol_common_atom_indices, permutation_pairs_mask), axis=1)
+		tmp.append(mol_common_atom_indices)
+		mol_triples_indices.append(tf.concat([tf.gather(mol_pair_indices[i], mol_common_atom_indices[:,0]), tf.expand_dims(tf.gather(mol_pair_indices[i], mol_common_atom_indices[:,1])[:,2], axis=1)], axis=1))
+	triples_indices = tf.concat(mol_triples_indices, axis=0)
 	triples_distances = tf.stack([tf.gather_nd(distance_tensor, triples_indices[:,:3]),
 						tf.gather_nd(distance_tensor, tf.concat([triples_indices[:,:2], triples_indices[:,3:]], axis=1)),
 						tf.gather_nd(distance_tensor, tf.concat([triples_indices[:,0:1], triples_indices[:,2:]], axis=1))], axis=-1)
@@ -2245,14 +2252,19 @@ def tf_triples_list(xyzs, Zs, r_cutoff, element_triples):
 							/ (2 * triples_distances[:,1] * triples_distances[:,2])], axis=-1)
 	cos_thetas = tf.where(tf.greater_equal(cos_thetas, 1.0), tf.ones_like(cos_thetas) * (1.0 - 1.0e-24), cos_thetas)
 	cos_thetas = tf.where(tf.less_equal(cos_thetas, -1.0), -1.0 * tf.ones_like(cos_thetas) * (1.0 - 1.0e-24), cos_thetas)
-	theta_ijk_jik_kij = tf.acos(cos_thetas)
+	triples_angles = tf.acos(cos_thetas)
+	triples_distances_angles = tf.concat([triples_distances, triples_angles], axis=1)
 	triples_elements = tf.stack([tf.gather_nd(Zs, triples_indices[:,0:2]), tf.gather_nd(Zs, triples_indices[:,0:3:2]), tf.gather_nd(Zs, triples_indices[:,0:4:3])], axis=-1)
-	# element_triples_mask = tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2),
-	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
-	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
-	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
-	# 					tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2)
-	return triples_elements
+	element_triples_mask = tf.cast(tf.where(tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples, axis=0)), axis=2),
+						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,0], element_triples[:,2], element_triples[:,1]], axis=-1), axis=0)), axis=2),
+						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,1], element_triples[:,0], element_triples[:,2]], axis=-1), axis=0)), axis=2),
+						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,1], element_triples[:,2], element_triples[:,0]], axis=-1), axis=0)), axis=2),
+						tf.logical_or(tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(tf.stack([element_triples[:,2], element_triples[:,0], element_triples[:,1]], axis=-1), axis=0)), axis=2),
+						tf.reduce_all(tf.equal(tf.expand_dims(triples_elements, axis=1), tf.expand_dims(element_triples[:,::-1], axis=0)), axis=2))))))), tf.int32)
+	num_element_triples = element_triples.get_shape().as_list()[0]
+	element_triples_distances_angles = tf.dynamic_partition(triples_distances_angles, element_triples_mask[:,1], num_element_triples)
+	mol_indices = tf.dynamic_partition(triples_indices[:,0], element_triples_mask[:,1], num_element_triples)
+	return element_triples_distances_angles, mol_indices
 
 
 def matrix_power(matrix, power):
