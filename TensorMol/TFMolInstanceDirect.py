@@ -1168,32 +1168,32 @@ class MolPairsTriples(MolInstance):
 		test_loss =  0.0
 		start_time = time.time()
 		num_test_cases = self.TData.NTest
-		# test_epoch_labels, test_epoch_outputs = [], []
+		test_epoch_labels, test_epoch_outputs = [], []
 		for ministep in xrange (0, int(num_test_cases / self.batch_size)):
 			batch_data = self.TData.GetTestBatch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			_, total_loss_value, loss_value, mol_outputs, labels = self.sess.run([self.train_op, self.total_loss, self.loss, self.mol_outputs, self.labels_pl], feed_dict=feed_dict)
 			test_loss += total_loss_value
-		# 	test_epoch_labels.append(labels)
-		# 	test_epoch_outputs.append(mol_outputs)
-		# test_epoch_labels = np.concatenate(test_epoch_labels)
-		# test_epoch_outputs = np.concatenate(test_epoch_outputs)
-		# test_epoch_errors = test_epoch_labels - test_epoch_outputs
-		# LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
-		# LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
-		# LOGGER.info("RMSE: %f", np.sqrt(np.mean(np.square(test_epoch_errors))))
-		# LOGGER.info("Std. Dev.: %f", np.std(test_epoch_errors))
+			test_epoch_labels.append(labels)
+			test_epoch_outputs.append(mol_outputs)
+		test_epoch_labels = np.concatenate(test_epoch_labels)
+		test_epoch_outputs = np.concatenate(test_epoch_outputs)
+		test_epoch_errors = test_epoch_labels - test_epoch_outputs
+		for i in xrange(20):
+			LOGGER.info("Label: %.5f   Prediction: %.5f", test_epoch_labels[i], test_epoch_outputs[i])
+		LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
+		LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
+		LOGGER.info("RMSE: %f", np.sqrt(np.mean(np.square(test_epoch_errors))))
+		LOGGER.info("Std. Dev.: %f", np.std(test_epoch_errors))
 		duration = time.time() - start_time
 		self.print_testing(mol_outputs, labels, test_loss, num_test_cases, duration)
 		return test_loss
 
 	def print_testing(self, output, labels, loss, num_cases, duration):
-		for i in xrange(20):
-			LOGGER.info("Label: %.5f   Prediction: %.5f", labels[i], output[i])
 		LOGGER.info("Duration: %.5f  Test Loss: %.10f", duration, (float(loss)/(num_cases)))
 		return
 
-	def print_training(self, step, loss, Ncase, duration, Train=True):
+	def print_training(self, step, loss, Ncase, duration):
 		LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f", step, duration, (float(loss)/(Ncase)))
 		return
 
@@ -1221,7 +1221,7 @@ class MolPairsTriples(MolInstance):
 		return AtomOutputs
 
 	def EvalPrepare(self):
-		with tf.Graph().as_default(), tf.device('/job:localhost/replica:0/task:0/gpu:1'):
+		with tf.Graph().as_default():
 			self.Zxyzs_pl=tf.placeholder(self.tf_prec, shape=tuple([self.batch_size, self.TData.set.MaxNAtoms(),4]))
 			self.label_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
 			self.BondIdxMatrix_pl = tf.placeholder(tf.int32, shape=tuple([None,3]))
@@ -1237,8 +1237,6 @@ class MolPairsTriples(MolInstance):
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)
 			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
-			#self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			#self.run_metadata = tf.RunMetadata()
 		return
 
 class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):

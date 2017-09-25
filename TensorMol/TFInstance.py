@@ -977,7 +977,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		test_epoch_outputs = np.concatenate(test_epoch_outputs)
 		test_epoch_errors = test_epoch_labels - test_epoch_outputs
 		duration = time.time() - test_start_time
-		for i in range(20):
+		for i in xrange(20):
 			LOGGER.info("Label: %s  Output: %s", test_epoch_labels[i], test_epoch_outputs[i])
 		LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
 		LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
