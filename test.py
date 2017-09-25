@@ -46,7 +46,7 @@ def TestPeriodicLJOpt():
 	PGO = PeriodicGeomOptimizer(PF)
 	PGO.OptWCell(m,"PeriodicOpt")
 	return
-def TestBoxing(molecule_="Ammonia", mindistance_=10, ntess_=4, t_=5.):
+def TestBoxing(molecule_="H2O2", mindistance_=10, ntess_=4, t_=5.):
 	"""
 	Makes a box of molecules
 
@@ -112,7 +112,7 @@ def TestBoxing(molecule_="Ammonia", mindistance_=10, ntess_=4, t_=5.):
 	#	print(ins.EvalForce(Mol(np.array([x,x]),np.array([[0.,0.,0.],[0.,0.,x]]))))
 	#exit()
 
-	Box = BoxingDynamics(ForceField, m, "BoxingMD", EnergyForceField, lat0, latp, t)
+	Box = BoxingDynamics(ForceField, m, "BoxingMD_" + molecule, EnergyForceField, lat0, latp, t)
 	Box.Prop()
 	return
 
@@ -1550,7 +1550,7 @@ def TestMBNeighborList():
 #TestANI1()
 #TestBP_WithGrad()
 #Test_ULJ()
-Test_LJMD()
+#Test_LJMD()
 #TestDipole()
 #TestJohnson()
 #TestIR()
@@ -1561,8 +1561,8 @@ Test_LJMD()
 #PullFreqData()
 #TestPeriodicLJMD()
 #TestPeriodicLJOpt()
-#TestBoxing()
-TestPeriodicLJVoxel()
+TestBoxing()
+#TestPeriodicLJVoxel()
 #TestGeneralMBEandMolGraph()
 #TestGoForceAtom(dig_ = "GauSH", BuildTrain_=True, net_ = "fc_sqdiff", Train_=True)
 #TestPotential()

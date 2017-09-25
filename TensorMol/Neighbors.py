@@ -35,7 +35,8 @@ class NeighborList:
 		self.ele = ele_
 		self.npairs = None
 		self.ntriples = None
-		self.alg = 0 if self.natom < 20000 else 1
+		self.alg = 0 if self.natom < 2000000 else 1
+		#self.alg = 0 if self.natom < 20000 else 1
 		if (alg_ != None):
 			self.alg = alg_
 		self.sort = sort_
@@ -134,6 +135,7 @@ class NeighborList:
 		npairi = map(len,tpair)
 		#ntrip = sum(map(lambda x: x*x if x>0 else 0, npairi))
 		ntrip = sum(map(lambda x: x*(x-1)/2 if x>0 else 0, npairi))
+		#print ("npair:", npair, " ntrip:", ntrip, " rcut_triples:", rcut_triples, " tpair", tpair, " ntodo:", int(ntodo), " self.DoPerms", int(self.DoPerms), " x:", self.x[:int(ntodo)], " pair:", pair)
 		p = None
 		t = None
 		if (molind_!=None):
@@ -201,7 +203,8 @@ class NeighborListSet:
 		self.nlist = []
 		self.nmol = x_.shape[0]
 		self.maxnatom = x_.shape[1]
-		self.alg = 0 if self.maxnatom < 20000 else 1
+		self.alg = 0 if self.maxnatom < 2000000 else 1
+		#self.alg = 0 if self.maxnatom < 20000 else 1
 		if (alg_ != None):
 			self.alg = alg_
 		# alg=0 naive quadratic.
@@ -337,6 +340,7 @@ class NeighborListSet:
 		#import time
 		t0 = time.time()
 		trp, trt = self.buildPairsAndTriples(rcut_pairs, rcut_triples)
+		#print ("trp, trt",trp.shape, trt.shape)
 		#print ("build P and T time:", time.time()-t0)
 		#print ("trp:", trp, "trt:", trt)
 		t_start = time.time()
@@ -409,7 +413,6 @@ class NeighborListSet:
 		trpE_sorted, trtE_sorted, mil_jk, jk_max = self.buildPairsAndTriplesWithEleIndex(rcut_pairs, rcut_triples, ele, elep)
 		mil_j = np.zeros((trpE_sorted.shape[0], 4))
 		pair_pair = np.zeros(trpE_sorted.shape[0])
-
 		prev_l = trpE_sorted[0][3]
 		prev_atom = trpE_sorted[0][1]
 		prev_mol = trpE_sorted[0][0]

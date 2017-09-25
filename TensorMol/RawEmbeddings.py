@@ -1246,7 +1246,7 @@ def TFCoulombEluSRDSFLR(R, Qs, R_cut, Radpair, alpha, elu_a, elu_shift, prec=tf.
 	Rij = DifferenceVectorsLinear(R, Radpair)
 	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
 
-	SR_sub = tf.where(tf.greater(RijRij2, R_cut), tf.zeros_like(RijRij2), elu_a*(tf.exp(RijRij2-R_cut)-1.0)+elu_shift)
+	SR_sub = tf.where(tf.greater(RijRij2, R_cut), elu_a*(RijRij2-R_cut)+elu_shift, elu_a*(tf.exp(RijRij2-R_cut)-1.0)+elu_shift)
 
 	twooversqrtpi = tf.constant(1.1283791671,dtype=tf.float64)
 	Qii = tf.slice(Radpair,[0,0],[-1,2])

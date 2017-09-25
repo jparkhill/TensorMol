@@ -1289,7 +1289,7 @@ class TFMolManage(TFManage):
 		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
 		t3 = time.time()
 		print("BPNLbuild time", t3-t2)
-		NLEE = NeighborListSetWithImages(xyzs, natom, nreal, False, False,  None)
+		NLEE = NeighborListSetWithImages(xyzs, natom, nreal, False, True,  None)
 		rad_eep = NLEE.buildPairs(Ree_cut)
 		t4 = time.time()
 		print("EENLbuild time", t4-t3)
@@ -1320,7 +1320,7 @@ class TFMolManage(TFManage):
 			natom[i] = nreal   # this is hacky.. K.Y.
 		NL = NeighborListSetWithImages(xyzs, np.array([mol.NAtoms()]), np.array([nreal]),True, True, Zs, sort_=True)
 		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexPeriodic(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
-		NLEE = NeighborListSetWithImages(xyzs, np.array([mol.NAtoms()]), np.array([nreal]), False, False,  Zs)
+		NLEE = NeighborListSetWithImages(xyzs, np.array([mol.NAtoms()]), np.array([nreal]), False, True,  Zs)
 		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(Ree_cut, self.Instances.eles_np)
 		Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal)
 		#return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
