@@ -1124,7 +1124,7 @@ class TensorMolData_BP_Direct(TensorMolData):
 				self.ReloadSet()
 			except Exception as Ex:
 				print("TData doesn't have a set.", Ex)
-		# random.shuffle(self.set.mols)
+		random.shuffle(self.set.mols)
 		xyzs = np.zeros((self.Nmols, self.MaxNAtoms, 3), dtype = np.float64)
 		Zs = np.zeros((self.Nmols, self.MaxNAtoms), dtype = np.int32)
 		if (self.dig.OType == "AtomizationEnergy"):
