@@ -92,8 +92,6 @@ class TMParams(dict):
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
-		# Periodic Parameters, only cubic supported.
-		self["CellWidth"] = 15.0 # Angstrom.
 		# MD Parameters
 		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.2 # In fs.

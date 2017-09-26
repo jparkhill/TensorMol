@@ -879,76 +879,87 @@ def BoxAndDensity():
 		#print("EnAndForce: ", en,f)
 		return en[0], f[0]
 
-	# opt the first water.
-	PARAMS["OptMaxCycles"]=60
-	Opt = GeomOptimizer(EnAndForceAPeriodic)
-	a.mols[-1] = Opt.Opt(a.mols[-1])
-	m = a.mols[-1]
+	if 0 :
+		# opt the first water.
+		PARAMS["OptMaxCycles"]=60
+		Opt = GeomOptimizer(EnAndForceAPeriodic)
+		a.mols[-1] = Opt.Opt(a.mols[-1])
+		m = a.mols[-1]
 
-	# Tesselate that water to create a box
-	ntess = 3
-	latv = 2.8*np.eye(3)
-	# Start with a water in a ten angstrom box.
-	lat = Lattice(latv)
-	mc = lat.CenteredInLattice(m)
-	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
-	nreal = mt.NAtoms()
+		# Tesselate that water to create a box
+		ntess = 3
+		latv = 2.8*np.eye(3)
+		# Start with a water in a ten angstrom box.
+		lat = Lattice(latv)
+		mc = lat.CenteredInLattice(m)
+		mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+		nreal = mt.NAtoms()
+		mt.Distort(0.01)
 
-	def EnAndForceAPeriodic(x_):
-		"""
-		This is the primitive form of force routine required by PeriodicForce.
-		"""
-		mtmp = Mol(mt.atoms,x_)
-		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
-		#print("EnAndForceAPeriodic: ", en,f)
-		return en[0], f[0]
+		def EnAndForceAPeriodic(x_):
+			"""
+			This is the primitive form of force routine required by PeriodicForce.
+			"""
+			mtmp = Mol(mt.atoms,x_)
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
+			#print("EnAndForceAPeriodic: ", en,f)
+			return en[0], f[0]
 
-	PARAMS["OptMaxCycles"]=20
-	Opt = GeomOptimizer(EnAndForceAPeriodic)
-	mt = Opt.Opt(mt,"UCopt")
+		PARAMS["OptMaxCycles"]=30
+		Opt = GeomOptimizer(EnAndForceAPeriodic)
+		mt = Opt.Opt(mt,"UCopt")
 
-	# Anneal the tesselation.
-	EnAndForceAPeriodic = lambda x_: EnAndForce(mt.atoms,x_,mt.NAtoms())
-	PARAMS["MDAnnealT0"] = 20.0
-	PARAMS["MDAnnealSteps"] = 200
-	aper = Annealer(EnAndForceAPeriodic,None,mt)
-	aper.Prop()
-	mt.coords = aper.Minx
+		# Anneal the tesselation.
+		EnAndForceAPeriodic = lambda x_: EnAndForce(mt.atoms,x_,mt.NAtoms())
+		PARAMS["MDAnnealT0"] = 20.0
+		PARAMS["MDAnnealSteps"] = 200
+		aper = Annealer(EnAndForceAPeriodic,None,mt)
+		aper.Prop()
+		mt.coords = aper.Minx
 
-	# Optimize the tesselated system.
-	lat0 = (np.max(mt.coords)+0.5)*np.eye(3)
-	lat0[0,1] = 0.01
-	lat0[1,0] -= 0.01
-	lat0[0,2] = 0.01
-	lat0[2,0] -= 0.01
-	latp = np.eye(3)*8.0
-	print(lat0,latp)
-	m = Lattice(lat0).CenteredInLattice(mt)
-	print(m.coords)
+		# Optimize the tesselated system.
+		lat0 = (np.max(mt.coords)+0.5)*np.eye(3)
+		lat0[0,1] = 0.01
+		lat0[1,0] -= 0.01
+		lat0[0,2] = 0.01
+		lat0[2,0] -= 0.01
+		latp = np.eye(3)*8.0
+		print(lat0,latp)
+		m = Lattice(lat0).CenteredInLattice(mt)
+		print(m.coords)
+
+	s = MSet("water9")
+	s.ReadXYZ()
+	m = s.mols[0]
+	lat0 = np.array([[ 9.00516713, 0.075, -0.135], [-0.21, 9.65516713, 0.15 ],[-1.11, 0.75, 9.26016713]])
 	PF = PeriodicForce(m,lat0)
 	PF.BindForce(EnAndForce, 20.0)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
-	for i in range(20):
-		print("En0:", PF(m.coords)[0])
-		m.coords += (np.random.random((1,3))-0.5)*3.0
-		m.coords = PF.lattice.ModuloLattice(m.coords)
-		print("En:"+str(i), PF(m.coords)[0])
-		Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
+	if 0:
+		for i in range(20):
+			print("En0:", PF(m.coords)[0])
+			m.coords += (np.random.random((1,3))-0.5)*3.0
+			m.coords = PF.lattice.ModuloLattice(m.coords)
+			print("En:"+str(i), PF(m.coords)[0])
+			Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
+
 	# Try optimizing that....
-	PARAMS["OptMaxCycles"]=10
+	PARAMS["OptMaxCycles"]=20
 	POpt = PeriodicGeomOptimizer(PF)
 	mt = POpt.Opt(m)
+	PF.mol0.coords = mt.coords
 
-	PARAMS["MDAnnealT0"] = 60.0
-	PARAMS["MDAnnealSteps"] = 500
+	PARAMS["MDAnnealT0"] = 20.0
+	PARAMS["MDAnnealTF"] = 300.0
+	PARAMS["MDAnnealSteps"] = 1000
 	traj = PeriodicAnnealer(PF)
 	traj.Prop()
 
 	# finally start boxing it up
-	PARAMS["MDThermostat"]="Nose"
-	Box = PeriodicBoxingDynamics(PF, latp, "BoxingMD")
-	Box.Prop()
+	#PARAMS["MDThermostat"]="Nose"
+	#Box = PeriodicBoxingDynamics(PF, latp, "BoxingMD")
+	#Box.Prop()
 
 #TrainPrepare()
 #Train()

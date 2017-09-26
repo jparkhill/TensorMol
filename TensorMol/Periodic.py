@@ -285,9 +285,13 @@ class PeriodicForce:
 						ifsteppedoverall=True
 						print("LatStep: ",e,self.lattice.lattice)
 						Mol(z,x).WriteXYZfile("./results","LatOpt")
-		if (not ifsteppedoverall):
-			PARAMS["OptLatticeStep"] = PARAMS["OptLatticeStep"]/10.0
+		if (not ifsteppedoverall and PARAMS["OptLatticeStep"] > 0.001):
+			PARAMS["OptLatticeStep"] = PARAMS["OptLatticeStep"]/2.0
 		return xx
+	def Save(self,x_,name_ = "PMol"):
+		m=Mol(self.atoms,x_)
+		m.properties["Lattice"] = np.array_str(self.lattice.lattice.flatten())
+		m.WriteXYZfile("./results/",name_, wprop=True)
 	def BindForce(self, lf_, rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.
