@@ -64,3 +64,55 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		self.EnergyAndForce.Save(prev_m.coords,"FinalPeriodicOpt")
 		self.EnergyAndForce.mol0.coords = prev_m.coords.copy()
 		return prev_m
+
+	def OptToDensity(self, m, rho_target=1.0, filename="PdicOptLog",Debug=False):
+		"""
+		Optimize using An EnergyAndForce Function.
+		Squeeze the lattice gently such that the atoms achieve a target density.
+
+		Args:
+			m: A distorted molecule to optimize
+			rho_target: Target density (g/cm**3)
+		"""
+		# Sweeps one at a time
+		PARAMS["OptLatticeStep"] = 0.050
+		rmsdisp = 10.0
+		maxdisp = 10.0
+		rmsgrad = 10.0
+		maxgrad = 10.0
+		step=0
+		mol_hist = []
+		prev_m = Mol(m.atoms, m.coords)
+		print("Orig Coords", m.coords)
+		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		veloc=np.zeros(m.coords.shape)
+		old_veloc=np.zeros(m.coords.shape)
+		Energy = lambda x_: self.EnergyAndForce(x_)[0]
+		Density = self.EnergyAndForce.Density()
+		while (abs(Density-rho_target) > 0.001):
+			step = 0
+			Density = self.EnergyAndForce.Density()
+			fac = rho_target/Density
+			oldlat = self.EnergyAndForce.lattice.lattice.copy()
+			newlat = 0.85*oldlat + 0.15*(oldlat*pow(1.0/fac,1.0/3.))
+			m.coords = self.EnergyAndForce.AdjustLattice(m.coords,oldlat,newlat)
+			self.EnergyAndForce.ReLattice(newlat)
+			while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001 ):
+				prev_m = Mol(m.atoms, m.coords)
+				energy, frc = self.EnergyAndForce(m.coords)
+				frc = RemoveInvariantForce(m.coords, frc, m.atoms)
+				frc /= JOULEPERHARTREE
+				rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
+				m.coords = self.EnergyAndForce.lattice.ModuloLattice(LineSearch(Energy, m.coords, frc))
+				rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
+				print("step: ", step ," energy: ", energy," density: ", Density, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
+				mol_hist.append(prev_m)
+				prev_m.WriteXYZfile("./results/", filename)
+				Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename)
+				step+=1
+		# Checks stability in each cartesian direction.
+		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
+		print("Final Energy:", Energy(prev_m.coords))
+		self.EnergyAndForce.Save(prev_m.coords,"FinalPeriodicOpt")
+		self.EnergyAndForce.mol0.coords = prev_m.coords.copy()
+		return prev_m

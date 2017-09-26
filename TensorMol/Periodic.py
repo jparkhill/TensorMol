@@ -236,6 +236,13 @@ class PeriodicForce:
 	def ReLattice(self,lat_):
 		self.lattice = Lattice(lat_)
 		return
+	def Density(self):
+		"""
+		Returns the density in g/cm**3 of the bulk.
+		"""
+		m = np.array(map(lambda x: ATOMICMASSES[x-1], self.mol0.atoms))
+		latvol = np.linalg.det(self.lattice.lattice) # in A**3
+		return np.sum(m/0.000999977)/latvol*(pow(10.0,-24.0))*AVOCONST
 	def AdjustLattice(self, x_, lat0_, latp_):
 		"""
 		rescales the coordinates of m relative to previous lattice.
@@ -291,7 +298,7 @@ class PeriodicForce:
 	def Save(self,x_,name_ = "PMol"):
 		m=Mol(self.atoms,x_)
 		m.properties["Lattice"] = np.array_str(self.lattice.lattice.flatten())
-		m.WriteXYZfile("./results/",name_, wprop=True)
+		m.WriteXYZfile("./results/", name_, 'w', wprop=True)
 	def BindForce(self, lf_, rng_):
 		"""
 		Adds a local force to be computed when the PeriodicForce is called.

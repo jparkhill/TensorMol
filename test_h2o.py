@@ -236,7 +236,6 @@ def TrainPrepare():
 		#a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
 		#print(a.mols[100].properties)
                 a.Save()
-
 def Train():
 	if (0):
 		a = MSet("H2O_wb97xd_1to10")
@@ -816,7 +815,6 @@ def Eval():
 		md = IRTrajectory(EnAndForce, ChargeField, m, "water_10_IR", anneal.v)
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
-
 def BoxAndDensity():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.
@@ -879,7 +877,7 @@ def BoxAndDensity():
 		#print("EnAndForce: ", en,f)
 		return en[0], f[0]
 
-	if 0 :
+	if 0:
 		# opt the first water.
 		PARAMS["OptMaxCycles"]=60
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
@@ -887,7 +885,7 @@ def BoxAndDensity():
 		m = a.mols[-1]
 
 		# Tesselate that water to create a box
-		ntess = 3
+		ntess = 4
 		latv = 2.8*np.eye(3)
 		# Start with a water in a ten angstrom box.
 		lat = Lattice(latv)
@@ -896,15 +894,16 @@ def BoxAndDensity():
 		nreal = mt.NAtoms()
 		mt.Distort(0.01)
 
-		def EnAndForceAPeriodic(x_):
-			"""
-			This is the primitive form of force routine required by PeriodicForce.
-			"""
-			mtmp = Mol(mt.atoms,x_)
-			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
-			#print("EnAndForceAPeriodic: ", en,f)
-			return en[0], f[0]
+	def EnAndForceAPeriodic(x_):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(mt.atoms,x_)
+		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
+		#print("EnAndForceAPeriodic: ", en,f)
+		return en[0], f[0]
 
+	if 0:
 		PARAMS["OptMaxCycles"]=30
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
 		mt = Opt.Opt(mt,"UCopt")
@@ -928,11 +927,11 @@ def BoxAndDensity():
 		m = Lattice(lat0).CenteredInLattice(mt)
 		print(m.coords)
 
-	s = MSet("water9")
+	s = MSet("water64")
 	s.ReadXYZ()
 	m = s.mols[0]
-	lat0 = np.array([[ 9.00516713, 0.075, -0.135], [-0.21, 9.65516713, 0.15 ],[-1.11, 0.75, 9.26016713]])
-	PF = PeriodicForce(m,lat0)
+
+	PF = PeriodicForce(m,m.properties["Lattice"])
 	PF.BindForce(EnAndForce, 20.0)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
@@ -945,10 +944,13 @@ def BoxAndDensity():
 			Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
 
 	# Try optimizing that....
-	PARAMS["OptMaxCycles"]=20
+	PARAMS["OptMaxCycles"]=10
 	POpt = PeriodicGeomOptimizer(PF)
-	mt = POpt.Opt(m)
+	m = POpt.OptToDensity(m,1.0)
+
 	PF.mol0.coords = mt.coords
+	PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
+	PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
 
 	PARAMS["MDAnnealT0"] = 20.0
 	PARAMS["MDAnnealTF"] = 300.0
