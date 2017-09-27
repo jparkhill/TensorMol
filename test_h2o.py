@@ -939,17 +939,18 @@ def BoxAndDensity():
 
 	# Test that the energy is invariant to translations of atoms through the cell.
 	if 0:
-		for i in range(20):
+		for i in range(10):
 			print("En0:", PF(m.coords)[0])
 			m.coords += (np.random.random((1,3))-0.5)*3.0
 			m.coords = PF.lattice.ModuloLattice(m.coords)
 			print("En:"+str(i), PF(m.coords)[0])
-			Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
-	if 0:
+			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
+	if 1:
 		# Try optimizing that....
-		PARAMS["OptMaxCycles"]=10
+		PARAMS["OptMaxCycles"]=30
 		POpt = PeriodicGeomOptimizer(PF)
-		m = POpt.OptToDensity(m,1.0)
+		#m = POpt.OptToDensity(m,1.0)
+		m = POpt.Opt(m)
 		PF.mol0.coords = m.coords
 		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)

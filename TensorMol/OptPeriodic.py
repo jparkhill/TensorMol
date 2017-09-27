@@ -40,27 +40,32 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Coords", m.coords)
-		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
-		veloc=np.zeros(m.coords.shape)
-		old_veloc=np.zeros(m.coords.shape)
-		Energy = lambda x_: self.EnergyAndForce(x_)[0]
+		def WrappedEForce(x_,DoForce=True):
+			if (DoForce):
+				energy, frc = self.EnergyAndForce(x_, DoForce)
+				frc = RemoveInvariantForce(x_, frc, m.atoms)
+				frc /= JOULEPERHARTREE
+				return energy, frc
+			else:
+				energy = self.EnergyAndForce(x_,False)
+				return energy
+		CG = ConjGradient(WrappedEForce, m.coords)
+		Density = self.EnergyAndForce.Density()
 		while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001 ):
-			m.coords = self.EnergyAndForce.LatticeStep(m.coords)
 			prev_m = Mol(m.atoms, m.coords)
-			energy, frc = self.EnergyAndForce(m.coords)
-			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
-			frc /= JOULEPERHARTREE
-			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
-			m.coords = self.EnergyAndForce.lattice.ModuloLattice(LineSearch(Energy, m.coords, frc))
-			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
-			print("step: ", step ," energy: ", energy, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
+			m.coords, energy, frc = CG(m.coords)
+			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/m.coords.shape[0]
+			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/m.coords.shape[0]
+			m.coords = self.EnergyAndForce.lattice.ModuloLattice(m.coords)
+			print("step: ", step ," energy: ", energy," density: ", Density, " rmsgrad ", rmsgrad, " rmsdisp ", rmsdisp)
 			mol_hist.append(prev_m)
-			prev_m.WriteXYZfile("./results/", filename)
-			Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename)
+			prev_m.properties['Lattice']=self.EnergyAndForce.lattice.lattice.copy()
+			prev_m.WriteXYZfile("./results/", filename,'a',True)
+			Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename,'a',wprop=True)
 			step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-		print("Final Energy:", Energy(prev_m.coords))
+		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
 		self.EnergyAndForce.Save(prev_m.coords,"FinalPeriodicOpt")
 		self.EnergyAndForce.mol0.coords = prev_m.coords.copy()
 		return prev_m
@@ -119,7 +124,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 				mol_hist.append(prev_m)
 				prev_m.properties['Lattice']=self.EnergyAndForce.lattice.lattice.copy()
 				prev_m.WriteXYZfile("./results/", filename,'a',True)
-				Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename)
+				Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename,'a',wprop=True)
 				step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
