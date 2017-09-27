@@ -21,7 +21,6 @@ class Mol:
 		self.ecoords = None # equilibrium coordinates.
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
 		return
-
 	def ToFragSet(self,frags):
 		"""
 		Divides this molecule into a set of molecules
@@ -36,25 +35,18 @@ class Mol:
 		for frag in frags:
 			mset.mols.append(Mol(self.atoms[frags],self.coords[frags]))
 		return mset
-
 	def AtomTypes(self):
 		return np.unique(self.atoms)
-
 	def Num_of_Heavy_Atom(self):
 		return len([1 for i in self.atoms if i!=1])
-
 	def NEles(self):
 		return len(self.AtomTypes())
-
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
-
 	def NAtoms(self):
 		return self.atoms.shape[0]
-
 	def NumOfAtomsE(self, e):
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
-
 	def CalculateAtomization(self):
 		if ("roomT_H" in self.properties):
 			AE = self.properties["roomT_H"]
@@ -71,7 +63,6 @@ class Mol:
 		else:
 			raise Exception("Missing data... ")
 		return
-
 	def Calculate_vdw(self):
 		c = 0.38088
 		self.vdw = 0.0
@@ -83,7 +74,6 @@ class Mol:
 				atom2 = self.atoms[j]
 				self.properties["vdw"] += -s6*c*((C6_coff[atom1]*C6_coff[atom2])**0.5)/(self.DistMatrix[i][j])**6 * (1.0/(1.0+6.0*(self.DistMatrix[i][j]/(atomic_vdw_radius[atom1]+atomic_vdw_radius[atom2]))**-12))
 		return
-
 	def Rotate(self, axis, ang, origin=np.array([0.0, 0.0, 0.0])):
 		"""
 		Rotate atomic coordinates and forces if present.
@@ -107,7 +97,6 @@ class Mol:
 				new_forces[i] = new_endpoint - self.coords[i]
 			self.properties["forces"] = new_forces
 		self.coords += origin
-
 	def RotateRandomUniform(self, randnums=None, origin=np.array([0.0, 0.0, 0.0])):
 		"""
 		Rotate atomic coordinates and forces if present.
@@ -133,17 +122,14 @@ class Mol:
 			new_forces = new_endpoint - self.coords
 			self.properties["mmff94forces"] = new_forces
 		self.coords += origin
-
 	def Transform(self,ltransf,center=np.array([0.0,0.0,0.0])):
 		crds=np.copy(self.coords)
 		for i in range(len(self.coords)):
 			self.coords[i] = np.dot(ltransf,crds[i]-center) + center
-
 	def AtomsWithin(self,rad, pt):
 		# Returns indices of atoms within radius of point.
 		dists = map(lambda x: np.linalg.norm(x-pt),self.coords)
 		return [i for i in range(self.NAtoms()) if dists[i]<rad]
-
 	def Distort(self,disp=0.38,movechance=.20):
 		''' Randomly distort my coords, but save eq. coords first '''
 		self.BuildDistanceMatrix()
@@ -168,7 +154,6 @@ class Mol:
 		for i in range(0, self.atoms.shape[0]):
 			if (random.uniform(0, 1)<movechance):
 				self.atoms[i] = random.random_integers(1,PARAMS["MAX_ATOMIC_NUMBER"])
-
 	def read_xyz_with_properties(self, path, properties, center=True):
 		try:
 			f=open(path,"r")
@@ -213,7 +198,6 @@ class Mol:
 			print("Read Failed.", Ex)
 			raise Ex
 		return
-
 	def ReadGDB9(self,path,filename):
 		try:
 			f=open(path,"r")
@@ -249,16 +233,46 @@ class Mol:
 		if (("energy" in self.properties) or ("roomT_H" in self.properties)):
 			self.CalculateAtomization()
 		return
-
 	def Clean(self):
 		self.DistMatrix = None
-
+	def ParseProperties(self,s_):
+		"""
+		The format of a property string is
+		Comment: PropertyName1 Array ;PropertyName2 Array;
+		The Property names and contents cannot contain ; :
+		"""
+		t = s_.split("Comment:")
+		t2 = t[1].split(";;;")
+		tore = {}
+		for prop in t2:
+			s = prop.split()
+			if (len(s)<1):
+				continue
+			elif (s[0]=='energy'):
+				tore["energy"] = float(s[1])
+			elif (s[0]=='Lattice'):
+				tore["Lattice"] = np.fromstring(s[1]).reshape((3,3))
+		return tore
+	def PropertyString(self):
+		tore = ""
+		for prop in self.properties.keys():
+			try:
+				if (prop == "energy"):
+					tore = tore +";;;"+prop+" "+str(self.properties["energy"])
+				elif (prop == "Lattice"):
+					tore = tore +";;;"+prop+" "+(self.properties[prop]).tostring()
+				else:
+					tore = tore +";;;"+prop+" "+str(self.properties[prop])
+			except Exception as Ex:
+				# print "Problem with energy", string
+				pass
+		return tore
 	def FromXYZString(self,string):
 		lines = string.split("\n")
 		natoms=int(lines[0])
 		if (len(lines[1].split())>1):
 			try:
-				self.properties["energy"]=float(lines[1].split()[1])
+				self.properties = self.ParseProperties(lines[1])
 			except Exception as Ex:
 				# print "Problem with energy", string
 				pass
@@ -284,8 +298,7 @@ class Mol:
 		if ("energy" in self.properties):
 			self.CalculateAtomization()
 		return
-
-	def WriteXYZfile(self, fpath=".", fname="mol", mode="a"):
+	def WriteXYZfile(self, fpath=".", fname="mol", mode="a", wprop = False):
 		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".xyz")):
 			try:
 				os.makedirs(os.path.dirname(fpath+"/"+fname+".xyz"))
@@ -294,12 +307,13 @@ class Mol:
 					raise
 		with open(fpath+"/"+fname+".xyz", mode) as f:
 			natom = self.atoms.shape[0]
-			f.write(str(natom)+"\nComment: \n")
-			#f.write(str(natom)+"\nComment: "+str(self.properties)+"\n")
+			if (wprop):
+				f.write(str(natom)+"\nComment: "+self.PropertyString()+"\n")
+			else:
+				f.write(str(natom)+"\nComment: \n")
 			for i in range (0, natom):
 				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
-
 	def WriteSmiles(self, fpath=".", fname="gdb9_smiles", mode = "a"):
 		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".dat")):
 			try:
@@ -311,7 +325,6 @@ class Mol:
 			f.write(self.name+ "  "+ self.smiles+"\n")
 			f.close()
 		return
-
 	def XYZtoGridIndex(self, xyz, ngrids = 250,padding = 2.0):
 		Max = (self.coords).max() + padding
 		Min = (self.coords).min() - padding

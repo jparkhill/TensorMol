@@ -85,14 +85,13 @@ class TMParams(dict):
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
 		self["OptMaxBFGS"] = 7
+		self["OptLatticeStep"] = 0.050
 		self["GSSearchAlpha"] = 0.001
 		self["NebNumBeads"] = 10
 		self["NebK"] = 0.01
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
-		# Periodic Parameters, only cubic supported.
-		self["CellWidth"] = 15.0 # Angstrom.
 		# MD Parameters
 		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.2 # In fs.
@@ -118,6 +117,7 @@ class TMParams(dict):
 		# parameters of electrostatic embedding
 		self["AddEcc"] = True
 		self["Poly_Width"] = 4.6
+		self["Elu_Width"] = 4.6
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
@@ -127,7 +127,7 @@ class TMParams(dict):
 		self["EECutoffOn"] = 4.4 # switch on between 0 and 1/r occurs at Angstroms.
 		self["EECutoffOff"] = 15.0 # switch off between 0 and 1/r occurs at Angstroms.
 		self["Erf_Width"] = 0.2
-		self["DSFAlpha"] = 0.15
+		self["DSFAlpha"] = 0.18
 		#paths
 		self["sets_dir"] = "./datasets/"
 		self["results_dir"] = "./results/"
@@ -163,7 +163,7 @@ def TMLogger(path_):
 	# Check path and make if it doesn't exist...
 	if not os.path.exists(path_):
 		os.makedirs(path_)
-	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%T_%Y")+'.log')
+	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%H.%M.%S_%Y")+'.log')
 	fh.setLevel(logging.DEBUG)
 	ch = logging.StreamHandler()
 	ch.setLevel(logging.INFO)
