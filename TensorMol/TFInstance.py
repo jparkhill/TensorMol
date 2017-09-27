@@ -799,9 +799,9 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
 			gaussian_zero_barrier = -100 * tf.log(self.gaussian_params + 0.7)
-			zero_barrier = tf.where(tf.greater(gaussian_zero_barrier, 0.0), gaussian_zero_barrier, tf.zeros_like(gaussian_zero_barrier))
-			sigma_max_barrier = -100 * tf.log(1.2 - self.gaussian_params[:,1])
- 			r_nought_max_barrier = -100 * tf.log(6.0 - self.gaussian_params[:,0])
+			zero_barrier = tf.reduce_sum(tf.where(tf.greater(gaussian_zero_barrier, 0.0), gaussian_zero_barrier, tf.zeros_like(gaussian_zero_barrier)))
+			sigma_max_barrier = tf.reduce_sum(-100 * tf.log(1.2 - self.gaussian_params[:,1]))
+ 			r_nought_max_barrier = tf.reduce_sum(-100 * tf.log(6.0 - self.gaussian_params[:,0]))
 			# sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
 			# r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
 			gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
