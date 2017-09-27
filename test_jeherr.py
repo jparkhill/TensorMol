@@ -334,8 +334,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	print "Number of Mols: ", len(a.mols)
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
-	manager=TFManage("",tset,False,"fc_sqdiff_GauSH_direct")
-	manager.TrainElement(7)
+	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
 
 def TestTFSym():
 	t1 = time.time()
