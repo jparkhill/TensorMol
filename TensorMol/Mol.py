@@ -241,14 +241,14 @@ class Mol:
 		Comment: PropertyName1 Array ;PropertyName2 Array;
 		The Property names and contents cannot contain ; :
 		"""
-		t = s_.split(":")
-		t2 = t[1].split(";")
+		t = s_.split("Comment:")
+		t2 = t[1].split(";;;")
 		tore = {}
 		for prop in t2:
 			s = prop.split()
 			if (len(s)<1):
 				continue
-			if (s[0]=='energy'):
+			elif (s[0]=='energy'):
 				tore["energy"] = float(s[1])
 			elif (s[0]=='Lattice'):
 				tore["Lattice"] = np.fromstring(s[1]).reshape((3,3))
@@ -258,11 +258,11 @@ class Mol:
 		for prop in self.properties.keys():
 			try:
 				if (prop == "energy"):
-					tore = tore +";"+prop+" "+str(self.properties["energy"])
+					tore = tore +";;;"+prop+" "+str(self.properties["energy"])
 				elif (prop == "Lattice"):
-					tore = tore +";"+prop+" "+(self.properties[prop]).tostring()
+					tore = tore +";;;"+prop+" "+(self.properties[prop]).tostring()
 				else:
-					tore = tore +";"+prop+" "+str(self.properties[prop])
+					tore = tore +";;;"+prop+" "+str(self.properties[prop])
 			except Exception as Ex:
 				# print "Problem with energy", string
 				pass
