@@ -790,7 +790,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
-			self.embedding, self.labels, _, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			self.embedding, self.labels, _, self.min_eigenval = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
@@ -800,14 +800,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
 			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1), tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
 			truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
-			# gaussian_zero_barrier = -1000 * tf.log(self.gaussian_params + 0.9)
-			# r_nought_max_barrier = -1000 * tf.log(6.5 - self.gaussian_params[:,0])
-			# sigma_max_barrier = -1000 * tf.log(1.75 - self.gaussian_params[:,1])
-			# zero_barrier = tf.reduce_sum(tf.where(tf.greater(gaussian_zero_barrier, 0.0), gaussian_zero_barrier, tf.zeros_like(gaussian_zero_barrier)))
-			# sigma_barrier = tf.reduce_sum(tf.where(tf.greater(r_nought_max_barrier, 0.0), r_nought_max_barrier, tf.zeros_like(r_nought_max_barrier)))
- 			# r_nought_barrier = tf.reduce_sum(tf.where(tf.greater(sigma_max_barrier, 0.0), sigma_max_barrier, tf.zeros_like(sigma_max_barrier)))
-			gaussian_overlap_constraint = tf.square(0.0001 / min_eigenvalue)
-			loss_and_constraint = self.total_loss + truncated_barrier_function + gaussian_overlap_constraint
+			self.gaussian_overlap_constraint = tf.square(0.001 / self.min_eigenval)
+			loss_and_constraint = self.total_loss + truncated_barrier_function + self.gaussian_overlap_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -953,9 +947,10 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
 			else:
-				_, total_loss_value, loss_value, n_atoms_batch = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch], feed_dict=feed_dict)
+				_, total_loss_value, loss_value, n_atoms_batch, overlap, eigval = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_overlap_constraint, self.min_eigenval], feed_dict=feed_dict)
 			train_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
+			print(total_loss_value, overlap, eigval)
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, n_atoms_epoch, duration)
 		return
