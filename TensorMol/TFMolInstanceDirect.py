@@ -4133,7 +4133,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_e1e2_pl] + [self.mil_j_pl]  + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl], batch_data)}
 		return feed_dict
 
-	def evaluate_periodic(self, batch_data, nreal):
+	def evaluate_periodic(self, batch_data, nreal,DoForce = True):
 		"""
 		Evaluate the energy, atom energies, and IfGrad = True the gradients
 		of this Direct Behler-Parinello graph.
@@ -4155,17 +4155,22 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.EvalPrepare_Periodic()
 		t0 = time.time()
 		feed_dict=self.fill_feed_dict_periodic(batch_data+[PARAMS["AddEcc"]])
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, gradient_bp, gradient_cc, scatter_sym = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.gradient_bp, self.gradient_cc, self.Scatter_Sym], feed_dict=feed_dict)
-		print ("atom_charge:", atom_charge, " Etotal:", Etotal, " Ebp:", Ebp, " Ecc:", Ecc, " Evdw:", Evdw)
-		#print ("gradient_bp:", gradient_bp, "nzz:", np.count_nonzero(gradient_bp))
-		#print ("gradient_cc:", gradient_cc, "nzz:", np.count_nonzero(gradient_cc), "shape:", gradient_cc[0].shape)
-		#print ("Scatter_Sym:", Scatter_Sym[0][0])
-		#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-		#chrome_trace = fetched_timeline.generate_chrome_trace_format()
-		#with open('timeline_evalutaion.json', 'w') as f:
-		#	f.write(chrome_trace)
-		#print ("evaluation time:", time.time() - t0)
-		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
+		if (DoForce):
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, gradient_bp, gradient_cc, scatter_sym = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.gradient_bp, self.gradient_cc, self.Scatter_Sym], feed_dict=feed_dict)
+			print ("atom_charge:", atom_charge, " Etotal:", Etotal, " Ebp:", Ebp, " Ecc:", Ecc, " Evdw:", Evdw)
+			#print ("gradient_bp:", gradient_bp, "nzz:", np.count_nonzero(gradient_bp))
+			#print ("gradient_cc:", gradient_cc, "nzz:", np.count_nonzero(gradient_cc), "shape:", gradient_cc[0].shape)
+			#print ("Scatter_Sym:", Scatter_Sym[0][0])
+			#fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+			#chrome_trace = fetched_timeline.generate_chrome_trace_format()
+			#with open('timeline_evalutaion.json', 'w') as f:
+			#	f.write(chrome_trace)
+			#print ("evaluation time:", time.time() - t0)
+			return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
+		else:
+			Etotal = self.sess.run(self.Etotal, feed_dict=feed_dict)
+			return Etotal
+
 
 	def EvalPrepare_Periodic(self,  continue_training =False):
 		"""

@@ -261,6 +261,8 @@ class Mol:
 					tore = tore +";"+prop+" "+str(self.properties["energy"])
 				elif (prop == "Lattice"):
 					tore = tore +";"+prop+" "+(self.properties[prop]).tostring()
+				else:
+					tore = tore +";"+prop+" "+str(self.properties[prop])
 			except Exception as Ex:
 				# print "Problem with energy", string
 				pass
