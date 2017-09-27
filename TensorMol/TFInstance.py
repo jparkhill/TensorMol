@@ -798,7 +798,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.output = (self.norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, 6.5 - self.gaussian_params[:,0], 1.75 - self.gaussian_params[:,1]]))
+			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, 6.5 - self.gaussian_params[:,0], 1.75 - self.gaussian_params[:,1]], axis=0))
 			truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
 			# gaussian_zero_barrier = -1000 * tf.log(self.gaussian_params + 0.9)
 			# r_nought_max_barrier = -1000 * tf.log(6.5 - self.gaussian_params[:,0])
