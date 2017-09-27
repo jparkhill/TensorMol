@@ -798,7 +798,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.output = (self.norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-			gaussian_zero_barrier = -1000 * tf.log(self.gaussian_params + 0.7)
+			gaussian_zero_barrier = -1000 * tf.log(self.gaussian_params + 0.9)
 			r_nought_max_barrier = -1000 * tf.log(6.5 - self.gaussian_params[:,0])
 			sigma_max_barrier = -1000 * tf.log(1.75 - self.gaussian_params[:,1])
 			zero_barrier = tf.reduce_sum(tf.where(tf.greater(gaussian_zero_barrier, 0.0), gaussian_zero_barrier, tf.zeros_like(gaussian_zero_barrier)))
@@ -806,7 +806,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
  			r_nought_barrier = tf.reduce_sum(tf.where(tf.greater(sigma_max_barrier, 0.0), sigma_max_barrier, tf.zeros_like(sigma_max_barrier)))
 			# sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
 			# r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
-			gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
+			gaussian_overlap_constraint = tf.square(0.0001 / min_eigenvalue)
 			loss_and_constraint = self.total_loss + zero_barrier + sigma_barrier + r_nought_barrier + gaussian_overlap_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
