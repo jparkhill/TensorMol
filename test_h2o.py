@@ -868,14 +868,17 @@ def BoxAndDensity():
 		#print("EnAndForceAPeriodic: ", en,f)
 		return en[0], f[0]
 
-	def EnAndForce(z_, x_, nreal_):
+	def EnAndForce(z_, x_, nreal_, DoForce = True):
 		"""
 		This is the primitive form of force routine required by PeriodicForce.
 		"""
 		mtmp = Mol(z_,x_)
-		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_)
-		#print("EnAndForce: ", en,f)
-		return en[0], f[0]
+		if (DoForce):
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_,True)
+			return en[0], f[0]
+		else:
+			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
+			return en[0]
 
 	if 0:
 		# opt the first water.
@@ -947,8 +950,7 @@ def BoxAndDensity():
 	PARAMS["OptMaxCycles"]=10
 	POpt = PeriodicGeomOptimizer(PF)
 	m = POpt.OptToDensity(m,1.0)
-
-	PF.mol0.coords = mt.coords
+	PF.mol0.coords = m.coords
 	PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 	PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
 
