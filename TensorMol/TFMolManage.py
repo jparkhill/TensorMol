@@ -105,6 +105,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_BP_Dipole_2_Direct(self.TData)
 		elif (self.NetType == "LJForce"):
 			self.Instances = MolInstance_LJForce(self.TData)
+		elif (self.NetType == "pairs_triples"):
+			self.Instances = MolPairsTriples(self.TData)
 		else:
 			raise Exception("Unknown Network Type!")
 		if (PARAMS["Profiling"]>0):
@@ -1250,59 +1252,7 @@ class TFMolManage(TFManage):
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
 			return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
 
-	def EvalBPDirectEEPeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal_, HasVdw = False):
-		"""
-		The energy, force and dipole routine for BPs_EE
-		This one properly only embeds the energy for real atoms.
-		Kun:
-		We need to adjust how the graph is made so that only the real atoms have their BP and charge-charge
-		interactions evaluated.
-
-		Args:
-			mol: a molecule
-			Rr_cut: Cutoff for radial pairwise part of the embedding.
-			Ra_cut: Cutoff for the angular triples.
-			Ree_cut: Cutoff for the electrostatic embedding.
-			nreal_: number of non-image atoms. These are the first nreal_ atoms in mol.
-		"""
-		t0 = time.time()
-		mol_set=MSet()
-		mol_set.mols.append(mol)
-		nmols = len(mol_set.mols)
-		dummy_energy = np.zeros((nmols))
-		dummy_dipole = np.zeros((nmols, 3))
-		nreal = np.zeros((nmols))
-		print("NREAL NREAL NREAL", nreal_)
-		nreal[0] = nreal_
-		self.TData.MaxNAtoms = mol.NAtoms()
-		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
-		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
-		natom = np.zeros((nmols), dtype = np.int32)
-		for i, mol in enumerate(mol_set.mols):
-			xyzs[i][:mol.NAtoms()] = mol.coords
-			Zs[i][:mol.NAtoms()] = mol.atoms
-			natom[i] = mol.NAtoms()
-		t1 = time.time()
-		print("Garbage time", t1-t0)
-		NL = NeighborListSetWithImages(xyzs, natom, nreal,True, True, Zs, sort_=True)
-		t2 = time.time()
-		print("Garbage time1", t2-t1)
-		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
-		t3 = time.time()
-		print("BPNLbuild time", t3-t2)
-		NLEE = NeighborListSetWithImages(xyzs, natom, nreal, False, True,  None)
-		rad_eep = NLEE.buildPairs(Ree_cut)
-		t4 = time.time()
-		print("EENLbuild time", t4-t3)
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
-		t5 = time.time()
-		print("Inference time", t5-t4)
-		return Etotal[0], -JOULEPERHARTREE*((gradient[0])[0,:nreal_])
-
-#NL.buildPairsAndTriplesWithEleIndexPeriodic
-
-	def EvalBPDirectEEUpdateSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True):
+	def EvalBPDirectEEUpdateSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True, DoForce=True):
 		"""
 		The energy, force and dipole routine for BPs_EE.
 		"""
@@ -1324,11 +1274,12 @@ class TFMolManage(TFManage):
 		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexPeriodic(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
 		NLEE = NeighborListSetWithImages(xyzs, np.array([mol.NAtoms()]), np.array([nreal]), False, True,  Zs)
 		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(Ree_cut, self.Instances.eles_np)
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal)
-		#return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
-		return Etotal, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
-
-
+		if (DoForce):
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal)
+			return Etotal, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
+		else:
+			Etotal = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal, False)
+			return Etotal
 	def Prepare(self):
 		self.Load()
 		self.Instances= None # In order of the elements in TData

@@ -93,8 +93,6 @@ class TMParams(dict):
 		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
-		# Periodic Parameters, only cubic supported.
-		self["CellWidth"] = 15.0 # Angstrom.
 		# MD Parameters
 		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.2 # In fs.
@@ -166,7 +164,7 @@ def TMLogger(path_):
 	# Check path and make if it doesn't exist...
 	if not os.path.exists(path_):
 		os.makedirs(path_)
-	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%T_%Y")+'.log')
+	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%H.%M.%S_%Y")+'.log')
 	fh.setLevel(logging.DEBUG)
 	ch = logging.StreamHandler()
 	ch.setLevel(logging.INFO)

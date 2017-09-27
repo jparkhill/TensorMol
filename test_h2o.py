@@ -198,7 +198,7 @@ def TrainPrepare():
 			mol.properties['atomization'] = mol.properties['atomization']-mol.NAtoms()/3.0*avg_atomization
 			print ("mol.properties['atomization']:,mol.properties['atomization_old']", mol.properties['atomization'], mol.properties['atomization_old'])
 		a.Save()
-	
+
 
 	if (1):
 		WB97XDAtom={}
@@ -232,11 +232,10 @@ def TrainPrepare():
 				mol.properties['atomization'] = mol.properties['atomization_old'] - (mol.NAtoms()-5)/3*water_avg_atomization - ch4_min_atomization
 			else:
 				mol.properties['atomization'] = mol.properties['atomization_old'] - mol.NAtoms()/3*water_avg_atomization
-			print ("mol.properties['atomization']:", mol.properties['atomization']) 
+			print ("mol.properties['atomization']:", mol.properties['atomization'])
 		#a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
 		#print(a.mols[100].properties)
                 a.Save()
-
 def Train():
 	if (0):
 		a = MSet("H2O_wb97xd_1to10")
@@ -821,7 +820,7 @@ def Eval():
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
+		manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu",False,False)
 		m = a.mols[9]
 		print (m.coords)
 		def EnAndForce(x_):
@@ -968,7 +967,6 @@ def Eval():
 		md = IRTrajectory(EnAndForce, ChargeField, m, "water_10_IR", anneal.v)
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
-
 def BoxAndDensity():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.
@@ -985,11 +983,33 @@ def BoxAndDensity():
 	PARAMS["EECutoffOn"] = 0
 	PARAMS["Poly_Width"] = 4.6
 	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 101
+	PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+	PARAMS["test_freq"] = 1
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["GradScalar"] = 1.0/20.0
+	PARAMS["DipoleScaler"]=1.0
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	#PARAMS["Erf_Width"] = 1.0
+	#PARAMS["Poly_Width"] = 4.6
+	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	#PARAMS["AN1_r_Rc"] = 8.0
+	#PARAMS["AN1_num_r_Rs"] = 64
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["DSFAlpha"] = 0.18
+	PARAMS["AddEcc"] = True
+	PARAMS["learning_rate_dipole"] = 0.0001
+	PARAMS["learning_rate_energy"] = 0.00001
+	PARAMS["SwitchEpoch"] = 15
+
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	#manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
-			
-	manager =  TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False) 
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu",False,False)
 
 	def EnAndForceAPeriodic(x_):
 		"""
@@ -1000,29 +1020,34 @@ def BoxAndDensity():
 		#print("EnAndForceAPeriodic: ", en,f)
 		return en[0], f[0]
 
-	def EnAndForce(z_, x_, nreal_):
+	def EnAndForce(z_, x_, nreal_, DoForce = True):
 		"""
 		This is the primitive form of force routine required by PeriodicForce.
 		"""
 		mtmp = Mol(z_,x_)
-		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_)
-		#print("EnAndForce: ", en,f)
-		return en[0], f[0]
+		if (DoForce):
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_,True)
+			return en[0], f[0]
+		else:
+			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
+			return en[0]
 
-	# opt the first water.
-	PARAMS["OptMaxCycles"]=60
-	Opt = GeomOptimizer(EnAndForceAPeriodic)
-	a.mols[-1] = Opt.Opt(a.mols[-1])
-	m = a.mols[-1]
+	if 0:
+		# opt the first water.
+		PARAMS["OptMaxCycles"]=60
+		Opt = GeomOptimizer(EnAndForceAPeriodic)
+		a.mols[-1] = Opt.Opt(a.mols[-1])
+		m = a.mols[-1]
 
-	# Tesselate that water to create a box
-	ntess = 4
-	latv = 2.8*np.eye(3)
-	# Start with a water in a ten angstrom box.
-	lat = Lattice(latv)
-	mc = lat.CenteredInLattice(m)
-	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
-	nreal = mt.NAtoms()
+		# Tesselate that water to create a box
+		ntess = 4
+		latv = 2.8*np.eye(3)
+		# Start with a water in a ten angstrom box.
+		lat = Lattice(latv)
+		mc = lat.CenteredInLattice(m)
+		mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+		nreal = mt.NAtoms()
+		mt.Distort(0.01)
 
 	def EnAndForceAPeriodic(x_):
 		"""
@@ -1033,52 +1058,65 @@ def BoxAndDensity():
 		#print("EnAndForceAPeriodic: ", en,f)
 		return en[0], f[0]
 
-	PARAMS["OptMaxCycles"]=20
-	Opt = GeomOptimizer(EnAndForceAPeriodic)
-	mt = Opt.Opt(mt,"UCopt")
+	if 0:
+		PARAMS["OptMaxCycles"]=30
+		Opt = GeomOptimizer(EnAndForceAPeriodic)
+		mt = Opt.Opt(mt,"UCopt")
 
-	# Anneal the tesselation.
-	EnAndForceAPeriodic = lambda x_: EnAndForce(mt.atoms,x_,mt.NAtoms())
-	PARAMS["MDAnnealT0"] = 20.0
-	PARAMS["MDAnnealSteps"] = 200
-	aper = Annealer(EnAndForceAPeriodic,None,mt)
-	aper.Prop()
-	mt.coords = aper.Minx
+		# Anneal the tesselation.
+		EnAndForceAPeriodic = lambda x_: EnAndForce(mt.atoms,x_,mt.NAtoms())
+		PARAMS["MDAnnealT0"] = 20.0
+		PARAMS["MDAnnealSteps"] = 200
+		aper = Annealer(EnAndForceAPeriodic,None,mt)
+		aper.Prop()
+		mt.coords = aper.Minx
 
-	# Optimize the tesselated system.
-	lat0 = (np.max(mt.coords)+0.5)*np.eye(3)
-	lat0[0,1] = 0.01
-	lat0[1,0] -= 0.01
-	lat0[0,2] = 0.01
-	lat0[2,0] -= 0.01
-	latp = np.eye(3)*8.0
-	print(lat0,latp)
-	m = Lattice(lat0).CenteredInLattice(mt)
-	print(m.coords)
-	PF = PeriodicForce(m,lat0)
+		# Optimize the tesselated system.
+		lat0 = (np.max(mt.coords)+0.5)*np.eye(3)
+		lat0[0,1] = 0.01
+		lat0[1,0] -= 0.01
+		lat0[0,2] = 0.01
+		lat0[2,0] -= 0.01
+		latp = np.eye(3)*8.0
+		print(lat0,latp)
+		m = Lattice(lat0).CenteredInLattice(mt)
+		print(m.coords)
+
+	s = MSet("water64")
+	s.ReadXYZ()
+	m = s.mols[0]
+
+	PF = PeriodicForce(m,m.properties["Lattice"])
 	PF.BindForce(EnAndForce, 20.0)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
-	for i in range(20):
-		print("En0:", PF(m.coords)[0])
-		m.coords += (np.random.random((1,3))-0.5)*3.0
-		m.coords = PF.lattice.ModuloLattice(m.coords)
-		print("En:"+str(i), PF(m.coords)[0])
-		Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
-	# Try optimizing that....
-	PARAMS["OptMaxCycles"]=10
-	POpt = PeriodicGeomOptimizer(PF)
-	mt = POpt.Opt(m)
+	if 0:
+		for i in range(10):
+			print("En0:", PF(m.coords)[0])
+			m.coords += (np.random.random((1,3))-0.5)*3.0
+			m.coords = PF.lattice.ModuloLattice(m.coords)
+			print("En:"+str(i), PF(m.coords)[0])
+			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
+	if 1:
+		# Try optimizing that....
+		PARAMS["OptMaxCycles"]=30
+		POpt = PeriodicGeomOptimizer(PF)
+		#m = POpt.OptToDensity(m,1.0)
+		m = POpt.Opt(m)
+		PF.mol0.coords = m.coords
+		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
+		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
 
-	PARAMS["MDAnnealT0"] = 60.0
-	PARAMS["MDAnnealSteps"] = 500
-	traj = PeriodicAnnealer(PF)
+	PARAMS["MDAnnealT0"] = 20.0
+	PARAMS["MDAnnealTF"] = 300.0
+	PARAMS["MDAnnealSteps"] = 1000
+	traj = PeriodicAnnealer(PF,"PeriodicWarm")
 	traj.Prop()
 
-	# finally start boxing it up
-	PARAMS["MDThermostat"]="Nose"
-	Box = PeriodicBoxingDynamics(PF, latp, "BoxingMD")
-	Box.Prop()
+	# Finally do thermostatted MD.
+	PARAMS["MDTemp"] = 300.0
+	traj = PeriodicVelocityVerlet(PF,"PeriodicWaterMD")
+	traj.Prop()
 
 #TrainPrepare()
 Train()

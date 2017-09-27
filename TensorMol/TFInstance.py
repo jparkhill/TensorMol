@@ -206,6 +206,8 @@ class Instance:
 		self.PreparedFor = 0
 		self.summary_op = None
 		self.activation_function = None
+		self.options = None
+		self.run_metadata = None
 		return
 
 	def SaveAndClose(self):
@@ -283,11 +285,7 @@ class Instance:
 		"""
 		var = tf.Variable(tf.truncated_normal(var_shape, stddev=var_stddev, dtype=self.tf_prec), name=var_name)
 		if var_wd is not None:
-			try:
-				weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
-			except:
-				print("tf.mul() is deprecated in tensorflow 1.0 in favor of tf.multiply(). Please upgrade soon.")
-				weight_decay = tf.mul(tf.nn.l2_loss(var), var_wd, name='weight_loss')
+			weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
 			tf.add_to_collection('losses', weight_decay)
 		return var
 
@@ -792,7 +790,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
-			self.embedding, self.labels, _, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			self.embedding, self.labels, _, self.min_eigenval = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
@@ -800,10 +798,10 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.output = (self.norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-			sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
-			r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
-			gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
-			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint + gaussian_overlap_constraint
+			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1), tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
+			truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
+			self.gaussian_overlap_constraint = tf.square(0.001 / self.min_eigenval)
+			loss_and_constraint = self.total_loss + truncated_barrier_function + self.gaussian_overlap_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -830,18 +828,18 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			if i == 0:
 				with tf.name_scope('hidden1'):
 					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]],
-																var_stddev=1.0 / math.sqrt(float(self.inshape)), var_wd=0.00)
+																var_stddev = math.sqrt(2.0 / float(self.inshape)), var_wd=0.00)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 					layers.append(self.activation_function(tf.matmul(inputs, weights) + biases))
 			else:
 				with tf.name_scope('hidden'+str(i+1)):
 					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1],self.HiddenLayers[i]],
-																var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[i-1])), var_wd=0.00)
+																var_stddev = math.sqrt(2.0 / float(self.HiddenLayers[i-1])), var_wd=0.00)
 					biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
 					layers.append(self.activation_function(tf.matmul(layers[-1], weights) + biases))
 		with tf.name_scope('regression_linear'):
 			weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], self.outshape],
-														var_stddev=1.0 / math.sqrt(float(self.HiddenLayers[-1])), var_wd=None)
+														var_stddev = math.sqrt(2.0 / float(self.HiddenLayers[-1])), var_wd=None)
 			biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
 			outputs = tf.matmul(layers[-1], weights) + biases
 		tf.verify_tensor_all_finite(outputs,"Nan in output!!!")
@@ -975,7 +973,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		test_epoch_outputs = np.concatenate(test_epoch_outputs)
 		test_epoch_errors = test_epoch_labels - test_epoch_outputs
 		duration = time.time() - test_start_time
-		for i in range(20):
+		for i in xrange(20):
 			LOGGER.info("Label: %s  Output: %s", test_epoch_labels[i], test_epoch_outputs[i])
 		LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
 		LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
@@ -1030,8 +1028,8 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]), name="xyzs_pl")
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]), name="Zs_pl")
 			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]), name="labels_pl")
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
-			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
 			num_mols = tf.shape(self.xyzs_pl)[0]
 			element = tf.constant(self.element, dtype=tf.int32)
 			inmean = tf.constant(self.inmean, dtype=self.tf_prec)
@@ -1041,7 +1039,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			with tf.name_scope("Rotation"):
 				self.rotation_params = tf.stack([np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
 						np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
-						tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
+						tf.random_uniform([num_mols], minval=1.0e-6, maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
 				rotated_xyzs, rotation_matrix = TF_random_rotate(self.xyzs_pl, self.rotation_params, return_matrix=True)
 			with tf.name_scope("Embedding_Normalization"):
 				self.embedding, self.labels, mol_atom_indices, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs,
@@ -1057,11 +1055,10 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			self.output = (self.unrotated_norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.unrotated_norm_output, self.norm_labels)
-			self.rotation_constraint = 1000.0 * tf.reduce_sum(tf.abs(tf.gradients(self.output, self.rotation_params))) / tf.cast(self.n_atoms_batch, self.tf_prec)
-			sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
-			r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
-			gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
-			loss_and_constraint = self.total_loss + sigma_constraint + r_nought_constraint + gaussian_overlap_constraint + self.rotation_constraint
+			self.rotation_constraint = 20000 * tf.reduce_sum(tf.square(tf.gradients(self.output, self.rotation_params))) / tf.cast(self.n_atoms_batch, tf.float32)
+			# self.gaussian_constraint = tf.reduce_sum(0.0001 / self.gaussian_params) * self.total_loss
+			# self.gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
+			loss_and_constraint = self.total_loss
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -1113,6 +1110,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
 		train_loss, n_atoms_epoch = 0.0, 0.0
+		train_rotation_constraint = 0.0
 		for ministep in xrange(0, int(Ncase_train/self.batch_size)):
 			batch_data = self.TData.GetTrainBatch(self.batch_size) #advances the case pointer in TData...
 			feed_dict = self.fill_feed_dict(batch_data)
@@ -1124,10 +1122,13 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
 			else:
-				_, total_loss_value, loss_value, n_atoms_batch, rotation_params = self.sess.run([self.train_op, self.total_loss,
-						self.loss, self.n_atoms_batch, self.rotation_params], feed_dict=feed_dict)
+				_, total_loss_value, loss_value, n_atoms_batch, rotation_constraint = self.sess.run([self.train_op, self.total_loss,
+						self.loss, self.n_atoms_batch, self.rotation_constraint], feed_dict=feed_dict)
 			train_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
+			train_rotation_constraint += rotation_constraint
+			print(rotation_constraint)
+		print("Epoch rotation_constraint:", train_rotation_constraint / float(Ncase_train / self.batch_size))
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, n_atoms_epoch, duration)
 		return
@@ -1143,9 +1144,8 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		for ministep in xrange(0, int(Ncase_test/self.batch_size)):
 			batch_data=self.TData.GetTestBatch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
-			output, labels, total_loss_value, loss_value, n_atoms_batch, gaussian_params, atomic_embed_factors, rotation_constraint = self.sess.run([
-					self.output, self.labels, self.total_loss, self.loss, self.n_atoms_batch,
-					self.gaussian_params, self.atomic_embed_factors, self.rotation_constraint],  feed_dict=feed_dict)
+			output, labels, total_loss_value, loss_value, n_atoms_batch, rotation_constraint = self.sess.run([self.output,
+					self.labels, self.total_loss, self.loss, self.n_atoms_batch, self.rotation_constraint],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
 			test_rotation_constraint += rotation_constraint
@@ -1155,15 +1155,13 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		test_epoch_outputs = np.concatenate(test_epoch_outputs)
 		test_epoch_errors = test_epoch_labels - test_epoch_outputs
 		duration = time.time() - test_start_time
-		for i in range(20):
+		for i in [random.randint(0, self.batch_size) for j in xrange(20)]:
 			LOGGER.info("Label: %s  Output: %s", test_epoch_labels[i], test_epoch_outputs[i])
 		LOGGER.info("MAE: %f", np.mean(np.abs(test_epoch_errors)))
 		LOGGER.info("MSE: %f", np.mean(test_epoch_errors))
 		LOGGER.info("RMSE: %f", np.sqrt(np.mean(np.square(test_epoch_errors))))
 		LOGGER.info("Std. Dev.: %f", np.std(test_epoch_errors))
-		LOGGER.info("Force gradient of rotation: %s", rotation_constraint)
-		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
-		LOGGER.info("Atomic embedding factors: %s", atomic_embed_factors)
+		LOGGER.info("Force gradient of rotation: %s", test_rotation_constraint / (Ncase_test / self.batch_size))
 		self.print_testing(step, test_loss, n_atoms_epoch, duration)
 		return test_loss
 

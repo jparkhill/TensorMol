@@ -1,0 +1,2 @@
+model_checkpoint_path: "Mol_nicotine_aimd_rand_train_ANI1_Sym_Direct_RawBP_Grad_Linear-chk-400"
+all_model_checkpoint_paths: "Mol_nicotine_aimd_rand_train_ANI1_Sym_Direct_RawBP_Grad_Linear-chk-400"
