@@ -4863,11 +4863,12 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(MolInsta
 		return total_energy_with_vdw, bp_energy, vdw_energy, energy_vars, output
 
 	def loss_op(self, energy, energy_grads, dipole, Elabels, grads, Dlabels, natom):
-		energy_diff  = tf.multiply(tf.subtract(energy, Elabels,name="EnDiff"), natom)
+		maxatom=tf.cast(tf.shape(energy_grads)[2], self.tf_prec)
+		energy_diff  = tf.multiply(tf.subtract(energy, Elabels,name="EnDiff"), natom*maxatom)
 		energy_loss = tf.nn.l2_loss(energy_diff,name="EnL2")
-		grads_diff = tf.multiply(tf.subtract(energy_grads, grads,name="GradDiff"), tf.reshape(natom, [1, self.batch_size, 1, 1]))
+		grads_diff = tf.multiply(tf.subtract(energy_grads, grads,name="GradDiff"), tf.reshape(natom*maxatom, [1, self.batch_size, 1, 1]))
 		grads_loss = tf.nn.l2_loss(grads_diff,name="GradL2")
-		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels,name="DipoleDiff"), tf.reshape(natom,[self.batch_size,1]))
+		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels,name="DipoleDiff"), tf.reshape(natom*maxatom,[self.batch_size,1]))
 		dipole_loss = tf.nn.l2_loss(dipole_diff,name="DipL2")
 		#loss = tf.multiply(grads_loss, energy_loss)
 		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar),name="MulLoss")
@@ -4877,11 +4878,12 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(MolInsta
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
 
 	def loss_op_dipole(self, energy, energy_grads, dipole, Elabels, grads, Dlabels, natom):
-		energy_diff  = tf.multiply(tf.subtract(energy, Elabels), natom)
+		maxatom=tf.cast(tf.shape(energy_grads)[2], self.tf_prec)
+		energy_diff  = tf.multiply(tf.subtract(energy, Elabels), natom*maxatom)
 		energy_loss = tf.nn.l2_loss(energy_diff)
-		grads_diff = tf.multiply(tf.subtract(energy_grads, grads), tf.reshape(natom, [1, self.batch_size, 1, 1]))
+		grads_diff = tf.multiply(tf.subtract(energy_grads, grads), tf.reshape(natom*maxatom, [1, self.batch_size, 1, 1]))
 		grads_loss = tf.nn.l2_loss(grads_diff)
-		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels), tf.reshape(natom,[self.batch_size,1]))
+		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels), tf.reshape(natom*maxatom,[self.batch_size,1]))
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
 		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
@@ -4890,11 +4892,12 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(MolInsta
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
 
 	def loss_op_EandG(self, energy, energy_grads, dipole, Elabels, grads, Dlabels, natom):
-		energy_diff  = tf.multiply(tf.subtract(energy, Elabels), natom)
+		maxatom=tf.cast(tf.shape(energy_grads)[2], self.tf_prec)
+		energy_diff  = tf.multiply(tf.subtract(energy, Elabels), natom*maxatom)
 		energy_loss = tf.nn.l2_loss(energy_diff)
-		grads_diff = tf.multiply(tf.subtract(energy_grads, grads), tf.reshape(natom, [1, self.batch_size, 1, 1]))
+		grads_diff = tf.multiply(tf.subtract(energy_grads, grads), tf.reshape(natom*maxatom, [1, self.batch_size, 1, 1]))
 		grads_loss = tf.nn.l2_loss(grads_diff)
-		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels), tf.reshape(natom,[self.batch_size,1]))
+		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels), tf.reshape(natom*maxatom,[self.batch_size,1]))
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
 		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
