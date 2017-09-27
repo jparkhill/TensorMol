@@ -2690,8 +2690,8 @@ def TF_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False
 		new_xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor of randomly rotated molecules
 		new_labels (tf.float): NMol x MaxNAtoms x label shape tensor of randomly rotated learning targets
 	"""
-	r = tf.sqrt(rotation_params[:,2]+1.0e-26)
-	v = tf.stack([tf.sin(rotation_params[:,1]) * r, tf.cos(rotation_params[:,1]) * r, tf.sqrt(2.0 - rotation_params[:,2]+1.0e-26)], axis=-1)
+	r = tf.sqrt(rotation_params[:,2])
+	v = tf.stack([tf.sin(rotation_params[:,1]) * r, tf.cos(rotation_params[:,1]) * r, tf.sqrt(2.0 - rotation_params[:,2])], axis=-1)
 	zero_tensor = tf.zeros_like(rotation_params[:,1])
 	R1 = tf.stack([tf.cos(rotation_params[:,0]), tf.sin(rotation_params[:,0]), zero_tensor], axis=-1)
 	R2 = tf.stack([-tf.sin(rotation_params[:,0]), tf.cos(rotation_params[:,0]), zero_tensor], axis=-1)

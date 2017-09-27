@@ -483,7 +483,7 @@ def train_forces_rotation_constraint(set_ = "SmallMols"):
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
 	manager=TFManage("",tset,False,"fc_sqdiff_GauSH_direct_constrain_rotation")
-	manager.TrainElement(6)
+	manager.TrainElement(1)
 
 def test_tf_neighbor():
 	np.set_printoptions(threshold=100000)
@@ -546,7 +546,7 @@ def train_energy_pairs_triples():
 	PARAMS["NeuronType"] = "relu"
 	# PARAMS["tf_prec"] = "tf.float64"
 	# PARAMS["self.profiling"] = True
-	a=MSet("SmallMols_rand")
+	a=MSet("SmallMols")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
@@ -579,10 +579,10 @@ def train_energy_pairs_triples():
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
-# train_forces_rotation_constraint("SmallMols")
+train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 # test_tf_neighbor()
-train_energy_pairs_triples()
+# train_energy_pairs_triples()
 
 # a=MSet("chemspider_aimd_forcecut")
 # a.Load()
