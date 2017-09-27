@@ -790,7 +790,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
 			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
-			self.embedding, self.labels, _, min_eigenvalue = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			self.embedding, self.labels, _, self.min_eigenval = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
@@ -798,14 +798,10 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.output = (self.norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-			gaussian_zero_barrier = -100 * tf.log(self.gaussian_params + 0.7)
-			zero_barrier = tf.reduce_sum(tf.where(tf.greater(gaussian_zero_barrier, 0.0), gaussian_zero_barrier, tf.zeros_like(gaussian_zero_barrier)))
-			sigma_max_barrier = tf.reduce_sum(-100 * tf.log(1.2 - self.gaussian_params[:,1]))
- 			r_nought_max_barrier = tf.reduce_sum(-100 * tf.log(6.0 - self.gaussian_params[:,0]))
-			# sigma_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,1]) * self.total_loss
-			# r_nought_constraint = tf.reduce_sum(0.0001 / self.gaussian_params[:,0]) * self.total_loss
-			gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
-			loss_and_constraint = self.total_loss + zero_barrier + sigma_max_barrier + r_nought_max_barrier + gaussian_overlap_constraint
+			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1), tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
+			truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
+			self.gaussian_overlap_constraint = tf.square(0.001 / self.min_eigenval)
+			loss_and_constraint = self.total_loss + truncated_barrier_function + self.gaussian_overlap_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -1059,7 +1055,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			self.output = (self.unrotated_norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.unrotated_norm_output, self.norm_labels)
-			self.rotation_constraint = 2000 * tf.reduce_sum(tf.square(tf.gradients(self.output, self.rotation_params))) / tf.cast(self.n_atoms_batch, tf.float32)
+			self.rotation_constraint = 20000 * tf.reduce_sum(tf.square(tf.gradients(self.output, self.rotation_params))) / tf.cast(self.n_atoms_batch, tf.float32)
 			# self.gaussian_constraint = tf.reduce_sum(0.0001 / self.gaussian_params) * self.total_loss
 			# self.gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
 			loss_and_constraint = self.total_loss
