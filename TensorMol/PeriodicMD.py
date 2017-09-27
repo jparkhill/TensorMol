@@ -105,11 +105,11 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		return np.sum(self.m/0.000999977)/latvol*(pow(10.0,-24))*AVOCONST
 	def WriteTrajectory(self):
 		m=Mol(self.atoms,self.x)
-		m.properties["Lattice"]=np.array_str(self.PForce.lattice.lattice.flatten())
+		m.properties["Lattice"]=self.PForce.lattice.lattice.copy()
 		m.properties["Time"]=self.t
 		m.properties["KineticEnergy"]=self.KE
 		m.properties["PotEnergy"]=self.EPot
-		m.WriteXYZfile("./results/", "MDTrajectory"+self.name)
+		m.WriteXYZfile("./results/", "MDTrajectory"+self.name,'a',True)
 		return
 	def Prop(self):
 		"""
@@ -137,7 +137,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
 
 			step+=1
-			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Rho(g/cm**3): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE,self.Density(), Teff)
 			print(("per step cost:", time.time() -t ))
 		return
 
@@ -231,9 +231,8 @@ class PeriodicAnnealer(PeriodicVelocityVerlet):
 		self.v *= 0.0
 		self.AnnealT0 = PARAMS["MDAnnealT0"]
 		self.AnnealSteps = PARAMS["MDAnnealSteps"]
-		PARAMS["OptLatticeStep"] = 0.050
 		self.MinS = 0
-		self.MinE = 0.0
+		self.MinE = 99999999.0
 		self.Minx = None
 		self.AnnealThresh = AnnealThresh_
 		self.Tstat = PeriodicNoseThermostat(self.m,self.v)
@@ -256,10 +255,6 @@ class PeriodicAnnealer(PeriodicVelocityVerlet):
 			self.x , self.v, self.a, self.EPot = self.Tstat.step(self.PForce, self.a, self.x, self.v, self.m, self.dt)
 
 			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh and step>1):
-				oldlat = self.PForce.lattice.lattice.copy()
-				self.x = self.PForce.LatticeStep(self.x)
-				self.v = self.PForce.AdjustLattice(self.v,oldlat,self.PForce.lattice.lattice)
-				self.a = self.PForce.AdjustLattice(self.v,oldlat,self.PForce.lattice.lattice)
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
 				self.MinS = step
@@ -268,12 +263,6 @@ class PeriodicAnnealer(PeriodicVelocityVerlet):
 					self.AnnealT0 = self.Tstat.T+PARAMS["MDAnnealKickBack"]
 				print(self.x)
 				step=0
-
-			if (step%100==0):
-				oldlat = self.PForce.lattice.lattice.copy()
-				self.x = self.PForce.LatticeStep(self.x)
-				self.v = self.PForce.AdjustLattice(self.v,oldlat,self.PForce.lattice.lattice)
-				self.a = self.PForce.AdjustLattice(self.v,oldlat,self.PForce.lattice.lattice)
 
 			self.md_log[step,0] = self.t
 			self.md_log[step,4] = self.KE
