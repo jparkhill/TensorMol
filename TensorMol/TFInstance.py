@@ -947,10 +947,9 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 				with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
 					f.write(chrome_trace)
 			else:
-				_, total_loss_value, loss_value, n_atoms_batch, overlap, eigval = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch, self.gaussian_overlap_constraint, self.min_eigenval], feed_dict=feed_dict)
+				_, total_loss_value, loss_value, n_atoms_batch = self.sess.run([self.train_op, self.total_loss, self.loss, self.n_atoms_batch], feed_dict=feed_dict)
 			train_loss += total_loss_value
 			n_atoms_epoch += n_atoms_batch
-			print(total_loss_value, overlap, eigval)
 		duration = time.time() - start_time
 		self.print_training(step, train_loss, n_atoms_epoch, duration)
 		return
@@ -1056,7 +1055,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			self.output = (self.unrotated_norm_output * outstd) + outmean
 			self.n_atoms_batch = tf.shape(self.output)[0]
 			self.total_loss, self.loss = self.loss_op(self.unrotated_norm_output, self.norm_labels)
-			self.rotation_constraint = 2000 * tf.reduce_sum(tf.square(tf.gradients(self.output, self.rotation_params))) / tf.cast(self.n_atoms_batch, tf.float32)
+			self.rotation_constraint = 20000 * tf.reduce_sum(tf.square(tf.gradients(self.output, self.rotation_params))) / tf.cast(self.n_atoms_batch, tf.float32)
 			# self.gaussian_constraint = tf.reduce_sum(0.0001 / self.gaussian_params) * self.total_loss
 			# self.gaussian_overlap_constraint = tf.reduce_sum(0.0001 / min_eigenvalue) * self.total_loss
 			loss_and_constraint = self.total_loss
