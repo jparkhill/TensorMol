@@ -67,6 +67,7 @@ class TMParams(dict):
 		self["TestRatio"] = 0.2
 		self["Profiling"] = False
 		self["max_checkpoints"] = 1
+		self["KeepProb"] = 0.7
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
