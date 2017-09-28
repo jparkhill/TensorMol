@@ -473,7 +473,7 @@ def train_forces_rotation_constraint(set_ = "SmallMols"):
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["learning_rate"] = 0.00001
+	PARAMS["learning_rate"] = 0.0001
 	# PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(set_)
 	a.Load()
@@ -482,7 +482,7 @@ def train_forces_rotation_constraint(set_ = "SmallMols"):
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
 	manager=TFManage("",tset,False,"fc_sqdiff_GauSH_direct_constrain_rotation")
-	manager.TrainElement(1)
+	manager.TrainElement(7)
 
 def test_tf_neighbor():
 	np.set_printoptions(threshold=100000)
