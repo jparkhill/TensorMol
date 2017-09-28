@@ -68,6 +68,9 @@ class TMParams(dict):
 		self["Profiling"] = False
 		self["max_checkpoints"] = 1
 		self["KeepProb"] = 0.7
+		self["ConvFilter"] = [32, 64]
+		self["ConvKernelSize"] = [[8,1],[4,1]]
+		self["ConvStrides"] = [[8,1],[4,1]]
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
