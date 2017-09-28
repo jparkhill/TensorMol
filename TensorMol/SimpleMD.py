@@ -392,6 +392,41 @@ class IRTrajectory(VelocityVerlet):
 			PARAMS["MDFieldFreq"] = 1/1.2 # 700nm light is about 1/1.2 fs.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, f_)
+		#self.name = name_
+		#self.maxstep = PARAMS["MDMaxStep"]
+		#self.T = PARAMS["MDTemp"]
+		#self.dt = PARAMS["MDdt"]
+		#self.ForceFunction = f_
+		#self.EnergyAndForce = EandF_
+		#self.EPot0 = 0.0
+		#if (EandF_ != None):
+		#	self.EPot0 , self.f0 = self.EnergyAndForce(g0_.coords)
+		#self.EPot = self.EPot0
+		#self.t = 0.0
+		#self.KE = 0.0
+		#self.atoms = g0_.atoms.copy()
+		#self.m = np.array(map(lambda x: ATOMICMASSES[x-1], self.atoms))
+		#self.natoms = len(self.atoms)
+		#self.x = g0_.coords.copy()
+		#self.v = np.zeros(self.x.shape)
+		#self.a = np.zeros(self.x.shape)
+		#self.md_log = None
+		#if (PARAMS["MDV0"]=="Random"):
+		#	np.random.seed()   # reset random seed
+		#	self.v = np.random.randn(*self.x.shape)
+		#	Tstat = Thermostat(self.m, self.v) # Will rescale self.v appropriately.
+		#self.Tstat = None
+		#if (PARAMS["MDThermostat"]=="Rescaling"):
+		#	self.Tstat = Thermostat(self.m,self.v)
+		#elif (PARAMS["MDThermostat"]=="Nose"):
+		#	self.Tstat = NoseThermostat(self.m,self.v)
+		#elif (PARAMS["MDThermostat"]=="NosePerParticle"):
+		#	self.Tstat = NosePerParticleThermostat(self.m,self.v)
+		#elif (PARAMS["MDThermostat"]=="NoseHooverChain"):
+		#	self.Tstat = NoseChainThermostat(self.m, self.v)
+		#else:
+		#	print("Unthermostated Velocity Verlet.")
+
 		if (v0_ is not None):
 			self.v = v0_.copy()
 		self.EField = np.zeros(3)
