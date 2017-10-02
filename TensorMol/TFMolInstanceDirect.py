@@ -2364,6 +2364,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE"
 		self.GradScalar = PARAMS["GradScalar"]
+		self.EnergyScalar = PARAMS["EnergyScalar"]
 		self.DipoleScalar = PARAMS["DipoleScalar"]
 		self.Ree_on  = PARAMS["EECutoffOn"]
 		self.Ree_off  = PARAMS["EECutoffOff"]
@@ -2373,6 +2374,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.Training_Traget = "Dipole"
+		self.suffix = PARAMS["NetNameSuffix"]
 		self.SetANI1Param()
 		self.run_metadata = None
 
@@ -4871,7 +4873,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(MolInsta
 		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels,name="DipoleDiff"), tf.reshape(natom*maxatom,[self.batch_size,1]))
 		dipole_loss = tf.nn.l2_loss(dipole_diff,name="DipL2")
 		#loss = tf.multiply(grads_loss, energy_loss)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar),name="MulLoss")
+		EandG_loss = tf.add(tf.multiply(energy_loss, self.EnergyScalar), tf.multiply(grads_loss, self.GradScalar),name="MulLoss")
 		loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScalar))
 		#loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
@@ -4886,7 +4888,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(MolInsta
 		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels), tf.reshape(natom*maxatom,[self.batch_size,1]))
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
+		EandG_loss = tf.add(tf.multiply(energy_loss, self.EnergyScalar), tf.multiply(grads_loss, self.GradScalar))
 		loss = tf.identity(dipole_loss)
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss, energy_loss, grads_loss, dipole_loss
@@ -4900,7 +4902,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(MolInsta
 		dipole_diff = tf.multiply(tf.subtract(dipole, Dlabels), tf.reshape(natom*maxatom,[self.batch_size,1]))
 		dipole_loss = tf.nn.l2_loss(dipole_diff)
 		#loss = tf.multiply(grads_loss, energy_loss)
-		EandG_loss = tf.add(energy_loss, tf.multiply(grads_loss, self.GradScalar))
+		EandG_loss = tf.add(tf.multiply(energy_loss, self.EnergyScalar), tf.multiply(grads_loss, self.GradScalar))
 		#loss = tf.add(EandG_loss, tf.multiply(dipole_loss, self.DipoleScalar))
 		loss = tf.identity(EandG_loss)
 		#loss = tf.identity(energy_loss)
@@ -4979,9 +4981,11 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		"""
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout"
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
 		self.train_dir = './networks/'+self.name
-		self.keep_prob = PARAMS["KeepProb"] 
+		self.keep_prob = np.asarray(PARAMS["KeepProb"])
+		self.nlayer = len(PARAMS["KeepProb"]) - 1
+		self.monitor_mset =  PARAMS["MonitorSet"]
 
 	def Clean(self):
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize.Clean(self)
@@ -5007,7 +5011,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 			self.mil_jk_pl = tf.placeholder(tf.int64, shape=tuple([None,4]))
 			self.Reep_pl=tf.placeholder(tf.int64, shape=tuple([None,3]),name="RadialElectros")
 			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			self.keep_prob_pl =  tf.placeholder(self.tf_prec, shape=())
+			self.keep_prob_pl =  tf.placeholder(self.tf_prec, shape=tuple([self.nlayer+1]))
+			#self.keep_prob_pl =  tf.placeholder(self.tf_prec, shape=())
 			self.AddEcc_pl = tf.placeholder(tf.bool, shape=())
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)
@@ -5108,17 +5113,19 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 						with tf.name_scope(str(self.eles[e])+'_hidden1'):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
 							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biaseslayer'+str(i))
-							Ebranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+							Ebranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(inputs, keep_prob[i]), weights) + biases))
+							#Ebranches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 					else:
 						with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
 							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biaseslayer'+str(i))
-							Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
+							Ebranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Ebranches[-1][-1], keep_prob[i]), weights) + biases))
+							#Ebranches[-1].append(self.activation_function(tf.matmul(Ebranches[-1][-1], weights) + biases))
 				with tf.name_scope(str(self.eles[e])+'_regression_linear'):
 					shp = tf.shape(inputs)
 					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
 					biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-					Ebranches[-1].append(tf.matmul(tf.nn.dropout(Ebranches[-1][-1], keep_prob), weights) + biases)
+					Ebranches[-1].append(tf.matmul(tf.nn.dropout(Ebranches[-1][-1], keep_prob[-1]), weights) + biases)
 					shp_out = tf.shape(Ebranches[-1][-1])
 					cut = tf.slice(Ebranches[-1][-1],[0,0],[shp_out[0],1])
 					rshp = tf.reshape(cut,[1,shp_out[0]])
@@ -5162,14 +5169,16 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 						with tf.name_scope(str(self.eles[e])+'_hidden1_charge'):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
 							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Dbranches[-1].append(self.activation_function(tf.matmul(charge_inputs, weights) + biases))
+							Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
+							#Dbranches[-1].append(self.activation_function(tf.matmul(charge_inputs, weights) + biases))
 							dipole_wb.append(weights)
 							dipole_wb.append(biases)
 					else:
 						with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)+"_charge"):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
 							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Dbranches[-1].append(self.activation_function(tf.matmul(Dbranches[-1][-1], weights) + biases))
+							Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[i]), weights) + biases))
+							#Dbranches[-1].append(self.activation_function(tf.matmul(Dbranches[-1][-1], weights) + biases))
 							dipole_wb.append(weights)
 							dipole_wb.append(biases)
 				with tf.name_scope(str(self.eles[e])+'_regression_linear_charge'):
@@ -5178,7 +5187,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 					biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
 					dipole_wb.append(weights)
 					dipole_wb.append(biases)
-					Dbranches[-1].append(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob), weights) + biases)
+					Dbranches[-1].append(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[-1]), weights) + biases)
 					shp_out = tf.shape(Dbranches[-1][-1])
 					cut = tf.slice(Dbranches[-1][-1],[0,0],[shp_out[0],1])
 					rshp = tf.reshape(cut,[1,shp_out[0]])
@@ -5350,7 +5359,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		num_of_mols = 0
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			#print ("ministep:", ministep)
-			batch_data = self.TData.GetTestBatch(self.batch_size)+[False] + [1.0]
+			batch_data = self.TData.GetTestBatch(self.batch_size)+[False] + [np.ones(self.nlayer+1)]
 			actual_mols  = self.batch_size
 			t = time.time()
 			total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.total_loss_dipole, self.loss_dipole, self.energy_loss_dipole, self.grads_loss_dipole, self.dipole_loss_dipole, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
@@ -5388,7 +5397,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		num_of_mols = 0
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			#print ("ministep:", ministep)
-			batch_data = self.TData.GetTestBatch(self.batch_size)+[PARAMS["AddEcc"]] + [1.0]
+			batch_data = self.TData.GetTestBatch(self.batch_size)+[PARAMS["AddEcc"]] + [np.ones(self.nlayer+1)]
 			actual_mols  = self.batch_size
 			t = time.time()
 			total_loss_value, loss_value, energy_loss, grads_loss,  dipole_loss,  Etotal, Ecc, mol_dipole, atom_charge = self.sess.run([self.total_loss_EandG, self.loss_EandG, self.energy_loss_EandG, self.grads_loss_EandG, self.dipole_loss_EandG, self.Etotal, self.Ecc, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
@@ -5408,6 +5417,82 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		print ("testing...")
 		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, test_dipole_loss, num_of_mols, duration)
 		return  test_loss
+
+	def train(self, mxsteps, continue_training= False):
+		"""
+		This the training loop for the united model.
+		"""
+		LOGGER.info("running the TFMolInstance.train()")
+		self.TrainPrepare(continue_training)
+		test_freq = PARAMS["test_freq"]
+		mini_dipole_test_loss = float('inf') # some big numbers
+		mini_energy_test_loss = float('inf')
+		mini_test_loss = float('inf')
+		for step in  range (0, mxsteps):
+			if self.Training_Traget == "EandG":
+				self.train_step_EandG(step)
+				if step%test_freq==0 and step!=0 :
+					if self.monitor_mset != None:
+						self.InTrainEval(self.monitor_mset, self.Rr_cut, self.Ra_cut, self.Ree_off, step=step)
+					test_energy_loss = self.test_EandG(step)
+					if test_energy_loss < mini_energy_test_loss:
+						mini_energy_test_loss = test_energy_loss
+						self.save_chk(step)
+			elif self.Training_Traget == "Dipole":
+				self.train_step_dipole(step)
+				if step%test_freq==0 and step!=0 :
+					if self.monitor_mset != None:
+						self.InTrainEval(self.monitor_mset, self.Rr_cut, self.Ra_cut, self.Ree_off, step=step)
+					test_dipole_loss = self.test_dipole(step)
+					if test_dipole_loss < mini_dipole_test_loss:
+						mini_dipole_test_loss = test_dipole_loss
+						self.save_chk(step)
+						if step >= PARAMS["SwitchEpoch"]:
+							self.Training_Traget = "EandG"
+							print ("Switching to Energy and Gradient Learning...")
+			else:
+				self.train_step(step)
+				if step%test_freq==0 and step!=0 :
+					if self.monitor_mset != None:
+						self.InTrainEval(self.monitor_mset, self.Rr_cut, self.Ra_cut, self.Ree_off, step=step)
+					test_loss = self.test(step)
+					if test_loss < mini_test_loss:
+						mini_test_loss = test_loss
+						self.save_chk(step)
+		self.SaveAndClose()
+		return
+
+	def InTrainEval(self, mol_set, Rr_cut, Ra_cut, Ree_cut, step=0):
+		"""
+		The energy, force and dipole routine for BPs_EE.
+		"""
+		nmols = len(mol_set.mols)
+		for i in range(nmols, self.batch_size):
+			mol_set.mols.append(mol_set.mols[-1])
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		dummy_dipole = np.zeros((nmols, 3))
+		xyzs = np.zeros((nmols, self.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, self.eles_np, self.eles_pairs_np)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
+		rad_eep = NLEE.buildPairs(Ree_cut)
+		batch_data = [xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom]
+		feed_dict=self.fill_feed_dict(batch_data+[PARAMS["AddEcc"]]+[np.ones(self.nlayer+1)])
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient= self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
+		monitor_data = [Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient]
+		f = open(self.name+"_monitor_"+str(step)+".dat","wb")
+		pickle.dump(monitor_data, f)
+		f.close()
+		print ("calculating monitoring set..")
+		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
 
 	def print_training(self, step, loss, energy_loss, grads_loss, dipole_loss, Ncase, duration, Train=True):
 	    if Train:
@@ -5435,7 +5520,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 			print ("self.batch_size:", self.batch_size, "  self.MaxNAtoms:", self.MaxNAtoms)
 			print ("loading the session..")
 			self.EvalPrepare()
-		feed_dict=self.fill_feed_dict(batch_data+[PARAMS["AddEcc"]]+[1.0])
+		feed_dict=self.fill_feed_dict(batch_data+[PARAMS["AddEcc"]]+[np.ones(self.nlayer+1)])
 		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient= self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
 		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
 
@@ -5459,7 +5544,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 			self.mil_jk_pl = tf.placeholder(tf.int64, shape=tuple([None,4]))
 			self.Reep_pl=tf.placeholder(tf.int64, shape=tuple([None,3]),name="RadialElectros")
 			self.natom_pl = tf.placeholder(self.tf_prec, shape=tuple([self.batch_size]))
-			self.keep_prob_pl =  tf.placeholder(self.tf_prec, shape=())
+			self.keep_prob_pl =  tf.placeholder(self.tf_prec, shape=tuple([self.nlayer+1]))
+			#self.keep_prob_pl =  tf.placeholder(self.tf_prec, shape=())
 			self.AddEcc_pl = tf.placeholder(tf.bool, shape=())
 			Ele = tf.Variable(self.eles_np, trainable=False, dtype = tf.int64)
 			Elep = tf.Variable(self.eles_pairs_np, trainable=False, dtype = tf.int64)

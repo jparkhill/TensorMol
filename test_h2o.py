@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -459,17 +459,140 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (1): # Normalize+Dropout+Conv
+	if (0): # Normalize+Dropout+2000+more dropout+just energy
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
-		#for i in range(340000):
+		for i in range(350000):
+			a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "JustEnergy"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 3
+		PARAMS["batch_size"] =  100   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 0.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 0.5, 0.5]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 1
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (1): # Normalize+Dropout+2000+more dropout+just gradient
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		random.shuffle(a.mols)
+		for i in range(350000):
+			a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "JustGrad"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 3
+		PARAMS["batch_size"] =  100   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 0.0
+		PARAMS["GradScalar"] = 1.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 0.5, 0.5]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 1
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (1): # Normalize+Dropout+2000+more dropout+as usual
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		for i in range(350000):
+			a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = ""
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 3
+		PARAMS["batch_size"] =  100   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 0.5, 0.5]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 1
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (0): # Normalize+Dropout+Conv
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		#for i in range(360000):
 		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
-		PARAMS["max_steps"] = 101
-		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["max_steps"] = 21
+		PARAMS["batch_size"] =  500   # 40 the max min-batch size it can go without memory error for training
 		PARAMS["test_freq"] = 1
 		PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["GradScalar"] = 1.0/20.0
@@ -489,10 +612,10 @@ def Train():
 		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["DSFAlpha"] = 0.18
 		PARAMS["AddEcc"] = True
-		PARAMS["KeepProb"] = 0.7
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 15
+		PARAMS["KeepProb"] = 1.0
+		PARAMS["learning_rate_dipole"] = 0.01
+		PARAMS["learning_rate_energy"] = 0.001
+		PARAMS["SwitchEpoch"] = 4
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv")
@@ -524,8 +647,8 @@ def Train():
 		#PARAMS["AN1_num_r_Rs"] = 64
 		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["AddEcc"] = False
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["learning_rate_dipole"] = 0.1
+		PARAMS["learning_rate_energy"] = 0.01
 		PARAMS["SwitchEpoch"] = 10
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)

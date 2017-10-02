@@ -36,7 +36,9 @@ class TFMolManage(TFManage):
 			self.Prepare()
 			return
 		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_, Trainable_)
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
+		self.suffix = PARAMS["NetNameSuffix"]
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
+		#self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=None # In order of the elements in TData
