@@ -1059,7 +1059,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			# barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1), tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
 			# truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
 			# gaussian_overlap_constraint = tf.square(0.001 / min_eigenval)
-			self.rotation_constraint = 10 * tf.reduce_sum(tf.square(tf.gradients(self.output, rotation_params))) / self.n_atoms_batch
+			self.rotation_constraint = tf.reduce_sum(tf.square(tf.clip_by_value(tf.gradients(self.output, rotation_params), -1, 1))) / self.n_atoms_batch
 			loss_and_constraint = self.total_loss + self.rotation_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -1072,6 +1072,26 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
 			return
+
+	def training(self, loss, learning_rate, momentum):
+		"""Sets up the training Ops.
+		Creates a summarizer to track the loss over time in TensorBoard.
+		Creates an optimizer and applies the gradients to all trainable variables.
+		The Op returned by this function is what must be passed to the
+		`sess.run()` call to cause the model to train.
+		Args:
+		loss: Loss tensor, from loss().
+		learning_rate: The learning rate to use for gradient descent.
+		Returns:
+		train_op: The Op for training.
+		"""
+		tf.summary.scalar(loss.op.name, loss)
+		optimizer = tf.train.AdamOptimizer(learning_rate)
+		grads_and_vars = optimizer.compute_gradients(loss)
+		capped_grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in grads_and_vars]
+		global_step = tf.Variable(0, name='global_step', trainable=False)
+		train_op = optimizer.apply_gradients(capped_grads_and_vars)
+		return train_op
 
 	def Clean(self):
 		if (self.sess != None):
@@ -1100,7 +1120,6 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		self.embedding = None
 		self.n_atoms_batch = None
 		self.rotation_constraint = None
-		print(self.__dict__)
 		return
 
 	def loss_op(self, output, labels):
@@ -1156,7 +1175,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			rotation_loss += rotation_constraint
 			test_epoch_labels.append(labels)
 			test_epoch_outputs.append(output)
-		test_loss /= ministeps * self.batch_size
+		test_loss /= ministeps
 		rotation_loss /= ministeps
 		test_epoch_labels = np.concatenate(test_epoch_labels)
 		test_epoch_outputs = np.concatenate(test_epoch_outputs)

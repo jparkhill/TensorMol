@@ -296,6 +296,154 @@ class TensorMolData(TensorData):
 			raise Exception("Unknown Digester Output Type.")
 		return
 
+class TensorMolDataDirect:
+	"""
+	A tensordata class for direct embeddings evaluated during training
+
+	Args:
+		molecule_set (TensorMol.MSet): A set containing molecules and the properties used for training
+		learning_target (str): Learning target used as the labels for an instance class
+
+	Notes:
+		Currently only implimented with atomization_energy as the learning target.
+	"""
+	def __init__(self, molecule_set, learning_target):
+		self.molecule_set = molecule_set
+		self.molecule_set_name = self.molecule_set.name
+		self.learning_target = learning_target
+		self.randomize_data = PARAMS["RandomizeData"]
+		self.test_ratio = PARAMS["TestRatio"]
+		self.train_energy_gradients = PARAMS["train_energy_gradients"]
+		self.eles = list(self.molecule_set.AtomTypes())
+		self.eles.sort()
+		self.max_num_atoms = np.max([m.NAtoms() for m in self.set.mols]) #Used to pad data so that each molecule is the same size
+		self.num_molecules = len(self.set.mols)
+		self.test_mols_done = False
+		self.test_begin_mol = None
+		self.test_mols = []
+		return
+
+	def clean_scratch(self):
+		self.scratch_state = None
+		self.scratch_pointer = 0 # for non random batch iteration.
+		self.scratch_train_inputs = None
+		self.scratch_train_outputs = None
+		self.scratch_test_inputs = None # These should be partitioned out by LoadElementToScratch
+		self.scratch_test_outputs = None
+		self.molecule_set = None
+		self.xyzs = None
+		self.Zs = None
+		self.labels = None
+		self.grads = None
+		return
+
+	def reload_set(self):
+		"""
+		Recalls the MSet to build training data etc.
+		"""
+		self.molecule_set = MSet(self.molecule_set_name)
+		self.molecule_set.Load()
+		return
+
+	def load_data(self):
+		if (self.molecule_set == None):
+			try:
+				self.reload_set()
+			except Exception as Ex:
+				print("TensorData object has no molecule set.", Ex)
+		if self.randomize_data:
+			random.shuffle(self.set.mols)
+		xyzs = np.zeros((self.num_mols, self.max_num_atoms, 3), dtype = np.float64)
+		Zs = np.zeros((self.num_mols, self.max_num_atoms), dtype = np.int32)
+		if self.learning_target == "atomization_energy":
+			labels = np.zeros((self.num_mols), dtype = np.float64)
+		else:
+			raise Exception("TensorMolDataDirect currently only supports atomization energy for learning target")
+		if self.train_energy_gradients:
+			gradients = np.zeros((self.num_mols, self.max_num_atoms, 3), dtype=np.float64)
+		for i, mol in enumerate(self.molecule_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			labels[i] = mol.properties["atomization_energy"]
+			if self.train_energy_gradients:
+				gradients[i][:mol.NAtoms()] = mol.properties["forces"]
+		if self.train_energy_gradients:
+			return xyzs, Zs, labels, gradients
+		else:
+			return xyzs, Zs, labels
+
+	def load_data_to_scratch(self):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+		note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		if (self.scratch_state == 1):
+			return
+		if self.train_energy_gradients:
+			self.xyzs, self.Zs, self.labels, self.gradients = self.load_data()
+		else:
+			self.xyzs, self.Zs, self.labels = self.load_data()
+		self.num_test_cases = int(self.test_ratio * self.num_molecules)
+		self.last_train_case = int(self.num_molecules - self.num_test_cases)
+		self.num_train_cases = self.last_train_case
+		self.test_scratch_pointer = self.LastTrainMol
+		self.scratch_pointer = 0
+		self.scratch_state = 1
+		LOGGER.debug("Number of training cases: %i", self.num_train_cases)
+		LOGGER.debug("Number of test cases: %i", self.num_test_cases)
+		return
+
+	def get_train_batch(self, num_cases_batch):
+		if self.scratch_state == 0:
+			self.load_data_to_scratch()
+		if num_cases_batch > self.num_train_cases:
+			raise Exception("Insufficent training data to fill a training batch.\n"\
+					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
+		if self.train_scratch_pointer + num_cases_batch >= self.num_train_cases:
+			self.train_scratch_pointer = 0
+		self.train_scratch_pointer += num_cases_batch
+		xyzs = self.xyzs[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
+		Zs = self.Zs[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
+		labels = self.labels[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
+		if self.train_energy_gradients:
+			gradients = self.gradients[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
+			return [xyzs, Zs, labels, gradients]
+		else:
+			return [xyzs, Zs, labels]
+
+	def get_test_batch(self, num_cases_batch):
+		if (self.scratch_state == 0):
+			self.load_data_to_scratch()
+		if num_cases_batch > self.num_test_cases:
+			raise Exception("Insufficent training data to fill a test batch.\n"\
+					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
+		if self.test_scratch_pointer + num_cases_batch >= self.num_train_cases:
+			self.test_scratch_pointer = 0
+		self.test_scratch_pointer += num_cases_batch
+		xyzs = self.xyzs[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
+		Zs = self.Zs[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
+		labels = self.labels[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
+		if self.train_energy_gradients:
+			gradients = self.gradients[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
+			return [xyzs, Zs, labels, gradients]
+		else:
+			return [xyzs, Zs, labels]
+
+	def Save(self):
+		self.clean_scratch()
+		f = open(self.path+self.name+".tdt","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
 
 class TensorMolData_BP(TensorMolData):
 	"""

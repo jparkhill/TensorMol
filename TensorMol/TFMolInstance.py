@@ -25,21 +25,15 @@ else:
 class MolInstance(Instance):
 	def __init__(self, TData_,  Name_=None, Trainable_=True):
 		Instance.__init__(self, TData_, 0, Name_)
-		self.AssignActivation()
-		#self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
-		self.name = "Mol_"+self.TData.name+"_ANI1_Sym_Direct_"+str(self.TData.order)+"_"+self.NetType
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
 		self.Trainable = Trainable_
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
-		self.tformer.Print()
 		self.TData.PrintStatus()
-		self.inshape =  self.TData.dig.eshape  # use the flatted version
+		self.inshape = self.TData.dig.eshape  # use the flatted version
 		self.outshape = self.TData.dig.lshape    # use the flatted version
 		LOGGER.info("MolInstance.inshape %s MolInstance.outshape %s", str(self.inshape) , str(self.outshape))
-		self.batch_size = PARAMS["batch_size"]
-		self.summary_op =None
-		self.summary_writer=None
 		return
 
 	def inference(self, inputs):

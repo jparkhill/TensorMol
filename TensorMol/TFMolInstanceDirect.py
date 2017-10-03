@@ -15,6 +15,7 @@ from TensorMol.ElectrostaticsTF import *
 from TensorMol.Neighbors import *
 from TensorMol.RawEmbeddings import *
 from tensorflow.python.client import timeline
+import time
 import threading
 
 class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
@@ -4922,7 +4923,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		self.train_dir = './networks/'+self.name
-		self.keep_prob = PARAMS["KeepProb"] 
+		self.keep_prob = PARAMS["KeepProb"]
 
 	def Clean(self):
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize.Clean(self)
