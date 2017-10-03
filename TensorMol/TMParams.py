@@ -50,6 +50,8 @@ class TMParams(dict):
 		self["Embedded_Charge_Order"] = 2
 		self["MBE_ORDER"] = 3
 		# Training Parameters
+		self["MonitorSet"] = None
+		self["NetNameSuffix"] = ""
 		self["NeuronType"] = "relu"
 		self["tf_prec"] = "tf.float32"
 		self["learning_rate"] = 0.001
@@ -69,6 +71,9 @@ class TMParams(dict):
 		self["max_checkpoints"] = 1
 		self["KeepProb"] = 0.7
 		self["weight_decay"] = 0.001
+		self["ConvFilter"] = [32, 64]
+		self["ConvKernelSize"] = [[8,1],[4,1]]
+		self["ConvStrides"] = [[8,1],[4,1]]
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
