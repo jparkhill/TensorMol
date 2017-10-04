@@ -435,24 +435,6 @@ def TestTFSym():
 	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 		f.write(chrome_trace)
 
-def train_energy_symm_func_channel():
-	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 1000
-	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 300
-	PARAMS["NeuronType"] = "relu"
-	PARAMS["tf_prec"] = "tf.float64"
-	a=MSet("SmallMols_rand")
-	a.Load()
-	for mol in a.mols:
-		mol.CalculateAtomization()
-	TreatedAtoms = a.AtomTypes()
-	print "Number of Mols: ", len(a.mols)
-	d = Digester(TreatedAtoms, name_="GauSH", OType_="atomization")
-	tset = TensorMolData_BP_Direct_WithEle(a,d, WithGrad_=True)
-	manager=TFMolManage("",tset,True,"fc_sqdiff_BP_Direct_Grad_Linear_EmbOpt", Trainable_=True)
-
 def train_forces_rotation_constraint(set_ = "SmallMols"):
 	# PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
 	#  							[1.08681976, 0.25805578], [1.34504847, 0.16033599], [1.49612151, 0.31475267], [1.91356037, 0.52652435],
@@ -553,6 +535,23 @@ def train_energy_pairs_triples():
 	tset = TensorMolData_BP_Direct(a,d)
 	manager=TFMolManage("",tset,True,"pairs_triples", Trainable_=True)
 
+def train_energy_symm_func_channel():
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 100
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 200
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["tf_prec"] = "tf.float64"
+	a=MSet("SmallMols_rand")
+	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	tensor_data = TensorMolDataDirect(a,"atomization","symmetry_functions")
+	manager=TFMolManageDirect(tensor_data)
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
@@ -582,6 +581,7 @@ def train_energy_pairs_triples():
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
+train_energy_symm_func_channel()
 
 # a=MSet("chemspider_aimd_forcecut")
 # a.Load()

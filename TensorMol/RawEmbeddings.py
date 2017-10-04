@@ -2911,7 +2911,7 @@ def TFSymSet_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta,
 	GMA = TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk, element_pair_factors)
 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
 	#GM = tf.identity(GMA)
-	num_ele, num_dim = eles_.get_shape().as_list()
+	num_ele = eles_.get_shape().as_list()[0]
 	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]), name="FormEleMask")
 	ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), prec=tf.int32)
 	v = tf.reshape(tf.range(nmol*natom), [nmol, natom, 1])

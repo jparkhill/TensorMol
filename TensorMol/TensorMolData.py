@@ -307,20 +307,21 @@ class TensorMolDataDirect:
 	Notes:
 		Currently only implimented with atomization_energy as the learning target.
 	"""
-	def __init__(self, molecule_set, learning_target):
+	def __init__(self, molecule_set, learning_target, embedding_type):
 		self.molecule_set = molecule_set
 		self.molecule_set_name = self.molecule_set.name
 		self.learning_target = learning_target
+		self.embedding_type = embedding_type
 		self.randomize_data = PARAMS["RandomizeData"]
 		self.test_ratio = PARAMS["TestRatio"]
 		self.train_energy_gradients = PARAMS["train_energy_gradients"]
-		self.eles = list(self.molecule_set.AtomTypes())
-		self.eles.sort()
-		self.max_num_atoms = np.max([m.NAtoms() for m in self.set.mols]) #Used to pad data so that each molecule is the same size
-		self.num_molecules = len(self.set.mols)
-		self.test_mols_done = False
-		self.test_begin_mol = None
-		self.test_mols = []
+		self.elements = self.molecule_set.AtomTypes()
+		self.max_num_atoms = self.molecule_set.MaxNAtoms() #Used to pad data so that each molecule is the same size
+		self.num_molecules = len(self.molecule_set.mols)
+		if embedding_type == "symmetry_functions":
+			self.element_pairs = np.array([[self.elements[i], self.elements[j]] for i in range(len(self.elements)) for j in range(i, len(self.elements))])
+			self.radial_grid_cutoff = PARAMS["AN1_r_Rc"]
+			self.angular_grid_cutoff = PARAMS["AN1_a_Rc"]
 		return
 
 	def clean_scratch(self):
@@ -352,25 +353,27 @@ class TensorMolDataDirect:
 			except Exception as Ex:
 				print("TensorData object has no molecule set.", Ex)
 		if self.randomize_data:
-			random.shuffle(self.set.mols)
-		xyzs = np.zeros((self.num_mols, self.max_num_atoms, 3), dtype = np.float64)
-		Zs = np.zeros((self.num_mols, self.max_num_atoms), dtype = np.int32)
-		if self.learning_target == "atomization_energy":
-			labels = np.zeros((self.num_mols), dtype = np.float64)
+			random.shuffle(self.molecule_set.mols)
+		xyzs = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float64)
+		Zs = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
+		num_atoms = np.zeros((self.num_molecules), dtype = np.int32)
+		if self.learning_target == "atomization":
+			labels = np.zeros((self.num_molecules), dtype = np.float64)
 		else:
 			raise Exception("TensorMolDataDirect currently only supports atomization energy for learning target")
 		if self.train_energy_gradients:
-			gradients = np.zeros((self.num_mols, self.max_num_atoms, 3), dtype=np.float64)
+			gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float64)
 		for i, mol in enumerate(self.molecule_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
-			labels[i] = mol.properties["atomization_energy"]
+			labels[i] = mol.properties["atomization"]
+			num_atoms[i] = mol.NAtoms()
 			if self.train_energy_gradients:
-				gradients[i][:mol.NAtoms()] = mol.properties["forces"]
+				gradients[i][:mol.NAtoms()] = -1.0 * mol.properties["forces"]
 		if self.train_energy_gradients:
-			return xyzs, Zs, labels, gradients
+			return xyzs, Zs, labels, num_atoms, gradients
 		else:
-			return xyzs, Zs, labels
+			return xyzs, Zs, labels, num_atoms
 
 	def load_data_to_scratch(self):
 		"""
@@ -386,59 +389,58 @@ class TensorMolDataDirect:
 		Note:
 			Also determines mean stoichiometry
 		"""
-		if (self.scratch_state == 1):
-			return
 		if self.train_energy_gradients:
-			self.xyzs, self.Zs, self.labels, self.gradients = self.load_data()
+			self.xyzs, self.Zs, self.labels, self.num_atoms, self.gradients = self.load_data()
 		else:
-			self.xyzs, self.Zs, self.labels = self.load_data()
+			self.xyzs, self.Zs, self.labels, self.num_atoms = self.load_data()
 		self.num_test_cases = int(self.test_ratio * self.num_molecules)
 		self.last_train_case = int(self.num_molecules - self.num_test_cases)
 		self.num_train_cases = self.last_train_case
-		self.test_scratch_pointer = self.LastTrainMol
-		self.scratch_pointer = 0
-		self.scratch_state = 1
+		self.test_scratch_pointer = self.last_train_case
+		self.train_scratch_pointer = 0
 		LOGGER.debug("Number of training cases: %i", self.num_train_cases)
 		LOGGER.debug("Number of test cases: %i", self.num_test_cases)
 		return
 
-	def get_train_batch(self, num_cases_batch):
-		if self.scratch_state == 0:
-			self.load_data_to_scratch()
-		if num_cases_batch > self.num_train_cases:
+	def get_train_batch(self, batch_size):
+		if batch_size > self.num_train_cases:
 			raise Exception("Insufficent training data to fill a training batch.\n"\
-					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
-		if self.train_scratch_pointer + num_cases_batch >= self.num_train_cases:
+					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(batch_size))
+		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
 			self.train_scratch_pointer = 0
-		self.train_scratch_pointer += num_cases_batch
-		xyzs = self.xyzs[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
-		Zs = self.Zs[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
-		labels = self.labels[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
+		self.train_scratch_pointer += batch_size
+		xyzs = self.xyzs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		Zs = self.Zs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		labels = self.labels[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		num_atoms = self.num_atoms[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		neighbor_list = NeighborListSet(xyzs, num_atoms, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_jk, jk_max = neighbor_list.buildPairsAndTriplesWithEleIndex(self.radial_grid_cutoff, self.angular_grid_cutoff, self.elements, self.element_pairs)
 		if self.train_energy_gradients:
-			gradients = self.gradients[self.train_scratch_pointer - num_cases_batch:self.train_scratch_pointer]
-			return [xyzs, Zs, labels, gradients]
+			gradients = self.gradients[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+			return [xyzs, Zs, labels, gradients, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
 		else:
-			return [xyzs, Zs, labels]
+			return [xyzs, Zs, labels, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
 
-	def get_test_batch(self, num_cases_batch):
-		if (self.scratch_state == 0):
-			self.load_data_to_scratch()
-		if num_cases_batch > self.num_test_cases:
+	def get_test_batch(self, batch_size):
+		if batch_size > self.num_test_cases:
 			raise Exception("Insufficent training data to fill a test batch.\n"\
 					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
-		if self.test_scratch_pointer + num_cases_batch >= self.num_train_cases:
-			self.test_scratch_pointer = 0
-		self.test_scratch_pointer += num_cases_batch
-		xyzs = self.xyzs[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
-		Zs = self.Zs[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
-		labels = self.labels[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
+		if self.test_scratch_pointer + batch_size >= self.num_train_cases:
+			self.test_scratch_pointer = self.last_train_case
+		self.test_scratch_pointer += batch_size
+		xyzs = self.xyzs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		Zs = self.Zs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		labels = self.labels[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		num_atoms = self.num_atoms[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		neighbor_list = NeighborListSet(xyzs, num_atoms, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_jk, jk_max = neighbor_list.buildPairsAndTriplesWithEleIndex(self.radial_grid_cutoff, self.angular_grid_cutoff, self.elements, self.element_pairs)
 		if self.train_energy_gradients:
-			gradients = self.gradients[self.test_scratch_pointer - num_cases_batch:self.test_scratch_pointer]
-			return [xyzs, Zs, labels, gradients]
+			gradients = self.gradients[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+			return [xyzs, Zs, labels, gradients, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
 		else:
-			return [xyzs, Zs, labels]
+			return [xyzs, Zs, labels, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
 
-	def Save(self):
+	def save(self):
 		self.clean_scratch()
 		f = open(self.path+self.name+".tdt","wb")
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)

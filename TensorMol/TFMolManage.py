@@ -8,12 +8,14 @@ from .TFManage import *
 from .TensorMolData import *
 from .TFMolInstance import *
 from .TFMolInstanceDirect import *
+from .TFBehlerParinello import *
 from .TFMolInstanceEE import *
 from .TFMolInstanceDirect import *
 from .QuasiNewtonTools import *
 
 import numpy as np
 import gc
+import time
 
 class TFMolManage(TFManage):
 	"""
@@ -1360,4 +1362,61 @@ class TFMolManage(TFManage):
 		acc_nn = acc_nn*std+mean
 		np.savetxt(save_file,acc_nn)
 		np.savetxt("dist_2b.dat", ti[:,1])
+		return
+
+class TFMolManageDirect:
+	def __init__(self, tensor_data, name = None, train = True, network_type = "BehlerParinelloDirect"):
+		"""
+			Args:
+				Name_: If not blank, will try to load a network with that name using Prepare()
+				TData_: A TensorData instance to provide and process data.
+				Train_: Whether to train the instances raised.
+				NetType_: Choices of Various network architectures.
+				ntrain_: Number of steps to train an element.
+		"""
+		self.path = "./networks/"
+
+		if (name != None):
+			self.name = name
+			self.Prepare()
+			return
+		self.tensor_data = tensor_data
+		self.network_type = network_type
+		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		if (train):
+			self.train()
+			return
+		return
+
+	def train(self, maxstep=3000):
+		"""
+		Instantiates and trains a Molecular network.
+
+		Args:
+			maxstep: The number of training steps.
+		"""
+		if self.network_type == "BehlerParinelloDirect":
+			self.network = BehlerParinelloDirect(self.tensor_data, "symmetry_functions")
+		else:
+			raise Exception("Unknown Network Type!")
+		self.network.train()
+		self.save()
+		return
+
+	def save(self):
+		print("Saving TFManager:",self.path+self.name+".tfm")
+		self.tensor_data.clean_scratch()
+		f = open(self.path+self.name+".tfm","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
+
+	def load(self):
+		print("Loading TFManager...")
+		f = open(self.path+self.name+".tfm","rb")
+		import TensorMol.PickleTM
+		tmp = TensorMol.PickleTM.UnPickleTM(f)
+		self.__dict__.update(tmp)
+		f.close()
+		print("TFManager Loaded, Reviving Networks.")
 		return
