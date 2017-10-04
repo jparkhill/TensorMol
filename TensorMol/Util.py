@@ -54,13 +54,13 @@ try:
 	import MolEmb
 	HAS_EMB = True
 	LOGGER.debug("MolEmb has been found, Orthogonalizing Radial Basis.")
-	S = MolEmb.Overlap_SH(PARAMS)
-	from TensorMol.LinearOperations import MatrixPower
-	SOrth = MatrixPower(S,-1./2)
-	PARAMS["GauSHSm12"] = SOrth
-	S_Rad = MolEmb.Overlap_RBF(PARAMS)
-	S_RadOrth = MatrixPower(S_Rad,-1./2)
-	PARAMS["SRBF"] = S_RadOrth
+	# S = MolEmb.Overlap_SH(PARAMS)
+	# from TensorMol.LinearOperations import MatrixPower
+	# SOrth = MatrixPower(S,-1./2)
+	# PARAMS["GauSHSm12"] = SOrth
+	# S_Rad = MolEmb.Overlap_RBF(PARAMS)
+	# S_RadOrth = MatrixPower(S_Rad,-1./2)
+	# PARAMS["SRBF"] = S_RadOrth
 	# THIS SHOULD BE IMPLEMENTED TOO.
 	#PARAMS["GauInvSm12"] = MatrixPower(S,-1./2)
 except Exception as Ex:
@@ -163,7 +163,7 @@ def DSF(R, R_c, alpha):	# http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/
 		ZZ = scipy.special.erfc(XX)/R_c
 		YY = twooversqrtpi*alpha*math.exp(-XX*XX)/R_c
 		LR = (scipy.special.erfc(alpha*R)/R - ZZ + (R-R_c)*(ZZ/R_c+YY))
-		return LR 
+		return LR
 
 def DSF_Gradient(R, R_c, alpha):
 	if R > R_c:
@@ -179,6 +179,6 @@ def EluAjust(x, a, x0, shift):
 	if x > x0:
 		return a*(x-x0)+shift
 	else:
-		return a*(math.exp(x-x0)-1.0)+shift 
+		return a*(math.exp(x-x0)-1.0)+shift
 
 signstep = np.vectorize(SignStep)

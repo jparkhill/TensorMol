@@ -37,7 +37,7 @@ def Train():
 		PARAMS["HiddenLayers"] = [200,200,200]
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
-		PARAMS["max_steps"] = 401
+		PARAMS["max_steps"] = 5001
 		PARAMS["batch_size"] = 200
 		PARAMS["test_freq"] = 10
 		PARAMS["tf_prec"] = "tf.float64"
