@@ -70,6 +70,7 @@ class TMParams(dict):
 		self["Profiling"] = False
 		self["max_checkpoints"] = 1
 		self["KeepProb"] = 0.7
+		self["weight_decay"] = 0.001
 		self["ConvFilter"] = [32, 64]
 		self["ConvKernelSize"] = [[8,1],[4,1]]
 		self["ConvStrides"] = [[8,1],[4,1]]
@@ -82,6 +83,7 @@ class TMParams(dict):
 		self["ChopTo"] = None
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
+		self["train_energy_gradients"] = False
 		# Opt Parameters
 		self["OptMaxCycles"]=20
 		self["OptThresh"]=0.0001

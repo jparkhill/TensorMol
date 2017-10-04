@@ -578,7 +578,7 @@ def train_energy_pairs_triples():
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
-train_forces_rotation_constraint("SmallMols")
+# train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()

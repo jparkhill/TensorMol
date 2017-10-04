@@ -15,6 +15,7 @@ from TensorMol.ElectrostaticsTF import *
 from TensorMol.Neighbors import *
 from TensorMol.RawEmbeddings import *
 from tensorflow.python.client import timeline
+import time
 import threading
 
 class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
@@ -5904,7 +5905,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		print ("generating sym..")
 		for ministep in range (0, max_mini):
 			#print ("ministep:", ministep)
-			t_start = time.time() 
+			t_start = time.time()
 			batch_data = self.TData.GetTestBatch(self.batch_size)+[False] + [np.ones(self.nlayer+1)]
 			actual_mols  = self.batch_size
 			t = time.time()
@@ -5913,14 +5914,14 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 			for i, sym in enumerate(scatter_sym[0]):
 				all_syms[i] = np.concatenate((all_syms[i], sym), axis=0)
 		for sym in all_syms:
-			self.input_std.append(np.std(sym, axis=0)) 
+			self.input_std.append(np.std(sym, axis=0))
 			self.input_avg.append(np.mean(sym, axis=0))
 		std_avg = [self.input_std, self.input_avg]
 		pickle.dump(std_avg, open(self.name+"_std_avg.dat","wb"))
-		#print ("self.input_std:", self.input_std)	
+		#print ("self.input_std:", self.input_std)
 		#print ("self.input_avg:", self.input_avg)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
-		return  
+		return
 
 
 	def train(self, mxsteps, continue_training= False):
@@ -6200,5 +6201,3 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		cc_energy = tf.cond(AddEcc, f1, f2)
 		dipole_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="DipoleNet")
 		return  cc_energy, dipole, scaled_charge, dipole_vars
-
-
