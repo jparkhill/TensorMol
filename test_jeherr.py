@@ -341,13 +341,13 @@ def TestTFSym():
 	np.set_printoptions(threshold=1000000)
 	Ra_cut = PARAMS["AN1_a_Rc"]
 	Rr_cut = PARAMS["AN1_r_Rc"]
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	t1 = time.time()
 	maxnatoms = a.MaxNAtoms()
 	zlist = []
 	xyzlist = []
-	natom = np.zeros((4000), dtype=np.int32)
+	natom = np.zeros((200), dtype=np.int32)
 	for i, mol in enumerate(a.mols):
 		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
@@ -356,7 +356,7 @@ def TestTFSym():
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		natom[i] = mol.NAtoms()
-		if i == 3999:
+		if i == 199:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
@@ -402,7 +402,8 @@ def TestTFSym():
 	# self.HasANI1PARAMS = True
 
 	SFPa2 = tf.Variable(np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1]), trainable= False, dtype = tf.float64)
-	SFPr2 = tf.Variable(np.transpose(np.reshape(rs_R,[AN1_num_r_Rs,1]), [1,0]), trainable= False, dtype = tf.float64)
+	# SFPr2 = tf.Variable(np.transpose(np.reshape(rs_R,[AN1_num_r_Rs,1]), [1,0]), trainable= False, dtype = tf.float64)
+	SFPr2 = tf.Variable(rs_R, trainable= False, dtype = tf.float64)
 	Rr_cut = tf.Variable(PARAMS["AN1_r_Rc"], trainable=False, dtype = tf.float64)
 	Ra_cut = tf.Variable(PARAMS["AN1_a_Rc"], trainable=False, dtype = tf.float64)
 	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
@@ -410,7 +411,7 @@ def TestTFSym():
 	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
 	element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	sym_tmp, idx_tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
+	tmp = tf_symmetry_functions_2(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
 
@@ -429,11 +430,12 @@ def TestTFSym():
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
 	# tmp, tmp2 = sess.run([sym_tmp, idx_tmp])
-	tmp, tmp2 = sess.run([sym_tmp, idx_tmp], options=options, run_metadata=run_metadata)
+	tmp2 = sess.run(tmp, options=options, run_metadata=run_metadata)
 	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
 	chrome_trace = fetched_timeline.generate_chrome_trace_format()
 	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 		f.write(chrome_trace)
+	print tmp2.shape
 
 def train_forces_rotation_constraint(set_ = "SmallMols"):
 	# PARAMS["RBFS"] = np.array([[0.14281105, 0.25747465], [0.24853184, 0.38609822], [0.64242406, 0.36870154], [0.97548212, 0.39012401],
@@ -540,10 +542,10 @@ def train_energy_symm_func_channel():
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 400
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["tf_prec"] = "tf.float64"
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
@@ -574,14 +576,14 @@ def train_energy_symm_func_channel():
 # GetPairPotential()
 # TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols")
-# TestTFSym()
+TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
 # train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-train_energy_symm_func_channel()
+# train_energy_symm_func_channel()
 
 # a=MSet("chemspider_aimd_forcecut")
 # a.Load()
