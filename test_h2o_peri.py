@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -84,23 +84,24 @@ def TestPeriodicLJVoxel():
 
 		#EnergyForceField(m.coords)
 		#return
-		#PARAMS["OptMaxCycles"]=200
-		#Opt = GeomOptimizer(EnergyForceField)
-		#m=Opt.Opt(m)
+		PARAMS["OptMaxCycles"]=200
+		Opt = GeomOptimizer(EnergyForceField)
+		m=Opt.Opt(m)
 		#return
 
-		#PARAMS["MDdt"] = 0.2
-		#PARAMS["RemoveInvariant"]=True
-		#PARAMS["MDMaxStep"] = 2000
-		#PARAMS["MDThermostat"] = "Nose"
-		#PARAMS["MDV0"] = None
-		#PARAMS["MDAnnealTF"] = 1.0
-		#PARAMS["MDAnnealT0"] = 300.0
-		#PARAMS["MDAnnealSteps"] = 2000	
-		#anneal = Annealer(EnergyForceField, None, m, "Anneal")
-		#anneal.Prop()
-		#m.coords = anneal.Minx.copy()
-
+		PARAMS["MDdt"] = 0.2
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDMaxStep"] = 2000
+		PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDV0"] = None
+		PARAMS["MDAnnealTF"] = 1
+		PARAMS["MDAnnealT0"] = 300.0
+		PARAMS["MDAnnealSteps"] = 2000	
+		anneal = Annealer(EnergyForceField, None, m, "Anneal")
+		anneal.Prop()
+		m.coords = anneal.Minx.copy()
+		m.WriteXYZfile(fname="H2O_tiny_opt")
+		return
 		#interface = TMIPIManger(EnergyForceField, TCP_IP="localhost", TCP_PORT= 31415)
 		#interface.md_run()
 		#
@@ -118,8 +119,10 @@ def TestPeriodicLJVoxel():
 	if (1):
 		#a=MSet("H2O_cluster_meta", center_=False)
 		#a.ReadXYZ("H2O_cluster_meta")
-		a=MSet("water_tiny", center_=False)
-		a.ReadXYZ("water_tiny")
+		#a=MSet("water_tiny", center_=False)
+		#a.ReadXYZ("water_tiny")
+		a=MSet("water_small", center_=False)
+		a.ReadXYZ("water_small")
 		m = a.mols[-1]
 		m.coords = m.coords - np.min(m.coords) + 3.4
 		TreatedAtoms = a.AtomTypes()
@@ -154,7 +157,8 @@ def TestPeriodicLJVoxel():
 		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
 
 		#cellsize = 6.0
-		cellsize = 9.3215
+		#cellsize = 9.3215
+		cellsize = 18.643
 		m.coords = np.mod(m.coords, cellsize)
 		lat = cellsize*np.eye(3)
 		PF = TFPeriodicVoxelForce(15.0,lat)
@@ -168,8 +172,8 @@ def TestPeriodicLJVoxel():
 			xp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.coords + cellsize*PF.tess[i]
 		#print (zp.shape, xp)
 		m_periodic = Mol(zp, xp)
-
-
+		#m_periodic.WriteXYZfile(fname="H2O_tiny_opt_peri")
+		#return
 		def EnAndForce(x_):
 			x_ = np.mod(x_, cellsize)
 			xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
@@ -189,15 +193,13 @@ def TestPeriodicLJVoxel():
 		EnergyForceField = lambda x: EnAndForce(x)
 
 		#EnergyForceField(m.coords)
-		#return
-		#PARAMS["OptMaxCycles"]=200
+		#PARAMS["OptMaxCycles"]=50
 		#Opt = GeomOptimizer(EnergyForceField)
 		#m=Opt.Opt(m)
-		#return
 
 		#PARAMS["MDdt"] = 0.2
 		#PARAMS["RemoveInvariant"]=True
-		#PARAMS["MDMaxStep"] = 2000
+		#PARAMS["MDMaxStep"] = 200
 		#PARAMS["MDThermostat"] = "Nose"
 		#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 1.0
@@ -206,18 +208,19 @@ def TestPeriodicLJVoxel():
 		#anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		#anneal.Prop()
 		#m.coords = anneal.Minx.copy()
-
+		#m.WriteXYZfile(fname="H2O_small_opt")
+		#return
 		#interface = TMIPIManger(EnergyForceField, TCP_IP="localhost", TCP_PORT= 31415)
 		#interface.md_run()
 		#
 		#return
                 PARAMS["MDThermostat"] = "Nose"
-                PARAMS["MDTemp"] = 200
-                PARAMS["MDdt"] = 0.1
+                PARAMS["MDTemp"] = 300
+                PARAMS["MDdt"] = 0.2
                 PARAMS["RemoveInvariant"]=True
                 PARAMS["MDV0"] = None
-                PARAMS["MDMaxStep"] = 10000
-                md = VelocityVerlet(None, m, "water_peri_10cut",EnergyForceField)
+                PARAMS["MDMaxStep"] = 100000
+                md = VelocityVerlet(None, m, "water_peri_15cut",EnergyForceField)
                 md.Prop()
 		return
 	if (0):
@@ -284,4 +287,82 @@ def TestPeriodicLJVoxel():
 			#	print (np.sum(np.square(m.coords[i] - mp.coords[int(rad_p_ele[j][1])]))**0.5)
 		return
 
-TestPeriodicLJVoxel()
+def UnittoPeri():
+	a=MSet("MDTrajectorywater_peri_15cut", center_=False)
+	a.ReadXYZ("MDTrajectorywater_peri_15cut")
+	lat = 9.3215*2
+	maxtess = 2
+	steps = 1
+	for i in range(len(a.mols)/steps-4000, len(a.mols)/steps):
+		print ("i:", i)
+		index = i*steps
+		m = a.mols[index]
+		zp = np.zeros(m.NAtoms()*((2*maxtess-1)**3), dtype=np.int32)
+		xp = np.zeros((m.NAtoms()*((2*maxtess-1)**3),3))
+		ntess = 0
+		for j in range(-maxtess+1, maxtess):
+			for k in range(-maxtess+1, maxtess):
+				for l in range(-maxtess+1, maxtess):
+					zp[ntess*m.NAtoms():(ntess+1)*m.NAtoms()] = m.atoms
+					xp[ntess*m.NAtoms():(ntess+1)*m.NAtoms()] = m.coords + np.array([j*lat, k*lat, l*lat])
+					ntess += 1
+		mp = Mol(zp, xp)
+		mp.WriteXYZfile(fpath="./datasets", fname="H2O_small_peri_thermal_300K")
+
+def KickOutTrans():
+	a=MSet("H2O_wb97xd_1to21")
+	a.Load()
+	random.shuffle(a.mols)
+	maxsample = 0.01*len(a.mols)
+	sampled = 0
+	for m in a.mols:
+		contain_trans = False
+		if m.NAtoms() >= 27 and sampled < maxsample:
+			nmol = m.NAtoms()/3
+			Htodel = random.randint(0, nmol-1)	
+			OHtodel = random.randint(0, nmol-1)
+			dist = np.sum(np.square(m.coords[OHtodel*3+2]-m.coords[Htodel*3]))**0.5
+			if Htodel == OHtodel or dist < 4.0:
+				continue
+			else:
+				ToDel = [Htodel*3+2, OHtodel*3, OHtodel*3+1]
+				xb = []
+				zb = []
+				for j in range(0, m.NAtoms()):
+					if j not in ToDel:
+						xb.append(m.coords[j])
+						zb.append(m.atoms[j])
+				mb = Mol(np.asarray(zb, np.int32), np.asarray(xb))
+				mb.WriteXYZfile(fname="H2O_prontonated_opt_2")
+				sampled += 1
+
+def GetRDF():
+	a = MSet("H2O_small_peri_thermal_300K")
+	a.ReadXYZ("H2O_small_peri_thermal_300K")
+	m = a.mols[-1]
+	dr = 0.01
+	r_max = 10
+	unit_num = 648
+	bin_count = np.zeros((int(r_max/dr),2))
+	bin_count[:,0] = np.arange(0, bin_count.shape[0])*dr
+	for mol_index in range(0, len(a.mols), 2):
+		m = a.mols[mol_index]
+		for i in range(0, unit_num):
+			if m.atoms[i] == 8:
+				print mol_index, i
+				for j in range(0, m.NAtoms()):
+					if i!=j and m.atoms[j] == 8:
+						dist = np.sum(np.square(m.coords[i]-m.coords[j]))**0.5
+						if dist < 10:
+							bin_index = int(dist/dr)
+							bin_count[bin_index,1] += 1
+	for i in range(0, bin_count.shape[0]):
+		r = i*dr+dr/2.0
+		bin_count[i,1] = bin_count[i,1]/(r**2)
+	np.savetxt("OO_rdf.dat", bin_count)
+
+
+#TestPeriodicLJVoxel()
+UnittoPeri()
+#KickOutTrans()
+GetRDF()

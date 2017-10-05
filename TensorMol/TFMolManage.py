@@ -8,12 +8,14 @@ from .TFManage import *
 from .TensorMolData import *
 from .TFMolInstance import *
 from .TFMolInstanceDirect import *
+from .TFBehlerParinello import *
 from .TFMolInstanceEE import *
 from .TFMolInstanceDirect import *
 from .QuasiNewtonTools import *
 
 import numpy as np
 import gc
+import time
 
 class TFMolManage(TFManage):
 	"""
@@ -36,7 +38,9 @@ class TFMolManage(TFManage):
 			self.Prepare()
 			return
 		TFManage.__init__(self, Name_, TData_, False, NetType_, RandomTData_, Trainable_)
-		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
+		self.suffix = PARAMS["NetNameSuffix"]
+		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
+		#self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.TData.order)
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
 		self.Instances=None # In order of the elements in TData
@@ -61,6 +65,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_fc_sqdiff(self.TData, None)
 		elif (self.NetType == "fc_sqdiff_BP"):
 			self.Instances = MolInstance_fc_sqdiff_BP(self.TData)
+		elif self.NetType == "BehlerParinelloDirect":
+			self.Instances = BehlerParinelloDirect(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_WithGrad"):
 			self.Instances = MolInstance_fc_sqdiff_BP_WithGrad(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Update"):
@@ -93,6 +99,16 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_AvgPool"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_AvgPool(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_InputNorm"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_InputNorm(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1313,6 +1329,16 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_AvgPool"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_AvgPool(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_InputNorm"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_InputNorm(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv"):
+			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1340,4 +1366,61 @@ class TFMolManage(TFManage):
 		acc_nn = acc_nn*std+mean
 		np.savetxt(save_file,acc_nn)
 		np.savetxt("dist_2b.dat", ti[:,1])
+		return
+
+class TFMolManageDirect:
+	def __init__(self, tensor_data, name = None, train = True, network_type = "BehlerParinelloDirect"):
+		"""
+			Args:
+				Name_: If not blank, will try to load a network with that name using Prepare()
+				TData_: A TensorData instance to provide and process data.
+				Train_: Whether to train the instances raised.
+				NetType_: Choices of Various network architectures.
+				ntrain_: Number of steps to train an element.
+		"""
+		self.path = "./networks/"
+
+		if (name != None):
+			self.name = name
+			self.Prepare()
+			return
+		self.tensor_data = tensor_data
+		self.network_type = network_type
+		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		if (train):
+			self.train()
+			return
+		return
+
+	def train(self, maxstep=3000):
+		"""
+		Instantiates and trains a Molecular network.
+
+		Args:
+			maxstep: The number of training steps.
+		"""
+		if self.network_type == "BehlerParinelloDirect":
+			self.network = BehlerParinelloDirect(self.tensor_data, "symmetry_functions")
+		else:
+			raise Exception("Unknown Network Type!")
+		self.network.train()
+		self.save()
+		return
+
+	def save(self):
+		print("Saving TFManager:",self.path+self.name+".tfm")
+		self.tensor_data.clean_scratch()
+		f = open(self.path+self.name+".tfm","wb")
+		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		f.close()
+		return
+
+	def load(self):
+		print("Loading TFManager...")
+		f = open(self.path+self.name+".tfm","rb")
+		import TensorMol.PickleTM
+		tmp = TensorMol.PickleTM.UnPickleTM(f)
+		self.__dict__.update(tmp)
+		f.close()
+		print("TFManager Loaded, Reviving Networks.")
 		return

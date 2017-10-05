@@ -2316,13 +2316,13 @@ def gaussian_overlap(gaussian_params):
 def TF_gaussians(r, Zs, gaussian_params, atomic_embed_factors, orthogonalize=False):
 	exponent = (tf.square(r - gaussian_params[:,0])) / (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	orthogonal_scaling_matrix, min_eigenvalue = gaussian_overlap(gaussian_params)
+	orthogonal_scaling_matrix, min_eigenval = gaussian_overlap(gaussian_params)
 	if orthogonalize:
 		gaussian_embed = tf.reduce_sum(tf.expand_dims(gaussian_embed, axis=-2) * orthogonal_scaling_matrix, axis=-1)
 	gaussian_embed *= tf.where(tf.not_equal(r, 0), tf.ones_like(r), tf.zeros_like(r))
 	atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=eval(PARAMS["tf_prec"])), atomic_embed_factors], axis=0)
 	element_embed_factor = tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=-1)
-	return gaussian_embed * element_embed_factor, min_eigenvalue
+	return gaussian_embed * element_embed_factor, min_eigenval
 
 def TF_spherical_harmonics_0(inverse_distance_tensor):
 	return tf.fill(tf.shape(inverse_distance_tensor), tf.constant(0.28209479177387814, dtype=eval(PARAMS["tf_prec"])))
@@ -2911,7 +2911,7 @@ def TFSymSet_Linear_channel(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta,
 	GMA = TFSymASet_Linear_channel(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk, element_pair_factors)
 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
 	#GM = tf.identity(GMA)
-	num_ele, num_dim = eles_.get_shape().as_list()
+	num_ele = eles_.get_shape().as_list()[0]
 	MaskAll = tf.equal(tf.reshape(Zs,[nmol,natom,1]),tf.reshape(eles_,[1,1,nele]), name="FormEleMask")
 	ToMask1 = AllSinglesSet(tf.tile(tf.reshape(tf.range(natom),[1,natom]),[nmol,1]), prec=tf.int32)
 	v = tf.reshape(tf.range(nmol*natom), [nmol, natom, 1])
