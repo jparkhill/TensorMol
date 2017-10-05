@@ -83,7 +83,7 @@ class TMParams(dict):
 		self["ChopTo"] = None
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
-		self["train_energy_gradients"] = False
+		self["train_energy_gradients"] = True
 		# Opt Parameters
 		self["OptMaxCycles"]=20
 		self["OptThresh"]=0.0001
