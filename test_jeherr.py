@@ -538,12 +538,12 @@ def train_energy_pairs_triples():
 def train_energy_symm_func_channel():
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 100
+	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 200
+	PARAMS["batch_size"] = 400
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["tf_prec"] = "tf.float64"
-	a=MSet("SmallMols_rand")
+	a=MSet("SmallMols")
 	a.Load()
 	for mol in a.mols:
 		mol.CalculateAtomization()
