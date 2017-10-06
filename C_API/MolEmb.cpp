@@ -1038,6 +1038,39 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+/*
+Makes a boolean mask to determine which of the atoms after NReal are within range of NReal
+*/
+static PyObject* Make_DistMask(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	int NReal;
+	double Rng=0.0;
+	if (!PyArg_ParseTuple(args, "O!id", &PyArray_Type, &xyz, &NReal, &Rng))
+	return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nat,nat};
+	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_BOOL, 0);
+	double *SH_data,*xyz_data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	for (int j=NReal; j < nat; ++j)
+		SH_data[j] = 0;
+	for (int i=0; i < NReal; ++i)
+	{
+		SH_data[i] = 1;
+	for (int j=NReal; j < nat; ++j)
+	{
+		if (sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) < Rng)
+		{
+			SH_data[j] = 1;
+			break;
+		}
+	}
+}
+	return SH;
+}
+
 //
 // Make a neighborlist using a naive, quadratic algorithm.
 // returns a python list.
@@ -2068,6 +2101,8 @@ static PyMethodDef EmbMethods[] =
 	"DipoleAutoCorr method"},
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
 	"Make_DistMat method"},
+	{"Make_DistMask", Make_DistMask, METH_VARARGS,
+	"Make_DistMask method"},
 	{"Norm_Matrices", Norm_Matrices, METH_VARARGS,
 	"Norm_Matrices method"},
 	{"Make_CM", Make_CM, METH_VARARGS,

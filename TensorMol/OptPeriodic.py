@@ -109,7 +109,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 			Density = self.EnergyAndForce.Density()
 			fac = rho_target/Density
 			oldlat = self.EnergyAndForce.lattice.lattice.copy()
-			newlat = 0.85*oldlat + 0.15*(oldlat*pow(1.0/fac,1.0/3.))
+			newlat = 0.65*oldlat + 0.35*(oldlat*pow(1.0/fac,1.0/3.))
 			m.coords = self.EnergyAndForce.AdjustLattice(m.coords,oldlat,newlat)
 			self.EnergyAndForce.ReLattice(newlat)
 			rmsgrad = 10.0

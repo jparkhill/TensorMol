@@ -1290,7 +1290,7 @@ def GetKunsWithDropout(a):
 	PARAMS["SwitchEpoch"] = 15
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu",False,False)
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	return manager
 
 def BoxAndDensity():
@@ -1322,7 +1322,7 @@ def BoxAndDensity():
 			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
 			return en[0]
 
-	if 1:
+	if 0:
 		# opt the first water.
 		PARAMS["OptMaxCycles"]=60
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
@@ -1348,7 +1348,7 @@ def BoxAndDensity():
 		#print("EnAndForceAPeriodic: ", en,f)
 		return en[0], f[0]
 
-	if 1:
+	if 0:
 		PARAMS["OptMaxCycles"]=30
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
 		mt = Opt.Opt(mt,"UCopt")
@@ -1361,27 +1361,29 @@ def BoxAndDensity():
 		aper.Prop()
 		mt.coords = aper.Minx
 
+	if 1:
+		s = MSet("water64")
+		s.ReadXYZ()
+		mt = s.mols[0]
 		# Optimize the tesselated system.
-		lat0 = (np.max(mt.coords)+0.5)*np.eye(3)
+		lat0 = (np.max(mt.coords)-np.min(mt.coords)+0.5)*np.eye(3)
 		lat0[0,1] = 0.01
 		lat0[1,0] -= 0.01
 		lat0[0,2] = 0.01
 		lat0[2,0] -= 0.01
-		latp = np.eye(3)*8.0
-		print(lat0,latp)
 		m = Lattice(lat0).CenteredInLattice(mt)
-		print(m.coords)
 	else:
 		s = MSet("water64")
 		s.ReadXYZ()
 		m = s.mols[0]
 
 	PF = PeriodicForce(m,m.properties["Lattice"])
-	PF.BindForce(EnAndForce, 20.0)
+	PF.BindForce(EnAndForce, 16.0)
+	print("Original Lattice: ", PF.lattice.lattice)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
 	if 1:
-		for i in range(10):
+		for i in range(4):
 			print("En0:", PF(m.coords)[0])
 			m.coords += (np.random.random((1,3))-0.5)*3.0
 			m.coords = PF.lattice.ModuloLattice(m.coords)
@@ -1389,10 +1391,10 @@ def BoxAndDensity():
 			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
 	if 1:
 		# Try optimizing that....
-		PARAMS["OptMaxCycles"]=30
+		PARAMS["OptMaxCycles"]=10
 		POpt = PeriodicGeomOptimizer(PF)
 		#m = POpt.OptToDensity(m,1.0)
-		m = POpt.Opt(m)
+		m = POpt.OptToDensity(m)
 		PF.mol0.coords = m.coords
 		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
@@ -1409,6 +1411,6 @@ def BoxAndDensity():
 	traj.Prop()
 
 #TrainPrepare()
-Train()
+#Train()
 #Eval()
-#BoxAndDensity()
+BoxAndDensity()
