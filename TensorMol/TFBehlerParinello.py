@@ -193,7 +193,8 @@ class BehlerParinelloDirect:
 		eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
 		element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
 		element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
-		embeddings, molecule_indices = TFSymSet_Linear_channel(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk, element_factors, element_pair_factors)
+		# embeddings, molecule_indices = TFSymSet_Linear_channel(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk, element_factors, element_pair_factors)
+		embeddings, molecule_indices = tf_symmetry_functions(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk)
 		with tf.Session() as sess:
 			sess.run(tf.global_variables_initializer())
 			embedding, _ = sess.run([embeddings, molecule_indices])
@@ -297,7 +298,8 @@ class BehlerParinelloDirect:
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
 			self.element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=False, dtype=tf.float64)
 			self.element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=False, dtype=tf.float64)
-			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, self.element_factors, self.element_pair_factors)
+			# self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, self.element_factors, self.element_pair_factors)
+			self.Scatter_Sym, self.Sym_Index = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl)
 			self.norm_embedding_list = []
 			for embedding in self.Scatter_Sym:
 				self.norm_embedding_list.append(embedding / embedding_stddev)
