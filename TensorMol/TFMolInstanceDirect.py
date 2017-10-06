@@ -5697,7 +5697,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 			tf.verify_tensor_all_finite(output_charge,"Nan in output!!!")
 			netcharge = tf.reshape(tf.reduce_sum(output_charge, axis=1), [self.batch_size])
 			delta_charge = tf.multiply(netcharge, natom)
-			delta_charge_tile = tf.tile(tf.reshape(delta_charge,[self.batch_size,1]),[1, self.MaxNAtoms])
+			delta_charge_tile = tf.tile(tf.reshape(delta_charge,[self.batch_size,1]),[1, self.nreal])
 			scaled_charge =  tf.subtract(output_charge, delta_charge_tile)
 			flat_dipole = tf.multiply(tf.reshape(xyzs_real,[self.batch_size*self.nreal, 3]), tf.reshape(scaled_charge,[self.batch_size*self.nreal, 1]))
 			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.nreal, 3]), axis=1)
@@ -5709,6 +5709,24 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		cc_energy = tf.cond(AddEcc, f1, f2)
 		#dipole_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="DipoleNet")
 		return  cc_energy, dipole, scaled_charge_all, dipole_wb
+
+	def fill_feed_dict_periodic(self, batch_data):
+		"""
+		Fill the tensorflow feed dictionary.
+
+		Args:
+			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
+			and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
+
+		Returns:
+			Filled feed dictionary.
+		"""
+		# Don't eat shit.
+		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
+			print("I was fed shit")
+			raise Exception("DontEatShit")
+		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_e1e2_pl] + [self.mil_j_pl]  + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl] + [self.keep_prob_pl], batch_data)}
+		return feed_dict
 
 	def evaluate_periodic(self, batch_data, nreal,DoForce = True):
 		"""

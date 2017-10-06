@@ -282,7 +282,7 @@ class NoseChainThermostat(Thermostat):
 		return v_*scale
 
 class VelocityVerlet:
-	def __init__(self, f_, g0_, name_ ="", EandF_=None):
+	def __init__(self, f_, g0_, name_ ="", EandF_=None, cellsize_=None):
 		"""
 		Molecular dynamics
 
@@ -299,6 +299,7 @@ class VelocityVerlet:
 			Nothing.
 		"""
 		self.name = name_
+		self.cellsize = cellsize_
 		self.maxstep = PARAMS["MDMaxStep"]
 		self.T = PARAMS["MDTemp"]
 		self.dt = PARAMS["MDdt"]
@@ -358,7 +359,8 @@ class VelocityVerlet:
 				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
 				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
-
+			if self.cellsize != None:
+				self.x  = np.mod(self.x, self.cellsize)
 			self.md_log[step,0] = self.t
 			self.md_log[step,4] = self.KE
 			self.md_log[step,5] = self.EPot
