@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import time
 import itertools
+import random
 
 from TensorMol.TensorMolData import *
 from TensorMol.RawEmbeddings import *
@@ -192,7 +193,8 @@ class BehlerParinelloDirect:
 		eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
 		element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
 		element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
-		embeddings, molecule_indices = TFSymSet_Linear_channel(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk, element_factors, element_pair_factors)
+		# embeddings, molecule_indices = TFSymSet_Linear_channel(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk, element_factors, element_pair_factors)
+		embeddings, molecule_indices = tf_symmetry_functions(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk)
 		with tf.Session() as sess:
 			sess.run(tf.global_variables_initializer())
 			embedding, _ = sess.run([embeddings, molecule_indices])
@@ -296,10 +298,11 @@ class BehlerParinelloDirect:
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
 			self.element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=False, dtype=tf.float64)
 			self.element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=False, dtype=tf.float64)
-			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, self.element_factors, self.element_pair_factors)
+			# self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl, self.element_factors, self.element_pair_factors)
+			self.Scatter_Sym, self.Sym_Index = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_jk_pl)
 			self.norm_embedding_list = []
 			for embedding in self.Scatter_Sym:
-				self.norm_embedding_list.append((embedding - embedding_mean) / embedding_stddev)
+				self.norm_embedding_list.append(embedding / embedding_stddev)
 			self.norm_output, self.atom_outputs = self.inference(self.norm_embedding_list, self.Sym_Index)
 			self.output = (self.norm_output * labels_stddev) - labels_mean
 			self.norm_gradients = tf.gradients(self.output, self.xyzs_pl)
@@ -399,7 +402,7 @@ class BehlerParinelloDirect:
 		energy_loss = tf.nn.l2_loss(tf.subtract(output, labels))
 		gradients_diff = tf.subtract(nn_gradients, gradients)
 		nonzero_gradients_diff = tf.gather_nd(gradients_diff, tf.where(tf.not_equal(gradients_diff, 0)))
-		gradients_loss = self.batch_size * tf.nn.l2_loss(nonzero_gradients_diff) / tf.reduce_sum(n_atoms)
+		gradients_loss = tf.nn.l2_loss(nonzero_gradients_diff) / 3
 		loss = energy_loss + gradients_loss
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), energy_loss, gradients_loss
@@ -417,20 +420,17 @@ class BehlerParinelloDirect:
 		train_energy_loss = 0.0
 		train_gradients_loss = 0.0
 		num_of_mols = 0
-		pre_output = np.zeros((self.batch_size),dtype=np.float64)
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			actual_mols  = self.batch_size
 			t = time.time()
-			_, total_loss_value, energy_loss, gradients_loss, mol_output, atom_outputs, gradients, gradient_pl = self.sess.run([self.train_op, self.total_loss,
-					self.energy_loss, self.gradients_loss, self.output, self.atom_outputs, self.gradients, self.gradients_pl], feed_dict=self.fill_feed_dict(batch_data))
+			_, total_loss_value, energy_loss, gradients_loss, mol_output, atom_outputs, gradients, gradient_pl, n_atoms = self.sess.run([self.train_op, self.total_loss,
+					self.energy_loss, self.gradients_loss, self.output, self.atom_outputs, self.gradients, self.gradients_pl, self.n_atoms], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss += total_loss_value
 			train_energy_loss += energy_loss
 			train_gradients_loss += gradients_loss
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
-			print(total_loss_value, energy_loss, gradients_loss)
-			print(gradients, gradient_pl)
 		self.print_training(step, train_loss, train_energy_loss, train_gradients_loss, num_of_mols, duration)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
@@ -442,26 +442,51 @@ class BehlerParinelloDirect:
 		Args:
 			step: the index of this step.
 		"""
+		print( "testing...")
 		test_loss =  0.0
 		start_time = time.time()
 		Ncase_test = self.tensor_data.num_test_cases
 		num_of_mols = 0
 		test_energy_loss = 0.0
 		test_gradients_loss = 0.0
+		test_epoch_energy_labels, test_epoch_energy_outputs = [], []
+		test_epoch_force_labels, test_epoch_force_outputs = [], []
+		num_atoms_epoch = []
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data = self.tensor_data.get_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			actual_mols = self.batch_size
-			preds, total_loss_value, energy_loss, gradients_loss, mol_output, atom_outputs, element_factors, element_pair_factors = self.sess.run([self.output, self.total_loss, self.energy_loss, self.gradients_loss, self.output, self.atom_outputs, self.element_factors, self.element_pair_factors],  feed_dict=feed_dict)
+			output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradients_loss, num_atoms, element_factors, element_pair_factors = self.sess.run([
+					self.output, self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradients_loss,
+ 					self.n_atoms, self.element_factors, self.element_pair_factors],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_of_mols += actual_mols
 			test_energy_loss += energy_loss
 			test_gradients_loss += gradients_loss
+			test_epoch_energy_labels.append(labels)
+			test_epoch_energy_outputs.append(output)
+			test_epoch_force_labels.append(gradient_labels)
+			test_epoch_force_outputs.append(gradients[0])
+			num_atoms_epoch.append(num_atoms)
+		test_epoch_energy_labels = np.concatenate(test_epoch_energy_labels)
+		test_epoch_energy_outputs = np.concatenate(test_epoch_energy_outputs)
+		test_epoch_energy_errors = test_epoch_energy_labels - test_epoch_energy_outputs
+		test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
+		test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
+		test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
+		num_atoms_epoch = np.concatenate(num_atoms_epoch)
+		print(num_atoms_epoch.shape)
 		duration = time.time() - start_time
-		print( "testing...")
+		for i in [random.randint(0, self.batch_size) for j in xrange(20)]:
+			random_atom_index = random.randint(0, num_atoms_epoch[i])
+			LOGGER.info("Labels: %s %s  Outputs: %s %s", test_epoch_energy_labels[i], test_epoch_force_labels[i,random_atom_index],
+					test_epoch_energy_outputs[i], test_epoch_force_outputs[i,random_atom_index])
+		LOGGER.info("MAE Energy: %f    Forces: %f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
+		LOGGER.info("MSE Energy: %f    Forces: %f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
+		LOGGER.info("RMSE Energy: %f    Forces: %f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
 		self.print_training(step, test_loss, test_energy_loss, test_gradients_loss, num_of_mols, duration)
-		LOGGER.info("Element factors: %s", element_factors)
- 		LOGGER.info("Element pair factors: %s", element_pair_factors)
+		# LOGGER.info("Element factors: %s", element_factors)
+ 	# 	LOGGER.info("Element pair factors: %s", element_pair_factors)
 		return test_loss
 
 	def train(self):

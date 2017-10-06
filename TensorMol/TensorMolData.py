@@ -415,6 +415,9 @@ class TensorMolDataDirect:
 		num_atoms = self.num_atoms[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		neighbor_list = NeighborListSet(xyzs, num_atoms, True, True, Zs, sort_=True)
 		rad_p_ele, ang_t_elep, mil_jk, jk_max = neighbor_list.buildPairsAndTriplesWithEleIndex(self.radial_grid_cutoff, self.angular_grid_cutoff, self.elements, self.element_pairs)
+		print(rad_p_ele)
+		print(ang_t_elep)
+		print(mil_jk)
 		if self.train_energy_gradients:
 			gradients = self.gradients[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 			return [xyzs, Zs, labels, gradients, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
