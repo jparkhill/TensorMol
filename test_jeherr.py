@@ -364,7 +364,7 @@ def TestTFSym():
 	z_np = np.stack(zlist)
 	eles = [1,6,7,8]
 	n_eles = len(eles)
-	eles_np = np.asarray(eles).reshape((n_eles,1))
+	eles_np = np.asarray(eles)
 	eles_pairs = []
 	for i in range (len(eles)):
 		for j in range(i, len(eles)):
@@ -384,16 +384,16 @@ def TestTFSym():
 	etas = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
 	AN1_num_a_As = PARAMS["AN1_num_a_As"]
 	AN1_num_a_Rs = PARAMS["AN1_num_a_Rs"]
-	thetas = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = np.float64)
-	rs =  np.array([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = np.float64)
+	thetas = tf.Variable([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = tf.float64)
+	rs =  tf.Variable([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = tf.float64)
 
 	etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
 	AN1_num_r_Rs = PARAMS["AN1_num_r_Rs"]
 	rs_R =  np.array([ Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
 
 
-	p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
-	p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
+	# p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
+	# p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
 
 	zeta = PARAMS["AN1_zeta"]
 	eta = PARAMS["AN1_eta"]
@@ -401,7 +401,7 @@ def TestTFSym():
 
 	# self.HasANI1PARAMS = True
 
-	SFPa2 = tf.Variable(np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1]), trainable= False, dtype = tf.float64)
+	# SFPa2 = tf.Variable(np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1]), trainable= False, dtype = tf.float64)
 	# SFPr2 = tf.Variable(np.transpose(np.reshape(rs_R,[AN1_num_r_Rs,1]), [1,0]), trainable= False, dtype = tf.float64)
 	SFPr2 = tf.Variable(rs_R, trainable= False, dtype = tf.float64)
 	Rr_cut = tf.Variable(PARAMS["AN1_r_Rc"], trainable=False, dtype = tf.float64)
@@ -411,7 +411,7 @@ def TestTFSym():
 	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
 	element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	tmp = tf_symmetry_functions_2(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
+	tmp = tf_symmetry_functions_2(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, thetas, rs, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
 

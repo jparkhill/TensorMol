@@ -2710,7 +2710,7 @@ def TF_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False
 	else:
 		return new_xyzs
 
-def tf_symmetry_functions_2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk):
+def tf_symmetry_functions_2(R, Zs, elements, SFPsR_, Rr_cut,  eleps_, theta_s, radial_s, zeta, eta, Ra_cut, RadpEle, AngtEle, mil_jk):
 	"""
 	A tensorflow implementation of the AN1 symmetry function for a set of molecule.
 	Args:
@@ -2728,12 +2728,13 @@ def tf_symmetry_functions_2(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta,
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
 	natom = inp_shp[1]
-	nele = tf.shape(eles_)[0]
+	nele = tf.shape(elements)[0]
 	nelep = tf.shape(eleps_)[0]
 	# GMR = tf.reshape(TF_symmetry_functions_radial_grid(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle),[nmol, natom,-1], name="FinishGMR")
-	radial_embedding, pair_indices, pair_elements = tf_symmetry_functions_radial_grid_2(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle)
-
-	GMA = tf_symmetry_function_angular_grid_2(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk)
+	radial_embedding, pair_indices, pair_elements = tf_symmetry_functions_radial_grid_2(R, Zs, elements, SFPsR_, eta, Rr_cut, RadpEle)
+	angular_embedding, triples_indices, triples_elements = tf_symmetry_function_angular_grid_2(R, Zs, eleps_, theta_s, radial_s, zeta,  eta, Ra_cut,  AngtEle, mil_jk)
+	element_mask = tf.cast(tf.where(tf.equal(pair_elements, tf.expand_dims(elements, axis=0))), tf.int32)
+	return element_mask
 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
 	#GM = tf.identity(GMA)
 	num_ele = eles_.get_shape().as_list()[0]
@@ -2789,7 +2790,7 @@ def tf_symmetry_functions_radial_grid_2(xyzs, Zs, eles_, SFPs_, eta, radial_grid
 	radial_embedding = gaussian_factor * cutoff_factor
 	return radial_embedding, pair_indices, pair_elements
 
-def tf_symmetry_function_angular_grid_2(R, Zs, eleps_, SFPs_, zeta, eta, angular_grid_cutoff, AngtriEle, mil_jk2, prec=tf.float64):
+def tf_symmetry_function_angular_grid_2(xyzs, Zs, eleps_, theta_s, radial_s, zeta, eta, angular_grid_cutoff, AngtriEle, mil_jk2, prec=tf.float64):
 	"""
 	A tensorflow implementation of the angular AN1 symmetry function for a single input molecule.
 	Here j,k are all other atoms, but implicitly the output
@@ -2812,7 +2813,7 @@ def tf_symmetry_function_angular_grid_2(R, Zs, eleps_, SFPs_, zeta, eta, angular
 	Returns:
 		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
-
+	num_mols = Zs.get_shape().as_list()[0]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 	distance_tensor = tf.norm(delta_xyzs,axis=3)
 	padding_mask = tf.not_equal(Zs, 0)
@@ -2841,14 +2842,23 @@ def tf_symmetry_function_angular_grid_2(R, Zs, eleps_, SFPs_, zeta, eta, angular
 							/ (2 * triples_distances[:,0] * triples_distances[:,2]),
 						(-tf.square(triples_distances[:,0]) + tf.square(triples_distances[:,1]) + tf.square(triples_distances[:,2])) \
 							/ (2 * triples_distances[:,1] * triples_distances[:,2])], axis=-1)
-	cos_thetas = tf.where(tf.greater_equal(cos_thetas, 1.0), tf.ones_like(cos_thetas) * (1.0 - 1.0e-24), cos_thetas)
-	cos_thetas = tf.where(tf.less_equal(cos_thetas, -1.0), -1.0 * tf.ones_like(cos_thetas) * (1.0 - 1.0e-24), cos_thetas)
+	cos_thetas = tf.where(tf.greater_equal(cos_thetas, 1.0), tf.ones_like(cos_thetas) - 1.0e-24, cos_thetas)
+	cos_thetas = tf.where(tf.less_equal(cos_thetas, -1.0), -1.0 * tf.ones_like(cos_thetas) - 1.0e-24, cos_thetas)
 	triples_angles = tf.acos(cos_thetas)
-	triples_distances_angles = tf.concat([triples_distances, triples_angles], axis=1)
 	triples_elements = tf.stack([tf.gather_nd(Zs, triples_indices[:,0:2]), tf.gather_nd(Zs, triples_indices[:,0:3:2]),
 			tf.gather_nd(Zs, triples_indices[:,0:4:3])], axis=-1)
-
-
+	theta_ijk_s = tf.expand_dims(triples_angles, axis=-1) - tf.expand_dims(tf.expand_dims(theta_s, axis=0), axis=1)
+	cos_factor = tf.pow((1 + tf.cos(theta_ijk_s)), zeta)
+	rij_rik = tf.transpose(tf.stack([triples_distances[:,1] + triples_distances[:,2], triples_distances[:,0] + triples_distances[:,2],
+					triples_distances[:,0] + triples_distances[:,1]]) / 2)
+	rijk_rs = tf.square(tf.expand_dims(rij_rik, axis=-1) - tf.expand_dims(tf.expand_dims(radial_s, axis=0), axis=1))
+	exponential_factor = tf.exp(-eta * rijk_rs)
+	cutoff_factor = 0.5 * (tf.cos(3.14159265359 * triples_distances / angular_grid_cutoff) + 1.0)
+	ij_ik_cutoff = tf.transpose(tf.stack([cutoff_factor[:,1] * cutoff_factor[:,2], cutoff_factor[:,0] * cutoff_factor[:,2],
+					cutoff_factor[:,0] * cutoff_factor[:,1]]))
+	angular_embedding = tf.reshape(tf.expand_dims(cos_factor, axis=-1) * tf.expand_dims(exponential_factor, axis=-2) \
+						* tf.expand_dims(tf.expand_dims(cutoff_factor, axis=-1), axis=-2), [tf.shape(triples_indices)[0], 3, -1])
+	return angular_embedding, triples_indices, triples_elements
 
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
