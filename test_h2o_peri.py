@@ -374,7 +374,7 @@ def GetRDF_Update():
 	r_max = 10.0
 	lat = 9.3215
 	natom = a.mols[0].NAtoms()
-	rdf_type = [8,8]
+	rdf_type = [8,1]
 	bin_count = np.zeros((int(r_max/dr),2))
 	bin_count[:,0] = np.arange(0, bin_count.shape[0])*dr
 	print ("bin_count:", bin_count)
@@ -383,7 +383,7 @@ def GetRDF_Update():
 		t = time.time()
 		#print ("mol_index:", mol_index)
 		m = a.mols[mol_index]
-		rdf_index =  GetRDF_Bin(m.coords, m.atoms, r_max, dr, lat, 8, 8)
+		rdf_index =  GetRDF_Bin(m.coords, m.atoms, r_max, dr, lat, 8, 1)
 		bin_count[rdf_index, 1] += 1
 		#zp = np.zeros(m.NAtoms()*((2*maxtess-1)**3), dtype=np.int32)
 		#xp = np.zeros((m.NAtoms()*((2*maxtess-1)**3),3))
@@ -410,7 +410,7 @@ def GetRDF_Update():
 	for i in range(0, bin_count.shape[0]):
 		r = i*dr+dr/2.0
 		bin_count[i,1] = bin_count[i,1]/(r**2)
-	np.savetxt("OO_rdf_real_dropout.dat", bin_count)
+	np.savetxt("OH_rdf_real_dropout.dat", bin_count)
 
 
 #TestPeriodicLJVoxel()
