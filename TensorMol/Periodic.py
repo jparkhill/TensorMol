@@ -8,6 +8,7 @@ from __future__ import print_function
 from .Neighbors import *
 from .Electrostatics import *
 from .SimpleMD import *
+from MolEmb import Make_DistMask
 
 class Lattice:
 	def __init__(self, latvec_):
@@ -20,10 +21,34 @@ class Lattice:
 		self.lattice = latvec_.copy()
 		self.latticeCenter = (self.lattice[0]+self.lattice[1]+self.lattice[2])/2.0
 		self.latticeMinDiameter = 2.0*min([np.linalg.norm(self.lattice[0]-self.latticeCenter),np.linalg.norm(self.lattice[1]-self.latticeCenter),np.linalg.norm(self.lattice[2]-self.latticeCenter)])
+		self.lp = np.array([[0.,0.,0.],self.lattice[0].tolist(),self.lattice[1].tolist(),self.lattice[2].tolist(),(self.lattice[0]+self.lattice[1]).tolist(),(self.lattice[0]+self.lattice[2]).tolist(),(self.lattice[1]+self.lattice[2]).tolist(),(self.lattice[0]+self.lattice[1]+self.lattice[2]).tolist()])
 		self.ntess = 1 # number of shells over which to tesselate.
+		self.facenormals = self.LatticeNormals()
 		return
+	def LatticeNormals(self):
+		lp = self.lp
+		fn = np.zeros((6,3))
+		fn[0] = np.cross(lp[1]-lp[0],lp[2]-lp[0]) # face 012
+		fn[1] = np.cross(lp[1]-lp[0],lp[3]-lp[0]) # face 013
+		fn[2] = np.cross(lp[2]-lp[0],lp[3]-lp[0]) # face 023
+		fn[3] = np.cross(lp[4]-lp[-1],lp[5]-lp[-1])
+		fn[4] = np.cross(lp[6]-lp[-1],lp[5]-lp[-1])
+		fn[5] = np.cross(lp[6]-lp[-1],lp[4]-lp[-1])
+		# Normalize them.
+		fn /= np.sqrt(np.sum(fn*fn,axis=1))[:,np.newaxis]
+		return fn
+	def InRangeOfLatNormals(self,pt,rng_):
+		for i in range(6):
+			if (i<3):
+				if (np.abs(np.sum(self.facenormals[i]*(pt - self.lp[0]))) < rng_):
+					return True
+			else:
+				if (np.abs(np.sum(self.facenormals[i]*(pt - self.lp[7]))) < rng_):
+					return True
 	def CenteredInLattice(self, mol):
-		return Mol(mol.atoms,self.ModuloLattice(mol.coords - mol.Center() + self.latticeCenter))
+		m=Mol(mol.atoms,self.ModuloLattice(mol.coords - mol.Center() + self.latticeCenter))
+		m.properties["Lattice"] = self.lattice.copy()
+		return m
 	def InLat(self,crds):
 		"""
 		Express coordinates (atom X 3 cart)
@@ -95,6 +120,7 @@ class Lattice:
 		if (rng_ > self.latticeMinDiameter):
 			self.ntess = int(rng_/self.latticeMinDiameter)+1
 			#print("Doing",self.ntess,"tesselations...")
+			#print(rng_,self.latticeMinDiameter)
 		natom = atoms_.shape[0]
 		nimages = pow(2*self.ntess+1,3)
 		#print("Doing",nimages,"images... of ",natom)
@@ -111,7 +137,20 @@ class Lattice:
 					newAtoms[ind*natom:(ind+1)*natom] = atoms_
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
 					ind = ind + 1
-		return newAtoms, newCoords
+		# Now pare that down where the images are too far from the edges of the lattice.
+		#return newAtoms, newCoords
+		Atoms = np.zeros(nimages*natom,dtype=np.uint8)
+		Coords = np.zeros((nimages*natom,3))
+		ind=natom
+		Coords[:natom] = newCoords[:natom].copy()
+		Atoms[:natom] = newAtoms[:natom].copy()
+		for j in range(natom,natom*nimages):
+			if(self.InRangeOfLatNormals(newCoords[j],rng_)):
+				Coords[ind] = newCoords[j]
+				Atoms[ind] = newAtoms[j]
+				ind = ind + 1
+		#print("tes sparsity",float(ind)/(natom*nimages))
+		return Atoms[:ind], Coords[:ind]
 
 class LocalForce:
 	def __init__(self, f_, rng_=5.0, NeedsTriples_=False):
@@ -242,7 +281,7 @@ class PeriodicForce:
 		"""
 		m = np.array(map(lambda x: ATOMICMASSES[x-1], self.mol0.atoms))
 		latvol = np.linalg.det(self.lattice.lattice) # in A**3
-		return np.sum(m/0.000999977)/latvol*(pow(10.0,-24.0))*AVOCONST
+		return (np.sum(m)/AVOCONST)/(latvol*pow(10, -24))
 	def AdjustLattice(self, x_, lat0_, latp_):
 		"""
 		rescales the coordinates of m relative to previous lattice.
@@ -331,6 +370,28 @@ class PeriodicForce:
 				einc = f(z,x,self.natomsReal,DoForce)
 				etore += np.sum(einc)
 		return etore, ftore
+	def TestGradient(self,x_):
+		"""
+		Travel along a gradient direction.
+		Subsample to examine how integrable the forces are versus
+		the energy along this path.
+		"""
+		e0,g0 = self.__call__(x_)
+		g0 /= JOULEPERHARTREE
+		efunc = lambda x: self.__call__(x)[0]
+		print("Magnitude of g", np.linalg.norm(g0))
+		print("g",g0)
+		#print("FDiff g", FdiffGradient(efunc,x_))
+		xt = x_.copy()
+		es = np.zeros(40)
+		gs = np.zeros((40,g0.shape[0],g0.shape[1]))
+		for i,d in enumerate(range(-20,20)):
+			dx = d*0.01*g0
+			#print("dx", dx)
+			xt = x_ + dx
+			es[i], gs[i] = self.__call__(xt)
+			gs[i] /= JOULEPERHARTREE
+			print("es ", es[i], i, np.sqrt(np.sum(dx*dx)) , np.sum(gs[i]*g0), np.sum(g0*g0))
 	def RDF(self, xyz_, z0=8):
 		"""Compute the three-dimensional pair correlation function for a set of
 		spherical particles contained in a cube with side length S.  This simple

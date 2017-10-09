@@ -51,7 +51,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 				return energy
 		CG = ConjGradient(WrappedEForce, m.coords)
 		Density = self.EnergyAndForce.Density()
-		while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001 ):
+		while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001 and step>1):
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords, energy, frc = CG(m.coords)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/m.coords.shape[0]
@@ -109,7 +109,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 			Density = self.EnergyAndForce.Density()
 			fac = rho_target/Density
 			oldlat = self.EnergyAndForce.lattice.lattice.copy()
-			newlat = 0.85*oldlat + 0.15*(oldlat*pow(1.0/fac,1.0/3.))
+			newlat = 0.65*oldlat + 0.35*(oldlat*pow(1.0/fac,1.0/3.))
 			m.coords = self.EnergyAndForce.AdjustLattice(m.coords,oldlat,newlat)
 			self.EnergyAndForce.ReLattice(newlat)
 			rmsgrad = 10.0
