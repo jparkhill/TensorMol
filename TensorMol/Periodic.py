@@ -242,7 +242,7 @@ class PeriodicForce:
 		"""
 		m = np.array(map(lambda x: ATOMICMASSES[x-1], self.mol0.atoms))
 		latvol = np.linalg.det(self.lattice.lattice) # in A**3
-		return np.sum(m/0.000999977)/latvol*(pow(10.0,-24.0))*AVOCONST
+		return (np.sum(m)/AVOCONST)/(latvol*pow(10, -24))
 	def AdjustLattice(self, x_, lat0_, latp_):
 		"""
 		rescales the coordinates of m relative to previous lattice.
