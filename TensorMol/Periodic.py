@@ -8,7 +8,7 @@ from __future__ import print_function
 from .Neighbors import *
 from .Electrostatics import *
 from .SimpleMD import *
-from MolEmb import Make_DistMask
+# from MolEmb import Make_DistMask
 
 class Lattice:
 	def __init__(self, latvec_):
