@@ -2,6 +2,7 @@ from __future__ import absolute_import
 #import memory_util
 #memory_util.vlog(1)
 from TensorMol import *
+from MolEmb import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 from TensorMol.ElectrostaticsTF import *
@@ -288,12 +289,12 @@ def TestPeriodicLJVoxel():
 		return
 
 def UnittoPeri():
-	a=MSet("MDTrajectorywater_peri_15cut", center_=False)
-	a.ReadXYZ("MDTrajectorywater_peri_15cut")
-	lat = 9.3215*2
+	a=MSet("MDTrajectorywater_tiny_real_dropout", center_=False)
+	a.ReadXYZ("MDTrajectorywater_tiny_real_dropout")
+	lat = 9.3215
 	maxtess = 2
-	steps = 1
-	for i in range(len(a.mols)/steps-4000, len(a.mols)/steps):
+	steps = 200
+	for i in range(0, len(a.mols)/steps):
 		print ("i:", i)
 		index = i*steps
 		m = a.mols[index]
@@ -307,7 +308,7 @@ def UnittoPeri():
 					xp[ntess*m.NAtoms():(ntess+1)*m.NAtoms()] = m.coords + np.array([j*lat, k*lat, l*lat])
 					ntess += 1
 		mp = Mol(zp, xp)
-		mp.WriteXYZfile(fpath="./datasets", fname="H2O_small_peri_thermal_300K")
+		mp.WriteXYZfile(fpath="./datasets", fname="water_tiny_real_dropout_md")
 
 def KickOutTrans():
 	a=MSet("H2O_wb97xd_1to21")
@@ -337,15 +338,17 @@ def KickOutTrans():
 				sampled += 1
 
 def GetRDF():
-	a = MSet("H2O_small_peri_thermal_300K")
-	a.ReadXYZ("H2O_small_peri_thermal_300K")
-	m = a.mols[-1]
-	dr = 0.01
-	r_max = 10
-	unit_num = 648
-	bin_count = np.zeros((int(r_max/dr),2))
-	bin_count[:,0] = np.arange(0, bin_count.shape[0])*dr
-	for mol_index in range(0, len(a.mols), 2):
+	a = MSet("water_tiny_dropout_md")
+	a.ReadXYZ("water_tiny_dropout_md")
+	m = a.mols[0]
+	dr = 0.0001
+	r_max = 9.0
+	unit_num = 648/8
+	accu_count = np.zeros((int(r_max/dr),2))
+	accu_count[:,0] = np.arange(0, accu_count.shape[0])*dr
+	#bin_count = np.zeros((int(r_max/dr),2))
+	#bin_count[:,0] = np.arange(0, bin_count.shape[0])*dr
+	for mol_index in range(0, len(a.mols)-1, 1):
 		m = a.mols[mol_index]
 		for i in range(0, unit_num):
 			if m.atoms[i] == 8:
@@ -353,16 +356,65 @@ def GetRDF():
 				for j in range(0, m.NAtoms()):
 					if i!=j and m.atoms[j] == 8:
 						dist = np.sum(np.square(m.coords[i]-m.coords[j]))**0.5
-						if dist < 10:
+						if dist < r_max:
 							bin_index = int(dist/dr)
-							bin_count[bin_index,1] += 1
+							accu_count[:bin_index,1] += 1
+							#bin_count[bin_index,1] += 1
+	#for i in range(0, bin_count.shape[0]):
+	#	r = i*dr+dr/2.0
+	#	bin_count[i,1] = bin_count[i,1]/(r**2)
+	#np.savetxt("OO_rdf_dropout.dat", bin_count)
+	np.savetxt("OO_accu_dropout.dat", accu_count)
+#Make_DistMat_ForReal
+
+def GetRDF_Update():
+	a=MSet("MDTrajectorywater_tiny_real_dropout")
+	a.ReadXYZ("MDTrajectorywater_tiny_real_dropout")
+	dr = 0.001
+	r_max = 10.0
+	lat = 9.3215
+	natom = a.mols[0].NAtoms()
+	rdf_type = [8,8]
+	bin_count = np.zeros((int(r_max/dr),2))
+	bin_count[:,0] = np.arange(0, bin_count.shape[0])*dr
+	print ("bin_count:", bin_count)
+	maxtess = 2
+	for mol_index in range(len(a.mols)/4, len(a.mols)):
+		t = time.time()
+		#print ("mol_index:", mol_index)
+		m = a.mols[mol_index]
+		rdf_index =  GetRDF_Bin(m.coords, m.atoms, r_max, dr, lat, 8, 8)
+		bin_count[rdf_index, 1] += 1
+		#zp = np.zeros(m.NAtoms()*((2*maxtess-1)**3), dtype=np.int32)
+		#xp = np.zeros((m.NAtoms()*((2*maxtess-1)**3),3))
+		#ntess = 0
+		#for j in range(-maxtess+1, maxtess):
+		#	for k in range(-maxtess+1, maxtess):
+		#		for l in range(-maxtess+1, maxtess):
+		#			zp[ntess*m.NAtoms():(ntess+1)*m.NAtoms()] = m.atoms
+		#			xp[ntess*m.NAtoms():(ntess+1)*m.NAtoms()] = m.coords + np.array([j*lat, k*lat, l*lat])
+		#			ntess += 1
+		#t_cstart = time.time()
+		#dist_mat = Make_DistMat_ForReal(xp, natom)
+		#print ("dist_mat:", dist_mat)
+		#print ("dist_time:", time.time() - t_cstart)
+		#for i in range(0, natom):
+		#	if zp[i] == rdf_type[0]:
+		#		for j in range(0, xp.shape[0]):
+		#			if zp[j] == rdf_type[1] and i!=j:
+		#				dist = dist_mat[i][j]
+		#				if dist < r_max:
+		#					bin_index = int(dist/dr)
+		#					bin_count[bin_index,1] += 1
+		#print ("time per case:",time.time() - t)
 	for i in range(0, bin_count.shape[0]):
 		r = i*dr+dr/2.0
 		bin_count[i,1] = bin_count[i,1]/(r**2)
-	np.savetxt("OO_rdf.dat", bin_count)
+	np.savetxt("OO_rdf_real_dropout.dat", bin_count)
 
 
 #TestPeriodicLJVoxel()
-UnittoPeri()
+#UnittoPeri()
 #KickOutTrans()
-GetRDF()
+#GetRDF()
+GetRDF_Update()
