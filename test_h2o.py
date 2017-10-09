@@ -1361,7 +1361,7 @@ def BoxAndDensity():
 		aper.Prop()
 		mt.coords = aper.Minx
 
-	if 1:
+	if 0:
 		s = MSet("water64")
 		s.ReadXYZ()
 		mt = s.mols[0]
@@ -1375,38 +1375,42 @@ def BoxAndDensity():
 	else:
 		s = MSet("water64")
 		s.ReadXYZ()
-		m = s.mols[0]
+		m = s.mols[-1]
 
 	PF = PeriodicForce(m,m.properties["Lattice"])
-	PF.BindForce(EnAndForce, 16.0)
+	PF.BindForce(EnAndForce, 15.0)
 	print("Original Lattice: ", PF.lattice.lattice)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
-	if 1:
+	if 0:
 		for i in range(4):
 			print("En0:", PF(m.coords)[0])
 			m.coords += (np.random.random((1,3))-0.5)*3.0
 			m.coords = PF.lattice.ModuloLattice(m.coords)
 			print("En:"+str(i), PF(m.coords)[0])
 			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
-	if 1:
+	if 0:
 		# Try optimizing that....
-		PARAMS["OptMaxCycles"]=10
+		PARAMS["OptMaxCycles"]=20
 		POpt = PeriodicGeomOptimizer(PF)
 		#m = POpt.OptToDensity(m,1.0)
-		m = POpt.OptToDensity(m)
+		#m = POpt.OptToDensity(m)
+		m = POpt.Opt(m)
 		PF.mol0.coords = m.coords
 		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
 
-	PARAMS["MDAnnealT0"] = 20.0
-	PARAMS["MDAnnealTF"] = 300.0
-	PARAMS["MDAnnealSteps"] = 1000
-	traj = PeriodicAnnealer(PF,"PeriodicWarm")
-	traj.Prop()
+	if 1:
+		PARAMS["MDAnnealT0"] = 20.0
+		PARAMS["MDAnnealTF"] = 300.0
+		PARAMS["MDAnnealSteps"] = 1000
+		traj = PeriodicAnnealer(PF,"PeriodicWarm")
+		traj.Prop()
 
 	# Finally do thermostatted MD.
+	PF.TestGradient(PF.mol0.coords)
 	PARAMS["MDTemp"] = 300.0
+	PARAMS["MDdt"] = 0.05 # In fs.
 	traj = PeriodicVelocityVerlet(PF,"PeriodicWaterMD")
 	traj.Prop()
 

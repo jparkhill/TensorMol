@@ -1263,7 +1263,6 @@ class TFMolManage(TFManage):
 		else:
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
 			return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
-
 	def EvalBPDirectEEUpdateSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True, DoForce=True):
 		"""
 		The energy, force and dipole routine for BPs_EE.

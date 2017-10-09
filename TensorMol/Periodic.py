@@ -138,18 +138,19 @@ class Lattice:
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
 					ind = ind + 1
 		# Now pare that down where the images are too far from the edges of the lattice.
+		#return newAtoms, newCoords
 		Atoms = np.zeros(nimages*natom,dtype=np.uint8)
 		Coords = np.zeros((nimages*natom,3))
-		ind=0
-		Coords[:natom] = newCoords[:natom]
-		Atoms[:natom] = newAtoms[:natom]
+		ind=natom
+		Coords[:natom] = newCoords[:natom].copy()
+		Atoms[:natom] = newAtoms[:natom].copy()
 		for j in range(natom,natom*nimages):
 			if(self.InRangeOfLatNormals(newCoords[j],rng_)):
 				Coords[ind] = newCoords[j]
 				Atoms[ind] = newAtoms[j]
 				ind = ind + 1
-		print("tes sparsity",float(ind)/(natom*nimages))
-		return newAtoms[:ind], newCoords[:ind]
+		#print("tes sparsity",float(ind)/(natom*nimages))
+		return Atoms[:ind], Coords[:ind]
 
 class LocalForce:
 	def __init__(self, f_, rng_=5.0, NeedsTriples_=False):
@@ -369,6 +370,28 @@ class PeriodicForce:
 				einc = f(z,x,self.natomsReal,DoForce)
 				etore += np.sum(einc)
 		return etore, ftore
+	def TestGradient(self,x_):
+		"""
+		Travel along a gradient direction.
+		Subsample to examine how integrable the forces are versus
+		the energy along this path.
+		"""
+		e0,g0 = self.__call__(x_)
+		g0 /= JOULEPERHARTREE
+		efunc = lambda x: self.__call__(x)[0]
+		print("Magnitude of g", np.linalg.norm(g0))
+		print("g",g0)
+		#print("FDiff g", FdiffGradient(efunc,x_))
+		xt = x_.copy()
+		es = np.zeros(40)
+		gs = np.zeros((40,g0.shape[0],g0.shape[1]))
+		for i,d in enumerate(range(-20,20)):
+			dx = d*0.01*g0
+			#print("dx", dx)
+			xt = x_ + dx
+			es[i], gs[i] = self.__call__(xt)
+			gs[i] /= JOULEPERHARTREE
+			print("es ", es[i], i, np.sqrt(np.sum(dx*dx)) , np.sum(gs[i]*g0), np.sum(g0*g0))
 	def RDF(self, xyz_, z0=8):
 		"""Compute the three-dimensional pair correlation function for a set of
 		spherical particles contained in a cube with side length S.  This simple
