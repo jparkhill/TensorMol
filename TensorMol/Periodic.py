@@ -406,7 +406,7 @@ class PeriodicForce:
 					elif (zt[j] == z2):
 						d = np.linalg.norm(xt[j]-xt[i])
 						ni[int(d/dx):] += 1
-		np.savetxt("./results/"+name_+"ni.txt",ni)
+		#np.savetxt("./results/"+name_+"ni.txt",ni)
 		# Estimate the effective density by the number contained in the outermost sphere.
 		ni /= nav
 		density = ni[-1]/(4.18879*ri[-1]*ri[-1]*ri[-1])
@@ -416,4 +416,5 @@ class PeriodicForce:
 		gi = x2gi/(ri*ri)
 		gi[0] = 0.0
 		gi = MovingAverage(gi,20)
-		np.savetxt("./results/"+name_+".txt",gi)
+		return gi
+		#np.savetxt("./results/"+name_+".txt",gi)

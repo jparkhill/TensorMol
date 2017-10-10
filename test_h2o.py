@@ -1426,7 +1426,7 @@ def BoxAndDensity():
 
 	PF = PeriodicForce(m,m.properties["Lattice"])
 	PF.BindForce(EnAndForce, 12.0)
-	PF.RDF(m.coords,1,1,20.0,0.02,"RDF0")
+	PF.RDF(m.coords,8,8,20.0,0.01,"RDF0")
 	print("Original Lattice: ", PF.lattice.lattice)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
