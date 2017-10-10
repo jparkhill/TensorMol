@@ -2135,15 +2135,12 @@ static PyMethodDef EmbMethods[] =
 	"DipoleAutoCorr method"},
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
 	"Make_DistMat method"},
-<<<<<<< HEAD
-	{"Make_DistMask", Make_DistMask, METH_VARARGS,
-	"Make_DistMask method"},
-=======
+	// {"Make_DistMask", Make_DistMask, METH_VARARGS,
+	// "Make_DistMask method"},
 	{"Make_DistMat_ForReal", Make_DistMat_ForReal, METH_VARARGS,
 	"Make_DistMat_ForReal method"},
 	{"GetRDF_Bin", GetRDF_Bin, METH_VARARGS,
 	"GetRDF_Bin method"},
->>>>>>> 30165a8c2c2da4abc067e3f71878a996b8aee24d
 	{"Norm_Matrices", Norm_Matrices, METH_VARARGS,
 	"Norm_Matrices method"},
 	{"Make_CM", Make_CM, METH_VARARGS,
