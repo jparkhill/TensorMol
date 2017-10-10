@@ -8,6 +8,11 @@ import random
 import math
 from math import pi as Pi
 
+def MovingAverage(a, n=3) :
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
+
 def PseudoInverse(mat_):
 	U, s, V = np.linalg.svd(mat_) #M=u * np.diag(s) * v,
 	for i in range(len(s)):

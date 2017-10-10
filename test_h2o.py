@@ -1420,10 +1420,13 @@ def BoxAndDensity():
 	else:
 		s = MSet("water64")
 		s.ReadXYZ()
-		m = s.mols[-1]
+		mt = s.mols[-1]
+		lat0 = (np.max(mt.coords)-np.min(mt.coords)+0.5)*np.eye(3)
+		m = Lattice(lat0).CenteredInLattice(mt)
 
 	PF = PeriodicForce(m,m.properties["Lattice"])
-	PF.BindForce(EnAndForce, 15.0)
+	PF.BindForce(EnAndForce, 12.0)
+	PF.RDF(m.coords,1,1,20.0,0.02,"RDF0")
 	print("Original Lattice: ", PF.lattice.lattice)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
@@ -1434,13 +1437,13 @@ def BoxAndDensity():
 			m.coords = PF.lattice.ModuloLattice(m.coords)
 			print("En:"+str(i), PF(m.coords)[0])
 			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
-	if 0:
+	if 1:
 		# Try optimizing that....
 		PARAMS["OptMaxCycles"]=20
 		POpt = PeriodicGeomOptimizer(PF)
-		#m = POpt.OptToDensity(m,1.0)
+		m = POpt.OptToDensity(m,1.0)
 		#m = POpt.OptToDensity(m)
-		m = POpt.Opt(m)
+		#m = POpt.Opt(m)
 		PF.mol0.coords = m.coords
 		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
