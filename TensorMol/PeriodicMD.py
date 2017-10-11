@@ -101,8 +101,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		"""
 		Returns the density in g/cm**3 of the bulk.
 		"""
-		latvol = np.linalg.det(self.PForce.lattice.lattice) # in A**3
-		return np.sum(self.m/0.000999977)/latvol*(pow(10.0,-24))*AVOCONST
+		return self.PForce.Density()
 	def WriteTrajectory(self):
 		m=Mol(self.atoms,self.x)
 		m.properties["Lattice"]=self.PForce.lattice.lattice.copy()
