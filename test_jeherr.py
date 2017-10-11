@@ -440,14 +440,12 @@ def TestTFSym():
 	# print tmp2[0].shape
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
-	tmp3, tmp4 = sess.run([tmp, tmp2], options=options, run_metadata=run_metadata)
+	tmp3 = sess.run(tmp, options=options, run_metadata=run_metadata)
 	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
 	chrome_trace = fetched_timeline.generate_chrome_trace_format()
 	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 		f.write(chrome_trace)
-	print tmp3[0][0].shape
-	print tmp4[0][0].shape
-	print np.allclose(tmp3[0][0], tmp4[0][0])
+	print tmp3
 	# print np.isclose(tmp3[0][0], tmp4[0,0])
 	# print tmp3[0]
 	# print len(tmp3[0])
@@ -579,7 +577,7 @@ def train_energy_pairs_triples():
 	tset = TensorMolData_BP_Direct(a,d)
 	manager=TFMolManage("",tset,True,"pairs_triples", Trainable_=True)
 
-def train_energy_symm_func_channel():
+def train_energy_symm_func():
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 500
@@ -625,7 +623,7 @@ TestTFSym()
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func_channel()
+# train_energy_symm_func()
 
 # a=MSet("chemspider_aimd_forcecut")
 # a.Load()

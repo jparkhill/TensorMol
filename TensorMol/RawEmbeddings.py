@@ -2886,15 +2886,16 @@ def tf_symmetry_functions_2(xyzs, Zs, num_atoms, elements, element_pairs, radial
 	radial_atom_indices = tf.dynamic_partition(pair_indices[:,1], pair_indices[:,0], num_molecules)
 	angular_molecule_embeddings = tf.dynamic_partition(angular_embedding, triples_indices[:,0], num_molecules)
 	angular_atom_indices = tf.dynamic_partition(triples_indices[:,1], triples_indices[:,0], num_molecules)
-	molecule_embedding_indices = zip(radial_molecule_embeddings, radial_atom_indices, angular_molecule_embeddings, angular_atom_indices, num_atoms)
+	num_atoms_molecule = tf.dynamic_partition
+	molecule_embedding_indices = zip(radial_molecule_embeddings, radial_atom_indices, angular_molecule_embeddings, angular_atom_indices)
 
 	atom_embeddings = []
 	mol_indices = []
 
 	for molecule in range(num_molecules):
-		radial_atom_embeddings = tf.dynamic_partition(molecule_embedding_indices[molecule][0], molecule_embedding_indices[molecule][1], molecule_embedding_indices[molecule][4])
-		angular_atom_embeddings = tf.dynamic_partition(molecule_embedding_indices[molecule][2], molecule_embedding_indices[molecule][3], num_atoms[molecule])
-
+		num_atoms = tf.shape(tf.gather_nd(Zs[molecule], tf.where(tf.not_equal(Zs[molecule], 0))))[0]
+		radial_atom_embeddings = tf.dynamic_partition(molecule_embedding_indices[molecule][0], molecule_embedding_indices[molecule][1], num_atoms)
+		angular_atom_embeddings = tf.dynamic_partition(molecule_embedding_indices[molecule][2], molecule_embedding_indices[molecule][3], num_atoms)
 
 		for atom in range(molecule_embedding_indices[molecule][4]):
 			radial_atom_embedding = tf.reshape(tf.reduce_sum(radial_atom_embeddings[atom], axis=0), [tf.shape(radial_embedding)[2] * num_elements])
