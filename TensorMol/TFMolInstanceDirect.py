@@ -5741,6 +5741,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		"""
 		nmol = batch_data[2].shape[0]
 		self.nreal = nreal
+		self.activation_function_type = PARAMS["NeuronType"]
+		self.AssignActivation()
 		if (batch_data[0].shape[1] != self.MaxNAtoms):
 			self.MaxNAtoms = batch_data[0].shape[1]
 			self.batch_size = nmol
