@@ -8,7 +8,7 @@ from __future__ import print_function
 from .Neighbors import *
 from .Electrostatics import *
 from .SimpleMD import *
-# from MolEmb import Make_DistMask
+from MolEmb import GetRDF_Bin
 
 class Lattice:
 	def __init__(self, latvec_):
@@ -138,7 +138,7 @@ class Lattice:
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
 					ind = ind + 1
 		# Now pare that down where the images are too far from the edges of the lattice.
-		#return newAtoms, newCoords
+		return newAtoms, newCoords
 		Atoms = np.zeros(nimages*natom,dtype=np.uint8)
 		Coords = np.zeros((nimages*natom,3))
 		ind=natom
@@ -392,77 +392,57 @@ class PeriodicForce:
 			es[i], gs[i] = self.__call__(xt)
 			gs[i] /= JOULEPERHARTREE
 			print("es ", es[i], i, np.sqrt(np.sum(dx*dx)) , np.sum(gs[i]*g0), np.sum(g0*g0))
-	def RDF(self, xyz_, z0=8):
-		"""Compute the three-dimensional pair correlation function for a set of
-		spherical particles contained in a cube with side length S.  This simple
-		function finds reference particles such that a sphere of radius rMax drawn
-		around the particle will fit entirely within the cube, eliminating the need
-		to compensate for edge effects.  If no such particles exist, an error is
-		returned.  Try a smaller rMax...or write some code to handle edge effects! ;)
-		Arguments:
-			x               an array of x positions of centers of particles
-			y               an array of y positions of centers of particles
-			z               an array of z positions of centers of particles
-			S               length of each side of the cube in space
-			rMax            outer diameter of largest spherical shell
-			dr              increment for increasing radius of spherical shell
-		Returns a tuple: (g, radii, interior_indices)
-			g(r)            a numpy array containing the correlation function g(r)
-			radii           a numpy array containing the radii of the
-				spherical shells used to compute g(r)
-			reference_indices   indices of reference particles
-		"""
-		# Tesselate out to a long distance, then construct RDF
-		S = 50.0
-		rMax = 10.0
-		dr = 0.05
-		z_, x_ = self.lattice.TessLattice(self.atoms, xyz_, S)
-		x = x_[:,0]
-		y = x_[:,1]
-		z = x_[:,2]
-		from numpy import zeros, sqrt, where, pi, mean, arange, histogram
+	def RDF(self,x_,z1=8,z2=8,rng=10.0,dx = 0.02,name_="RDF.txt"):
+		zt,xt = self.lattice.TessLattice(self.atoms, x_ , rng)
+		ri = np.arange(0.0,rng,dx)
+		ni = np.zeros(ri.shape)
+		nav = 0.0
+		neigbor = []
+		for i in range(self.natoms):
+			if (zt[i]==z1):
+				nav += 1.0
+				for j in range(zt.shape[0]):
+					if i==j:
+						continue
+					elif (zt[j] == z2):
+						d = np.linalg.norm(xt[j]-xt[i])
+						ni[int(d/dx):] += 1
+						neigbor.append(int(d/dx))
+		#np.savetxt("./results/"+name_+"ni.txt",ni)
+		# Estimate the effective density by the number contained in the outermost sphere.
+		ni /= nav
+		#print ("len(neigbor)", len(neigbor))
+		density = ni[-1]/(4.18879*ri[-1]*ri[-1]*ri[-1])
+		# Now take the derivative by central differences
+		x2gi = np.gradient(ni / (12.56637*density),dx)
+		# finally divide by x**2 and moving average it.
+		gi = x2gi/(ri*ri)
+		gi[0] = 0.0
+		gi = MovingAverage(gi,20)
+		return gi
+		#np.savetxt("./results/"+name_+".txt",gi)
 
-		# Find particles which are close enough to the cube center that a sphere of radius
-		# rMax will not cross any face of the cube
-		bools1 = x > rMax
-		bools2 = x < (S - rMax)
-		bools3 = y > rMax
-		bools4 = y < (S - rMax)
-		bools5 = z > rMax
-		bools6 = z < (S - rMax)
-		bools7 = (z_ == z0)
 
-		interior_indices, = where(bools1 * bools2 * bools3 * bools4 * bools5 * bools6 * bools7)
-		num_interior_particles = len(interior_indices)
-
-		if num_interior_particles < 1:
-			raise  RuntimeError ("No particles found for which a sphere of radius rMax\
-				will lie entirely within a cube of side length S.  Decrease rMax\
-				or increase the size of the cube.")
-
-		edges = arange(0., rMax + 1.1 * dr, dr)
-		num_increments = len(edges) - 1
-		g = zeros([num_interior_particles, num_increments])
-		radii = zeros(num_increments)
-		numberDensity = len(x) / S**3
-
-		# Compute pairwise correlation for each interior particle
-		for p in range(num_interior_particles):
-			index = interior_indices[p]
-			d = sqrt((x[index] - x)**2 + (y[index] - y)**2 + (z[index] - z)**2)
-			d[index] = 2 * rMax
-
-			(result, bins) = histogram(d, bins=edges, normed=False)
-			g[p,:] = result / numberDensity
-
-		# Average g(r) for all interior particles and compute radii
-		g_average = zeros(num_increments)
-		for i in range(num_increments):
-			radii[i] = (edges[i] + edges[i+1]) / 2.
-			rOuter = edges[i + 1]
-			rInner = edges[i]
-			g_average[i] = mean(g[:, i]) / (4.0 / 3.0 * pi * (rOuter**3 - rInner**3))
-
-		return (g_average, radii, interior_indices)
-		# Number of particles in shell/total number of particles/volume of shell/number density
-		# shell volume = 4/3*pi(r_outer**3-r_inner**3)
+	def RDF_inC(self,x_,z_,lat_,z1=8,z2=8,rng=10.0,dx = 0.02,name_="RDF.txt"):
+		rdf_index =  GetRDF_Bin(x_, z_, rng, dx, lat_, z1, z2)
+		ri = np.arange(0.0,rng,dx)
+		ni = np.zeros(ri.shape)
+		for index in rdf_index:
+			ni[index:] += 1
+		nav = 0.0
+		#print ("rdf_index:", len(rdf_index))
+		for i in range(z_.shape[0]):
+			if (z_[i]==z1):
+				nav += 1.0
+		#np.savetxt("./results/"+name_+"ni.txt",ni)
+		# Estimate the effective density by the number contained in the outermost sphere.
+		ni /= nav
+		density = ni[-1]/(4.18879*ri[-1]*ri[-1]*ri[-1])
+		# Now take the derivative by central differences
+		x2gi = np.gradient(ni / (12.56637*density),dx)
+		# finally divide by x**2 and moving average it.
+		gi = x2gi/(ri*ri)
+		gi[0] = 0.0
+		gi = MovingAverage(gi,20)
+		return gi
+		#np.savetxt("./results/"+name_+".txt",gi)

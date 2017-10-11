@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -592,7 +592,7 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (1): # Normalize+Dropout+500+usual, dropout05
+	if (1): # Normalize+Dropout+500+usual, dropout07+act_gaussian_rev_tozero
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -601,18 +601,17 @@ def Train():
 		#for i in range(350000):
 		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
-		PARAMS["NetNameSuffix"] = "500_lastdrop07_fortestrawbed"
+		PARAMS["NetNameSuffix"] = "act_gaussian_rev_tozero"
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
 		PARAMS["max_steps"] = 101
-		PARAMS["batch_size"] =  200
-		#PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
 		PARAMS["test_freq"] = 1
 		PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["EnergyScalar"] = 1.0
 		PARAMS["GradScalar"] = 1.0/20.0
 		PARAMS["DipoleScaler"]=1.0
-		PARAMS["NeuronType"] = "relu"
+		PARAMS["NeuronType"] = "gaussian_rev_tozero"
 		PARAMS["HiddenLayers"] = [500, 500, 500]
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 0
@@ -1420,10 +1419,13 @@ def BoxAndDensity():
 	else:
 		s = MSet("water64")
 		s.ReadXYZ()
-		m = s.mols[-1]
+		mt = s.mols[-1]
+		lat0 = (np.max(mt.coords)-np.min(mt.coords)+0.5)*np.eye(3)
+		m = Lattice(lat0).CenteredInLattice(mt)
 
 	PF = PeriodicForce(m,m.properties["Lattice"])
-	PF.BindForce(EnAndForce, 15.0)
+	PF.BindForce(EnAndForce, 12.0)
+	PF.RDF(m.coords,8,8,20.0,0.01,"RDF0")
 	print("Original Lattice: ", PF.lattice.lattice)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
@@ -1434,13 +1436,13 @@ def BoxAndDensity():
 			m.coords = PF.lattice.ModuloLattice(m.coords)
 			print("En:"+str(i), PF(m.coords)[0])
 			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
-	if 0:
+	if 1:
 		# Try optimizing that....
 		PARAMS["OptMaxCycles"]=20
 		POpt = PeriodicGeomOptimizer(PF)
-		#m = POpt.OptToDensity(m,1.0)
+		m = POpt.OptToDensity(m,1.0)
 		#m = POpt.OptToDensity(m)
-		m = POpt.Opt(m)
+		#m = POpt.Opt(m)
 		PF.mol0.coords = m.coords
 		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
@@ -1460,6 +1462,6 @@ def BoxAndDensity():
 	traj.Prop()
 
 #TrainPrepare()
-#Train()
+Train()
 #Eval()
-BoxAndDensity()
+#BoxAndDensity()

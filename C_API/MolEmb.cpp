@@ -1077,16 +1077,23 @@ static PyObject* GetRDF_Bin(PyObject *self, PyObject  *args)
 	uint8_t* atoms=(uint8_t*)Zs->data;
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	xyzp_data = (double*) ((PyArrayObject*) xyzp)->data;
-	int tess_index = 0;
+	for (int n=0; n<nat; ++n) {
+		xyzp_data[n*3+0] = xyz_data[n*3+0];
+		xyzp_data[n*3+1] = xyz_data[n*3+1];
+		xyzp_data[n*3+2] = xyz_data[n*3+2];
+	}
+	int tess_index = 1;
 	for (int i=-ntess; i <= ntess; ++i) {
 		for (int j=-ntess; j <= ntess; ++j)
 			for (int k=-ntess; k <= ntess; ++k)
+			   if (i!=0 || j!=0 || k!=0){
 				for (int n=0; n<nat; ++n) {
 						xyzp_data[(tess_index*nat+n)*3+0] = xyz_data[n*3+0] + i*cellsize;
 						xyzp_data[(tess_index*nat+n)*3+1] = xyz_data[n*3+1] + j*cellsize;
 						xyzp_data[(tess_index*nat+n)*3+2] = xyz_data[n*3+2] + k*cellsize;
 				}
 				tess_index++;
+			   }
 	}
 	PyObject* bin_index = PyList_New(0);
 	double dist;
@@ -1095,7 +1102,7 @@ static PyObject* GetRDF_Bin(PyObject *self, PyObject  *args)
 			for (int j=0; j < nat_p; ++j)
 			{
 				if (atoms[j%nat] == ele2 && i!=j) {
-					dist = sqrt((xyzp_data[i*3+0]-xyzp_data[j*3+0])*(xyzp_data[i*3+0]-xyzp_data[j*3+0])+(xyzp_data[i*3+1]-xyzp_data[j*3+1])*(xyzp_data[i*3+1]-xyzp_data[j*3+1])+(xyzp_data[i*3+2]-xyzp_data[j*3+2])*(xyzp_data[i*3+2]-xyzp_data[j*3+2])) + 0.00000000001;
+					dist = sqrt((xyz_data[i*3+0]-xyzp_data[j*3+0])*(xyz_data[i*3+0]-xyzp_data[j*3+0])+(xyz_data[i*3+1]-xyzp_data[j*3+1])*(xyz_data[i*3+1]-xyzp_data[j*3+1])+(xyz_data[i*3+2]-xyzp_data[j*3+2])*(xyz_data[i*3+2]-xyzp_data[j*3+2])) + 0.00000000001;
 					if (dist < cut) {
 						PyObject* ti = PyInt_FromLong((int)(dist/dr));
 						PyList_Append(bin_index, ti);
