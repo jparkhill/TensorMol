@@ -2878,7 +2878,8 @@ def tf_symmetry_functions_2(R, Zs, num_atoms, elements, SFPsR_, Rr_cut, element_
 	radial_atom_indices = tf.dynamic_partition(pair_indices[:,1], pair_indices[:,0], num_molecules)
 	angular_molecule_embeddings = tf.dynamic_partition(angular_embedding, triples_indices[:,0], num_molecules)
 	angular_atom_indices = tf.dynamic_partition(triples_indices[:,1], triples_indices[:,0], num_molecules)
-	return angular_atom_indices
+	molecule_embedding_indices = zip(radial_molecule_embeddings, radial_atom_indices, angular_molecule_embeddings, angular_atom_indices)
+
 
 	triples_element_indices = tf.reshape(tf.cast(tf.where(tf.equal(tf.expand_dims(triples_elements, axis=-1),
 								tf.expand_dims(tf.expand_dims(elements, axis=0), axis=1))), tf.int32)[:,-1], [tf.shape(triples_indices)[0], 3])
