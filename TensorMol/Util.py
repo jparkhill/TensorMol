@@ -181,4 +181,22 @@ def EluAjust(x, a, x0, shift):
 	else:
 		return a*(math.exp(x-x0)-1.0)+shift
 
+
+def sigmoid_with_param(x, prec=tf.float64):
+	return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=prec), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=prec)
+
+
+def guassian_act(x, prec=tf.float64):
+	return tf.exp(-x*x)
+
+def guassian_rev_tozero(x, prec=tf.float64):
+	return tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
+
+def guassian_rev_tozero_tolinear(x, prec=tf.float64):
+	a = 0.5
+	b = -0.06469509698101589
+	x0 = 0.2687204431537632
+	step1 = tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
+	return tf.where(tf.greater(x, x0), a*x+b, step1)
+
 signstep = np.vectorize(SignStep)

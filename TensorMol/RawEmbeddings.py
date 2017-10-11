@@ -1006,12 +1006,12 @@ def TFSymASet_Linear_WithEle_UsingList(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, A
 
 	num_elep, num_dim = eleps_.get_shape().as_list()
 	elep_range = tf.cast(tf.range(nelep),dtype=tf.int64)
-		
+
 	Asym_ByElep = []
 	for e in range(num_elep):
 		tomask = tf.equal(AngtriEle[:,4], tf.reshape(elep_range[e], [1,1]))
 		AngtriEle_sub = tf.reshape(tf.boolean_mask(AngtriEle, tf.tile(tf.reshape(tomask,[-1,1]),[1,5])),[-1,5])
-		
+
 		tomask1 = tf.equal(mil_jk2[:,2], tf.reshape(elep_range[e], [1,1]))
 		mil_jk2_sub = tf.reshape(tf.boolean_mask(mil_jk2, tf.tile(tf.reshape(tomask1,[-1,1]),[1,4])),[-1,4])
 		mi_jk2_sub = tf.concat([mil_jk2_sub[:,0:2],  mil_jk2_sub[:,3:]], axis=-1)
@@ -2862,14 +2862,24 @@ def tf_symmetry_functions_2(R, Zs, num_atoms, elements, SFPsR_, Rr_cut, element_
 	num_element_pairs = element_pairs.get_shape().as_list()[0]
 
 	radial_embedding, pair_indices, pair_elements = tf_symmetry_functions_radial_grid_2(R, Zs, elements, SFPsR_, eta, Rr_cut)
-	angular_embedding, triples_indices, triples_elements = tf_symmetry_function_angular_grid_2(R, Zs, element_pairs, theta_s, radial_s, zeta, eta, Ra_cut)
-	# return tf.gather(triples_indices, tf.where(tf.equal(triples_indices[:,1:], 0))[:,0])
-	return tf.gather_nd(angular_embedding, tf.where(tf.equal(triples_indices[:,1:], 0)))
-	pair_element_indices = tf.reshape(tf.cast(tf.where(tf.equal(tf.expand_dims(pair_elements, axis=-1),
-							tf.expand_dims(tf.expand_dims(elements, axis=0), axis=1))), tf.int32)[:,-1], [tf.shape(pair_indices)[0], 2])
+	angular_embedding, triples_indices, triples_element, triples_element_pairs = tf_symmetry_function_angular_grid_2(R, Zs, element_pairs, theta_s, radial_s, zeta, eta, Ra_cut)
+
+	radial_scatter_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_elements[:,1], axis=-1),
+							tf.expand_dims(elements, axis=0))), tf.int32)
+	radial_embedding = tf.scatter_nd(radial_scatter_indices, radial_embedding, [tf.shape(radial_embedding)[0],
+						num_elements, tf.shape(radial_embedding)[1]])
+
+	angular_scatter_indices = tf.cast(tf.where(tf.reduce_all(tf.equal(tf.expand_dims(triples_element_pairs, axis=-2),
+									element_pairs), axis=-1)), tf.int32)
+	angular_embedding = tf.scatter_nd(angular_scatter_indices, angular_embedding, [tf.shape(angular_embedding)[0],
+						num_element_pairs, tf.shape(angular_embedding)[1]])
+
 	radial_molecule_embeddings = tf.dynamic_partition(radial_embedding, pair_indices[:,0], num_molecules)
-	mol_atom_pair_atom_indices = tf.dynamic_partition(pair_indices, pair_indices[:,0], num_molecules)
-	mol_pair_element_indices = tf.dynamic_partition(pair_element_indices, pair_indices[:,0], num_molecules)
+	radial_atom_indices = tf.dynamic_partition(pair_indices[:,1], pair_indices[:,0], num_molecules)
+	angular_molecule_embeddings = tf.dynamic_partition(angular_embedding, triples_indices[:,0], num_molecules)
+	angular_atom_indices = tf.dynamic_partition(triples_indices[:,1], triples_indices[:,0], num_molecules)
+	molecule_embedding_indices = zip(radial_molecule_embeddings, radial_atom_indices, angular_molecule_embeddings, angular_atom_indices)
+
 
 	triples_element_indices = tf.reshape(tf.cast(tf.where(tf.equal(tf.expand_dims(triples_elements, axis=-1),
 								tf.expand_dims(tf.expand_dims(elements, axis=0), axis=1))), tf.int32)[:,-1], [tf.shape(triples_indices)[0], 3])
@@ -2943,8 +2953,8 @@ def tf_symmetry_functions_radial_grid_2(xyzs, Zs, eles_, SFPs_, eta, radial_grid
 	padding_mask = tf.not_equal(Zs, 0)
 	pair_indices = tf.where(tf.logical_and(tf.logical_and(tf.less(distance_tensor, radial_grid_cutoff),
 					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1)))
-	permutation_identity_mask = tf.where(tf.less(pair_indices[:,1], pair_indices[:,2]))
-	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, permutation_identity_mask)), tf.int32)
+	identity_mask = tf.where(tf.not_equal(pair_indices[:,1], pair_indices[:,2]))
+	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, identity_mask)), tf.int32)
 	pair_distances = tf.gather_nd(distance_tensor, pair_indices)
 	pair_elements = tf.stack([tf.gather_nd(Zs, pair_indices[:,0:2]), tf.gather_nd(Zs, pair_indices[:,0:3:2])], axis=-1)
 	gaussian_factor = tf.exp(-eta * tf.square(tf.expand_dims(pair_distances, axis=-1) - tf.expand_dims(SFPs_, axis=0)))
@@ -2979,22 +2989,53 @@ def tf_symmetry_function_angular_grid_2(xyzs, Zs, eleps_, theta_s, radial_s, zet
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 	distance_tensor = tf.norm(delta_xyzs,axis=3)
 	padding_mask = tf.not_equal(Zs, 0)
-	pair_indices = tf.where(tf.logical_and(tf.logical_and(tf.less(distance_tensor, angular_grid_cutoff),
-					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1)))
-	permutation_identity_mask = tf.where(tf.less(pair_indices[:,1], pair_indices[:,2]))
-	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, permutation_identity_mask)), tf.int32)
+	pair_indices = tf.cast(tf.where(tf.logical_and(tf.logical_and(tf.less(distance_tensor, angular_grid_cutoff),
+					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1))), tf.int32)
+	identity_mask = tf.where(tf.not_equal(pair_indices[:,1], pair_indices[:,2]))
+	pair_indices = tf.cast(tf.squeeze(tf.gather(pair_indices, identity_mask)), tf.int32)
 	mol_pair_indices = tf.dynamic_partition(pair_indices, pair_indices[:,0], num_mols)
-	mol_triples_indices = []
+	triples_indices = []
 	tmp = []
 	for i in xrange(num_mols):
-		mol_common_atom_indices = tf.where(tf.reduce_all(tf.equal(tf.expand_dims(mol_pair_indices[i][:,0:2], axis=0),
-				tf.expand_dims(mol_pair_indices[i][:,0:2], axis=1)), axis=2))
-		permutation_pairs_mask = tf.where(tf.less(mol_common_atom_indices[:,0], mol_common_atom_indices[:,1]))
-		mol_common_atom_indices = tf.squeeze(tf.gather(mol_common_atom_indices, permutation_pairs_mask), axis=1)
-		tmp.append(mol_common_atom_indices)
-		mol_triples_indices.append(tf.concat([tf.gather(mol_pair_indices[i], mol_common_atom_indices[:,0]),
-				tf.expand_dims(tf.gather(mol_pair_indices[i], mol_common_atom_indices[:,1])[:,2], axis=1)], axis=1))
-	triples_indices = tf.concat(mol_triples_indices, axis=0)
+		mol_common_pair_indices = tf.where(tf.equal(tf.expand_dims(mol_pair_indices[i][:,1], axis=1),
+									tf.expand_dims(mol_pair_indices[i][:,1], axis=0)))
+		mol_triples_indices = tf.concat([tf.gather(mol_pair_indices[i], mol_common_pair_indices[:,0]),
+								tf.gather(mol_pair_indices[i], mol_common_pair_indices[:,1])[:,-1:]], axis=1)
+		permutation_identity_pairs_mask = tf.where(tf.less(mol_triples_indices[:,2], mol_triples_indices[:,3]))
+		mol_triples_indices = tf.squeeze(tf.gather(mol_triples_indices, permutation_identity_pairs_mask))
+		triples_indices.append(mol_triples_indices)
+	triples_indices = tf.concat(triples_indices, axis=0)
+
+	triples_elements = tf.gather_nd(Zs, triples_indices[:,0:2])
+	triples_element_pairs, _ = tf.nn.top_k(tf.stack([tf.gather_nd(Zs, triples_indices[:,0:3:2]),
+							tf.gather_nd(Zs, triples_indices[:,0:4:3])], axis=-1), k=2)
+	sorted_triples_element_pairs = tf.reverse(triples_element_pairs, axis=[-1])
+
+	triples_distances = tf.stack([tf.gather_nd(distance_tensor, triples_indices[:,:3]), tf.gather_nd(distance_tensor,
+						tf.concat([triples_indices[:,:2], triples_indices[:,3:]], axis=1))], axis=1)
+	r_ijk_s = tf.square(tf.expand_dims(tf.reduce_sum(triples_distances, axis=1) / 2.0, axis=-1) - tf.expand_dims(radial_s, axis=0))
+	exponential_factor = tf.exp(-eta * r_ijk_s)
+
+	xyz_ij_ik = tf.reduce_sum(tf.gather_nd(delta_xyzs, triples_indices[:,:3]) * tf.gather_nd(delta_xyzs,
+						tf.concat([triples_indices[:,:2], triples_indices[:,3:]], axis=1)), axis=1)
+	cos_theta = xyz_ij_ik / (triples_distances[:,0] * triples_distances[:,1])
+	cos_theta = tf.where(tf.greater_equal(cos_theta, 1.0), tf.ones_like(cos_theta) - 1.0e-24, cos_theta)
+	cos_theta = tf.where(tf.less_equal(cos_theta, -1.0), -1.0 * tf.ones_like(cos_theta) - 1.0e-24, cos_theta)
+	triples_angle = tf.acos(cos_theta)
+	theta_ijk_s = tf.expand_dims(triples_angle, axis=-1) - tf.expand_dims(theta_s, axis=0)
+	cos_factor = tf.pow((1 + tf.cos(theta_ijk_s)), zeta)
+
+	cutoff_factor = 0.5 * (tf.cos(3.14159265359 * triples_distances / angular_grid_cutoff) + 1.0)
+	scalar_factor = tf.pow(tf.cast(2.0, prec), 1.0-zeta)
+
+	angular_embedding = tf.reshape(scalar_factor * tf.expand_dims(cos_factor * tf.expand_dims(cutoff_factor[:,0] * cutoff_factor[:,1], axis=-1), axis=-1) \
+						* tf.expand_dims(exponential_factor, axis=-2), [tf.shape(triples_indices)[0], tf.shape(theta_s)[0] * tf.shape(radial_s)[0]])
+	return angular_embedding, triples_indices, triples_elements, sorted_triples_element_pairs
+
+	angular_embedding = tf.reshape(tf.expand_dims(cos_factor, axis=-1) * tf.expand_dims(exponential_factor, axis=-2) \
+						* tf.expand_dims(tf.expand_dims(ij_ik_cutoff, axis=-1), axis=-2), [tf.shape(triples_indices)[0], 3, -1])
+
+
 	triples_distances = tf.stack([tf.gather_nd(distance_tensor, triples_indices[:,:3]),
 						tf.gather_nd(distance_tensor, tf.concat([triples_indices[:,:2], triples_indices[:,3:]], axis=1)),
 						tf.gather_nd(distance_tensor, tf.concat([triples_indices[:,0:1], triples_indices[:,2:]], axis=1))], axis=-1)
@@ -3011,8 +3052,8 @@ def tf_symmetry_function_angular_grid_2(xyzs, Zs, eleps_, theta_s, radial_s, zet
 			tf.gather_nd(Zs, triples_indices[:,0:4:3])], axis=-1)
 	theta_ijk_s = tf.expand_dims(triples_angles, axis=-1) - tf.expand_dims(tf.expand_dims(theta_s, axis=0), axis=1)
 	cos_factor = tf.pow((1 + tf.cos(theta_ijk_s)), zeta)
-	rij_rik = tf.transpose(tf.stack([triples_distances[:,1] + triples_distances[:,2], triples_distances[:,0] + triples_distances[:,2],
-					triples_distances[:,0] + triples_distances[:,1]]) / 2)
+	rij_rik = tf.transpose(tf.stack([triples_distances[:,0] + triples_distances[:,1], triples_distances[:,0] + triples_distances[:,2],
+					triples_distances[:,1] + triples_distances[:,2]]) / 2)
 	rijk_rs = tf.square(tf.expand_dims(rij_rik, axis=-1) - tf.expand_dims(tf.expand_dims(radial_s, axis=0), axis=1))
 	exponential_factor = tf.exp(-eta * rijk_rs)
 	cutoff_factor = 0.5 * (tf.cos(3.14159265359 * triples_distances / angular_grid_cutoff) + 1.0)
@@ -3044,8 +3085,6 @@ def tf_symmetry_functions(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFPsA_, zeta, e
 	nele = tf.shape(eles_)[0]
 	nelep = tf.shape(eleps_)[0]
 
-	tmp_inds = tf_symmetry_function_angular_grid(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk)
-	return tmp_inds
 	GMR = tf.reshape(tf_symmetry_functions_radial_grid(R, Zs, eles_, SFPsR_, eta, Rr_cut, RadpEle),[nmol, natom,-1], name="FinishGMR")
 	GMA = tf.reshape(tf_symmetry_function_angular_grid(R, Zs, eleps_, SFPsA_, zeta,  eta, Ra_cut,  AngtEle, mil_jk),[nmol, natom,-1], name="FinishGMA")
 	GM = tf.concat([GMR, GMA], axis=2, name="ConcatRadAng")
@@ -3166,7 +3205,7 @@ def tf_symmetry_function_angular_grid(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, An
 	RijRik2 = tf.reduce_sum(Rij*Rik, axis=1)
 	denom = RijRij2*RikRik2
 	#Mask any troublesome entries.
-
+	# return AngtriEle
 	ToACos = RijRik2/denom
 	ToACos = tf.where(tf.greater_equal(ToACos,1.0),tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
 	ToACos = tf.where(tf.less_equal(ToACos,-1.0),-1.0*tf.ones_like(ToACos, dtype=prec)*onescalar, ToACos)
@@ -3188,9 +3227,10 @@ def tf_symmetry_function_angular_grid(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, An
 	## assemble the full symmetry function for all triples.
 	fac34t = tf.reshape(fac3*fac4,[nnzt,1,1])
 	Gm = tf.reshape(fac1*fac2*fac34t,[nnzt, nsym]) # nnz X nzeta X neta X ntheta X nr
-	tmp_inds = tf.squeeze(tf.where(tf.equal(AngtriEle[:,1], 0)))
-	tmp_gm = tf.gather(Gm, tmp_inds)
-	return tmp_gm
+	# tmp_inds = tf.squeeze(tf.where(tf.equal(AngtriEle[:,1], 0)))
+	# # tmp_inds = tf.gather(AngtriEle, tmp_inds)
+	# tmp_gm = tf.gather(Gm, tmp_inds)
+	# return tmp_gm
 	## Finally scatter out the symmetry functions where they belong.
 	jk2 = tf.add(tf.multiply(tf.slice(AngtriEle,[0,2],[nnzt,1]), natom), tf.slice(AngtriEle,[0,3],[nnzt, 1]))
 	jk_max = tf.reduce_max(tf.slice(mil_jk2,[0,3], [nnzt, 1])) + 1

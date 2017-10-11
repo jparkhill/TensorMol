@@ -8,6 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from TensorMol.TensorData import *
 from TensorMol.RawEmbeddings import *
+from TensorMol.Util import *
 import numpy as np
 import math
 import time
@@ -120,6 +121,14 @@ class Instance:
 				self.activation_function = tf.tanh
 			elif self.activation_function_type == "sigmoid":
 				self.activation_function = tf.sigmoid
+			elif self.activation_function_type == "sigmoid_with_param":
+				self.activation_function = sigmoid_with_param
+			elif self.activation_function_type == "gaussian":
+				self.activation_function = guassian_act
+			elif self.activation_function_type == "gaussian_rev_tozero":
+				self.activation_function = guassian_rev_tozero
+			elif self.activation_function_type == "gaussian_rev_tozero_tolinear":
+				self.activation_function = guassian_rev_tozero_tolinear
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu

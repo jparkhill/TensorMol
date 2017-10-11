@@ -368,8 +368,25 @@ def GetRDF():
 #Make_DistMat_ForReal
 
 def GetRDF_Update():
-	a=MSet("MDTrajectorywater_tiny_real_dropout")
-	a.ReadXYZ("MDTrajectorywater_tiny_real_dropout")
+	a=MSet("MDTrajectorywater_64_real_dropout")
+	a.ReadXYZ("MDTrajectorywater_64_real_dropout")
+
+	m = a.mols[-1]
+	m.properties["Lattice"] = np.eye(3)*12.42867	
+	PF = PeriodicForce(m,m.properties["Lattice"])
+	gi = PF.RDF(m.coords,8,8,10.0,0.01)
+	gi2 = PF.RDF(m.coords,8,8,10.0,0.01)
+	av = 1
+	for i in range(len(a.mols)/2, len(a.mols)): 
+		#gi += PF.RDF(a.mols[i].coords,8,8,10.0,0.01)
+		gi2 += PF.RDF_inC(a.mols[i].coords,a.mols[i].atoms,12.42867,8,8,10.0, 0.01)
+		av += 1 
+		#print(i," Gi: ",gi/av)
+		if (i%100==0):
+			print(i," Gi: ",gi2/av)
+			np.savetxt("./results/rdf_64_"+str(i)+".txt",gi2/av)
+	return 
+
 	dr = 0.001
 	r_max = 10.0
 	lat = 9.3215
