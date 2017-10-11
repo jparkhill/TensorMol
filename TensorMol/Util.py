@@ -194,8 +194,8 @@ def guassian_rev_tozero(x, prec=tf.float64):
 
 def guassian_rev_tozero_tolinear(x, prec=tf.float64):
 	a = 0.5
-	b = 0.16571320736244077
-	x0 = 1.277044573336516
+	b = -0.06469509698101589
+	x0 = 0.2687204431537632
 	step1 = tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
 	return tf.where(tf.greater(x, x0), a*x+b, step1)
 
