@@ -443,6 +443,6 @@ class PeriodicForce:
 		# finally divide by x**2 and moving average it.
 		gi = x2gi/(ri*ri)
 		gi[0] = 0.0
-		gi = MovingAverage(gi,20)
+		gi = MovingAverage(gi,2)
 		return gi
 		#np.savetxt("./results/"+name_+".txt",gi)
