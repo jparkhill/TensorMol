@@ -5506,6 +5506,9 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		"""
 		# Check sanity of input
 		nmol = batch_data[2].shape[0]
+		self.activation_function_type = PARAMS["NeuronType"]
+		self.AssignActivation()
+		#print ("self.activation_function:\n\n", self.activation_function)
 		if (batch_data[0].shape[1] != self.MaxNAtoms):
 			self.MaxNAtoms = batch_data[0].shape[1]
 			self.batch_size = nmol
@@ -5519,9 +5522,11 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 			print ("loading the session..")
 			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data+[PARAMS["AddEcc"]]+[np.ones(self.nlayer+1)])
-		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient= self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient], feed_dict=feed_dict)
+		#Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, bp_gradient, syms= self.sess.run([self.Etotal, self.Ebp, self.Ebp_atom, self.Ecc, self.Evdw, self.dipole, self.charge, self.gradient, self.bp_gradient, self.Scatter_Sym], feed_dict=feed_dict)
+		#print ("Etotal:", Etotal, " bp_gradient", bp_gradient)
+		#return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient, bp_gradient, syms
 		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
-
 
 	def EvalPrepare(self,  continue_training =False):
 		"""
@@ -5572,6 +5577,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 			#self.Etotal,  self.energy_wb = self.inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, Ree_on, Ree_off, self.Reep_pl)
 			self.check = tf.add_check_numerics_ops()
 			self.gradient  = tf.gradients(self.Etotal, self.xyzs_pl, name="BPEGrad")
+			self.bp_gradient  = tf.gradients(self.Ebp, self.xyzs_pl, name="BPGrad")
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.saver.restore(self.sess, self.chk_file)

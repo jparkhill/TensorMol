@@ -8,7 +8,7 @@ from __future__ import print_function
 from .Neighbors import *
 from .Electrostatics import *
 from .SimpleMD import *
-# from MolEmb import Make_DistMask
+from MolEmb import GetRDF_Bin
 
 class Lattice:
 	def __init__(self, latvec_):
@@ -397,6 +397,7 @@ class PeriodicForce:
 		ri = np.arange(0.0,rng,dx)
 		ni = np.zeros(ri.shape)
 		nav = 0.0
+		neigbor = []
 		for i in range(self.natoms):
 			if (zt[i]==z1):
 				nav += 1.0
@@ -406,6 +407,33 @@ class PeriodicForce:
 					elif (zt[j] == z2):
 						d = np.linalg.norm(xt[j]-xt[i])
 						ni[int(d/dx):] += 1
+						neigbor.append(int(d/dx))
+		#np.savetxt("./results/"+name_+"ni.txt",ni)
+		# Estimate the effective density by the number contained in the outermost sphere.
+		ni /= nav
+		#print ("len(neigbor)", len(neigbor))
+		density = ni[-1]/(4.18879*ri[-1]*ri[-1]*ri[-1])
+		# Now take the derivative by central differences
+		x2gi = np.gradient(ni / (12.56637*density),dx)
+		# finally divide by x**2 and moving average it.
+		gi = x2gi/(ri*ri)
+		gi[0] = 0.0
+		gi = MovingAverage(gi,20)
+		return gi
+		#np.savetxt("./results/"+name_+".txt",gi)
+
+
+	def RDF_inC(self,x_,z_,lat_,z1=8,z2=8,rng=10.0,dx = 0.02,name_="RDF.txt"):
+		rdf_index =  GetRDF_Bin(x_, z_, rng, dx, lat_, z1, z2)
+		ri = np.arange(0.0,rng,dx)
+		ni = np.zeros(ri.shape)
+		for index in rdf_index:
+			ni[index:] += 1
+		nav = 0.0
+		#print ("rdf_index:", len(rdf_index))
+		for i in range(z_.shape[0]):
+			if (z_[i]==z1):
+				nav += 1.0
 		#np.savetxt("./results/"+name_+"ni.txt",ni)
 		# Estimate the effective density by the number contained in the outermost sphere.
 		ni /= nav

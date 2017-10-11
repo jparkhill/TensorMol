@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -592,7 +592,7 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (1): # Normalize+Dropout+500+usual, dropout05
+	if (1): # Normalize+Dropout+500+usual, dropout07+act_gaussian_rev_tozero
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -601,18 +601,17 @@ def Train():
 		#for i in range(350000):
 		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
-		PARAMS["NetNameSuffix"] = "500_lastdrop07_fortestrawbed"
+		PARAMS["NetNameSuffix"] = "act_gaussian_rev_tozero"
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
 		PARAMS["max_steps"] = 101
-		PARAMS["batch_size"] =  200
-		#PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
 		PARAMS["test_freq"] = 1
 		PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["EnergyScalar"] = 1.0
 		PARAMS["GradScalar"] = 1.0/20.0
 		PARAMS["DipoleScaler"]=1.0
-		PARAMS["NeuronType"] = "relu"
+		PARAMS["NeuronType"] = "gaussian_rev_tozero"
 		PARAMS["HiddenLayers"] = [500, 500, 500]
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 0
@@ -1463,6 +1462,6 @@ def BoxAndDensity():
 	traj.Prop()
 
 #TrainPrepare()
-#Train()
+Train()
 #Eval()
-BoxAndDensity()
+#BoxAndDensity()
