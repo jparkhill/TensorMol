@@ -1419,16 +1419,12 @@ def BoxAndDensity():
 		s = MSet("water64")
 		s.ReadXYZ()
 		m = s.mols[-1]
-		m.Distort(0.3)
 		m.properties["Lattice"] = np.eye(3)*12.42867
-		#lat0 = (np.max(mt.coords)-np.min(mt.coords)+0.5)*np.eye(3)
-		#m = Lattice(lat0).CenteredInLattice(mt)
 	else:
 		PARAMS["OptMaxCycles"]=60
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
 		a.mols[-1] = Opt.Opt(a.mols[-1])
 		m = a.mols[-1]
-
 		# Tesselate that water to create a box
 		ntess = 4
 		latv = 2.8*np.eye(3)

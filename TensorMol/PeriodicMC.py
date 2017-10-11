@@ -58,7 +58,9 @@ class PeriodicMonteCarlo(PeriodicVelocityVerlet):
 		self.dX2 = None
 	def MetropolisHastings(self,x_):
 		# Generate a move
-		dx = np.random.normal(scale=0.020,size=self.x.shape)*(np.random.uniform(size=self.x.shape) < 0.15)
+		edx , grad = self.PForce(x_,DoForce=True)
+		dx = np.random.normal(scale=0.5)*grad/JOULEPERHARTREE
+		dx += np.random.normal(scale=0.005,size=self.x.shape)*(np.random.uniform(size=self.x.shape) < 0.2)
 		edx , tmp = self.PForce(x_+dx,DoForce=False)
 		PMove = min(1.0,np.exp(-(edx - self.eold)/self.kbt))
 		if (np.random.random()<PMove):
