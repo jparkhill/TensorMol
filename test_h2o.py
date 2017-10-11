@@ -1382,15 +1382,14 @@ def BoxAndDensity():
 		mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
 		nreal = mt.NAtoms()
 		mt.Distort(0.01)
-
-	def EnAndForceAPeriodic(x_):
-		"""
-		This is the primitive form of force routine required by PeriodicForce.
-		"""
-		mtmp = Mol(mt.atoms,x_)
-		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
-		#print("EnAndForceAPeriodic: ", en,f)
-		return en[0], f[0]
+		def EnAndForceAPeriodic(x_):
+			"""
+			This is the primitive form of force routine required by PeriodicForce.
+			"""
+			mtmp = Mol(mt.atoms,x_)
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
+			#print("EnAndForceAPeriodic: ", en,f)
+			return en[0], f[0]
 
 	if 0:
 		PARAMS["OptMaxCycles"]=30
@@ -1416,12 +1415,32 @@ def BoxAndDensity():
 		lat0[0,2] = 0.01
 		lat0[2,0] -= 0.01
 		m = Lattice(lat0).CenteredInLattice(mt)
-	else:
+	elif 1:
 		s = MSet("water64")
 		s.ReadXYZ()
-		mt = s.mols[-1]
-		lat0 = (np.max(mt.coords)-np.min(mt.coords)+0.5)*np.eye(3)
-		m = Lattice(lat0).CenteredInLattice(mt)
+		m = s.mols[-1]
+		m.Distort(0.3)
+		m.properties["Lattice"] = np.eye(3)*12.42867
+		#lat0 = (np.max(mt.coords)-np.min(mt.coords)+0.5)*np.eye(3)
+		#m = Lattice(lat0).CenteredInLattice(mt)
+	else:
+		PARAMS["OptMaxCycles"]=60
+		Opt = GeomOptimizer(EnAndForceAPeriodic)
+		a.mols[-1] = Opt.Opt(a.mols[-1])
+		m = a.mols[-1]
+
+		# Tesselate that water to create a box
+		ntess = 4
+		latv = 2.8*np.eye(3)
+		# Start with a water in a ten angstrom box.
+		lat = Lattice(latv)
+		mc = lat.CenteredInLattice(m)
+		mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+		nreal = mt.NAtoms()
+		mt.Distort(0.01)
+		m = mt
+		m.properties["Lattice"] = np.eye(3)*12.42867
+
 
 	PF = PeriodicForce(m,m.properties["Lattice"])
 	PF.BindForce(EnAndForce, 12.0)
@@ -1436,7 +1455,7 @@ def BoxAndDensity():
 			m.coords = PF.lattice.ModuloLattice(m.coords)
 			print("En:"+str(i), PF(m.coords)[0])
 			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
-	if 1:
+	if 0:
 		# Try optimizing that....
 		PARAMS["OptMaxCycles"]=20
 		POpt = PeriodicGeomOptimizer(PF)
@@ -1446,8 +1465,19 @@ def BoxAndDensity():
 		PF.mol0.coords = m.coords
 		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
+	if 0:
+		PARAMS["MDAnnealT0"] = 20.0
+		PARAMS["MDAnnealTF"] = 300.0
+		PARAMS["MDAnnealSteps"] = 10
+		PARAMS["MDdt"] = 0.3
+		traj = PeriodicAnnealer(PF,"PeriodicWarm")
+		traj.Prop()
+		PF.mol0.coords = traj.Minx
 
-	if 1:
+	traj = PeriodicMonteCarlo(PF,"PeriodicWaterMC")
+	traj.Prop()
+
+	if 0:
 		PARAMS["MDAnnealT0"] = 20.0
 		PARAMS["MDAnnealTF"] = 300.0
 		PARAMS["MDAnnealSteps"] = 1000
@@ -1462,6 +1492,6 @@ def BoxAndDensity():
 	traj.Prop()
 
 #TrainPrepare()
-Train()
+#Train()
 #Eval()
-#BoxAndDensity()
+BoxAndDensity()
