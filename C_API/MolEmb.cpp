@@ -1058,6 +1058,46 @@ static PyObject* Make_DistMat_ForReal(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+/* counts the number of atoms which occur within a radius of those of type z1*/
+static PyObject* CountInRange(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	PyArrayObject *Zs;
+	double cut;
+	double dr;
+	int nreal, ele1, ele2;
+	if (!PyArg_ParseTuple(args, "O!O!iiidd", &PyArray_Type, &Zs, &PyArray_Type, &xyz,  &nreal, &ele1, &ele2, &cut, &dr))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	double *SH_data, *xyz_data;
+	int outdim = int(cut/dr);
+	npy_intp outdima[1] = {outdim};
+	PyObject* SH = PyArray_ZEROS(1, outdima, NPY_DOUBLE, 0);
+	uint8_t* atoms=(uint8_t*)Zs->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	double dist;
+	double nav = 0.0;
+	int di = 0;
+	for (int i=0; i < nreal; ++i)
+		if (atoms[i] == ele1) {
+			nav += 1.0;
+			for (int j=0; j < nat; ++j)
+			{
+				if (atoms[j] == ele2 && i != j) {
+					dist = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+					di = int(dist/dr);
+					if (di <outdim)
+						for (int k=di; k<outdim; ++k)
+							SH_data[k] += 1.0;
+				}
+			}
+		}
+	for (int k=0; k<outdim; ++k)
+		SH_data[k] /= nav;
+	return SH;
+}
+
 static PyObject* GetRDF_Bin(PyObject *self, PyObject  *args)
 {
 	PyArrayObject *xyz;
@@ -2142,8 +2182,8 @@ static PyMethodDef EmbMethods[] =
 	"DipoleAutoCorr method"},
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
 	"Make_DistMat method"},
-	// {"Make_DistMask", Make_DistMask, METH_VARARGS,
-	// "Make_DistMask method"},
+	{"CountInRange", CountInRange, METH_VARARGS,
+	"CountInRange method"},
 	{"Make_DistMat_ForReal", Make_DistMat_ForReal, METH_VARARGS,
 	"Make_DistMat_ForReal method"},
 	{"GetRDF_Bin", GetRDF_Bin, METH_VARARGS,
