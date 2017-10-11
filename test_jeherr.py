@@ -440,10 +440,19 @@ def TestTFSym():
 	# print tmp2[0].shape
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
-	tmp3, tmp4 = sess.run([tmp, tmp2])
-	print tmp3[0]
-	print tmp4[-1]
-	print np.isclose(tmp3[0], tmp4[-1])
+	tmp3 = sess.run(tmp, options=options, run_metadata=run_metadata)
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
+	print tmp3
+	# print a.mols[0].atoms
+
+	# print tmp3[0]
+	# print tmp4[6]
+	# print tmp3[0] - tmp4[6]
+	# print np.isclose(tmp3[0], tmp4[6])
+	# print np.isclose(tmp3[0], tmp4[-1])
 	# tmp5, tmp6, tmp7, tmp8 = sess.run([tmp, tmp2, tmp3, tmp4], options=options, run_metadata=run_metadata)
 	# tmp5, tmp6, tmp7, tmp8 = sess.run([tmp, tmp2, tmp3, tmp4], options=options, run_metadata=run_metadata)
 	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
@@ -582,7 +591,7 @@ def train_energy_symm_func_channel():
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 10000)
+# RandomSmallSet("SmallMols", 1000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
