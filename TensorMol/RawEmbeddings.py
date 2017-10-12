@@ -2842,14 +2842,14 @@ def TF_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False
 	else:
 		return new_xyzs
 
-def tf_symmetry_functions_2(xyzs, Zs, num_atoms, elements, element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta):
+def tf_symmetry_functions_2(xyzs, Zs, elements, element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta):
 	"""
 	Encodes atoms into the symmetry function embedding as implemented in the ANI-1 Neural Network (doi: 10.1039/C6SC05720A)
 
 	Args:
 		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
 		Zs (tf.int32): NMol x MaxNAtoms atomic number tensor
-		num_atoms (np.int32): NMol number of atoms numpy array
+		num_atoms (tf.int32): NMol number of atoms numpy array
 		elements (tf.int32): NElements tensor containing sorted unique atomic numbers present
 		element_pairs (tf.int32): NElementPairs x 2 tensor containing sorted unique pairs of atomic numbers present
 		radial_cutoff (tf.float): scalar tensor with the cutoff for radial pairs
@@ -2872,44 +2872,46 @@ def tf_symmetry_functions_2(xyzs, Zs, num_atoms, elements, element_pairs, radial
 	radial_embedding, pair_indices, pair_elements = tf_symmetry_functions_radial_grid_2(xyzs, Zs, elements, radial_cutoff, radial_rs, eta)
 	angular_embedding, triples_indices, triples_element, triples_element_pairs = tf_symmetry_function_angular_grid_2(xyzs, Zs, element_pairs, angular_cutoff, angular_rs, theta_s, zeta, eta)
 
-	radial_scatter_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_elements[:,1], axis=-1),
-							tf.expand_dims(elements, axis=0))), tf.int32)
-	radial_embedding = tf.scatter_nd(radial_scatter_indices, radial_embedding, [tf.shape(radial_embedding)[0],
-						num_elements, tf.shape(radial_embedding)[1]])
+	pair_element_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_elements[:,1], axis=-1),
+							tf.expand_dims(elements, axis=0))), tf.int32)[:,1]
+	# radial_embedding = tf.scatter_nd(radial_scatter_indices, radial_embedding, [tf.shape(radial_embedding)[0],
+	# 					num_elements, tf.shape(radial_embedding)[1]])
 
-	angular_scatter_indices = tf.cast(tf.where(tf.reduce_all(tf.equal(tf.expand_dims(triples_element_pairs, axis=-2),
-									element_pairs), axis=-1)), tf.int32)
-	angular_embedding = tf.scatter_nd(angular_scatter_indices, angular_embedding, [tf.shape(angular_embedding)[0],
-						num_element_pairs, tf.shape(angular_embedding)[1]])
+	triples_elements_indices = tf.cast(tf.where(tf.reduce_all(tf.equal(tf.expand_dims(triples_element_pairs, axis=-2),
+									element_pairs), axis=-1)), tf.int32)[:,1]
+	# angular_embedding = tf.scatter_nd(angular_scatter_indices, angular_embedding, [tf.shape(angular_embedding)[0],
+	# 					num_element_pairs, tf.shape(angular_embedding)[1]])
+	radial_scatter_indices = tf.concat([pair_indices, tf.expand_dims(pair_element_indices, axis=1)], axis=1)
+	angular_scatter_indices = tf.concat([triples_indices, tf.expand_dims(triples_elements_indices, axis=1)], axis=1)
 
 	radial_molecule_embeddings = tf.dynamic_partition(radial_embedding, pair_indices[:,0], num_molecules)
-	radial_atom_indices = tf.dynamic_partition(pair_indices[:,1], pair_indices[:,0], num_molecules)
+	radial_atom_indices = tf.dynamic_partition(radial_scatter_indices[:,1:], pair_indices[:,0], num_molecules)
 	angular_molecule_embeddings = tf.dynamic_partition(angular_embedding, triples_indices[:,0], num_molecules)
-	angular_atom_indices = tf.dynamic_partition(triples_indices[:,1], triples_indices[:,0], num_molecules)
-	num_atoms_molecule = tf.dynamic_partition
-	molecule_embedding_indices = zip(radial_molecule_embeddings, radial_atom_indices, angular_molecule_embeddings, angular_atom_indices)
+	angular_atom_indices = tf.dynamic_partition(angular_scatter_indices[:,1:], triples_indices[:,0], num_molecules)
 
-	atom_embeddings = []
-	mol_indices = []
-
+	embeddings = []
+	mol_atom_indices = []
 	for molecule in range(num_molecules):
-		num_atoms = tf.shape(tf.gather_nd(Zs[molecule], tf.where(tf.not_equal(Zs[molecule], 0))))[0]
-		radial_atom_embeddings = tf.dynamic_partition(molecule_embedding_indices[molecule][0], molecule_embedding_indices[molecule][1], num_atoms)
-		angular_atom_embeddings = tf.dynamic_partition(molecule_embedding_indices[molecule][2], molecule_embedding_indices[molecule][3], num_atoms)
+		atom_indices = tf.cast(tf.where(tf.not_equal(Zs[molecule], 0)), tf.int32)
+		molecule_atom_elements = tf.gather_nd(Zs[molecule], atom_indices)
+		num_atoms = tf.shape(molecule_atom_elements)[0]
+		radial_atom_embeddings = tf.reshape(tf.reduce_sum(tf.scatter_nd(radial_atom_indices[molecule], radial_molecule_embeddings[molecule],
+								[num_atoms, num_atoms, num_elements, tf.shape(radial_rs)[0]]), axis=1), [num_atoms, -1])
+		angular_atom_embeddings = tf.reshape(tf.reduce_sum(tf.scatter_nd(angular_atom_indices[molecule], angular_molecule_embeddings[molecule],
+									[num_atoms, num_atoms, num_atoms, num_element_pairs, tf.shape(angular_rs)[0] * tf.shape(theta_s)[0]]),
+									axis=[1,2]), [num_atoms, -1])
+		embeddings.append(tf.concat([radial_atom_embeddings, angular_atom_embeddings], axis=1))
+		mol_atom_indices.append(tf.concat([tf.fill([num_atoms, 1], molecule), atom_indices], axis=1))
 
-		for atom in range(molecule_embedding_indices[molecule][4]):
-			radial_atom_embedding = tf.reshape(tf.reduce_sum(radial_atom_embeddings[atom], axis=0), [tf.shape(radial_embedding)[2] * num_elements])
-			angular_atom_embedding = tf.reshape(tf.reduce_sum(angular_atom_embeddings[atom], axis=0), [tf.shape(angular_embedding)[2] * num_element_pairs])
-			atom_embeddings.append(tf.concat([radial_atom_embedding, angular_atom_embedding], axis=0))
-		mol_indices.append(tf.fill([molecule_embedding_indices[molecule][4]], molecule))
-
-	embeddings = tf.stack(atom_embeddings, axis=0)
-	mol_indices = tf.concat(mol_indices, axis=0)
+	embeddings = tf.concat(embeddings, axis=0)
+	mol_atom_indices = tf.concat(mol_atom_indices, axis=0)
 	atom_Zs = tf.gather_nd(Zs, tf.where(tf.not_equal(Zs, 0)))
 	atom_Z_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(atom_Zs, axis=1), tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
 
 	element_embeddings = tf.dynamic_partition(embeddings, atom_Z_indices, num_elements)
-	mol_indices = tf.dynamic_partition(mol_indices, atom_Z_indices, num_elements)
+	mol_indices = tf.dynamic_partition(mol_atom_indices, atom_Z_indices, num_elements)
+	# with tf.device('/cpu:0'):
+	# gradients = tf.gradients(element_embeddings, xyzs)
 	return element_embeddings, mol_indices
 
 def tf_symmetry_functions_radial_grid_2(xyzs, Zs, elements, radial_cutoff, radial_rs, eta, prec=tf.float64):
@@ -2930,7 +2932,7 @@ def tf_symmetry_functions_radial_grid_2(xyzs, Zs, elements, radial_cutoff, radia
 		pair_elements (tf.int32): tensor of the atomic numbers for the atom and its pair atom
 	"""
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
-	distance_tensor = tf.norm(delta_xyzs,axis=3)
+	distance_tensor = tf.norm(delta_xyzs + 1.e-16,axis=3)
 	padding_mask = tf.not_equal(Zs, 0)
 	pair_indices = tf.where(tf.logical_and(tf.logical_and(tf.less(distance_tensor, radial_cutoff),
 					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1)))
@@ -2965,7 +2967,7 @@ def tf_symmetry_function_angular_grid_2(xyzs, Zs, element_pairs, angular_cutoff,
 	"""
 	num_mols = Zs.get_shape().as_list()[0]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
-	distance_tensor = tf.norm(delta_xyzs,axis=3)
+	distance_tensor = tf.norm(delta_xyzs + 1.e-16,axis=3)
 	padding_mask = tf.not_equal(Zs, 0)
 	pair_indices = tf.cast(tf.where(tf.logical_and(tf.logical_and(tf.less(distance_tensor, angular_cutoff),
 					tf.expand_dims(padding_mask, axis=1)), tf.expand_dims(padding_mask, axis=-1))), tf.int32)

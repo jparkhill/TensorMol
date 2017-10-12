@@ -177,24 +177,21 @@ class BehlerParinelloDirect:
 			tf.add_to_collection('losses', weightdecay)
 		return variable
 
-	def compute_normalization_constants(self):
-		batch_data = self.tensor_data.get_train_batch(self.batch_size)
-		self.tensor_data.train_scratch_pointer = 0
-		xyzs, Zs, rad_p_ele, ang_t_elep, mil_jk = tf.Variable(batch_data[0], dtype=self.tf_precision), \
-				tf.Variable(batch_data[1], dtype=tf.int32), tf.Variable(batch_data[5], dtype=tf.int32), \
-				tf.Variable(batch_data[6], dtype=tf.int32), tf.Variable(batch_data[7], dtype=tf.int32)
+	def compute_normalization(self):
 		elements = tf.constant(self.elements, dtype = tf.int32)
-		element_pairs = tf.constant(self.element_pairs, dtype=tf.int32)
-		SFPa2 = tf.Variable(self.SFPa2, trainable=False, dtype=self.tf_precision)
-		SFPr2 = tf.Variable(self.SFPr2, trainable=False, dtype=self.tf_precision)
-		radial_grid_cutoff = tf.constant(self.radial_grid_cutoff, dtype=self.tf_precision)
-		angular_grid_cutoff = tf.constant(self.angular_grid_cutoff, dtype=self.tf_precision)
+		element_pairs = tf.constant(self.element_pairs, dtype = tf.int32)
+		radial_rs = tf.Variable(self.radial_rs, trainable=False, dtype = self.tf_precision)
+		angular_rs = tf.Variable(self.angular_rs, trainable=False, dtype = self.tf_precision)
+		theta_s = tf.Variable(self.theta_s, trainable=False, dtype = self.tf_precision)
+		radial_cutoff = tf.constant(self.radial_cutoff, dtype = self.tf_precision)
+		angular_cutoff = tf.constant(self.angular_cutoff, dtype = self.tf_precision)
 		zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_precision)
 		eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
-		element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=True, dtype=tf.float64)
-		element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
-		# embeddings, molecule_indices = TFSymSet_Linear_channel(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk, element_factors, element_pair_factors)
-		embeddings, molecule_indices = tf_symmetry_functions(xyzs, Zs, elements, SFPr2, radial_grid_cutoff, element_pairs, SFPa2, zeta, eta, angular_grid_cutoff, rad_p_ele, ang_t_elep, mil_jk)
+		batch_data = self.tensor_data.get_train_batch(self.batch_size)
+		self.tensor_data.train_scratch_pointer = 0
+		xyzs, Zs = tf.Variable(batch_data[0], dtype=self.tf_precision), tf.Variable(batch_data[1], dtype=tf.int32)
+		embeddings, molecule_indices = tf_symmetry_functions_2(xyzs, Zs, elements,
+				element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
 		with tf.Session() as sess:
 			sess.run(tf.global_variables_initializer())
 			embedding, _ = sess.run([embeddings, molecule_indices])
@@ -273,7 +270,8 @@ class BehlerParinelloDirect:
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.max_num_atoms]))
 			self.labels_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size]))
 			self.gradients_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms,3]))
-			self.n_atoms = tf.placeholder(tf.float64, shape=tuple([self.batch_size]))
+			self.num_atoms_pl = tf.placeholder(tf.int32, shape=([self.batch_size]))
+			# self.n_atoms = tf.placeholder(tf.int32, shape=tuple([self.batch_size]))
 			# embedding_mean = tf.constant(self.embedding_mean, dtype=self.tf_precision)
 			# embedding_stddev = tf.constant(self.embedding_stddev, dtype=self.tf_precision)
 			# labels_mean = tf.constant(self.labels_mean, dtype=self.tf_precision)
@@ -290,12 +288,12 @@ class BehlerParinelloDirect:
 			angular_cutoff = tf.constant(self.angular_cutoff, dtype = self.tf_precision)
 			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_precision)
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
-			element_embeddings, mol_indices = tf_symmetry_functions_2(self.xyzs_pl, self.Zs_pl, self.n_atoms,
-					elements, element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
+			element_embeddings, mol_indices = tf_symmetry_functions_2(self.xyzs_pl, self.Zs_pl, elements,
+					element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
 
-			self.output, self.atom_outputs = self.inference(element_embeddings, mol_indices)
+			self.output = self.inference(element_embeddings, mol_indices)
 			self.gradients = tf.gradients(self.output, self.xyzs_pl)
-			self.total_loss, self.energy_loss, self.gradients_loss = self.loss_op(self.output, self.gradients, self.labels_pl, self.gradients_pl, self.n_atoms)
+			self.total_loss, self.energy_loss, self.gradients_loss = self.loss_op(self.output, self.gradients, self.labels_pl, self.gradients_pl, self.num_atoms_pl)
 			self.train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -319,7 +317,7 @@ class BehlerParinelloDirect:
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.labels_pl, self.gradients_pl, self.n_atoms], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.labels_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
 		return feed_dict
 
 	def inference(self, inp, indexs):
@@ -335,12 +333,11 @@ class BehlerParinelloDirect:
 		# convert the index matrix from bool to float
 		branches=[]
 		output = tf.zeros([self.batch_size, self.max_num_atoms], dtype=self.tf_precision)
-		atom_outputs = []
+		# atom_outputs = []
 		for e in range(len(self.elements)):
 			branches.append([])
 			inputs = inp[e]
-			shp_in = tf.shape(inputs)
-			index = tf.cast(indexs[e], tf.int64)
+			index = indexs[e]
 			for i in range(len(self.hidden_layers)):
 				if i == 0:
 					with tf.name_scope(str(self.elements[e])+'_hidden1'):
@@ -353,20 +350,16 @@ class BehlerParinelloDirect:
 						biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
 						branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.elements[e])+'_regression_linear'):
-				shp = tf.shape(inputs)
 				weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1], stddev=1.0/(10+math.sqrt(float(self.hidden_layers[-1]))), weight_decay=self.weight_decay, name="weights")
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
-				branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
-				shp_out = tf.shape(branches[-1][-1])
-				cut = tf.slice(branches[-1][-1],[0,0],[shp_out[0],1])
-				rshp = tf.reshape(cut,[1,shp_out[0]])
-				atom_outputs.append(rshp)
-				rshpflat = tf.reshape(cut,[shp_out[0]])
-				atom_indice = tf.slice(index, [0,1], [shp_out[0],1])
-				ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.max_num_atoms]),[self.batch_size, self.max_num_atoms])
-				output = tf.add(output, ToAdd)
+				branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
+
+				output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
+
+				# ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.max_num_atoms]),[self.batch_size, self.max_num_atoms])
+				# output = tf.add(output, ToAdd)
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
-		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), atom_outputs
+		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
 
 	def optimizer(self, loss, learning_rate, momentum):
 		"""Sets up the training Ops.
@@ -410,15 +403,14 @@ class BehlerParinelloDirect:
 		num_of_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
-			actual_mols  = self.batch_size
-			t = time.time()
-			_, total_loss_value, energy_loss, gradients_loss, mol_output, atom_outputs, gradients, gradient_pl, n_atoms = self.sess.run([self.train_op, self.total_loss,
-					self.energy_loss, self.gradients_loss, self.output, self.atom_outputs, self.gradients, self.gradients_pl, self.n_atoms], feed_dict=self.fill_feed_dict(batch_data))
+			actual_mols = self.batch_size
+			_, total_loss_value, energy_loss, gradients_loss, mol_output, gradients, gradient_pl, n_atoms = self.sess.run([self.train_op, self.total_loss,
+					self.energy_loss, self.gradients_loss, self.output, self.gradients, self.gradients_pl, self.num_atoms_pl], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss += total_loss_value
 			train_energy_loss += energy_loss
 			train_gradients_loss += gradients_loss
-			duration = time.time() - start_time
 			num_of_mols += actual_mols
+		duration = time.time() - start_time
 		self.print_training(step, train_loss, train_energy_loss, train_gradients_loss, num_of_mols, duration)
 		#self.print_training(step, train_loss,  num_of_mols, duration)
 		return
@@ -444,9 +436,9 @@ class BehlerParinelloDirect:
 			batch_data = self.tensor_data.get_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			actual_mols = self.batch_size
-			output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradients_loss, num_atoms, element_factors, element_pair_factors = self.sess.run([
+			output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradients_loss, num_atoms = self.sess.run([
 					self.output, self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradients_loss,
- 					self.n_atoms, self.element_factors, self.element_pair_factors],  feed_dict=feed_dict)
+ 					self.num_atoms_pl],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_of_mols += actual_mols
 			test_energy_loss += energy_loss
@@ -479,6 +471,7 @@ class BehlerParinelloDirect:
 
 	def train(self):
 		self.tensor_data.load_data_to_scratch()
+		self.compute_normalization()
 		self.train_prepare()
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
