@@ -361,8 +361,8 @@ def TestTFSym():
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
 	num_atoms = tf.stack(natom)
-	# xyz_np = np.stack(xyzlist)
-	# z_np = np.stack(zlist)
+	xyz_np = np.stack(xyzlist)
+	z_np = np.stack(zlist)
 	eles = [1,6,7,8]
 	n_eles = len(eles)
 	eles_np = np.asarray(eles)
@@ -371,11 +371,11 @@ def TestTFSym():
 		for j in range(i, len(eles)):
 			eles_pairs.append([eles[i], eles[j]])
 	eles_pairs_np = np.asarray(eles_pairs)
-	# NL = NeighborListSet(xyz_np, natom, True, True, ele_= z_np, sort_ = True)
-	# rad_p, ang_t, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, ele = eles_np, elep = eles_pairs_np)
-	# Radp_pl=tf.Variable(rad_p, dtype=tf.int32,name="RadialPairs")
-	# Angt_pl=tf.Variable(ang_t, dtype=tf.int32,name="AngularTriples")
-	# mil_jkt = tf.Variable(mil_jk, dtype=tf.int32)
+	NL = NeighborListSet(xyz_np, natom, True, True, ele_= z_np, sort_ = True)
+	rad_p, ang_t, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, ele = eles_np, elep = eles_pairs_np)
+	Radp_pl=tf.Variable(rad_p, dtype=tf.int32,name="RadialPairs")
+	Angt_pl=tf.Variable(ang_t, dtype=tf.int32,name="AngularTriples")
+	mil_jkt = tf.Variable(mil_jk, dtype=tf.int32)
 	Ele = tf.Variable(eles_np, trainable=False, dtype = tf.int32)
 	Elep = tf.Variable(eles_pairs_np, trainable=False, dtype = tf.int32)
 
@@ -421,8 +421,8 @@ def TestTFSym():
 	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
 	element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	tmp = tf_symmetry_functions_2(xyzstack, zstack, natom, Ele, SFPr, Rr_cut, Elep, thetas, rs, zeta, eta, Ra_cut)
-	# tmp2 = tf_symmetry_functions(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
+	tmp = tf_symmetry_functions_2(xyzstack, zstack, natom, Ele, Elep, Rr_cut, Ra_cut, SFPr, rs, thetas, zeta, eta)
+	tmp2 = tf_symmetry_functions(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
 
@@ -445,7 +445,8 @@ def TestTFSym():
 	chrome_trace = fetched_timeline.generate_chrome_trace_format()
 	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 		f.write(chrome_trace)
-	# print len(tmp3)
+	print tmp3
+	# print np.isclose(tmp3[0][0], tmp4[0,0])
 	# print tmp3[0]
 	# print len(tmp3[0])
 	# print len(tmp3[1])
@@ -576,7 +577,7 @@ def train_energy_pairs_triples():
 	tset = TensorMolData_BP_Direct(a,d)
 	manager=TFMolManage("",tset,True,"pairs_triples", Trainable_=True)
 
-def train_energy_symm_func_channel():
+def train_energy_symm_func():
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 500
@@ -622,7 +623,7 @@ TestTFSym()
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func_channel()
+# train_energy_symm_func()
 
 # a=MSet("chemspider_aimd_forcecut")
 # a.Load()
