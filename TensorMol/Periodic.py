@@ -392,7 +392,7 @@ class PeriodicForce:
 			es[i], gs[i] = self.__call__(xt)
 			gs[i] /= JOULEPERHARTREE
 			print("es ", es[i], i, np.sqrt(np.sum(dx*dx)) , np.sum(gs[i]*g0), np.sum(g0*g0))
-	def RDF(self,x_,z1=8,z2=8,rng=10.0,dx = 0.02,name_="RDF.txt"):
+	def RDF(self,x_,z1=8,z2=8,rng=15.0,dx = 0.02,name_="RDF.txt"):
 		zt,xt = self.lattice.TessLattice(self.atoms, x_ , rng)
 		ni = MolEmb.CountInRange(zt,xt,self.natoms,z1,z2,rng,dx)
 		ri = np.arange(0.0,rng,dx)
@@ -419,8 +419,6 @@ class PeriodicForce:
 		gi = MovingAverage(gi,2)
 		return gi
 		#np.savetxt("./results/"+name_+".txt",gi)
-
-
 	def RDF_inC(self,x_,z_,lat_,z1=8,z2=8,rng=10.0,dx = 0.02,name_="RDF.txt"):
 		rdf_index =  GetRDF_Bin(x_, z_, rng, dx, lat_, z1, z2)
 		ri = np.arange(0.0,rng,dx)

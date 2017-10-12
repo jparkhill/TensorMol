@@ -1420,6 +1420,13 @@ def BoxAndDensity():
 		s.ReadXYZ()
 		m = s.mols[-1]
 		m.properties["Lattice"] = np.eye(3)*12.42867
+		# try a huge supercell
+		ntess = 2
+		latv = np.eye(3)*12.42867
+		# Start with a water in a ten angstrom box.
+		lat = Lattice(latv)
+		m = Mol(*lat.TessNTimes(m.atoms,m.coords,ntess))
+		m.properties["Lattice"] = np.eye(3)*2*12.42867
 	else:
 		PARAMS["OptMaxCycles"]=60
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
@@ -1470,6 +1477,7 @@ def BoxAndDensity():
 		traj.Prop()
 		PF.mol0.coords = traj.Minx
 
+	PARAMS["MDTemp"] = 330.0
 	traj = PeriodicMonteCarlo(PF,"PeriodicWaterMC")
 	traj.Prop()
 
