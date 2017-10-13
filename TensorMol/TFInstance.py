@@ -129,6 +129,8 @@ class Instance:
 				self.activation_function = guassian_rev_tozero
 			elif self.activation_function_type == "gaussian_rev_tozero_tolinear":
 				self.activation_function = guassian_rev_tozero_tolinear
+			elif self.activation_function_type == "square_tozero_tolinear":
+				self.activation_function = square_tozero_tolinear
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
