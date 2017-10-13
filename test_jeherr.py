@@ -361,8 +361,8 @@ def TestTFSym():
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
 	num_atoms = tf.stack(natom)
-	# xyz_np = np.stack(xyzlist)
-	# z_np = np.stack(zlist)
+	xyz_np = np.stack(xyzlist)
+	z_np = np.stack(zlist)
 	eles = [1,6,7,8]
 	n_eles = len(eles)
 	eles_np = np.asarray(eles)
@@ -421,7 +421,7 @@ def TestTFSym():
 	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
 	element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
 	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	tmp = tf_symmetry_functions_2(xyzstack, zstack, natom, Ele, SFPr, Rr_cut, Elep, thetas, rs, zeta, eta, Ra_cut)
+	tmp1, tmp2, tmp3 = tf_symmetry_functions_2(xyzstack, zstack, Ele, Elep, Rr_cut, Ra_cut, SFPr, rs, thetas, zeta, eta)
 	# tmp2 = tf_symmetry_functions(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
 	# tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
@@ -440,12 +440,14 @@ def TestTFSym():
 	# print tmp2[0].shape
 	# print tmp2[0][0].shape, tmp2[0][1].shape
 	# print np.allclose(tmp2[0][0], tmp2[0][1])
-	tmp3 = sess.run(tmp, options=options, run_metadata=run_metadata)
+	tmp4, tmp5, tmp6 = sess.run([tmp1, tmp2, tmp3], options=options, run_metadata=run_metadata)
 	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
 	chrome_trace = fetched_timeline.generate_chrome_trace_format()
 	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 		f.write(chrome_trace)
-	# print len(tmp3)
+	print tmp6
+	# print tmp3.shape
+	# print np.isclose(tmp3[0][0], tmp4[0,0])
 	# print tmp3[0]
 	# print len(tmp3[0])
 	# print len(tmp3[1])
@@ -549,7 +551,7 @@ def test_tf_neighbor():
 	chrome_trace = fetched_timeline.generate_chrome_trace_format()
 	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
 		f.write(chrome_trace)
-	print tmp3[0]
+	print tmp3
 	# print tmp4[1]
 	# print tmp4
 	# TreatedAtoms = a.AtomTypes()
@@ -576,7 +578,7 @@ def train_energy_pairs_triples():
 	tset = TensorMolData_BP_Direct(a,d)
 	manager=TFMolManage("",tset,True,"pairs_triples", Trainable_=True)
 
-def train_energy_symm_func_channel():
+def train_energy_symm_func():
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 500
@@ -586,6 +588,7 @@ def train_energy_symm_func_channel():
 	PARAMS["tf_prec"] = "tf.float64"
 	a=MSet("SmallMols_rand")
 	a.Load()
+	a.cut_max_num_atoms(40)
 	for mol in a.mols:
 		mol.CalculateAtomization()
 	TreatedAtoms = a.AtomTypes()
@@ -597,7 +600,7 @@ def train_energy_symm_func_channel():
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 1000)
+# RandomSmallSet("SmallMols", 5000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -615,14 +618,14 @@ def train_energy_symm_func_channel():
 # GetPairPotential()
 # TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols")
-TestTFSym()
+# TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
 # train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func_channel()
+train_energy_symm_func()
 
 # a=MSet("chemspider_aimd_forcecut")
 # a.Load()

@@ -413,16 +413,11 @@ class TensorMolDataDirect:
 		Zs = self.Zs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		labels = self.labels[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		num_atoms = self.num_atoms[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		neighbor_list = NeighborListSet(xyzs, num_atoms, True, True, Zs, sort_=True)
-		rad_p_ele, ang_t_elep, mil_jk, jk_max = neighbor_list.buildPairsAndTriplesWithEleIndex(self.radial_grid_cutoff, self.angular_grid_cutoff, self.elements, self.element_pairs)
-		print(rad_p_ele)
-		print(ang_t_elep)
-		print(mil_jk)
 		if self.train_energy_gradients:
 			gradients = self.gradients[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-			return [xyzs, Zs, labels, gradients, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, gradients, num_atoms]
 		else:
-			return [xyzs, Zs, labels, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, num_atoms]
 
 	def get_test_batch(self, batch_size):
 		if batch_size > self.num_test_cases:
@@ -435,13 +430,11 @@ class TensorMolDataDirect:
 		Zs = self.Zs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		labels = self.labels[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		num_atoms = self.num_atoms[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		neighbor_list = NeighborListSet(xyzs, num_atoms, True, True, Zs, sort_=True)
-		rad_p_ele, ang_t_elep, mil_jk, jk_max = neighbor_list.buildPairsAndTriplesWithEleIndex(self.radial_grid_cutoff, self.angular_grid_cutoff, self.elements, self.element_pairs)
 		if self.train_energy_gradients:
 			gradients = self.gradients[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-			return [xyzs, Zs, labels, gradients, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, gradients, num_atoms]
 		else:
-			return [xyzs, Zs, labels, num_atoms, rad_p_ele, ang_t_elep, mil_jk]
+			return [xyzs, Zs, labels, num_atoms]
 
 	def save(self):
 		self.clean_scratch()
