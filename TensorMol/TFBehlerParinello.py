@@ -457,7 +457,7 @@ class BehlerParinelloDirect:
 		num_atoms_epoch = np.concatenate(num_atoms_epoch)
 		print(num_atoms_epoch.shape)
 		duration = time.time() - start_time
-		for i in [random.randint(0, self.batch_size) for j in xrange(20)]:
+		for i in [random.randint(0, self.batch_size -1) for j in xrange(20)]:
 			random_atom_index = random.randint(0, num_atoms_epoch[i])
 			LOGGER.info("Labels: %s %s  Outputs: %s %s", test_epoch_energy_labels[i], test_epoch_force_labels[i,random_atom_index],
 					test_epoch_energy_outputs[i], test_epoch_force_outputs[i,random_atom_index])

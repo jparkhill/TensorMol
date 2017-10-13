@@ -583,10 +583,10 @@ def train_energy_symm_func():
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 80
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "relu"
 	PARAMS["tf_prec"] = "tf.float64"
-	a=MSet("SmallMols")
+	a=MSet("SmallMols_rand")
 	a.Load()
 	a.cut_max_num_atoms(40)
 	for mol in a.mols:

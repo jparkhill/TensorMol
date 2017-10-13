@@ -2999,8 +2999,8 @@ def tf_symmetry_function_angular_grid_2(xyzs, Zs, element_pairs, angular_cutoff,
 	xyz_ij_ik = tf.reduce_sum(tf.gather_nd(delta_xyzs, triples_indices[:,:3]) * tf.gather_nd(delta_xyzs,
 						tf.concat([triples_indices[:,:2], triples_indices[:,3:]], axis=1)), axis=1)
 	cos_theta = xyz_ij_ik / (triples_distances[:,0] * triples_distances[:,1])
-	cos_theta = tf.where(tf.greater_equal(cos_theta, 1.0), tf.ones_like(cos_theta) - 1.0e-24, cos_theta)
-	cos_theta = tf.where(tf.less_equal(cos_theta, -1.0), -1.0 * tf.ones_like(cos_theta) - 1.0e-24, cos_theta)
+	cos_theta = tf.where(tf.greater_equal(cos_theta, 1.0), tf.ones_like(cos_theta) - 1.0e-16, cos_theta)
+	cos_theta = tf.where(tf.less_equal(cos_theta, -1.0), -1.0 * tf.ones_like(cos_theta) - 1.0e-16, cos_theta)
 	triples_angle = tf.acos(cos_theta)
 	theta_ijk_s = tf.expand_dims(triples_angle, axis=-1) - tf.expand_dims(theta_s, axis=0)
 	cos_factor = tf.pow((1 + tf.cos(theta_ijk_s)), zeta)
