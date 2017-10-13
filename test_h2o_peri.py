@@ -377,18 +377,14 @@ def GetRDF_Update():
 	gi = PF.RDF(m.coords,8,8,10.0,0.01)
 	gi2 = PF.RDF(m.coords,8,8,10.0,0.01)
 	av = 1
-	for i in range(len(a.mols)/2, len(a.mols)): 
-	    if a.mols[i].NAtoms() == 64*3:
-	     try:
+	for i in range(len(a.mols)/4, len(a.mols)): 
 		#gi += PF.RDF(a.mols[i].coords,8,8,10.0,0.01)
 		gi2 += PF.RDF_inC(a.mols[i].coords,a.mols[i].atoms,12.42867,8,8,10.0, 0.01)
 		av += 1 
 		#print(i," Gi: ",gi/av)
-		if (i%100==0):
+		if (i%1000==0):
 			print(i," Gi: ",gi2/av)
 			np.savetxt("./results/rdf_64_sigmoid_"+str(i)+".txt",gi2/av)
-	     except:
-			pass
 	np.savetxt("./results/rdf_64_sigmoid_"+str(i)+".txt",gi2/av)
 	return 
 
