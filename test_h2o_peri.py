@@ -289,11 +289,11 @@ def TestPeriodicLJVoxel():
 		return
 
 def UnittoPeri():
-	a=MSet("MDTrajectorywater_tiny_real_dropout", center_=False)
-	a.ReadXYZ("MDTrajectorywater_tiny_real_dropout")
-	lat = 9.3215
+	a=MSet("MDTrajectorywater_64_real_dropout_evalwithsigmoid100", center_=False)
+	a.ReadXYZ("MDTrajectorywater_64_real_dropout_evalwithsigmoid100")
+	lat = 9.3215*4/3
 	maxtess = 2
-	steps = 200
+	steps = 3
 	for i in range(0, len(a.mols)/steps):
 		print ("i:", i)
 		index = i*steps
@@ -308,7 +308,7 @@ def UnittoPeri():
 					xp[ntess*m.NAtoms():(ntess+1)*m.NAtoms()] = m.coords + np.array([j*lat, k*lat, l*lat])
 					ntess += 1
 		mp = Mol(zp, xp)
-		mp.WriteXYZfile(fpath="./datasets", fname="water_tiny_real_dropout_md")
+		mp.WriteXYZfile(fpath="./datasets", fname="water_64_real_md_evalsigmoid100")
 
 def KickOutTrans():
 	a=MSet("H2O_wb97xd_1to21")
@@ -368,8 +368,8 @@ def GetRDF():
 #Make_DistMat_ForReal
 
 def GetRDF_Update():
-	a=MSet("MDTrajectorywater_64_real_dropout")
-	a.ReadXYZ("MDTrajectorywater_64_real_dropout")
+	a=MSet("MDTrajectorywater_tiny_real_dropout_evalwithsigmoid100")
+	a.ReadXYZ("MDTrajectorywater_tiny_real_dropout_evalwithsigmoid100")
 
 	m = a.mols[-1]
 	m.properties["Lattice"] = np.eye(3)*12.42867	
@@ -377,14 +377,15 @@ def GetRDF_Update():
 	gi = PF.RDF(m.coords,8,8,10.0,0.01)
 	gi2 = PF.RDF(m.coords,8,8,10.0,0.01)
 	av = 1
-	for i in range(len(a.mols)/2, len(a.mols)): 
+	for i in range(len(a.mols)/4, len(a.mols)): 
 		#gi += PF.RDF(a.mols[i].coords,8,8,10.0,0.01)
 		gi2 += PF.RDF_inC(a.mols[i].coords,a.mols[i].atoms,12.42867,8,8,10.0, 0.01)
 		av += 1 
 		#print(i," Gi: ",gi/av)
-		if (i%100==0):
+		if (i%1000==0):
 			print(i," Gi: ",gi2/av)
-			np.savetxt("./results/rdf_64_"+str(i)+".txt",gi2/av)
+			np.savetxt("./results/rdf_64_sigmoid_"+str(i)+".txt",gi2/av)
+	np.savetxt("./results/rdf_64_sigmoid_"+str(i)+".txt",gi2/av)
 	return 
 
 	dr = 0.001

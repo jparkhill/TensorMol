@@ -122,7 +122,7 @@ class MSet:
 		for mol in self.mols:
 			mol.coords -= mol.Center()
 
-	def cut_max_n_atoms(self, max_n_atoms):
+	def cut_max_num_atoms(self, max_n_atoms):
 		cut_down_mols = []
 		for mol in self.mols:
 			if mol.atoms.shape[0] <= max_n_atoms:
