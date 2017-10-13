@@ -200,15 +200,46 @@ def TrainPrepare():
 		a.Save()
 
 
-	if (1):
-		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+	#istring = '$molecule\n0 1 \n'
+	#crds = m_.coords.copy()
+	#crds[abs(crds)<0.0000] *=0.0
+	#for j in range(len(m_.atoms)):
+	#	istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+	#istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+	#with open(path_+filename_+'.in','w') as fin:
+	#	fin.write(istring)
+	if (1): #H2O_wb97xd_1to21_with_prontonated
+		a = MSet("H2O_wb97xd_1to21")
 		a.Load()
-		b = MSet("H2O_wb97xd_1to21_with_prontonated_original")
-		for mol in a.mols:
-			mol.properties['atomization'] = mol.properties['atomization_old']
-			b.mols.append(mol)
-			print ("mol.properties['atomization']:,mol.properties['atomization_old']", mol.properties['atomization'], mol.properties['atomization_old'])
-		b.Save()
+		import random
+		random.shuffle(a.mols)
+		nfolder = 100
+		import os
+		for i in range(1, nfolder+1):
+			os.mkdir("water_aug_ccpvdz_"+str(i))
+		mol_per_folder = len(a.mols)/nfolder+1
+		for i in range(0, len(a.mols)):
+			folder_index = i/mol_per_folder+1
+			file_index = i%mol_per_folder+1
+			m_ = a.mols[i]
+			istring = ""
+			if i!=0:
+				istring += "@@@\n\n"
+			istring = '$molecule\n0 1 \n'
+			crds = m_.coords.copy()
+			for j in range(len(m_.atoms)):
+				istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+			istring =istring + '$end\n\n$rem\njobtype force\nbasis aug-cc-pvdz\nmethod wB97X-D\nmax_scf_cycles  200\nsymmetry false\nsym_ignore true\n$end\n\n'
+			with open('water_aug_ccpvdz_'+str(folder_index)+'/h2o_aug_ccpvdz_'+str(file_index)+'.in','w') as fin:
+				fin.write(istring)
+				fin.close()
+		return
+		#b = MSet("H2O_wb97xd_1to21_with_prontonated_original")
+		#for mol in a.mols:
+		#	mol.properties['atomization'] = mol.properties['atomization_old']
+		#	b.mols.append(mol)
+		#	print ("mol.properties['atomization']:,mol.properties['atomization_old']", mol.properties['atomization'], mol.properties['atomization_old'])
+		#b.Save()
 	if (0):
 		WB97XDAtom={}
 		WB97XDAtom[1]=-0.5026682866
@@ -635,6 +666,49 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
+	if (0): # Normalize+Dropout+500+usual, dropout07+sigmoid100
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		#for i in range(350000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "act_sigmoid100"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "sigmoid_with_param"
+		PARAMS["sigmoid_alpha"] = 100.0
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
 	if (0): # Normalize+Dropout+500+usual+angular13
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
@@ -1495,7 +1569,7 @@ def BoxAndDensity():
 	traj = PeriodicVelocityVerlet(PF,"PeriodicWaterMD")
 	traj.Prop()
 
-#TrainPrepare()
+TrainPrepare()
 #Train()
 #Eval()
-BoxAndDensity()
+#BoxAndDensity()
