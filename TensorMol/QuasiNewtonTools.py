@@ -248,12 +248,6 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 	n3 = 3*n
 	m_ = np.array(map(lambda x: ATOMICMASSESAMU[x-1]*ELECTRONPERPROTONMASS, at_.tolist()))
 	Crds = InternalCoordinates(x_,m_) #invbasis X cart flatten.
-	#Crds=np.eye(n3).reshape((n3,n,3))
-	#print("En?",f_(x_))
-	if 0:
-		Hess = DirectedFdiffHessian(f_, x_, Crds.reshape((len(Crds),n,3)))
-		# Transform the invariant hessian into cartesian coordinates.
-		cHess = np.dot(Crds.T,np.dot(Hess,Crds))
 	cHess = FdiffHessian(f_, x_,0.0005).reshape((n3,n3))
 	cHess /= (BOHRPERA*BOHRPERA)
 	print("Hess (Cart):", cHess)
@@ -278,7 +272,6 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 			nm = v[:,i].reshape((n,3))
 			nm *= np.sqrt(m_[:,np.newaxis]).T
 			tmp = nm.reshape((x_.shape[0],3))
-
 			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
 			step = 0.01
 			dmudq = (Mu_(x_+step*tmp)-Mu_(x_))/step
