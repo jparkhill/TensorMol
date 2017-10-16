@@ -73,7 +73,7 @@ def CoordinateScan(f_, x_, name_="", eps_=0.03, num_=15):
 		np.savetxt("./results/CoordScan"+name_+str(ci)+".txt",tore[iti.multi_index])
 		ci += 1
 		iti.iternext()
-def FdiffHessian(f_, x_, eps_=0.0001, mode_ = "central", grad_ = None):
+def FdiffHessian(f_, x_, eps_=0.001, mode_ = "forward", grad_ = None):
 	"""
 	Computes a finite difference hessian of a single or multi-valued function
 	at x_ for debugging purposes.
@@ -155,7 +155,6 @@ def FdiffHessian(f_, x_, eps_=0.0001, mode_ = "central", grad_ = None):
 				itj.iternext()
 			iti.iternext()
 	return tore
-
 def FourPointHessQuad(f):
 	"""
 	f is a 4x4xOutshape
@@ -194,6 +193,7 @@ def InternalCoordinates(x_,m):
 	If you are doing a diatomic, use a quantum chemistry package
 	"""
 	if (len(m)<=2):
+		print(m)
 		raise Exception("No Diatomics")
 	COM0 = CenterOfMass(x_,m)
 	xc_  = x_ - COM0
@@ -226,7 +226,7 @@ def InternalCoordinates(x_,m):
 	print("3N, Number of Internal Coordinates: ", n3 , nint)
 	return S
 
-def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu_ = None):
+def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ = None):
 	"""
 	Perform a finite difference normal mode analysis
 	of a molecule. basically implements http://gaussian.com/vib/
@@ -234,7 +234,6 @@ def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu
 	Args:
 		f_: Energies in Hartree.
 		x_: Coordinates (A)
-		m_: masses (kg/mol)
 		at_: element type of each atom
 		grad_: forces in Hartree/angstrom if available. (unused)
 		eps_: finite difference step
@@ -244,36 +243,42 @@ def HarmonicSpectra(f_, x_, m_, at_, grad_=None, eps_ = 0.04, WriteNM_=False, Mu
 	Returns:
 		Frequencies in wavenumbers and Normal modes (cart)
 	"""
+	LOGGER.info("Harmonic Analysis")
 	n = x_.shape[0]
 	n3 = 3*n
+	m_ = np.array(map(lambda x: ATOMICMASSESAMU[x-1]*ELECTRONPERPROTONMASS, at_.tolist()))
 	Crds = InternalCoordinates(x_,m_) #invbasis X cart
 	#Crds=np.eye(n3).reshape((n3,n,3))
-	Hess = DirectedFdiffHessian(f_, x_, Crds.reshape((len(Crds),n,3)), eps_)
-	print("Hess (Internal):", Hess)
-	Hess /= (BOHRPERA*BOHRPERA)
-	# Transform the invariant hessian into cartesian coordinates.
-	cHess = np.dot(Crds.T,np.dot(Hess,Crds))
+	#print("En?",f_(x_))
+	if 0:
+		Hess = DirectedFdiffHessian(f_, x_, Crds.reshape((len(Crds),n,3)))
+		print("Hess (Internal):", Hess)
+		# Transform the invariant hessian into cartesian coordinates.
+		cHess = np.dot(Crds.T,np.dot(Hess,Crds))
+	else:
+		cHess = FdiffHessian(f_, x_,0.0005).reshape((n3,n3))
+	cHess /= (BOHRPERA*BOHRPERA)
 	print("Hess (Cart):", cHess)
 	# Mass weight the invariant hessian in cartesian coordinate
 	for i,mi in enumerate(m_):
-		cHess[i*n3:(i+1)*n3, i*n3:(i+1)*n3] /= np.sqrt(mi*mi)
+		cHess[i*3:(i+1)*3, i*3:(i+1)*3] /= np.sqrt(mi*mi)
 		for j,mj in enumerate(m_):
 			if (i != j):
-				cHess[i*n3:(i+1)*n3, j*n3:(j+1)*n3] /= np.sqrt(mi*mj)
+				cHess[i*3:(i+1)*3, j*3:(j+1)*3] /= np.sqrt(mi*mj)
 	# Get the vibrational spectrum and normal modes.
 	u,s,v = np.linalg.svd(cHess)
 	for l in s:
-		print("Central Energy (cm**-1): ", np.sign(l)*np.sqrt(KCONVERT*abs(l))*CMCONVERT*2)
+		print("Central Energy (cm**-1): ", np.sign(l)*np.sqrt(l)*WAVENUMBERPERHARTREE)
 	print("--")
 	# Get the actual normal modes, for visualization sake.
 	w,v = np.linalg.eigh(cHess)
 	v = v.real
-	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT*2
+	wave = np.sign(w)*np.sqrt(abs(w))*WAVENUMBERPERHARTREE
 	print("N3, shape v",n3,v.shape)
 	if (WriteNM_):
 		for i in range(3*n):
 			nm = v[:,i].reshape((n,3))
-			nm *= np.sqrt(np.array([map(lambda x: ATOMICMASSESAMU[x-1], at_.tolist())])).T
+			nm *= np.sqrt(m_[:,np.newaxis]).T
 			tmp = nm.reshape((x_.shape[0],3))
 
 			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
