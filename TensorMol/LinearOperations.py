@@ -53,10 +53,8 @@ def SchmidtStep(xs,y_):
 		y -= np.dot(xs[i],y)*xs[i]/np.dot(xs[i],xs[i])
 	ntmp = np.dot(y,y)
 	return ntmp, y
-
 def Normalize(x_):
 	return x_/np.sqrt(np.dot(x_,x_))
-
 def PairOrthogonalize(x,y):
 	"""
 	Does a Graham-Schmidt
@@ -85,20 +83,16 @@ def PairOrthogonalize(x,y):
 			Ox[Orank] = tmp/np.sqrt(ntmp)
 			Orank += 1
 	return Ox[LastXVec:Orank]#Ox[:Orank]#
-
 def SphereToCartV(arg_):
 	return np.array(map(SphereToCart,arg_))
-
 def CartToSphereV(arg_):
 	return np.array(map(CartToSphere,arg_))
-
 def MakeUniform(point,disp,num):
 	''' Uniform Grids of dim numxnumxnum around a point'''
 	grids = np.mgrid[-disp:disp:num*1j, -disp:disp:num*1j, -disp:disp:num*1j]
 	grids = grids.transpose()
 	grids = grids.reshape((grids.shape[0]*grids.shape[1]*grids.shape[2], grids.shape[3]))
 	return point+grids
-
 def GridstoRaw(grids, ngrids=250, save_name="mol", save_path ="./densities/"):
 	#print "Writing Grid Mx, Mn, Std, Sum ", np.max(grids),np.min(grids),np.std(grids),np.sum(grids)
 	mgrids = np.copy(grids)
