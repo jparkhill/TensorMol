@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -711,7 +711,8 @@ def Train():
 		manager.Train(1)
 
 
-	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100+test john's sym
+
+	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100+noEcc
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -720,7 +721,7 @@ def Train():
 		#for i in range(350000):
 		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
-		PARAMS["NetNameSuffix"] = "test_johnsym"
+		PARAMS["NetNameSuffix"] = "act_sigmoid100_noEcc"
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
 		PARAMS["max_steps"] = 101
@@ -743,7 +744,7 @@ def Train():
 		#PARAMS["AN1_num_r_Rs"] = 64
 		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["DSFAlpha"] = 0.18
-		PARAMS["AddEcc"] = True
+		PARAMS["AddEcc"] = False
 		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
 		#PARAMS["KeepProb"] = 0.7
 		PARAMS["learning_rate_dipole"] = 0.0001
