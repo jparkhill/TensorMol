@@ -1,4 +1,4 @@
-tf_gaussians"""
+"""
 Raw => various descriptors in Tensorflow code.
 
 The Raw format is a batch of rank three tensors.
