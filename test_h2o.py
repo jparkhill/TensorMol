@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -1646,10 +1646,13 @@ def BoxAndDensity():
 def TestSmoothIR():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.
-	a = MSet()
+
+	a=MSet("H2O_cluster_meta", center_=False)
+	a.ReadXYZ("H2O_cluster_meta")
+	#a = MSet()
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1],[2.9,0.1,0.1],[3.,0.9,1.],[2.1,0.1,0.1]])))
-	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
-	m = a.mols[0]
+	#a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	m = a.mols[9]
 	manager = GetKunsSmooth(a)
 	def EnAndForceAPeriodic(x_,DoForce=True):
 		"""
@@ -1682,6 +1685,7 @@ def TestSmoothIR():
 	m = a.mols[-1]
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms)
+	return
 	PYSCFFIELD = lambda x: PyscfDft(Mol(m.atoms,x))
 	QCHEMFIELD = lambda x: QchemDFT(Mol(m.atoms,x))
 	HarmonicSpectra(PYSCFFIELD, m.coords, m.atoms,None,0.005)
