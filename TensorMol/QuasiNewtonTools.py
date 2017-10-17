@@ -294,6 +294,7 @@ class ConjGradient:
 		self.Energy = lambda x: self.EForce(x,False)
 		self.x0 = x0_.copy()
 		self.xold = x0_.copy()
+		self.natom = x0_.shape[0] if len(x0_.shape)==2 else x0_.shape[1]*x0_.shape[0]
 		self.e, self.gold  = self.EForce(x0_)
 		self.s = self.gold.copy()
 		self.alpha = PARAMS["GSSearchAlpha"]
@@ -376,7 +377,10 @@ class ConjGradient:
 				fa = fc
 				fc = self.Energy(c)
 				fd = self.Energy(d)
-			rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/a.shape[0]
+			if (len(self.x0.shape)==2):
+				rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/self.natom
+			elif (len(self.x0.shape)==3):
+				rmsdist = np.sum(np.linalg.norm(a-b,axis=2))/self.natom
 			k+=1
 		return (b + a) / 2
 

@@ -16,7 +16,77 @@ class BFGS:
 		self.R_Hist = np.zeros(([self.m_max]+list(self.m.coords.shape)))
 		self.F_Hist = np.zeros(([self.m_max]+list(self.m.coords.shape)))
 		return
+	def LineSearch(self, x0_, p_, thresh = 0.0001):
+		'''
+		golden section search to find the minimum of f on [a,b]
 
+		Args:
+			f_: a function which returns energy.
+			x0_: Origin of the search.
+			p_: search direction.
+
+		Returns:
+			x: coordinates which minimize along this search direction.
+		'''
+		k=0
+		rmsdist = 10.0
+		a = x0_
+		b = x0_ + self.alpha*p_
+		c = b - (b - a) / GOLDENRATIO
+		d = a + (b - a) / GOLDENRATIO
+		fa = self.Energy(a)
+		fb = self.Energy(b)
+		fc = self.Energy(c)
+		fd = self.Energy(d)
+		while (rmsdist > thresh):
+			if (fa < fc and fa < fd and fa < fb):
+				#print fa,fc,fd,fb
+				#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
+				print("Line Search: Overstep")
+				if (self.alpha > 0.00001):
+					self.alpha /= 1.71
+				else:
+					print("Keeping step")
+					return a
+				a = x0_
+				b = x0_ + self.alpha*p_
+				c = b - (b - a) / GOLDENRATIO
+				d = a + (b - a) / GOLDENRATIO
+				fa = self.Energy(a)
+				fb = self.Energy(b)
+				fc = self.Energy(c)
+				fd = self.Energy(d)
+			elif (fb < fc and fb < fd and fb < fa):
+				#print fa,fc,fd,fb
+				#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
+				print("Line Search: Understep")
+				if (self.alpha < 100.0):
+					self.alpha *= 1.7
+				a = x0_
+				b = x0_ + self.alpha*p_
+				c = b - (b - a) / GOLDENRATIO
+				d = a + (b - a) / GOLDENRATIO
+				fa = self.Energy(a)
+				fb = self.Energy(b)
+				fc = self.Energy(c)
+				fd = self.Energy(d)
+			elif fc < fd:
+				b = d
+				c = b - (b - a) / GOLDENRATIO
+				d = a + (b - a) / GOLDENRATIO
+				fb = fd
+				fc = self.Energy(c)
+				fd = self.Energy(d)
+			else:
+				a = c
+				c = b - (b - a) / GOLDENRATIO
+				d = a + (b - a) / GOLDENRATIO
+				fa = fc
+				fc = self.Energy(c)
+				fd = self.Energy(d)
+			rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/self.natom
+			k+=1
+		return (b + a) / 2
 	def NextStep(self, new_vec_, new_residual_):
 		if self.step < self.m_max:
 			R_Hist[step] = new_vec_.copy()
