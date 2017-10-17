@@ -4987,15 +4987,15 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		self.keep_prob = np.asarray(PARAMS["KeepProb"])
 		self.nlayer = len(PARAMS["KeepProb"]) - 1
 		self.monitor_mset =  PARAMS["MonitorSet"]
-		self.tf_precision = eval("tf.float64")
-		self.set_symmetry_function_params()
+		#self.tf_precision = eval("tf.float64")
+		#self.set_symmetry_function_params()
 
 	def Clean(self):
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize.Clean(self)
 		self.keep_prob_pl = None
 
 
-	def TrainPrepare_Original(self,  continue_training =False):
+	def TrainPrepare(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -5072,7 +5072,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
 			self.sess.graph.finalize()
 
-	def TrainPrepare(self,  continue_training =False):
+	def TrainPrepare_Johns(self,  continue_training =False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.

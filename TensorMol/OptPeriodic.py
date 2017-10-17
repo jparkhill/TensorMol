@@ -51,7 +51,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 				return energy
 		CG = ConjGradient(WrappedEForce, m.coords)
 		Density = self.EnergyAndForce.Density()
-		while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001 and step>1):
+		while( step < self.max_opt_step and rmsgrad > self.thresh and rmsdisp > 0.0001):
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords, energy, frc = CG(m.coords)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/m.coords.shape[0]

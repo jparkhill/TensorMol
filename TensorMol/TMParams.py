@@ -143,6 +143,7 @@ class TMParams(dict):
 		self["log_dir"] = "./logs/"
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
+		np.set_printoptions(formatter={'float': '{: .8f}'.format}) #Set pretty printing for numpy arrays
 
 	def __str__(self):
 		tore=""

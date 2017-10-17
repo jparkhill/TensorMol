@@ -772,8 +772,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		rotation_params = tf.stack([np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
 				np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
 				tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec)], axis=-1)
-		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, rotation_params, labels)
-		embedding, labels, _, _ = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
+		rotated_xyzs, rotated_labels = tf_random_rotate(xyzs, rotation_params, labels)
+		embedding, labels, _, _ = tf_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
 											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
 											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
 											self.l_max, self.orthogonalize)
@@ -800,8 +800,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
-			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
-			self.embedding, self.labels, _, self.min_eigenval = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			rotated_xyzs, rotated_labels = tf_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
+			self.embedding, self.labels, _, self.min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
@@ -1051,9 +1051,9 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 				rotation_params = tf.stack([np.pi * tf.random_uniform([num_mols], minval=0.1, maxval=1.9, dtype=self.tf_prec),
 						np.pi * tf.random_uniform([num_mols], minval=0.1, maxval=1.9, dtype=self.tf_prec),
 						tf.random_uniform([num_mols], minval=0.1, maxval=1.9, dtype=self.tf_prec)], axis=-1, name="rotation_params")
-				rotated_xyzs, rotation_matrix = TF_random_rotate(self.xyzs_pl, rotation_params, return_matrix=True)
+				rotated_xyzs, rotation_matrix = tf_random_rotate(self.xyzs_pl, rotation_params, return_matrix=True)
 			with tf.name_scope("Embedding_Normalization"):
-				self.embedding, self.labels, mol_atom_indices, min_eigenval = TF_gaussian_spherical_harmonics_element(rotated_xyzs,
+				self.embedding, self.labels, mol_atom_indices, min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs,
 						self.Zs_pl, self.labels_pl, element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 				self.norm_embedding = (self.embedding - inmean) / instd
 				self.norm_labels = (self.labels - outmean) / outstd

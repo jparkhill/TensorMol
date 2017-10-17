@@ -579,28 +579,27 @@ def train_energy_pairs_triples():
 	manager=TFMolManage("",tset,True,"pairs_triples", Trainable_=True)
 
 def train_energy_symm_func():
+	# np.set_printoptions(formatter={'float': '{: 0.8f}'.format})
+	# PARAMS["train_energy_gradients"] = False
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 500
+	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "relu"
-	PARAMS["tf_prec"] = "tf.float64"
-	a=MSet("SmallMols_rand")
+	PARAMS["tf_prec"] = "tf.float32"
+	a=MSet("SmallMols")
 	a.Load()
-	a.cut_max_num_atoms(40)
-	for mol in a.mols:
-		mol.CalculateAtomization()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
-	tensor_data = TensorMolDataDirect(a,"atomization","symmetry_functions")
-	manager=TFMolManageDirect(tensor_data)
+	tensor_data = TensorMolDataDirect(a, "atomization", "symmetry_functions")
+	manager = TFMolManageDirect(tensor_data)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 5000)
+# RandomSmallSet("chemspider12", 300000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
