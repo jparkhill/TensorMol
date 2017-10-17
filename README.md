@@ -4,7 +4,8 @@
 
 ### Authors:
  Kun Yao (kyao@nd.edu), John Herr (jherr1@nd.edu),
- David Toth (dtoth1@nd.edu), John Parkhill (john.parkhill@gmail.com)
+ David Toth (dtoth1@nd.edu), Ryker McIntyre, Nicolas Casetti
+ John Parkhill (john.parkhill@gmail.com)
 
 ### Model Chemistries:
  - Behler-Parrinello with electrostatics
@@ -15,13 +16,14 @@
 
 ### Simulation Types:
  - Optimizations
- - Nudged Elastic Band
  - Molecular Dynamics (NVE,NVT Nose-Hoover)
  - Monte Carlo
  - Open/Periodic Boundary Conditions
  - Meta-Dynamics
- - Infrared spectra
- - Path integral simulations via interface with [I-PI](https://github.com/i-pi/i-pi)
+ - Infrared spectra by propagation
+ - Infrared spectra by Harmonic Approximation.
+ - Nudged Elastic Band
+ - Path integral simulations via interface with [I-PI](https://github.com/i-pi/i-pi) MD engine.
 
 ### License: GPLv3
 By using this software you agree to the terms in COPYING
@@ -43,7 +45,6 @@ python test.py
  - TensorMol assumes a directory structure executing path which mirrors the git.
  - Please also refer to IPython notebooks in /notebooks.
  - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py
-
 
 ### Sample Results
 ![](water.png)
