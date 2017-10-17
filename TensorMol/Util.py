@@ -199,4 +199,11 @@ def guassian_rev_tozero_tolinear(x, prec=tf.float64):
 	step1 = tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
 	return tf.where(tf.greater(x, x0), a*x+b, step1)
 
+def square_tozero_tolinear(x, prec=tf.float64):
+	a = 1.0
+	b = -0.0025
+	x0 = 0.005
+	step1 = tf.where(tf.greater(x, 0.0), 100.0*x*x, tf.zeros_like(x))
+	return tf.where(tf.greater(x, x0), a*x+b, step1)
+
 signstep = np.vectorize(SignStep)
