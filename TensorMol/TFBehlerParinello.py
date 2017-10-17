@@ -189,7 +189,7 @@ class BehlerParinelloDirect:
 				embeddings_list[element].append(embedding[element])
 		sess.close()
 		for element in range(len(self.elements)):
-			self.embeddings_max.append(np.std(np.concatenate(embeddings_list[element])))
+			self.embeddings_max.append(np.amax(np.concatenate(embeddings_list[element])))
 		labels = np.concatenate(labels_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
@@ -278,8 +278,8 @@ class BehlerParinelloDirect:
 			#Define the graph for computing the embedding, feeding through the network, and evaluating the loss
 			element_embeddings, mol_indices = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements,
 					element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
-			# for element in range(len(self.elements)):
-			# 	element_embeddings[element] /= embeddings_max[element]
+			for element in range(len(self.elements)):
+				element_embeddings[element] /= embeddings_max[element]
 			self.normalized_output = self.inference(element_embeddings, mol_indices)
 			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
 			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0]
