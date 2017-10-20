@@ -1324,6 +1324,7 @@ def TFCoulombEluSRDSFLR(R, Qs, R_cut, Radpair, alpha, elu_a, elu_shift, prec=tf.
 	Returns
 		Energy of  Mols
 	"""
+	alpha = alpha/BOHRPERA
 	R_lrcut = PARAMS["EECutoffOff"]*BOHRPERA
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1524,6 +1525,7 @@ def TFCoulombErfSRDSFLR(R, Qs, R_srcut, R_lrcut, Radpair, alpha, prec=tf.float64
 	Returns
 		Energy of  Mols
 	"""
+	alpha = alpha/BOHRPERA
 	R_width = PARAMS["Erf_Width"]*BOHRPERA
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]

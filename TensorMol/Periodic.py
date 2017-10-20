@@ -279,7 +279,7 @@ class PeriodicForce:
 		"""
 		Returns the density in g/cm**3 of the bulk.
 		"""
-		m = np.array(map(lambda x: ATOMICMASSES[x-1], self.mol0.atoms))
+		m = np.array(map(lambda x: ATOMICMASSES[x-1], self.mol0.atoms))*1000.0
 		latvol = np.linalg.det(self.lattice.lattice) # in A**3
 		return (np.sum(m)/AVOCONST)/(latvol*pow(10, -24))
 	def AdjustLattice(self, x_, lat0_, latp_):
