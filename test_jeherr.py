@@ -586,10 +586,13 @@ def train_energy_symm_func():
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
-	PARAMS["NeuronType"] = "relu"
+	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
-	a=MSet("SmallMols")
+	a=MSet("nicotine_full")
 	a.Load()
+	for mol in a.mols:
+		mol.CalculateAtomization()
+	a.Save()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
 	tensor_data = TensorMolDataDirect(a, "atomization", "symmetry_functions")
@@ -599,7 +602,7 @@ def train_energy_symm_func():
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("chemspider12", 300000)
+# RandomSmallSet("SmallMols", 10000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()

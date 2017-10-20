@@ -169,17 +169,35 @@ class BehlerParinelloDirect:
 		angular_cutoff = tf.constant(self.angular_cutoff, dtype = self.tf_precision)
 		zeta = tf.constant(self.zeta, dtype = self.tf_precision)
 		eta = tf.constant(self.eta, dtype = self.tf_precision)
-		batch_data = self.tensor_data.get_train_batch(batch_size = 1)
-		self.tensor_data.train_scratch_pointer = 0
-		xyzs, Zs = tf.Variable(batch_data[0], dtype=self.tf_precision), tf.Variable(batch_data[1], dtype=tf.int32)
-		labels = batch_data[2]
-		embeddings, molecule_indices = tf_symmetry_functions(xyzs, Zs, elements, element_pairs, radial_cutoff,
+		xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms, 3]))
+		Zs_pl = tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.max_num_atoms]))
+		embeddings, molecule_indices = tf_symmetry_functions(xyzs_pl, Zs_pl, elements, element_pairs, radial_cutoff,
 										angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
-		with tf.Session() as sess:
-			sess.run(tf.global_variables_initializer())
-			embedding, molecule_index = sess.run([embeddings, molecule_indices])
+		embeddings_list = [[], [], [], []]
+		labels_list = []
+		gradients_list = []
+
+		self.embeddings_max = []
+		sess = tf.Session()
+		sess.run(tf.global_variables_initializer())
+		for ministep in range (0, int(0.1 * self.tensor_data.num_train_cases/self.batch_size)):
+			batch_data = self.tensor_data.get_train_batch(self.batch_size)
+			labels_list.append(batch_data[2])
+			gradients_list.append(batch_data[3])
+			embedding, molecule_index = sess.run([embeddings, molecule_indices], feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1]})
+			for element in range(len(self.elements)):
+				embeddings_list[element].append(embedding[element])
+		sess.close()
+		for element in range(len(self.elements)):
+			self.embeddings_max.append(np.amax(np.concatenate(embeddings_list[element])))
+		labels = np.concatenate(labels_list)
+		self.labels_mean = np.mean(labels)
+		self.labels_stddev = np.std(labels)
+		self.gradients_mean = np.mean(np.concatenate(gradients_list))
+		self.gradients_stddev = np.std(np.concatenate(gradients_list))
+		self.tensor_data.train_scratch_pointer = 0
 		self.embedding_shape = embedding[0].shape[1]
-		self.label_shape = labels.shape
+		self.label_shape = labels[0].shape
 		return
 
 	def set_symmetry_function_params(self):
@@ -252,10 +270,18 @@ class BehlerParinelloDirect:
 			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_precision)
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
 
+			#Define normalization constants
+			embeddings_max = tf.constant(self.embeddings_max, dtype = self.tf_precision)
+			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
+			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
+
 			#Define the graph for computing the embedding, feeding through the network, and evaluating the loss
 			element_embeddings, mol_indices = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements,
 					element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
-			self.output = self.inference(element_embeddings, mol_indices)
+			for element in range(len(self.elements)):
+				element_embeddings[element] /= embeddings_max[element]
+			self.normalized_output = self.inference(element_embeddings, mol_indices)
+			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
 			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0]
 			self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
 			self.train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum)
@@ -303,16 +329,19 @@ class BehlerParinelloDirect:
 			for i in range(len(self.hidden_layers)):
 				if i == 0:
 					with tf.name_scope(str(self.elements[e])+'_hidden1'):
-						weights = self.variable_with_weight_decay(shape=[self.embedding_shape, self.hidden_layers[i]], stddev=1.0/(10+math.sqrt(float(self.embedding_shape))), weight_decay=self.weight_decay, name="weights")
+						weights = self.variable_with_weight_decay(shape=[self.embedding_shape, self.hidden_layers[i]],
+								stddev=math.sqrt(2.0 / float(self.embedding_shape)), weight_decay=self.weight_decay, name="weights")
 						biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
 						branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
 				else:
 					with tf.name_scope(str(self.elements[e])+'_hidden'+str(i+1)):
-						weights = self.variable_with_weight_decay(shape=[self.hidden_layers[i-1], self.hidden_layers[i]], stddev=1.0/(10+math.sqrt(float(self.hidden_layers[i-1]))), weight_decay=self.weight_decay, name="weights")
+						weights = self.variable_with_weight_decay(shape=[self.hidden_layers[i-1], self.hidden_layers[i]],
+								stddev=math.sqrt(2.0 / float(self.hidden_layers[i-1])), weight_decay=self.weight_decay, name="weights")
 						biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
 						branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
 			with tf.name_scope(str(self.elements[e])+'_regression_linear'):
-				weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1], stddev=1.0/(10+math.sqrt(float(self.hidden_layers[-1]))), weight_decay=self.weight_decay, name="weights")
+				weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
+						stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
 				branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
 				output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
