@@ -289,14 +289,14 @@ def TestPeriodicLJVoxel():
 		return
 
 def UnittoPeri():
-	a=MSet("MDTrajectorywater_64_real_dropout_evalwithsigmoid100", center_=False)
-	a.ReadXYZ("MDTrajectorywater_64_real_dropout_evalwithsigmoid100")
+	a=MSet("MDTrajectorywater_tiny_real_dropout_train_withsigmoid100", center_=False, path_="./results/")
+	a.ReadXYZ("MDTrajectorywater_tiny_real_dropout_train_withsigmoid100")
 	lat = 9.3215*4/3
 	maxtess = 2
-	steps = 3
-	for i in range(0, len(a.mols)/steps):
+	steps = 1
+	for i in range(len(a.mols)-100, len(a.mols)):
 		print ("i:", i)
-		index = i*steps
+		index = i
 		m = a.mols[index]
 		zp = np.zeros(m.NAtoms()*((2*maxtess-1)**3), dtype=np.int32)
 		xp = np.zeros((m.NAtoms()*((2*maxtess-1)**3),3))
@@ -308,7 +308,7 @@ def UnittoPeri():
 					xp[ntess*m.NAtoms():(ntess+1)*m.NAtoms()] = m.coords + np.array([j*lat, k*lat, l*lat])
 					ntess += 1
 		mp = Mol(zp, xp)
-		mp.WriteXYZfile(fpath="./datasets", fname="water_64_real_md_evalsigmoid100")
+		mp.WriteXYZfile(fpath="./datasets", fname="MDTrajectorywater_tiny_real_dropout_train_withsigmoid100_tessilated")
 
 def KickOutTrans():
 	a=MSet("H2O_wb97xd_1to21")
@@ -377,7 +377,7 @@ def GetRDF_Update():
 	gi = PF.RDF(m.coords,8,8,10.0,0.01)
 	gi2 = PF.RDF(m.coords,8,8,10.0,0.01)
 	av = 1
-	for i in range(len(a.mols)/3, len(a.mols)): 
+	for i in range(len(a.mols)/4, len(a.mols)): 
 		#gi += PF.RDF(a.mols[i].coords,8,8,10.0,0.01)
 		gi2 += PF.RDF_inC(a.mols[i].coords,a.mols[i].atoms,12.42867,8,8,10.0, 0.01)
 		av += 1 
@@ -385,7 +385,7 @@ def GetRDF_Update():
 		if (i%100==0):
 			print(i," Gi: ",gi2/av)
 			#np.savetxt("./results/rdf_64_sigmoid_"+str(i)+".txt",gi2/av)
-	np.savetxt("./results/rdf_64_sigmoid100_"+str(i)+".txt",gi2/av)
+	np.savetxt("./results/rdf_64_longtime_sigmoid100_"+str(i)+".txt",gi2/av)
 	return 
 
 	dr = 0.001
@@ -432,7 +432,7 @@ def GetRDF_Update():
 
 
 #TestPeriodicLJVoxel()
-#UnittoPeri()
+UnittoPeri()
 #KickOutTrans()
 #GetRDF()
-GetRDF_Update()
+#GetRDF_Update()
