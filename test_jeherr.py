@@ -580,19 +580,17 @@ def train_energy_pairs_triples():
 
 def train_energy_symm_func():
 	# np.set_printoptions(formatter={'float': '{: 0.8f}'.format})
-	# PARAMS["train_energy_gradients"] = False
+	PARAMS["train_energy_gradients"] = False
+	PARAMS["weight_decay"] = 0.0001
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 200
+	PARAMS["batch_size"] = 100
 	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
 	a=MSet("nicotine_full")
 	a.Load()
-	for mol in a.mols:
-		mol.CalculateAtomization()
-	a.Save()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
 	tensor_data = TensorMolDataDirect(a, "atomization", "symmetry_functions")
