@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -623,7 +623,7 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (1): # Normalize+Dropout+500+usual, dropout07+act_square_tozero_tolinear
+	if (0): # Normalize+Dropout+500+usual, dropout07+act_square_tozero_tolinear
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -709,7 +709,7 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (0): # Normalize+Dropout+500+usual, dropout07+sigmoid100
+	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -718,7 +718,7 @@ def Train():
 		#for i in range(350000):
 		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
-		PARAMS["NetNameSuffix"] = "act_sigmoid100"
+		PARAMS["NetNameSuffix"] = "act_sigmoid100_rightalpha_dropout07"
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
 		PARAMS["max_steps"] = 101
@@ -755,7 +755,7 @@ def Train():
 
 
 
-	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100+noEcc
+	if (0): # Normalize+Dropout+500+usual, dropout07+sigmoid100+noEcc
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -1771,8 +1771,8 @@ def TestNeb():
 	exit(0)
 
 #TrainPrepare()
-#Train()
+Train()
 #Eval()
 #BoxAndDensity()
 #TestSmoothIR()
-TestNeb()
+#TestNeb()
