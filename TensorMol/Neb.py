@@ -9,6 +9,7 @@ from .Sets import *
 from .TFManage import *
 from .DIIS import *
 from .QuasiNewtonTools import *
+from .BFGS import *
 import random
 import time
 
@@ -39,7 +40,15 @@ class NudgedElasticBand:
 		self.Es = np.zeros(self.nbeads) # As Evaluated.
 		self.Esi = np.zeros(self.nbeads) # Integrated
 		self.Rs = np.zeros(self.nbeads) # Distance between beads.
-		self.CG = ConjGradient(self.WrappedEForce,self.beads)
+		self.Solver=None
+		if (PARAMS["NebSolver"]=="SD"):
+			self.Solver = SteepestDescent(self.WrappedEForce,self.beads)
+		elif (PARAMS["NebSolver"]=="BFGS"):
+			self.Solver = BFGS(self.WrappedEForce,self.beads)
+		elif (PARAMS["NebSolver"]=="CG"):
+			self.Solver = ConjGradient(self.WrappedEForce,self.beads)
+		else:
+			raise Exception("Missing Neb Solver")
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.WriteXYZfile("./results/", "NebTraj0")
@@ -103,30 +112,29 @@ class NudgedElasticBand:
 			Fn = F
 		Sperp = self.Perpendicular(self.Perpendicular(S,t),Fn)
 		#Fneb = self.PauliForce(i)+Spara+Sperp+F
-		Fneb = Spara+Sperp+F
+		Fneb = Spara+F#+Sperp
 		return self.Es[i], Fneb
 	def WrappedEForce(self, beads_, DoForce=True):
 		F = np.zeros(beads_.shape)
-		E = np.zeros(self.nbeads)
 		if (DoForce):
 			for i,bead in enumerate(beads_):
 				#print(DoForce,self.NebForce(bead,i,DoForce))
-				E[i], F[i] = self.NebForce(beads_,i,DoForce)
+				self.Es[i], F[i] = self.NebForce(beads_,i,DoForce)
 				F[i] = RemoveInvariantForce(bead, F[i], self.atoms)
 				F[i] /= JOULEPERHARTREE
-			TE = np.sum(E)+self.SpringEnergy(beads_)
+			TE = np.sum(self.Es)#+self.SpringEnergy(beads_)
 			return TE,F
 		else:
 			for i,bead in enumerate(beads_):
-				E[i] = self.NebForce(beads_,i,DoForce)
-			TE = np.sum(E)+self.SpringEnergy(beads_)
+				self.Es[i] = self.NebForce(beads_,i,DoForce)
+			TE = np.sum(self.Es)#+self.SpringEnergy(beads_)
 			return TE
 	def IntegrateEnergy(self):
 		"""
 		Use the fundamental theorem of line integrals to calculate an energy.
 		An interpolated path could improve this a lot.
 		"""
-		self.Es[0] = 0
+		self.Esi[0] = self.Es[0]
 		for i in range(1,self.nbeads):
 			dR = self.beads[i] - self.beads[i-1]
 			dV = -1*(self.Fs[i] + self.Fs[i-1])/2. # midpoint rule.
@@ -168,10 +176,12 @@ class NudgedElasticBand:
 		"""
 		# Sweeps one at a time
 		step=0
-		frc = np.ones(self.beads.shape)
-		while(step < self.max_opt_step and np.sqrt(np.mean(frc*frc))>self.thresh):
+		self.Fs = np.ones(self.beads.shape)
+		PES = np.zeros((self.max_opt_step, self.nbeads))
+		while(step < self.max_opt_step and np.sqrt(np.mean(self.Fs*self.Fs))>self.thresh):
 			# Update the positions of every bead together.
-			self.beads, energy, frc = self.CG(self.beads)
+			self.beads, energy, self.Fs = self.Solver(self.beads)
+			PES[step] = self.Es.copy()
 			self.IntegrateEnergy()
 			print("Rexn Profile: ", self.Es, self.Esi)
 			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
@@ -186,8 +196,10 @@ class NudgedElasticBand:
 			minforce = np.min(beadFs)
 				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
-			self.WriteTrajectory()
+			if (step%10==0):
+				self.WriteTrajectory()
+			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.sum(PES[step]), np.sqrt(np.mean(self.Fs*self.Fs)), np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
 			step+=1
-			LOGGER.info("Step: %i RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.sqrt(np.mean(frc*frc)), np.max(frc),np.mean(beadFperp),np.linalg.norm(self.Ss))
 		#self.HighQualityPES()
-		return
+		np.savetxt("./results/NEB_Energy.txt",PES)
+		return self.beads

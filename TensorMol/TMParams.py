@@ -92,12 +92,12 @@ class TMParams(dict):
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
-		self["OptMaxBFGS"] = 7
 		self["OptLatticeStep"] = 0.050
 		self["GSSearchAlpha"] = 0.001
-		self["NebNumBeads"] = 10
+		self["MaxBFGS"] = 7
+		self["NebSolver"] = "SD"
+		self["NebNumBeads"] = 13
 		self["NebK"] = 0.01
-		self["NebMaxBFGS"] = 12
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
 		# MD Parameters
