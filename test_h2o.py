@@ -1767,7 +1767,7 @@ def TestNeb():
 	a.mols[0] = Opt.Opt(a.mols[0],"1")
 	a.mols[1] = Opt.Opt(a.mols[1],"2")
 	PARAMS["OptMaxCycles"]=500
-	PARAMS["NebSolver"]="BFGS"
+	PARAMS["NebSolver"]="SD"
 	neb = NudgedElasticBand(EnAndForceAPeriodic,a.mols[0],a.mols[1])
 	Beads = neb.Opt()
 	exit(0)

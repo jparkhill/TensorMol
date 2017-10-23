@@ -106,7 +106,7 @@ class BFGS(SteepestDescent):
 		"""
 		e,g = self.EForce(new_vec_)
 		z = self.BFGSstep(new_vec_, g)
-		return new_vec_ - 0.01*z, e, g
+		return new_vec_ - 0.005*z, e, g
 
 class BFGS_WithLinesearch(BFGS):
 	def __init__(self, ForceAndEnergy_, x0_ ):
@@ -117,7 +117,7 @@ class BFGS_WithLinesearch(BFGS):
 			ForceAndEnergy_: a routine which returns energy, force.
 			x0_: a initial vector
 		"""
-		BFGS.__init__(self,x0_,ForceAndEnergy_)
+		BFGS.__init__(self,ForceAndEnergy_,x0_)
 		self.alpha = PARAMS["GSSearchAlpha"]
 		self.Energy = lambda x: self.EForce(x,False)
 		return

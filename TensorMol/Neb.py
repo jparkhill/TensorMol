@@ -44,7 +44,7 @@ class NudgedElasticBand:
 		if (PARAMS["NebSolver"]=="SD"):
 			self.Solver = SteepestDescent(self.WrappedEForce,self.beads)
 		elif (PARAMS["NebSolver"]=="BFGS"):
-			self.Solver = BFGS(self.WrappedEForce,self.beads)
+			self.Solver = BFGS_WithLinesearch(self.WrappedEForce,self.beads)
 		elif (PARAMS["NebSolver"]=="CG"):
 			self.Solver = ConjGradient(self.WrappedEForce,self.beads)
 		else:
