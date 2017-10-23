@@ -4229,7 +4229,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 			self.sess.graph.finalize()
 		print("Prepared for Evaluation...")
 
-
 	def dipole_inference_periodic(self, inp, indexs, xyzs, natom, EE_cuton, EE_cutoff, Reep, AddEcc):
 		"""
 		Builds a Behler-Parinello graph
@@ -5780,8 +5779,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
 			self.sess.graph.finalize()
 
-
-	def energy_inference_periodic(self, inp, indexs,  cc_energy, xyzs, Zs, eles, c6, R_vdw, Reep_e1e2, EE_cuton, EE_cutoff, keep_prob):
+	def energy_inference_periodic(self, inp, indexs, cc_energy, xyzs, Zs, eles, c6, R_vdw, Reep_e1e2, EE_cuton, EE_cutoff, keep_prob):
 		"""
 		Builds a Behler-Parinello graph
 

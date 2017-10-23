@@ -790,8 +790,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]))
 			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_prec)
-			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=True, dtype=self.tf_prec)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
 			element = tf.constant(self.element, dtype=tf.int32)
 			inmean = tf.constant(self.inmean, dtype=self.tf_prec)
 			instd = tf.constant(self.instd, dtype=self.tf_prec)
@@ -801,7 +801,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
 			rotated_xyzs, rotated_labels = tf_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
-			self.embedding, self.labels, _, self.min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			self.embedding, self.labels, _, min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
@@ -811,8 +811,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
 			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1), tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
 			truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
-			self.gaussian_overlap_constraint = tf.square(0.001 / self.min_eigenval)
-			loss_and_constraint = self.total_loss + truncated_barrier_function + self.gaussian_overlap_constraint
+			gaussian_overlap_constraint = tf.square(0.001 / min_eigenval)
+			loss_and_constraint = self.total_loss + truncated_barrier_function + gaussian_overlap_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -902,6 +902,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.output = None
 		self.embedding = None
 		self.n_atoms_batch = None
+		self.tf_prec = None
 		return
 
 	def loss_op(self, output, labels):

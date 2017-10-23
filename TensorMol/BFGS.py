@@ -1,20 +1,125 @@
+"""
+TODO:
+	Systematic comparison of BFGS vs CG etc.
+	Consistent solver organization & interface. (CG,BFGS,DIIS etc. )
+"""
 from __future__ import absolute_import
 from .Sets import *
 from .TFManage import *
 from .PhysicalData import *
-from .QuasiNewtonTools import *
 
-class BFGS:
-	def __init__(self, m_, ForceAndEnergy_):
+class SteepestDescent:
+	def __init__(self, ForceAndEnergy_,x0_):
+		"""
+		The desired interface for a solver in tensormol.
+
+		Args:
+			ForceAndEnergy_: a routine which returns energy, force.
+			x0_: a initial vector
+		"""
+		self.step = 0
+		self.x0=x0_.copy()
+		if (len(self.x0.shape)==2):
+			self.natom = self.x0.shape[0]
+		else:
+			self.natom = self.x0.shape[0]*self.x0.shape[1]
+		self.EForce = ForceAndEnergy_ # Used for line-search.
+		return
+	def __call__(self, new_vec_):
+		"""
+		Iterate BFGS
+
+		Args:
+			new_vec_: Point at which to minimize gradients
+		Returns:
+			Next point, energy, and gradient.
+		"""
+		e,g = self.EForce(new_vec_)
+		self.step += 1
+		return new_vec_ + 0.01*g, e, g
+
+class BFGS(SteepestDescent):
+	def __init__(self, ForceAndEnergy_,x0_):
+		"""
+		Simplest Possible minimizing BFGS
+
+		Args:
+			ForceAndEnergy_: a routine which returns energy, force.
+			x0_: a initial vector
+		"""
+		self.m_max = PARAMS["MaxBFGS"]
+		self.step = 0
+		self.x0=x0_.copy()
+		if (len(self.x0.shape)==2):
+			self.natom = self.x0.shape[0]
+		else:
+			self.natom = self.x0.shape[0]*self.x0.shape[1]
+		self.EForce = ForceAndEnergy_ # Used for line-search.
+		self.R_Hist = np.zeros(([self.m_max]+list(self.x0.shape)))
+		self.F_Hist = np.zeros(([self.m_max]+list(self.x0.shape)))
+		return
+	def BFGSstep(self, new_vec_, new_residual_):
+		if self.step < self.m_max:
+			self.R_Hist[self.step] = new_vec_.copy()
+			self.F_Hist[self.step] = new_residual_.copy()
+		else:
+			self.R_Hist = np.roll(self.R_Hist,-1,axis=0)
+			self.F_Hist = np.roll(self.F_Hist,-1,axis=0)
+			self.R_Hist[-1] = new_vec_.copy()
+			self.F_Hist[-1] = new_residual_.copy()
+		# Quasi Newton L-BFGS global step.
+		q = new_residual_.copy()
+		for i in range(min(self.m_max,self.step)-1, 0, -1):
+			s = self.R_Hist[i] - self.R_Hist[i-1]
+			y = self.F_Hist[i] - self.F_Hist[i-1]
+			rho = 1.0/np.sum(y*s)
+			a = rho * np.sum(s*q)
+			#print "a ",a
+			q -= a*y
+		if self.step < 1:
+			H=1.0
+		else:
+			num = min(self.m_max-1,self.step)
+			v1 = (self.R_Hist[num] - self.R_Hist[num-1])
+			v2 = (self.F_Hist[num] - self.F_Hist[num-1])
+			H = np.sum(v1*v2)/np.sum(v2*v2)
+			#print "H:", H
+		z = H*q
+		for i in range (1,min(self.m_max,self.step)):
+			s = (self.R_Hist[i] - self.R_Hist[i-1])
+			y = (self.F_Hist[i] - self.F_Hist[i-1])
+			rho = 1.0/np.sum(y*s)
+			a=rho*np.sum(s*q)
+			beta = rho*np.sum(y*z)
+			#print "a-b: ", (a-beta)
+			z += s*(a-beta)
+		self.step += 1
+		return z
+	def __call__(self, new_vec_):
+		"""
+		Iterate BFGS
+
+		Args:
+			new_vec_: Point at which to minimize gradients
+		Returns:
+			Next point, energy, and gradient.
+		"""
+		e,g = self.EForce(new_vec_)
+		z = self.BFGSstep(new_vec_, g)
+		return new_vec_ - 0.005*z, e, g
+
+class BFGS_WithLinesearch(BFGS):
+	def __init__(self, ForceAndEnergy_, x0_ ):
 		"""
 		Simplest Possible BFGS
+
+		Args:
+			ForceAndEnergy_: a routine which returns energy, force.
+			x0_: a initial vector
 		"""
-		self.m_max = PARAMS["OptMaxBFGS"]
-		self.step = 0
-		self.m = m_
-		self.f = ForceAndEnergy_ # Used for line-search.
-		self.R_Hist = np.zeros(([self.m_max]+list(self.m.coords.shape)))
-		self.F_Hist = np.zeros(([self.m_max]+list(self.m.coords.shape)))
+		BFGS.__init__(self,ForceAndEnergy_,x0_)
+		self.alpha = PARAMS["GSSearchAlpha"]
+		self.Energy = lambda x: self.EForce(x,False)
 		return
 	def LineSearch(self, x0_, p_, thresh = 0.0001):
 		'''
@@ -87,39 +192,16 @@ class BFGS:
 			rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/self.natom
 			k+=1
 		return (b + a) / 2
-	def NextStep(self, new_vec_, new_residual_):
-		if self.step < self.m_max:
-			R_Hist[step] = new_vec_.copy()
-			F_Hist[step] = new_residual_.copy()
-		else:
-			R_Hist = np.roll(R_Hist,-1,axis=0)
-			F_Hist = np.roll(R_Hist,-1,axis=0)
-			R_Hist[-1] = new_vec_.copy()
-			F_Hist[-1] = new_residual_.copy()
-		# Quasi Newton L-BFGS global step.
-		q = new_residual_.copy()
-		for i in range(min(self.m_max,step)-1, 0, -1):
-			s = R_Hist[i] - R_Hist[i-1]
-			y = F_Hist[i] - F_Hist[i-1]
-			rho = 1.0/np.einsum("ia,ia",y,s)#y.dot(s)
-			a = rho * np.einsum("ia,ia",s,q)#s.dot(q)
-			#print "a ",a
-			q -= a*y
-		if step < 1:
-			H=1.0
-		else:
-			num = min(self.m_max-1,step)
-			v1 = (R_Hist[num] - R_Hist[num-1])
-			v2 = (F_Hist[num] - F_Hist[num-1])
-			H = (np.einsum("ia,ia",v1,v2))/(np.einsum("ia,ia",v2,v2))
-			#print "H:", H
-		z = H*q
-		for i in range (1,min(self.m_max,step)):
-			s = (R_Hist[i] - R_Hist[i-1])
-			y = (F_Hist[i] - F_Hist[i-1])
-			rho = 1.0/np.einsum("ia,ia",y,s)#y.dot(s)
-			a=rho*np.einsum("ia,ia",s,q)#s.dot(q)
-			beta = rho*np.einsum("ia,ia",y,z)#(force_his[i] - force_his[i-1]).dot(z)
-			#print "a-b: ", (a-beta)
-			z += s*(a-beta)
-		return self.LineSearch(self.f, new_vec_, z)
+	def __call__(self, new_vec_):
+		"""
+		Iterate BFGS
+
+		Args:
+			new_vec_: Point at which to minimize gradients
+		Returns:
+			Next point, energy, and gradient.
+		"""
+		e,g = self.EForce(new_vec_)
+		z = self.BFGSstep(new_vec_, g)
+		new_vec = self.LineSearch(new_vec_, z)
+		return new_vec, e, g
