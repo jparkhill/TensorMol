@@ -314,7 +314,6 @@ class TensorMolDataDirect:
 		self.embedding_type = embedding_type
 		self.randomize_data = PARAMS["RandomizeData"]
 		self.test_ratio = PARAMS["TestRatio"]
-		self.train_energy_gradients = PARAMS["train_energy_gradients"]
 		self.elements = self.molecule_set.AtomTypes()
 		self.max_num_atoms = self.molecule_set.MaxNAtoms() #Used to pad data so that each molecule is the same size
 		self.num_molecules = len(self.molecule_set.mols)
@@ -361,19 +360,14 @@ class TensorMolDataDirect:
 			labels = np.zeros((self.num_molecules), dtype = np.float64)
 		else:
 			raise Exception("TensorMolDataDirect currently only supports atomization energy for learning target")
-		if self.train_energy_gradients:
-			gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float64)
+		gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float64)
 		for i, mol in enumerate(self.molecule_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
 			labels[i] = mol.properties["atomization"]
 			num_atoms[i] = mol.NAtoms()
-			if self.train_energy_gradients:
-				gradients[i][:mol.NAtoms()] = -1.0 * mol.properties["forces"]
-		if self.train_energy_gradients:
-			return xyzs, Zs, labels, num_atoms, gradients
-		else:
-			return xyzs, Zs, labels, num_atoms
+			gradients[i][:mol.NAtoms()] = -1.0 * mol.properties["forces"]
+		return xyzs, Zs, labels, num_atoms, gradients
 
 	def load_data_to_scratch(self):
 		"""
@@ -389,10 +383,7 @@ class TensorMolDataDirect:
 		Note:
 			Also determines mean stoichiometry
 		"""
-		if self.train_energy_gradients:
-			self.xyzs, self.Zs, self.labels, self.num_atoms, self.gradients = self.load_data()
-		else:
-			self.xyzs, self.Zs, self.labels, self.num_atoms = self.load_data()
+		self.xyzs, self.Zs, self.labels, self.num_atoms, self.gradients = self.load_data()
 		self.num_test_cases = int(self.test_ratio * self.num_molecules)
 		self.last_train_case = int(self.num_molecules - self.num_test_cases)
 		self.num_train_cases = self.last_train_case
@@ -413,11 +404,8 @@ class TensorMolDataDirect:
 		Zs = self.Zs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		labels = self.labels[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		num_atoms = self.num_atoms[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		if self.train_energy_gradients:
-			gradients = self.gradients[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-			return [xyzs, Zs, labels, gradients, num_atoms]
-		else:
-			return [xyzs, Zs, labels, num_atoms]
+		gradients = self.gradients[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		return [xyzs, Zs, labels, gradients, num_atoms]
 
 	def get_test_batch(self, batch_size):
 		if batch_size > self.num_test_cases:
@@ -430,11 +418,8 @@ class TensorMolDataDirect:
 		Zs = self.Zs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		labels = self.labels[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		num_atoms = self.num_atoms[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		if self.train_energy_gradients:
-			gradients = self.gradients[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-			return [xyzs, Zs, labels, gradients, num_atoms]
-		else:
-			return [xyzs, Zs, labels, num_atoms]
+		gradients = self.gradients[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		return [xyzs, Zs, labels, gradients, num_atoms]
 
 	def save(self):
 		self.clean_scratch()

@@ -538,7 +538,6 @@ class IRTrajectory(VelocityVerlet):
 		#WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 
-
 class Annealer(IRTrajectory):
 	def __init__(self,f_,q_,g0_,name_="anneal",AnnealThresh_ = 0.000009):
 		PARAMS["MDThermostat"] = None

@@ -754,7 +754,8 @@ def Train():
 		manager.Train(1)
 
 
-	if (0): # Normalize+Dropout+500+usual, dropout07+sigmoid100+test john's sym
+
+	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100+noEcc
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -763,7 +764,7 @@ def Train():
 		#for i in range(350000):
 		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
-		PARAMS["NetNameSuffix"] = "test_johnsym"
+		PARAMS["NetNameSuffix"] = "act_sigmoid100_noEcc"
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
 		PARAMS["max_steps"] = 101
@@ -786,7 +787,7 @@ def Train():
 		#PARAMS["AN1_num_r_Rs"] = 64
 		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["DSFAlpha"] = 0.18
-		PARAMS["AddEcc"] = True
+		PARAMS["AddEcc"] = False
 		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
 		#PARAMS["KeepProb"] = 0.7
 		PARAMS["learning_rate_dipole"] = 0.0001
@@ -1685,10 +1686,13 @@ def BoxAndDensity():
 def TestSmoothIR():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.
-	a = MSet()
+
+	a=MSet("H2O_cluster_meta", center_=False)
+	a.ReadXYZ("H2O_cluster_meta")
+	#a = MSet()
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1],[2.9,0.1,0.1],[3.,0.9,1.],[2.1,0.1,0.1]])))
-	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
-	m = a.mols[0]
+	#a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	m = a.mols[9]
 	manager = GetKunsSmooth(a)
 	def EnAndForceAPeriodic(x_,DoForce=True):
 		"""
@@ -1721,6 +1725,7 @@ def TestSmoothIR():
 	m = a.mols[-1]
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms)
+	return
 	PYSCFFIELD = lambda x: PyscfDft(Mol(m.atoms,x))
 	QCHEMFIELD = lambda x: QchemDFT(Mol(m.atoms,x))
 	HarmonicSpectra(PYSCFFIELD, m.coords, m.atoms,None,0.005)

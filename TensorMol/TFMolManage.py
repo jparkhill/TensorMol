@@ -1266,7 +1266,7 @@ class TFMolManage(TFManage):
 			#Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient, bp_gradient, syms  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
 			return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
 			#return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0], bp_gradient, syms
-	def EvalBPDirectEEUpdateSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True, DoForce=True):
+	def EvalBPDirectEEUpdateSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True, DoForce=True, DoCharge=False):
 		"""
 		The energy, force and dipole routine for BPs_EE.
 		"""
@@ -1290,7 +1290,10 @@ class TFMolManage(TFManage):
 		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(Ree_cut, self.Instances.eles_np)
 		if (DoForce):
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal)
-			return Etotal, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
+			if not DoCharge:
+				return Etotal, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
+			else:
+				return Etotal, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3), atom_charge[0][:nreal].reshape(1, nreal)
 		else:
 			Etotal = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal, False)
 			return Etotal

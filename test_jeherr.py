@@ -322,7 +322,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["HiddenLayers"] = [512, 512, 512, 512, 512, 512, 512]
-	PARAMS["max_steps"] = 5000
+	PARAMS["max_steps"] = 20000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
@@ -580,15 +580,16 @@ def train_energy_pairs_triples():
 
 def train_energy_symm_func():
 	# np.set_printoptions(formatter={'float': '{: 0.8f}'.format})
-	# PARAMS["train_energy_gradients"] = False
+	PARAMS["train_energy_gradients"] = False
+	PARAMS["weight_decay"] = 0.0001
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 200
-	PARAMS["NeuronType"] = "relu"
+	PARAMS["batch_size"] = 100
+	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
-	a=MSet("SmallMols")
+	a=MSet("nicotine_full")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
@@ -599,7 +600,7 @@ def train_energy_symm_func():
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
 # TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("chemspider12", 300000)
+# RandomSmallSet("SmallMols", 10000)
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
@@ -616,7 +617,7 @@ def train_energy_symm_func():
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-# train_forces_GauSH_direct("SmallMols")
+train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()

@@ -4375,8 +4375,8 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(MolInstance_Direct
 		if self.Ree_on != 0.0:
 			raise Exception("EECutoffOn should equal to zero in DSF_elu")
 		self.elu_width = PARAMS["Elu_Width"]
-		self.elu_shift = DSF(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.DSFAlpha)
-		self.elu_alpha = DSF_Gradient(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.DSFAlpha)
+		self.elu_shift = DSF(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.DSFAlpha/BOHRPERA)
+		self.elu_alpha = DSF_Gradient(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.DSFAlpha/BOHRPERA)
 		print ("self.elu_shift: ",self.elu_shift)
 		print ("self.elu_alpha: ",self.elu_alpha)
 
