@@ -282,7 +282,7 @@ class NoseChainThermostat(Thermostat):
 		return v_*scale
 
 class VelocityVerlet:
-	def __init__(self, f_, g0_, name_ ="", EandF_=None):
+	def __init__(self, f_, g0_, name_ ="", EandF_=None, cellsize_=None):
 		"""
 		Molecular dynamics
 
@@ -299,6 +299,7 @@ class VelocityVerlet:
 			Nothing.
 		"""
 		self.name = name_
+		self.cellsize = cellsize_
 		self.maxstep = PARAMS["MDMaxStep"]
 		self.T = PARAMS["MDTemp"]
 		self.dt = PARAMS["MDdt"]
@@ -358,13 +359,14 @@ class VelocityVerlet:
 				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
 				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
-
+			if self.cellsize != None:
+				self.x  = np.mod(self.x, self.cellsize)
 			self.md_log[step,0] = self.t
 			self.md_log[step,4] = self.KE
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%1==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
@@ -535,7 +537,6 @@ class IRTrajectory(VelocityVerlet):
 			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
 		#WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
-
 
 class Annealer(IRTrajectory):
 	def __init__(self,f_,q_,g0_,name_="anneal",AnnealThresh_ = 0.000009):

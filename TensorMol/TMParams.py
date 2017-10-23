@@ -70,6 +70,7 @@ class TMParams(dict):
 		self["Profiling"] = False
 		self["max_checkpoints"] = 1
 		self["KeepProb"] = 0.7
+		self["weight_decay"] = 0.001
 		self["ConvFilter"] = [32, 64]
 		self["ConvKernelSize"] = [[8,1],[4,1]]
 		self["ConvStrides"] = [[8,1],[4,1]]
@@ -82,6 +83,7 @@ class TMParams(dict):
 		self["ChopTo"] = None
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
+		self["train_energy_gradients"] = True
 		# Opt Parameters
 		self["OptMaxCycles"]=20
 		self["OptThresh"]=0.0001
@@ -141,6 +143,7 @@ class TMParams(dict):
 		self["log_dir"] = "./logs/"
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
+		np.set_printoptions(formatter={'float': '{: .8f}'.format}) #Set pretty printing for numpy arrays
 
 	def __str__(self):
 		tore=""

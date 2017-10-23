@@ -8,6 +8,7 @@ from __future__ import print_function
 from .Neighbors import *
 from .Electrostatics import *
 from .SimpleMD import *
+from MolEmb import GetRDF_Bin, CountInRange
 
 class Lattice:
 	def __init__(self, latvec_):
@@ -20,10 +21,34 @@ class Lattice:
 		self.lattice = latvec_.copy()
 		self.latticeCenter = (self.lattice[0]+self.lattice[1]+self.lattice[2])/2.0
 		self.latticeMinDiameter = 2.0*min([np.linalg.norm(self.lattice[0]-self.latticeCenter),np.linalg.norm(self.lattice[1]-self.latticeCenter),np.linalg.norm(self.lattice[2]-self.latticeCenter)])
+		self.lp = np.array([[0.,0.,0.],self.lattice[0].tolist(),self.lattice[1].tolist(),self.lattice[2].tolist(),(self.lattice[0]+self.lattice[1]).tolist(),(self.lattice[0]+self.lattice[2]).tolist(),(self.lattice[1]+self.lattice[2]).tolist(),(self.lattice[0]+self.lattice[1]+self.lattice[2]).tolist()])
 		self.ntess = 1 # number of shells over which to tesselate.
+		self.facenormals = self.LatticeNormals()
 		return
+	def LatticeNormals(self):
+		lp = self.lp
+		fn = np.zeros((6,3))
+		fn[0] = np.cross(lp[1]-lp[0],lp[2]-lp[0]) # face 012
+		fn[1] = np.cross(lp[1]-lp[0],lp[3]-lp[0]) # face 013
+		fn[2] = np.cross(lp[2]-lp[0],lp[3]-lp[0]) # face 023
+		fn[3] = np.cross(lp[4]-lp[-1],lp[5]-lp[-1])
+		fn[4] = np.cross(lp[6]-lp[-1],lp[5]-lp[-1])
+		fn[5] = np.cross(lp[6]-lp[-1],lp[4]-lp[-1])
+		# Normalize them.
+		fn /= np.sqrt(np.sum(fn*fn,axis=1))[:,np.newaxis]
+		return fn
+	def InRangeOfLatNormals(self,pt,rng_):
+		for i in range(6):
+			if (i<3):
+				if (np.abs(np.sum(self.facenormals[i]*(pt - self.lp[0]))) < rng_):
+					return True
+			else:
+				if (np.abs(np.sum(self.facenormals[i]*(pt - self.lp[7]))) < rng_):
+					return True
 	def CenteredInLattice(self, mol):
-		return Mol(mol.atoms,self.ModuloLattice(mol.coords - mol.Center() + self.latticeCenter))
+		m=Mol(mol.atoms,self.ModuloLattice(mol.coords - mol.Center() + self.latticeCenter))
+		m.properties["Lattice"] = self.lattice.copy()
+		return m
 	def InLat(self,crds):
 		"""
 		Express coordinates (atom X 3 cart)
@@ -95,6 +120,7 @@ class Lattice:
 		if (rng_ > self.latticeMinDiameter):
 			self.ntess = int(rng_/self.latticeMinDiameter)+1
 			#print("Doing",self.ntess,"tesselations...")
+			#print(rng_,self.latticeMinDiameter)
 		natom = atoms_.shape[0]
 		nimages = pow(2*self.ntess+1,3)
 		#print("Doing",nimages,"images... of ",natom)
@@ -111,7 +137,20 @@ class Lattice:
 					newAtoms[ind*natom:(ind+1)*natom] = atoms_
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
 					ind = ind + 1
+		# Now pare that down where the images are too far from the edges of the lattice.
 		return newAtoms, newCoords
+		Atoms = np.zeros(nimages*natom,dtype=np.uint8)
+		Coords = np.zeros((nimages*natom,3))
+		ind=natom
+		Coords[:natom] = newCoords[:natom].copy()
+		Atoms[:natom] = newAtoms[:natom].copy()
+		for j in range(natom,natom*nimages):
+			if(self.InRangeOfLatNormals(newCoords[j],rng_)):
+				Coords[ind] = newCoords[j]
+				Atoms[ind] = newAtoms[j]
+				ind = ind + 1
+		#print("tes sparsity",float(ind)/(natom*nimages))
+		return Atoms[:ind], Coords[:ind]
 
 class LocalForce:
 	def __init__(self, f_, rng_=5.0, NeedsTriples_=False):
@@ -240,9 +279,9 @@ class PeriodicForce:
 		"""
 		Returns the density in g/cm**3 of the bulk.
 		"""
-		m = np.array(map(lambda x: ATOMICMASSES[x-1], self.mol0.atoms))
+		m = np.array(map(lambda x: ATOMICMASSES[x-1], self.mol0.atoms))*1000.0
 		latvol = np.linalg.det(self.lattice.lattice) # in A**3
-		return np.sum(m/0.000999977)/latvol*(pow(10.0,-24.0))*AVOCONST
+		return (np.sum(m)/AVOCONST)/(latvol*pow(10, -24))
 	def AdjustLattice(self, x_, lat0_, latp_):
 		"""
 		rescales the coordinates of m relative to previous lattice.
@@ -331,77 +370,75 @@ class PeriodicForce:
 				einc = f(z,x,self.natomsReal,DoForce)
 				etore += np.sum(einc)
 		return etore, ftore
-	def RDF(self, xyz_, z0=8):
-		"""Compute the three-dimensional pair correlation function for a set of
-		spherical particles contained in a cube with side length S.  This simple
-		function finds reference particles such that a sphere of radius rMax drawn
-		around the particle will fit entirely within the cube, eliminating the need
-		to compensate for edge effects.  If no such particles exist, an error is
-		returned.  Try a smaller rMax...or write some code to handle edge effects! ;)
-		Arguments:
-			x               an array of x positions of centers of particles
-			y               an array of y positions of centers of particles
-			z               an array of z positions of centers of particles
-			S               length of each side of the cube in space
-			rMax            outer diameter of largest spherical shell
-			dr              increment for increasing radius of spherical shell
-		Returns a tuple: (g, radii, interior_indices)
-			g(r)            a numpy array containing the correlation function g(r)
-			radii           a numpy array containing the radii of the
-				spherical shells used to compute g(r)
-			reference_indices   indices of reference particles
+	def TestGradient(self,x_):
 		"""
-		# Tesselate out to a long distance, then construct RDF
-		S = 50.0
-		rMax = 10.0
-		dr = 0.05
-		z_, x_ = self.lattice.TessLattice(self.atoms, xyz_, S)
-		x = x_[:,0]
-		y = x_[:,1]
-		z = x_[:,2]
-		from numpy import zeros, sqrt, where, pi, mean, arange, histogram
-
-		# Find particles which are close enough to the cube center that a sphere of radius
-		# rMax will not cross any face of the cube
-		bools1 = x > rMax
-		bools2 = x < (S - rMax)
-		bools3 = y > rMax
-		bools4 = y < (S - rMax)
-		bools5 = z > rMax
-		bools6 = z < (S - rMax)
-		bools7 = (z_ == z0)
-
-		interior_indices, = where(bools1 * bools2 * bools3 * bools4 * bools5 * bools6 * bools7)
-		num_interior_particles = len(interior_indices)
-
-		if num_interior_particles < 1:
-			raise  RuntimeError ("No particles found for which a sphere of radius rMax\
-				will lie entirely within a cube of side length S.  Decrease rMax\
-				or increase the size of the cube.")
-
-		edges = arange(0., rMax + 1.1 * dr, dr)
-		num_increments = len(edges) - 1
-		g = zeros([num_interior_particles, num_increments])
-		radii = zeros(num_increments)
-		numberDensity = len(x) / S**3
-
-		# Compute pairwise correlation for each interior particle
-		for p in range(num_interior_particles):
-			index = interior_indices[p]
-			d = sqrt((x[index] - x)**2 + (y[index] - y)**2 + (z[index] - z)**2)
-			d[index] = 2 * rMax
-
-			(result, bins) = histogram(d, bins=edges, normed=False)
-			g[p,:] = result / numberDensity
-
-		# Average g(r) for all interior particles and compute radii
-		g_average = zeros(num_increments)
-		for i in range(num_increments):
-			radii[i] = (edges[i] + edges[i+1]) / 2.
-			rOuter = edges[i + 1]
-			rInner = edges[i]
-			g_average[i] = mean(g[:, i]) / (4.0 / 3.0 * pi * (rOuter**3 - rInner**3))
-
-		return (g_average, radii, interior_indices)
-		# Number of particles in shell/total number of particles/volume of shell/number density
-		# shell volume = 4/3*pi(r_outer**3-r_inner**3)
+		Travel along a gradient direction.
+		Subsample to examine how integrable the forces are versus
+		the energy along this path.
+		"""
+		e0,g0 = self.__call__(x_)
+		g0 /= JOULEPERHARTREE
+		efunc = lambda x: self.__call__(x)[0]
+		print("Magnitude of g", np.linalg.norm(g0))
+		print("g",g0)
+		#print("FDiff g", FdiffGradient(efunc,x_))
+		xt = x_.copy()
+		es = np.zeros(40)
+		gs = np.zeros((40,g0.shape[0],g0.shape[1]))
+		for i,d in enumerate(range(-20,20)):
+			dx = d*0.01*g0
+			#print("dx", dx)
+			xt = x_ + dx
+			es[i], gs[i] = self.__call__(xt)
+			gs[i] /= JOULEPERHARTREE
+			print("es ", es[i], i, np.sqrt(np.sum(dx*dx)) , np.sum(gs[i]*g0), np.sum(g0*g0))
+	def RDF(self,x_,z1=8,z2=8,rng=15.0,dx = 0.02,name_="RDF.txt"):
+		zt,xt = self.lattice.TessLattice(self.atoms, x_ , rng)
+		ni = MolEmb.CountInRange(zt,xt,self.natoms,z1,z2,rng,dx)
+		ri = np.arange(0.0,rng,dx)
+		if 0:
+			ni = np.zeros(ri.shape)
+			nav = 0.0
+			for i in range(self.natoms):
+				if (zt[i]==z1):
+					nav += 1.0
+					for j in range(zt.shape[0]):
+						if i==j:
+							continue
+						elif (zt[j] == z2):
+							d = np.linalg.norm(xt[j]-xt[i])
+							ni[int(d/dx):] += 1
+			# Estimate the effective density by the number contained in the outermost sphere.
+			ni /= nav
+		density = ni[-1]/(4.18879*ri[-1]*ri[-1]*ri[-1])
+		# Now take the derivative by central differences
+		x2gi = np.gradient(ni / (12.56637*density),dx)
+		# finally divide by x**2 and moving average it.
+		gi = x2gi/(ri*ri)
+		gi[0] = 0.0
+		gi = MovingAverage(gi,2)
+		return gi
+		#np.savetxt("./results/"+name_+".txt",gi)
+	def RDF_inC(self,x_,z_,lat_,z1=8,z2=8,rng=10.0,dx = 0.02,name_="RDF.txt"):
+		rdf_index =  GetRDF_Bin(x_, z_, rng, dx, lat_, z1, z2)
+		ri = np.arange(0.0,rng,dx)
+		ni = np.zeros(ri.shape)
+		for index in rdf_index:
+			ni[index:] += 1
+		nav = 0.0
+		#print ("rdf_index:", len(rdf_index))
+		for i in range(z_.shape[0]):
+			if (z_[i]==z1):
+				nav += 1.0
+		#np.savetxt("./results/"+name_+"ni.txt",ni)
+		# Estimate the effective density by the number contained in the outermost sphere.
+		ni /= nav
+		density = ni[-1]/(4.18879*ri[-1]*ri[-1]*ri[-1])
+		# Now take the derivative by central differences
+		x2gi = np.gradient(ni / (12.56637*density),dx)
+		# finally divide by x**2 and moving average it.
+		gi = x2gi/(ri*ri)
+		gi[0] = 0.0
+		gi = MovingAverage(gi,2)
+		return gi
+		#np.savetxt("./results/"+name_+".txt",gi)

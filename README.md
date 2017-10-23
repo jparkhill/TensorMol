@@ -4,10 +4,11 @@
 
 ### Authors:
  Kun Yao (kyao@nd.edu), John Herr (jherr1@nd.edu),
- David Toth (dtoth1@nd.edu), John Parkhill (john.parkhill@gmail.com)
+ David Toth (dtoth1@nd.edu), Ryker McIntyre, Nicolas Casetti
+ John Parkhill (john.parkhill@gmail.com)
 
 ### Model Chemistries:
- - Behler-Parrinello
+ - Behler-Parrinello with electrostatics
  - Many Body Expansion
  - Bonds in Molecules NN
  - Atomwise Forces
@@ -15,11 +16,14 @@
 
 ### Simulation Types:
  - Optimizations
- - Nudged Elastic Band
  - Molecular Dynamics (NVE,NVT Nose-Hoover)
+ - Monte Carlo
  - Open/Periodic Boundary Conditions
  - Meta-Dynamics
- - Infrared spectra
+ - Infrared spectra by propagation
+ - Infrared spectra by Harmonic Approximation.
+ - Nudged Elastic Band
+ - Path integral simulations via interface with [I-PI](https://github.com/i-pi/i-pi) MD engine.
 
 ### License: GPLv3
 By using this software you agree to the terms in COPYING
@@ -32,7 +36,7 @@ cd TensorMol
 # If you are using python2x
 sudo pip install -e .
 # If you are using python3x
-sudo pip3 install -e . 
+sudo pip3 install -e .
 python test.py
 ```
 
@@ -40,8 +44,7 @@ python test.py
  - ```import TensorMol as tm```
  - TensorMol assumes a directory structure executing path which mirrors the git.
  - Please also refer to IPython notebooks in /notebooks.
- - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py 
-
+ - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py
 
 ### Sample Results
 ![](water.png)
@@ -51,7 +54,7 @@ python test.py
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
-- Python3x support coming soon. 
+- Python3x support coming soon.
 - Useful Pre-Requisites: CUDA7.5, PySCF
 - To Train Minimally: ~100GB Disk 20GB memory
 - To Train Realistically: 1TB Disk, GTX1070++

@@ -54,13 +54,13 @@ try:
 	import MolEmb
 	HAS_EMB = True
 	LOGGER.debug("MolEmb has been found, Orthogonalizing Radial Basis.")
-	S = MolEmb.Overlap_SH(PARAMS)
-	from TensorMol.LinearOperations import MatrixPower
-	SOrth = MatrixPower(S,-1./2)
-	PARAMS["GauSHSm12"] = SOrth
-	S_Rad = MolEmb.Overlap_RBF(PARAMS)
-	S_RadOrth = MatrixPower(S_Rad,-1./2)
-	PARAMS["SRBF"] = S_RadOrth
+	# S = MolEmb.Overlap_SH(PARAMS)
+	# from TensorMol.LinearOperations import MatrixPower
+	# SOrth = MatrixPower(S,-1./2)
+	# PARAMS["GauSHSm12"] = SOrth
+	# S_Rad = MolEmb.Overlap_RBF(PARAMS)
+	# S_RadOrth = MatrixPower(S_Rad,-1./2)
+	# PARAMS["SRBF"] = S_RadOrth
 	# THIS SHOULD BE IMPLEMENTED TOO.
 	#PARAMS["GauInvSm12"] = MatrixPower(S,-1./2)
 except Exception as Ex:
@@ -163,7 +163,7 @@ def DSF(R, R_c, alpha):	# http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/
 		ZZ = scipy.special.erfc(XX)/R_c
 		YY = twooversqrtpi*alpha*math.exp(-XX*XX)/R_c
 		LR = (scipy.special.erfc(alpha*R)/R - ZZ + (R-R_c)*(ZZ/R_c+YY))
-		return LR 
+		return LR
 
 def DSF_Gradient(R, R_c, alpha):
 	if R > R_c:
@@ -179,6 +179,31 @@ def EluAjust(x, a, x0, shift):
 	if x > x0:
 		return a*(x-x0)+shift
 	else:
-		return a*(math.exp(x-x0)-1.0)+shift 
+		return a*(math.exp(x-x0)-1.0)+shift
+
+
+def sigmoid_with_param(x, prec=tf.float64):
+	return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=prec), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=prec)
+
+
+def guassian_act(x, prec=tf.float64):
+	return tf.exp(-x*x)
+
+def guassian_rev_tozero(x, prec=tf.float64):
+	return tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
+
+def guassian_rev_tozero_tolinear(x, prec=tf.float64):
+	a = 0.5
+	b = -0.06469509698101589
+	x0 = 0.2687204431537632
+	step1 = tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
+	return tf.where(tf.greater(x, x0), a*x+b, step1)
+
+def square_tozero_tolinear(x, prec=tf.float64):
+	a = 1.0
+	b = -0.0025
+	x0 = 0.005
+	step1 = tf.where(tf.greater(x, 0.0), 100.0*x*x, tf.zeros_like(x))
+	return tf.where(tf.greater(x, x0), a*x+b, step1)
 
 signstep = np.vectorize(SignStep)

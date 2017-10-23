@@ -8,6 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from TensorMol.TensorData import *
 from TensorMol.RawEmbeddings import *
+from TensorMol.Util import *
 import numpy as np
 import math
 import time
@@ -120,6 +121,16 @@ class Instance:
 				self.activation_function = tf.tanh
 			elif self.activation_function_type == "sigmoid":
 				self.activation_function = tf.sigmoid
+			elif self.activation_function_type == "sigmoid_with_param":
+				self.activation_function = sigmoid_with_param
+			elif self.activation_function_type == "gaussian":
+				self.activation_function = guassian_act
+			elif self.activation_function_type == "gaussian_rev_tozero":
+				self.activation_function = guassian_rev_tozero
+			elif self.activation_function_type == "gaussian_rev_tozero_tolinear":
+				self.activation_function = guassian_rev_tozero_tolinear
+			elif self.activation_function_type == "square_tozero_tolinear":
+				self.activation_function = square_tozero_tolinear
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
@@ -761,8 +772,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		rotation_params = tf.stack([np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
 				np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
 				tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec)], axis=-1)
-		rotated_xyzs, rotated_labels = TF_random_rotate(xyzs, rotation_params, labels)
-		embedding, labels, _, _ = TF_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
+		rotated_xyzs, rotated_labels = tf_random_rotate(xyzs, rotation_params, labels)
+		embedding, labels, _, _ = tf_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
 											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
 											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
 											self.l_max, self.orthogonalize)
@@ -789,8 +800,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
-			rotated_xyzs, rotated_labels = TF_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
-			self.embedding, self.labels, _, min_eigenval = TF_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
+			rotated_xyzs, rotated_labels = tf_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
+			self.embedding, self.labels, _, min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
 							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
@@ -1041,9 +1052,9 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 				rotation_params = tf.stack([np.pi * tf.random_uniform([num_mols], minval=0.1, maxval=1.9, dtype=self.tf_prec),
 						np.pi * tf.random_uniform([num_mols], minval=0.1, maxval=1.9, dtype=self.tf_prec),
 						tf.random_uniform([num_mols], minval=0.1, maxval=1.9, dtype=self.tf_prec)], axis=-1, name="rotation_params")
-				rotated_xyzs, rotation_matrix = TF_random_rotate(self.xyzs_pl, rotation_params, return_matrix=True)
+				rotated_xyzs, rotation_matrix = tf_random_rotate(self.xyzs_pl, rotation_params, return_matrix=True)
 			with tf.name_scope("Embedding_Normalization"):
-				self.embedding, self.labels, mol_atom_indices, min_eigenval = TF_gaussian_spherical_harmonics_element(rotated_xyzs,
+				self.embedding, self.labels, mol_atom_indices, min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs,
 						self.Zs_pl, self.labels_pl, element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
 				self.norm_embedding = (self.embedding - inmean) / instd
 				self.norm_labels = (self.labels - outmean) / outstd
@@ -1060,7 +1071,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			# barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1), tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
 			# truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
 			# gaussian_overlap_constraint = tf.square(0.001 / min_eigenval)
-			self.rotation_constraint = 10 * tf.reduce_sum(tf.square(tf.gradients(self.output, rotation_params))) / self.n_atoms_batch
+			self.rotation_constraint = tf.reduce_sum(tf.square(tf.clip_by_value(tf.gradients(self.output, rotation_params), -1, 1))) / self.n_atoms_batch
 			loss_and_constraint = self.total_loss + self.rotation_constraint
 			self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
@@ -1073,6 +1084,26 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
 			return
+
+	def training(self, loss, learning_rate, momentum):
+		"""Sets up the training Ops.
+		Creates a summarizer to track the loss over time in TensorBoard.
+		Creates an optimizer and applies the gradients to all trainable variables.
+		The Op returned by this function is what must be passed to the
+		`sess.run()` call to cause the model to train.
+		Args:
+		loss: Loss tensor, from loss().
+		learning_rate: The learning rate to use for gradient descent.
+		Returns:
+		train_op: The Op for training.
+		"""
+		tf.summary.scalar(loss.op.name, loss)
+		optimizer = tf.train.AdamOptimizer(learning_rate)
+		grads_and_vars = optimizer.compute_gradients(loss)
+		capped_grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in grads_and_vars]
+		global_step = tf.Variable(0, name='global_step', trainable=False)
+		train_op = optimizer.apply_gradients(capped_grads_and_vars)
+		return train_op
 
 	def Clean(self):
 		if (self.sess != None):
@@ -1101,7 +1132,6 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		self.embedding = None
 		self.n_atoms_batch = None
 		self.rotation_constraint = None
-		print(self.__dict__)
 		return
 
 	def loss_op(self, output, labels):
@@ -1157,7 +1187,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 			rotation_loss += rotation_constraint
 			test_epoch_labels.append(labels)
 			test_epoch_outputs.append(output)
-		test_loss /= ministeps * self.batch_size
+		test_loss /= ministeps
 		rotation_loss /= ministeps
 		test_epoch_labels = np.concatenate(test_epoch_labels)
 		test_epoch_outputs = np.concatenate(test_epoch_outputs)

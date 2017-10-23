@@ -1038,6 +1038,120 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+static PyObject* Make_DistMat_ForReal(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	int nreal;
+	if (!PyArg_ParseTuple(args, "O!i", &PyArray_Type, &xyz, &nreal))
+	return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nreal,nat};
+	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *SH_data,*xyz_data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	for (int i=0; i < nreal; ++i)
+	for (int j=0; j < nat; ++j)
+	{
+		SH_data[i*nat+j] = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
+	}
+	return SH;
+}
+
+/* counts the number of atoms which occur within a radius of those of type z1*/
+static PyObject* CountInRange(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	PyArrayObject *Zs;
+	double cut;
+	double dr;
+	int nreal, ele1, ele2;
+	if (!PyArg_ParseTuple(args, "O!O!iiidd", &PyArray_Type, &Zs, &PyArray_Type, &xyz,  &nreal, &ele1, &ele2, &cut, &dr))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	double *SH_data, *xyz_data;
+	int outdim = int(cut/dr);
+	npy_intp outdima[1] = {outdim};
+	PyObject* SH = PyArray_ZEROS(1, outdima, NPY_DOUBLE, 0);
+	uint8_t* atoms=(uint8_t*)Zs->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	double dist;
+	double nav = 0.0;
+	int di = 0;
+	for (int i=0; i < nreal; ++i)
+		if (atoms[i] == ele1) {
+			nav += 1.0;
+			for (int j=0; j < nat; ++j)
+			{
+				if (atoms[j] == ele2 && i != j) {
+					dist = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+					di = int(dist/dr);
+					if (di <outdim)
+						for (int k=di; k<outdim; ++k)
+							SH_data[k] += 1.0;
+				}
+			}
+		}
+	for (int k=0; k<outdim; ++k)
+		SH_data[k] /= nav;
+	return SH;
+}
+
+static PyObject* GetRDF_Bin(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	PyArrayObject *Zs;
+	double cut;
+	double dr;
+	double cellsize;
+	int ele1, ele2;
+	if (!PyArg_ParseTuple(args, "O!O!dddii", &PyArray_Type, &xyz, &PyArray_Type, &Zs, &cut, &dr, &cellsize, &ele1, &ele2))
+	return NULL;
+	int ntess = (int)(cut/cellsize)+1;
+	const int nat = (xyz->dimensions)[0];
+	int nat_p = nat*((int)(pow(2*ntess+1,3)));
+	npy_intp xyzpdim[2] = {nat_p ,3};
+	PyObject* xyzp = PyArray_ZEROS(2, xyzpdim, NPY_DOUBLE, 0);
+	double *SH_data,*xyzp_data, *xyz_data;
+	uint8_t* atoms=(uint8_t*)Zs->data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	xyzp_data = (double*) ((PyArrayObject*) xyzp)->data;
+	for (int n=0; n<nat; ++n) {
+		xyzp_data[n*3+0] = xyz_data[n*3+0];
+		xyzp_data[n*3+1] = xyz_data[n*3+1];
+		xyzp_data[n*3+2] = xyz_data[n*3+2];
+	}
+	int tess_index = 1;
+	for (int i=-ntess; i <= ntess; ++i) {
+		for (int j=-ntess; j <= ntess; ++j)
+			for (int k=-ntess; k <= ntess; ++k)
+			   if (i!=0 || j!=0 || k!=0){
+				for (int n=0; n<nat; ++n) {
+						xyzp_data[(tess_index*nat+n)*3+0] = xyz_data[n*3+0] + i*cellsize;
+						xyzp_data[(tess_index*nat+n)*3+1] = xyz_data[n*3+1] + j*cellsize;
+						xyzp_data[(tess_index*nat+n)*3+2] = xyz_data[n*3+2] + k*cellsize;
+				}
+				tess_index++;
+			   }
+	}
+	PyObject* bin_index = PyList_New(0);
+	double dist;
+	for (int i=0; i < nat; ++i)
+		if (atoms[i] == ele1) {
+			for (int j=0; j < nat_p; ++j)
+			{
+				if (atoms[j%nat] == ele2 && i!=j) {
+					dist = sqrt((xyz_data[i*3+0]-xyzp_data[j*3+0])*(xyz_data[i*3+0]-xyzp_data[j*3+0])+(xyz_data[i*3+1]-xyzp_data[j*3+1])*(xyz_data[i*3+1]-xyzp_data[j*3+1])+(xyz_data[i*3+2]-xyzp_data[j*3+2])*(xyz_data[i*3+2]-xyzp_data[j*3+2])) + 0.00000000001;
+					if (dist < cut) {
+						PyObject* ti = PyInt_FromLong((int)(dist/dr));
+						PyList_Append(bin_index, ti);
+					}
+				}
+			}
+		}
+	return bin_index;
+}
 //
 // Make a neighborlist using a naive, quadratic algorithm.
 // returns a python list.
@@ -2068,6 +2182,12 @@ static PyMethodDef EmbMethods[] =
 	"DipoleAutoCorr method"},
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
 	"Make_DistMat method"},
+	{"CountInRange", CountInRange, METH_VARARGS,
+	"CountInRange method"},
+	{"Make_DistMat_ForReal", Make_DistMat_ForReal, METH_VARARGS,
+	"Make_DistMat_ForReal method"},
+	{"GetRDF_Bin", GetRDF_Bin, METH_VARARGS,
+	"GetRDF_Bin method"},
 	{"Norm_Matrices", Norm_Matrices, METH_VARARGS,
 	"Norm_Matrices method"},
 	{"Make_CM", Make_CM, METH_VARARGS,

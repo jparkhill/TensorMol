@@ -55,6 +55,8 @@ from TensorMol.MetaDynamics import *
 from TensorMol.Periodic import *
 from TensorMol.OptPeriodic import *
 from TensorMol.PeriodicMD import *
+from TensorMol.PeriodicMC import *
 from TensorMol.LinearOperations import *
 from TensorMol.AbInitio import *
 from TensorMol.Mol import *
+from TensorMol.TFBehlerParinello import *

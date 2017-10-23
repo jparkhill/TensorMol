@@ -75,7 +75,7 @@ class PeriodicNoseThermostat(NoseThermostat):
 		return x,v,a,e
 
 class PeriodicVelocityVerlet(VelocityVerlet):
-	def __init__(self, Force_, name_ ="PdicMD"):
+	def __init__(self, Force_, name_ ="PdicMD", v0_=None):
 		"""
 		Molecular dynamics
 
@@ -92,6 +92,8 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		"""
 		self.PForce = Force_
 		VelocityVerlet.__init__(self, None, self.PForce.mol0, name_, self.PForce.__call__)
+		if v0_ is not None:
+			self.v = v0_
 		if (PARAMS["MDThermostat"]=="Nose"):
 			self.Tstat = PeriodicNoseThermostat(self.m,self.v)
 		else:
@@ -101,8 +103,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		"""
 		Returns the density in g/cm**3 of the bulk.
 		"""
-		latvol = np.linalg.det(self.PForce.lattice.lattice) # in A**3
-		return np.sum(self.m/0.000999977)/latvol*(pow(10.0,-24))*AVOCONST
+		return self.PForce.Density()
 	def WriteTrajectory(self):
 		m=Mol(self.atoms,self.x)
 		m.properties["Lattice"]=self.PForce.lattice.lattice.copy()
@@ -115,6 +116,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		"""
 		Propagate VelocityVerlet
 		"""
+		print ("beigin propogation")
 		step = 0
 		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
 		while(step < self.maxstep):
@@ -131,7 +133,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%1==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)

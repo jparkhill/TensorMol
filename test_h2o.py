@@ -3,14 +3,14 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
 import random
 
 def TrainPrepare():
-	if (1):
+	if (0):
 		import math, random
 		a = MSet("H2O_wb97xd_1to21")
 		a.Load()
@@ -200,7 +200,47 @@ def TrainPrepare():
 		a.Save()
 
 
-	if (1):
+	#istring = '$molecule\n0 1 \n'
+	#crds = m_.coords.copy()
+	#crds[abs(crds)<0.0000] *=0.0
+	#for j in range(len(m_.atoms)):
+	#	istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+	#istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+	#with open(path_+filename_+'.in','w') as fin:
+	#	fin.write(istring)
+	if (1): #H2O_wb97xd_1to21_with_prontonated
+		a = MSet("H2O_wb97xd_1to21")
+		a.Load()
+		import random
+		random.shuffle(a.mols)
+		nfolder = 100
+		import os
+		for i in range(1, nfolder+1):
+			os.mkdir("water_aug_ccpvdz_"+str(i))
+		mol_per_folder = len(a.mols)/nfolder+1
+		for i in range(0, len(a.mols)):
+			folder_index = i/mol_per_folder+1
+			file_index = i%mol_per_folder+1
+			m_ = a.mols[i]
+			istring = ""
+			if i!=0:
+				istring += "@@@\n\n"
+			istring = '$molecule\n0 1 \n'
+			crds = m_.coords.copy()
+			for j in range(len(m_.atoms)):
+				istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+			istring =istring + '$end\n\n$rem\njobtype force\nbasis aug-cc-pvdz\nmethod wB97X-D\nmax_scf_cycles  200\nsymmetry false\nsym_ignore true\n$end\n\n'
+			with open('water_aug_ccpvdz_'+str(folder_index)+'/h2o_aug_ccpvdz_'+str(file_index)+'.in','w') as fin:
+				fin.write(istring)
+				fin.close()
+		return
+		#b = MSet("H2O_wb97xd_1to21_with_prontonated_original")
+		#for mol in a.mols:
+		#	mol.properties['atomization'] = mol.properties['atomization_old']
+		#	b.mols.append(mol)
+		#	print ("mol.properties['atomization']:,mol.properties['atomization_old']", mol.properties['atomization'], mol.properties['atomization_old'])
+		#b.Save()
+	if (0):
 		WB97XDAtom={}
 		WB97XDAtom[1]=-0.5026682866
 		WB97XDAtom[6]=-37.8387398698
@@ -463,63 +503,23 @@ def Train():
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
-		for i in range(350000):
-			a.mols.pop()
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		#for i in range(350000):
+		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
 		PARAMS["NetNameSuffix"] = "JustEnergy"
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
-		PARAMS["max_steps"] = 3
-		PARAMS["batch_size"] =  100   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  130   # 40 the max min-batch size it can go without memory error for training
 		PARAMS["test_freq"] = 1
 		PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["EnergyScalar"] = 1.0
 		PARAMS["GradScalar"] = 0.0
 		PARAMS["DipoleScaler"]=1.0
 		PARAMS["NeuronType"] = "relu"
-		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 0
-		#PARAMS["Erf_Width"] = 1.0
-		#PARAMS["Poly_Width"] = 4.6
-		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
-		#PARAMS["AN1_r_Rc"] = 8.0
-		#PARAMS["AN1_num_r_Rs"] = 64
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["DSFAlpha"] = 0.18
-		PARAMS["AddEcc"] = True
-		PARAMS["KeepProb"] = [1.0, 1.0, 0.5, 0.5]
-		#PARAMS["KeepProb"] = 0.7
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 1
-		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
-		PARAMS['Profiling']=0
-		manager.Train(1)
-
-	if (1): # Normalize+Dropout+2000+more dropout+just gradient
-		a = MSet("H2O_wb97xd_1to21_with_prontonated")
-		a.Load()
-		b=MSet("H2O_Dimer_wb97xd", center_=False)
-		b.ReadXYZ("H2O_Dimer_wb97xd")
-		random.shuffle(a.mols)
-		for i in range(350000):
-			a.mols.pop()
-		TreatedAtoms = a.AtomTypes()
-		PARAMS["NetNameSuffix"] = "JustGrad"
-		PARAMS["learning_rate"] = 0.00001
-		PARAMS["momentum"] = 0.95
-		PARAMS["max_steps"] = 3
-		PARAMS["batch_size"] =  100   # 40 the max min-batch size it can go without memory error for training
-		PARAMS["test_freq"] = 1
-		PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["EnergyScalar"] = 0.0
-		PARAMS["GradScalar"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-		PARAMS["NeuronType"] = "relu"
-		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+		PARAMS["HiddenLayers"] = [1000, 1000, 1000]
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 0
 		PARAMS["MonitorSet"] = b
@@ -535,32 +535,73 @@ def Train():
 		#PARAMS["KeepProb"] = 0.7
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 1
+		PARAMS["SwitchEpoch"] = 15
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (1): # Normalize+Dropout+2000+more dropout+as usual
+	if (0): # Normalize+Dropout+2000+more dropout+just gradient
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		random.shuffle(a.mols)
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "JustGrad"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 0.0
+		PARAMS["GradScalar"] = 1.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [1000, 1000, 1000]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 0.5, 0.5]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (0): # Normalize+Dropout+500+more dropout+as usual
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
-		for i in range(350000):
-			a.mols.pop()
+		#for i in range(350000):
+		#	a.mols.pop()
 		TreatedAtoms = a.AtomTypes()
-		PARAMS["NetNameSuffix"] = ""
+		PARAMS["NetNameSuffix"] = "500_twolayerdropout05"
 		PARAMS["learning_rate"] = 0.00001
 		PARAMS["momentum"] = 0.95
-		PARAMS["max_steps"] = 3
-		PARAMS["batch_size"] =  100   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
 		PARAMS["test_freq"] = 1
 		PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["EnergyScalar"] = 1.0
 		PARAMS["GradScalar"] = 1.0/20.0
 		PARAMS["DipoleScaler"]=1.0
 		PARAMS["NeuronType"] = "relu"
-		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+		PARAMS["HiddenLayers"] = [500, 500, 500]
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 0
 		#PARAMS["Erf_Width"] = 1.0
@@ -575,11 +616,273 @@ def Train():
 		#PARAMS["KeepProb"] = 0.7
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 1
+		PARAMS["SwitchEpoch"] = 15
 		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
 		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (1): # Normalize+Dropout+500+usual, dropout07+act_square_tozero_tolinear
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		#for i in range(350000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "act_square_tozero_tolinear"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "square_tozero_tolinear"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (0): # Normalize+Dropout+500+usual, dropout07+act_gaussian
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		#for i in range(350000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "act_gaussian"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "gaussian"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (0): # Normalize+Dropout+500+usual, dropout07+sigmoid100
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		#for i in range(350000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "act_sigmoid100"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "sigmoid_with_param"
+		PARAMS["sigmoid_alpha"] = 100.0
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+
+
+	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100+noEcc
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		#for i in range(350000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "act_sigmoid100_noEcc"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "sigmoid_with_param"
+		PARAMS["sigmoid_alpha"] = 100.0
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = False
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (0): # Normalize+Dropout+500+usual+angular13
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		#for i in range(350000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "angular13"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 201
+		PARAMS["batch_size"] =  300   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		PARAMS["AN1_a_Rc"] = 1.3
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 30
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout")
+		PARAMS['Profiling']=0
+		manager.Train(1)
+
+	if (0): # Normalize+Dropout last fc  07+500+avgPool
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		#for i in range(350000):
+		#	a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "lastfc07"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 100
+		PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 0.7, 1.0, 1.0]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 15
+		PARAMS["AvgWindowSize"] = 1
+		PARAMS["ChopPadding"] = 50
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_AvgPool")
+		PARAMS['Profiling']= 0
 		manager.Train(1)
 
 	if (0): # Normalize+Dropout+Conv
@@ -1130,13 +1433,7 @@ def Eval():
 		md = IRTrajectory(EnAndForce, ChargeField, m, "water_10_IR", anneal.v)
 		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
-def BoxAndDensity():
-	# Prepare a Box of water at a desired density
-	# from a rough water molecule.
-	a = MSet()
-	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
-	TreatedAtoms = a.AtomTypes()
-	m = a.mols[0]
+def GetOldKuns(a):
 	# Prepare the force field.
 	PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
 	PARAMS["tf_prec"] = "tf.float64"
@@ -1173,6 +1470,70 @@ def BoxAndDensity():
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu",False,False)
+def GetKunsWithDropout(a):
+	TreatedAtoms = a.AtomTypes()
+	PARAMS["NetNameSuffix"] = ""
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 101
+	PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+	PARAMS["test_freq"] = 1
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["EnergyScalar"] = 1.0
+	PARAMS["GradScalar"] = 1.0/20.0
+	PARAMS["DipoleScaler"]=1.0
+	PARAMS["NeuronType"] = "relu"
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["DSFAlpha"] = 0.18
+	PARAMS["AddEcc"] = True
+	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+	PARAMS["learning_rate_dipole"] = 0.0001
+	PARAMS["learning_rate_energy"] = 0.00001
+	PARAMS["SwitchEpoch"] = 15
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	return manager
+def GetKunsSmooth(a):
+	TreatedAtoms = a.AtomTypes()
+	PARAMS["NetNameSuffix"] = "act_sigmoid100"
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 101
+	PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+	PARAMS["test_freq"] = 1
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["EnergyScalar"] = 1.0
+	PARAMS["GradScalar"] = 1.0/20.0
+	PARAMS["DipoleScaler"]=1.0
+	PARAMS["NeuronType"] = "sigmoid_with_param"
+	PARAMS["sigmoid_alpha"] = 100.0
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["DSFAlpha"] = 0.18
+	PARAMS["AddEcc"] = True
+	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+	PARAMS["learning_rate_dipole"] = 0.0001
+	PARAMS["learning_rate_energy"] = 0.00001
+	PARAMS["SwitchEpoch"] = 15
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	return manager
+def BoxAndDensity():
+	# Prepare a Box of water at a desired density
+	# from a rough water molecule.
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	m = a.mols[0]
+	manager = GetKunsWithDropout(a)
 
 	def EnAndForceAPeriodic(x_):
 		"""
@@ -1211,15 +1572,14 @@ def BoxAndDensity():
 		mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
 		nreal = mt.NAtoms()
 		mt.Distort(0.01)
-
-	def EnAndForceAPeriodic(x_):
-		"""
-		This is the primitive form of force routine required by PeriodicForce.
-		"""
-		mtmp = Mol(mt.atoms,x_)
-		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
-		#print("EnAndForceAPeriodic: ", en,f)
-		return en[0], f[0]
+		def EnAndForceAPeriodic(x_):
+			"""
+			This is the primitive form of force routine required by PeriodicForce.
+			"""
+			mtmp = Mol(mt.atoms,x_)
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], mt.NAtoms())
+			#print("EnAndForceAPeriodic: ", en,f)
+			return en[0], f[0]
 
 	if 0:
 		PARAMS["OptMaxCycles"]=30
@@ -1234,54 +1594,185 @@ def BoxAndDensity():
 		aper.Prop()
 		mt.coords = aper.Minx
 
+	if 0:
+		s = MSet("water64")
+		s.ReadXYZ()
+		mt = s.mols[0]
 		# Optimize the tesselated system.
-		lat0 = (np.max(mt.coords)+0.5)*np.eye(3)
+		lat0 = (np.max(mt.coords)-np.min(mt.coords)+0.5)*np.eye(3)
 		lat0[0,1] = 0.01
 		lat0[1,0] -= 0.01
 		lat0[0,2] = 0.01
 		lat0[2,0] -= 0.01
-		latp = np.eye(3)*8.0
-		print(lat0,latp)
 		m = Lattice(lat0).CenteredInLattice(mt)
-		print(m.coords)
+	elif 1:
+		s = MSet("water64")
+		s.ReadXYZ()
+		m = s.mols[-1]
+		m.properties["Lattice"] = np.eye(3)*12.42867
+		# try a huge supercell
+		ntess = 2
+		latv = np.eye(3)*12.42867
+		# Start with a water in a ten angstrom box.
+		lat = Lattice(latv)
+		m = Mol(*lat.TessNTimes(m.atoms,m.coords,ntess))
+		m.properties["Lattice"] = np.eye(3)*2*12.42867
+	else:
+		PARAMS["OptMaxCycles"]=60
+		Opt = GeomOptimizer(EnAndForceAPeriodic)
+		a.mols[-1] = Opt.Opt(a.mols[-1])
+		m = a.mols[-1]
+		# Tesselate that water to create a box
+		ntess = 4
+		latv = 2.8*np.eye(3)
+		# Start with a water in a ten angstrom box.
+		lat = Lattice(latv)
+		mc = lat.CenteredInLattice(m)
+		mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+		nreal = mt.NAtoms()
+		mt.Distort(0.01)
+		m = mt
+		m.properties["Lattice"] = np.eye(3)*12.42867
 
-	s = MSet("water64")
-	s.ReadXYZ()
-	m = s.mols[0]
 
 	PF = PeriodicForce(m,m.properties["Lattice"])
-	PF.BindForce(EnAndForce, 20.0)
+	PF.BindForce(EnAndForce, 12.0)
+	PF.RDF(m.coords,8,8,20.0,0.01,"RDF0")
+	print("Original Lattice: ", PF.lattice.lattice)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
 	if 0:
-		for i in range(10):
+		for i in range(4):
 			print("En0:", PF(m.coords)[0])
 			m.coords += (np.random.random((1,3))-0.5)*3.0
 			m.coords = PF.lattice.ModuloLattice(m.coords)
 			print("En:"+str(i), PF(m.coords)[0])
 			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
-	if 1:
+	if 0:
 		# Try optimizing that....
-		PARAMS["OptMaxCycles"]=30
+		PARAMS["OptMaxCycles"]=20
 		POpt = PeriodicGeomOptimizer(PF)
-		#m = POpt.OptToDensity(m,1.0)
-		m = POpt.Opt(m)
+		m = POpt.OptToDensity(m,1.0)
+		#m = POpt.OptToDensity(m)
+		#m = POpt.Opt(m)
 		PF.mol0.coords = m.coords
 		PF.mol0.properties["Lattice"] = PF.lattice.lattice.copy()
 		PF.mol0.WriteXYZfile("./results", "Water64", "w", wprop=True)
+	if 0:
+		PARAMS["MDAnnealT0"] = 20.0
+		PARAMS["MDAnnealTF"] = 300.0
+		PARAMS["MDAnnealSteps"] = 10
+		PARAMS["MDdt"] = 0.3
+		traj = PeriodicAnnealer(PF,"PeriodicWarm")
+		traj.Prop()
+		PF.mol0.coords = traj.Minx
 
-	PARAMS["MDAnnealT0"] = 20.0
-	PARAMS["MDAnnealTF"] = 300.0
-	PARAMS["MDAnnealSteps"] = 1000
-	traj = PeriodicAnnealer(PF,"PeriodicWarm")
+	PARAMS["MDTemp"] = 330.0
+	traj = PeriodicMonteCarlo(PF,"PeriodicWaterMC")
 	traj.Prop()
+
+	if 0:
+		PARAMS["MDAnnealT0"] = 20.0
+		PARAMS["MDAnnealTF"] = 300.0
+		PARAMS["MDAnnealSteps"] = 1000
+		traj = PeriodicAnnealer(PF,"PeriodicWarm")
+		traj.Prop()
 
 	# Finally do thermostatted MD.
+	PF.TestGradient(PF.mol0.coords)
 	PARAMS["MDTemp"] = 300.0
+	PARAMS["MDdt"] = 0.05 # In fs.
 	traj = PeriodicVelocityVerlet(PF,"PeriodicWaterMD")
 	traj.Prop()
+def TestSmoothIR():
+	# Prepare a Box of water at a desired density
+	# from a rough water molecule.
+
+	a=MSet("H2O_cluster_meta", center_=False)
+	a.ReadXYZ("H2O_cluster_meta")
+	#a = MSet()
+	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1],[2.9,0.1,0.1],[3.,0.9,1.],[2.1,0.1,0.1]])))
+	#a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	m = a.mols[9]
+	manager = GetKunsSmooth(a)
+	def EnAndForceAPeriodic(x_,DoForce=True):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(m.atoms,x_)
+		if (DoForce):
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(),True, DoForce)
+			return en[0], f[0]
+		else:
+			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(), True, DoForce)
+			return en[0]
+	def EnergyField(x_):
+		return EnAndForceAPeriodic(x_,False)
+	def EnAndForce(z_, x_, nreal_, DoForce = True):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(z_,x_)
+		if (DoForce):
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_,True, DoForce)
+			return en[0], f[0]
+		else:
+			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
+			return en[0]
+	# opt the first water.
+	PARAMS["OptMaxCycles"]=60
+	Opt = GeomOptimizer(EnAndForceAPeriodic)
+	a.mols[-1] = Opt.Opt(a.mols[-1])
+	m = a.mols[-1]
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms)
+	return
+	PYSCFFIELD = lambda x: PyscfDft(Mol(m.atoms,x))
+	QCHEMFIELD = lambda x: QchemDFT(Mol(m.atoms,x))
+	HarmonicSpectra(PYSCFFIELD, m.coords, m.atoms,None,0.005)
+	exit(0)
+def TestNeb():
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[0.1,0.9,.1],[0.1,0.1,0.1],[-.6,-.6,.1],[0.,0.9,6.1],[0.1,0.1,6.1]])))
+	a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[0.1,0.9,.1],[0.1,0.1,0.1],[-.6,-.6,6.1],[0.,0.9,6.1],[0.1,0.1,6.1]])))
+	manager = GetKunsSmooth(a)
+	m = a.mols[0]
+	def EnAndForceAPeriodic(x_,DoForce=True):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(m.atoms,x_)
+		if (DoForce):
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(),True, DoForce)
+			return en[0], f[0]
+		else:
+			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(), True, DoForce)
+			return en[0]
+	def EnergyField(x_):
+		return EnAndForceAPeriodic(x_,False)
+	def EnAndForce(z_, x_, nreal_, DoForce = True):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(z_,x_)
+		if (DoForce):
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_,True, DoForce)
+			return en[0], f[0]
+		else:
+			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
+			return en[0]
+	# opt the first water dimer.
+	PARAMS["OptMaxCycles"]=10
+	Opt = GeomOptimizer(EnAndForceAPeriodic)
+	a.mols[0] = Opt.Opt(a.mols[0],"1")
+	a.mols[1] = Opt.Opt(a.mols[1],"2")
+	neb = NudgedElasticBand(EnAndForceAPeriodic,a.mols[0],a.mols[1])
+	neb.Opt()
+	exit(0)
 
 #TrainPrepare()
-Train()
+#Train()
 #Eval()
 #BoxAndDensity()
+#TestSmoothIR()
+TestNeb()

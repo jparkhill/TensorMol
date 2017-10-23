@@ -2,6 +2,15 @@
 Linear Scaling Atom Neighbor List Generators.
 see also: http://scipy-cookbook.readthedocs.io/items/KDTree_example.html
 Depending on cutoffs and density these scale to >20,000 atoms
+
+TODO:
+	fix bug with generation when there's no neighbors...  IE:
+		File "/Users/johnparkhill/TensorMol/TensorMol/TFMolManage.py", line 1288, in EvalBPDirectEEUpdateSinglePeriodic
+		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexPeriodic(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		File "/Users/johnparkhill/TensorMol/TensorMol/Neighbors.py", line 413, in buildPairsAndTriplesWithEleIndexPeriodic
+		trpE_sorted, trtE_sorted, mil_jk, jk_max = self.buildPairsAndTriplesWithEleIndex(rcut_pairs, rcut_triples, ele, elep)
+		File "/Users/johnparkhill/TensorMol/TensorMol/Neighbors.py", line 367, in buildPairsAndTriplesWithEleIndex
+		prev_l = trtE_sorted[0][4]
 """
 
 from __future__ import absolute_import
@@ -363,7 +372,10 @@ class NeighborListSet:
 		#print ("time to append and sort element", time.time() - t_start)
 		valance_pair = np.zeros(trt.shape[0])
 		pointer = 0
-		#t1 = time.time()
+		if (len(trtE_sorted)==0):
+			mil_jk = np.zeros((trt.shape[0],4))
+			jk_max = 0
+			return trpE_sorted, trtE_sorted, mil_jk, jk_max
 		prev_l = trtE_sorted[0][4]
 		prev_atom = trtE_sorted[0][1]
 		prev_mol = trtE_sorted[0][0]
@@ -413,6 +425,8 @@ class NeighborListSet:
 		trpE_sorted, trtE_sorted, mil_jk, jk_max = self.buildPairsAndTriplesWithEleIndex(rcut_pairs, rcut_triples, ele, elep)
 		mil_j = np.zeros((trpE_sorted.shape[0], 4))
 		pair_pair = np.zeros(trpE_sorted.shape[0])
+		if (len(trpE_sorted)==0):
+			return trpE_sorted, trtE_sorted, mil_j, mil_jk
 		prev_l = trpE_sorted[0][3]
 		prev_atom = trpE_sorted[0][1]
 		prev_mol = trpE_sorted[0][0]

@@ -274,7 +274,7 @@ class Mol:
 			try:
 				self.properties = self.ParseProperties(lines[1])
 			except Exception as Ex:
-				# print "Problem with energy", string
+				print("Problem with energy", Ex)
 				pass
 		self.atoms.resize((natoms))
 		self.coords.resize((natoms,3))
