@@ -322,7 +322,7 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["HiddenLayers"] = [512, 512, 512, 512, 512, 512, 512]
-	PARAMS["max_steps"] = 5000
+	PARAMS["max_steps"] = 20000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
@@ -574,11 +574,11 @@ def train_energy_pairs_triples():
 # TestTFBond()
 # GetPairPotential()
 # TestTFGauSH()
-# train_forces_GauSH_direct("SmallMols")
+train_forces_GauSH_direct("SmallMols")
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
-train_forces_rotation_constraint("SmallMols")
+# train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
