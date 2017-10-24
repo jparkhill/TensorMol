@@ -1190,14 +1190,14 @@ def Eval():
 		#m=Opt.Opt(m)
 
 
-                PARAMS["MDThermostat"] = "Nose"
-                PARAMS["MDTemp"] = 1000
-                PARAMS["MDdt"] = 0.2
-                PARAMS["RemoveInvariant"]=True
-                PARAMS["MDV0"] = None
-                PARAMS["MDMaxStep"] = 10000
-                md = VelocityVerlet(None, m, "water_tiny_noperi",EnergyForceField)
-                md.Prop()
+		PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDTemp"] = 1000
+		PARAMS["MDdt"] = 0.2
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDV0"] = None
+		PARAMS["MDMaxStep"] = 10000
+		md = VelocityVerlet(None, m, "water_tiny_noperi",EnergyForceField)
+		md.Prop()
 		return
 
 		#PARAMS["OptMaxCycles"]=1000
@@ -1768,6 +1768,7 @@ def TestNeb():
 	a.mols[1] = Opt.Opt(a.mols[1],"2")
 	PARAMS["OptMaxCycles"]=500
 	PARAMS["NebSolver"]="SD"
+	PARAMS["MaxBFGS"] = 12
 	neb = NudgedElasticBand(EnAndForceAPeriodic,a.mols[0],a.mols[1])
 	Beads = neb.Opt()
 	exit(0)
