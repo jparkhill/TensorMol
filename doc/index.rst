@@ -6,12 +6,15 @@
 TensorMol
 =========
 
+Is a package of Neural Network Model Chemistries authored by the Parkhill Group at the University of Notre Dame.
+
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
    :caption: Contents:
 
-   TensorMol
-
+   About <About>
+   Tutorials <Tutorials>
+   TensorMol <TensorMol>
 
 Indices and tables
 ==================

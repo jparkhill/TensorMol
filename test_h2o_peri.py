@@ -368,8 +368,8 @@ def GetRDF():
 #Make_DistMat_ForReal
 
 def GetRDF_Update():
-	a=MSet("MDTrajectorywater_tiny_real_dropout_train_withsigmoid100", path_="./results/")
-	a.ReadXYZ("MDTrajectorywater_tiny_real_dropout_train_withsigmoid100")
+	a=MSet("MDTrajectoryPeriodicWaterMD_Nose300_RigthAlpha_NoDropout", path_="./results/")
+	a.ReadXYZ("MDTrajectoryPeriodicWaterMD_Nose300_RigthAlpha_NoDropout")
 
 	m = a.mols[-1]
 	m.properties["Lattice"] = np.eye(3)*12.42867	
@@ -377,7 +377,7 @@ def GetRDF_Update():
 	gi = PF.RDF(m.coords,8,8,10.0,0.01)
 	gi2 = PF.RDF(m.coords,8,8,10.0,0.01)
 	av = 1
-	for i in range(len(a.mols)/4, len(a.mols)): 
+	for i in range(len(a.mols)/2, len(a.mols)): 
 		#gi += PF.RDF(a.mols[i].coords,8,8,10.0,0.01)
 		gi2 += PF.RDF_inC(a.mols[i].coords,a.mols[i].atoms,12.42867,8,8,10.0, 0.01)
 		av += 1 
@@ -385,7 +385,7 @@ def GetRDF_Update():
 		if (i%100==0):
 			print(i," Gi: ",gi2/av)
 			#np.savetxt("./results/rdf_64_sigmoid_"+str(i)+".txt",gi2/av)
-	np.savetxt("./results/rdf_64_longtime_sigmoid100_"+str(i)+".txt",gi2/av)
+	np.savetxt("./results/rdf_OO_sigmoid100_rightalpha_nodropout"+str(i)+".txt",gi2/av)
 	return 
 
 	dr = 0.001
@@ -432,7 +432,7 @@ def GetRDF_Update():
 
 
 #TestPeriodicLJVoxel()
-UnittoPeri()
+#UnittoPeri()
 #KickOutTrans()
 #GetRDF()
-#GetRDF_Update()
+GetRDF_Update()

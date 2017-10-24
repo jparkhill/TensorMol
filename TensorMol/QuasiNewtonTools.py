@@ -304,6 +304,14 @@ class ConjGradient:
 		self.gold = g.copy()
 		return max(0,betapr)
 	def __call__(self,x0):
+		"""
+		Iterate Conjugate Gradient. 
+
+		Args:
+			x0: Point at which to minimize gradients
+		Returns:
+			Next point, energy, and gradient.
+		"""
 		e,g = self.EForce(x0)
 		beta_n = self.BetaPR(g)
 		self.s = g + beta_n*self.s
