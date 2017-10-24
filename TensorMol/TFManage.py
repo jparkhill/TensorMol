@@ -39,7 +39,7 @@ class TFManage:
 		print(self.TData.AvailableElements)
 		print(self.TData.AvailableDataFiles)
 		print(self.TData.SamplesPerElement)
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
+		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 		print("--- TF will be fed by ---", self.TData.name)
 		self.TrainedAtoms=[] # In order of the elements in TData
 		self.TrainedNetworks=[] # In order of the elements in TData
@@ -124,6 +124,8 @@ class TFManage:
 				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			elif (self.NetType == "3conv_sqdiff"):
 				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
+			elif (self.NetType == "fc_sqdiff_GauSH_direct"):
+				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff_GauSH_direct(name=self.TrainedNetworks[i])
 			else:
 				raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.
@@ -349,3 +351,19 @@ class TFManage:
 			logP += math.log10(p)
 		print(("logP:", logP))
 		return logP
+
+	def append_instances(manager):
+		"""
+		Appends the instances from another manager into this manager if their isn't already
+		a corresponding instance for the same element. Useful for distributing training of
+		elements across different GPUs before combining them into the same manager.
+
+		Args:
+			manager (TensorMol.TFManage): the manager object for which you would like to append
+					its instances to the current manager
+		"""
+		for i, atom in enumerate(manager.TrainedAtoms):
+			if atom not in self.TrainedAtoms:
+				self.TrainedAtoms.append(atom)
+				self.TrainedNetworks.append(manager2.TrainedNetworks[i])
+		self.Save()
