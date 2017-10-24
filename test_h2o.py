@@ -3,7 +3,7 @@ from __future__ import absolute_import
 #memory_util.vlog(1)
 from TensorMol import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 from TensorMol.ElectrostaticsTF import *
 from TensorMol.NN_MBE import *
 from TensorMol.TMIPIinterface import *
@@ -709,7 +709,7 @@ def Train():
 		PARAMS['Profiling']=0
 		manager.Train(1)
 
-	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100
+	if (0): # Normalize+Dropout+500+usual, dropout07+sigmoid100
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		a.Load()
 		random.shuffle(a.mols)
@@ -754,6 +754,49 @@ def Train():
 		manager.Train(1)
 
 
+	if (1): # Normalize+Dropout+500+usual, dropout07+sigmoid100+nograd train
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		a.Load()
+		random.shuffle(a.mols)
+		b=MSet("H2O_Dimer_wb97xd", center_=False)
+		b.ReadXYZ("H2O_Dimer_wb97xd")
+		for i in range(350000):
+			a.mols.pop()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["NetNameSuffix"] = "act_sigmoid100_rightalpha_dropout07_nogradtrain"
+		PARAMS["learning_rate"] = 0.00001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 3
+		PARAMS["batch_size"] =  300   # 40 the max min-batch size it can go without memory error for training
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["EnergyScalar"] = 1.0
+		PARAMS["GradScalar"] = 1.0/20.0
+		PARAMS["DipoleScaler"]=1.0
+		PARAMS["NeuronType"] = "sigmoid_with_param"
+		PARAMS["sigmoid_alpha"] = 100.0
+		PARAMS["HiddenLayers"] = [500, 500, 500]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["MonitorSet"] = b
+		#PARAMS["Erf_Width"] = 1.0
+		#PARAMS["Poly_Width"] = 4.6
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		#PARAMS["AN1_r_Rc"] = 8.0
+		#PARAMS["AN1_num_r_Rs"] = 64
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["DSFAlpha"] = 0.18
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		#PARAMS["KeepProb"] = 0.7
+		PARAMS["learning_rate_dipole"] = 0.0001
+		PARAMS["learning_rate_energy"] = 0.00001
+		PARAMS["SwitchEpoch"] = 1
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_NoGradTrain")
+		PARAMS['Profiling']=0
+		manager.Train(1)
 
 	if (0): # Normalize+Dropout+500+usual, dropout07+sigmoid100+noEcc
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
@@ -1525,8 +1568,39 @@ def GetKunsSmooth(a):
 	PARAMS["SwitchEpoch"] = 15
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha_dropout07", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	#manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	return manager
+def GetKunsSmoothNoDropout(a):
+	TreatedAtoms = a.AtomTypes()
+	PARAMS["NetNameSuffix"] = "act_sigmoid100"
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 101
+	PARAMS["batch_size"] =  150   # 40 the max min-batch size it can go without memory error for training
+	PARAMS["test_freq"] = 1
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["EnergyScalar"] = 1.0
+	PARAMS["GradScalar"] = 1.0/20.0
+	PARAMS["DipoleScaler"]=1.0
+	PARAMS["NeuronType"] = "sigmoid_with_param"
+	PARAMS["sigmoid_alpha"] = 100.0
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["DSFAlpha"] = 0.18
+	PARAMS["AddEcc"] = True
+	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 1.0]
+	PARAMS["learning_rate_dipole"] = 0.0001
+	PARAMS["learning_rate_energy"] = 0.00001
+	PARAMS["SwitchEpoch"] = 15
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha_nodropout",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	return manager
+
 def BoxAndDensity():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.
@@ -1693,6 +1767,7 @@ def TestSmoothIR():
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1],[2.9,0.1,0.1],[3.,0.9,1.],[2.1,0.1,0.1]])))
 	#a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	m = a.mols[9]
+	#manager = GetKunsSmoothNoDropout(a)
 	manager = GetKunsSmooth(a)
 	def EnAndForceAPeriodic(x_,DoForce=True):
 		"""
@@ -1722,7 +1797,8 @@ def TestSmoothIR():
 	PARAMS["OptMaxCycles"]=60
 	Opt = GeomOptimizer(EnAndForceAPeriodic)
 	a.mols[-1] = Opt.Opt(a.mols[-1])
-	m = a.mols[-1]
+	return
+	#m = a.mols[-1]
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms)
 	return
@@ -1735,7 +1811,8 @@ def TestNeb():
 	a.ReadXYZ()
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[0.1,0.9,.1],[0.1,0.1,0.1],[-.6,-.6,.1],[0.,0.9,6.1],[0.1,0.1,6.1]])))
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[0.1,0.9,.1],[0.1,0.1,0.1],[-.6,-.6,6.1],[0.,0.9,6.1],[0.1,0.1,6.1]])))
-	manager = GetKunsSmooth(a)
+	#manager = GetKunsSmooth(a)
+	manager =GetKunsSmoothNoDropout(a)
 	m = a.mols[0]
 	def EnAndForceAPeriodic(x_,DoForce=True):
 		"""
@@ -1762,19 +1839,19 @@ def TestNeb():
 			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
 			return en[0]
 	# opt the first water dimer.
-	PARAMS["OptMaxCycles"]=20
+	PARAMS["OptMaxCycles"]=100
 	Opt = GeomOptimizer(EnAndForceAPeriodic)
 	a.mols[0] = Opt.Opt(a.mols[0],"1")
 	a.mols[1] = Opt.Opt(a.mols[1],"2")
-	PARAMS["OptMaxCycles"]=500
+	PARAMS["OptMaxCycles"]=2000
 	PARAMS["NebSolver"]="SD"
 	neb = NudgedElasticBand(EnAndForceAPeriodic,a.mols[0],a.mols[1])
 	Beads = neb.Opt()
 	exit(0)
 
 #TrainPrepare()
-Train()
+#Train()
 #Eval()
 #BoxAndDensity()
 #TestSmoothIR()
-#TestNeb()
+TestNeb()
