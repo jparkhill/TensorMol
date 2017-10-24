@@ -266,7 +266,6 @@ class Instance:
 		f = open(self.path+self.name+".tfn","rb")
 		import TensorMol.PickleTM
 		tmp = TensorMol.PickleTM.UnPickleTM(f)
-		self.Clean()
 		# All this shit should be deleteable after re-training.
 		self.__dict__.update(tmp)
 		f.close()
@@ -747,10 +746,14 @@ class Instance_fc_sqdiff(Instance):
 		return batch_data
 
 class Instance_fc_sqdiff_GauSH_direct(Instance):
-	def __init__(self, TData_, elements_ , Trainable_ = True, Name_ = None):
-		Instance.__init__(self, TData_, elements_, Name_)
+	def __init__(self, TData=None, elements=None, trainable=True, name=None):
+		if name != None:
+			self.path = './networks/'
+			self.name = name
+			self.Load()
+		Instance.__init__(self, TData, elements, name)
 		self.NetType = "fc_sqdiff_GauSH_direct"
-		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
+		self.name = self.TData.name+"_"+self.NetType+"_"+str(self.element)+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 		self.train_dir = './networks/'+self.name
 		self.number_radial = PARAMS["SH_NRAD"]
 		self.l_max = PARAMS["SH_LMAX"]
@@ -759,9 +762,9 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.MaxNAtoms = self.TData.MaxNAtoms
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
-		self.Trainable = Trainable_
+		self.trainable = trainable
 		self.orthogonalize = True
-		if (self.Trainable):
+		if (self.trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 
 	def compute_normalization_constants(self):

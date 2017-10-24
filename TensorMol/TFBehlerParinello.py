@@ -180,7 +180,7 @@ class BehlerParinelloDirect:
 		self.embeddings_max = []
 		sess = tf.Session()
 		sess.run(tf.global_variables_initializer())
-		for ministep in range (0, int(0.1 * self.tensor_data.num_train_cases/self.batch_size)):
+		for ministep in range (0, max(2, int(0.1 * self.tensor_data.num_train_cases/self.batch_size))):
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			num_atoms = batch_data[4]
 			labels_list.append(batch_data[2])
@@ -195,8 +195,9 @@ class BehlerParinelloDirect:
 		labels = np.concatenate(labels_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
-		self.gradients_mean = np.mean(np.concatenate(gradients_list))
-		self.gradients_stddev = np.std(np.concatenate(gradients_list))
+		gradients = np.concatenate(gradients_list)
+		self.gradients_mean = np.mean(gradients)
+		self.gradients_stddev = np.std(gradients)
 		self.tensor_data.train_scratch_pointer = 0
 
 		#Set the embedding and label shape
@@ -384,14 +385,12 @@ class BehlerParinelloDirect:
 
 	def loss_op(self, output, labels, gradients = None, gradient_labels = None, num_atoms = None):
 		energy_loss = tf.nn.l2_loss(tf.subtract(output, labels))
+		tf.add_to_collection('losses', energy_loss)
 		if self.train_energy_gradients:
 			gradients_loss = self.batch_size * tf.nn.l2_loss(tf.subtract(gradients, gradient_labels)) / tf.cast(num_atoms, self.tf_precision)
-			loss = energy_loss + gradients_loss
-			tf.add_to_collection('losses', loss)
+			tf.add_to_collection('losses', gradients_loss)
 			return tf.add_n(tf.get_collection('losses'), name='total_loss'), energy_loss, gradients_loss
 		else:
-			loss = energy_loss
-			tf.add_to_collection('losses', loss)
 			return tf.add_n(tf.get_collection('losses'), name='total_loss'), energy_loss
 
 	def train_step(self, step):
@@ -406,27 +405,25 @@ class BehlerParinelloDirect:
 		train_loss =  0.0
 		train_energy_loss = 0.0
 		train_gradient_loss = 0.0
-		num_of_mols = 0
+		num_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
-			actual_mols = self.batch_size
 			if self.train_energy_gradients:
 				_, total_loss_value, energy_loss, gradient_loss, mol_output, n_atoms, gradients, gradient_labels = self.sess.run([self.train_op,
 						self.total_loss, self.energy_loss, self.gradient_loss, self.output, self.num_atoms_pl, self.gradients,
 						self.gradients_pl], feed_dict=self.fill_feed_dict(batch_data))
 				train_gradient_loss += gradient_loss
 			else:
-				_, total_loss_value, energy_loss, mol_output, n_atoms, gradients, gradient_labels = self.sess.run([self.train_op,
-						self.total_loss, self.energy_loss, self.output, self.num_atoms_pl, self.gradients,
-						self.gradients_pl], feed_dict=self.fill_feed_dict(batch_data))
+				_, total_loss_value, energy_loss, mol_output = self.sess.run([self.train_op, self.total_loss,
+							self.energy_loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss += total_loss_value
 			train_energy_loss += energy_loss
-			num_of_mols += actual_mols
+			num_mols += self.batch_size
 		duration = time.time() - start_time
 		if self.train_energy_gradients:
-			self.print_training(step, train_loss, train_energy_loss, num_of_mols, duration, train_gradient_loss)
+			self.print_training(step, train_loss, train_energy_loss, num_mols, duration, train_gradient_loss)
 		else:
-			self.print_training(step, train_loss, train_energy_loss, num_of_mols, duration)
+			self.print_training(step, train_loss, train_energy_loss, num_mols, duration)
 		return
 
 	def test_step(self, step):
@@ -440,7 +437,7 @@ class BehlerParinelloDirect:
 		test_loss =  0.0
 		start_time = time.time()
 		Ncase_test = self.tensor_data.num_test_cases
-		num_of_mols = 0
+		num_mols = 0
 		test_energy_loss = 0.0
 		test_gradient_loss = 0.0
 		test_epoch_energy_labels, test_epoch_energy_outputs = [], []
@@ -449,13 +446,18 @@ class BehlerParinelloDirect:
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data = self.tensor_data.get_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
-			output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms = self.sess.run([self.output,
-					self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradient_loss,
-					self.num_atoms_pl],  feed_dict=feed_dict)
+			if self.train_energy_gradients:
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms = self.sess.run([self.output,
+						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradient_loss,
+						self.num_atoms_pl],  feed_dict=feed_dict)
+				test_gradient_loss += gradient_loss
+			else:
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms = self.sess.run([self.output,
+						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss,
+						self.num_atoms_pl],  feed_dict=feed_dict)
 			test_loss += total_loss_value
-			num_of_mols += self.batch_size
+			num_mols += self.batch_size
 			test_energy_loss += energy_loss
-			test_gradient_loss += gradients_loss
 			test_epoch_energy_labels.append(labels)
 			test_epoch_energy_outputs.append(output)
 			num_atoms_epoch.append(num_atoms)
@@ -477,7 +479,10 @@ class BehlerParinelloDirect:
 		LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
 		LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
 		LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
-		self.print_testing(step, test_loss, test_energy_loss, test_gradient_loss, num_of_mols, duration)
+		if self.train_energy_gradients:
+			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
+		else:
+			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration)
 		return test_loss
 
 	def train(self):
@@ -496,22 +501,22 @@ class BehlerParinelloDirect:
 		self.save_network()
 		return
 
-	def print_training(self, step, loss, energy_loss, Ncase, duration, gradient_loss=None, Train=True):
+	def print_training(self, step, loss, energy_loss, num_mols, duration, gradient_loss=None):
 		if self.train_energy_gradients:
 			LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
-						step, duration, loss, energy_loss, gradient_loss)
+						step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
 		else:
 			LOGGER.info("step: %7d  duration: %.5f  train loss: %.10f energy loss: %.10f",
-						step, duration, loss, energy_loss)
+						step, duration, loss / num_mols, energy_loss / num_mols)
 		return
 
-	def print_testing(self, step, loss, energy_loss, Ncase, duration, gradient_loss=None):
+	def print_testing(self, step, loss, energy_loss, num_mols, duration, gradient_loss=None):
 		if self.train_energy_gradients:
 			LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
-						step, duration, loss, energy_loss, gradient_loss)
+						step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
 		else:
 			LOGGER.info("step: %7d  duration: %.5f  test loss: %.10f energy loss: %.10f",
-						step, duration, loss, energy_loss)
+						step, duration, loss / num_mols, energy_loss / num_mols)
 		return
 
 	def evaluate(self, batch_data):
