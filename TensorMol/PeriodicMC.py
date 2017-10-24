@@ -64,20 +64,38 @@ class PeriodicMonteCarlo(PeriodicVelocityVerlet):
 		so that nearby atoms are pulled together to improve
 		acceptance probability. This is done by interpolating
 		randomly placed vectors of random orientations to the points
-		where the atoms are.
+		where the atoms are. (9 such vectors.)
+
+		To accomplish rotations, there is also a solenoidal field
+		which acts as a cross product.
 
 		V(x_j) = \sum_(pts, i) v_i * exp(-dij^2)
 		"""
 		mxx = np.max(x_)
 		mnx = np.min(x_)
-		npts = 18
+		npts = 4
 		pts = np.random.uniform(mxx-mnx,size=(npts,3))+mnx
-		magn = np.random.normal(scale = 0.07, size=(npts,3))
+		rmagn = np.random.normal(scale = 0.07, size=(npts,1))
+		theta = np.random.uniform(3.1415, size=(npts,1))
+		phi = np.random.uniform(2.0*3.1415, size=(npts,1))
+		rx = np.sin(theta)*np.cos(phi)
+		ry = np.sin(theta)*np.sin(phi)
+		rz = np.cos(theta)
+		magn = np.concatenate([rmagn*rx,rmagn*ry,rmagn*rz],axis=1)
 		jd = np.concatenate([pts,x_])
 		DMat = MolEmb.Make_DistMat_ForReal(jd,npts)
-		sigma = np.random.uniform(3.2)+0.02
+		sigma = np.random.uniform(2.2)+0.02
 		expd = (1.0/np.sqrt(6.2831*sigma*sigma))*np.exp(-1.0*DMat[:,npts:]*DMat[:,npts:]/(2*sigma*sigma))
 		tore = np.einsum('jk,ji->ik', magn, expd)
+		# do the solenoidal piece.
+		for i in range(npts):
+			if (np.random.random() < 0.6):
+				vs = x_ - pts[i]
+				for j in range(x_.shape[0]):
+					vs[j] /= np.linalg.norm(vs[j])
+				soil = np.cross(vs,4.0*magn[i])*(expd[i,:,np.newaxis])
+				#print(soil)
+				tore += soil
 		return tore
 	def MetropolisHastings(self,x_):
 		"""
