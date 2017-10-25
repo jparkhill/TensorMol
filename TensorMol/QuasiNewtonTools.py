@@ -73,7 +73,7 @@ def CoordinateScan(f_, x_, name_="", eps_=0.03, num_=15):
 		np.savetxt("./results/CoordScan"+name_+str(ci)+".txt",tore[iti.multi_index])
 		ci += 1
 		iti.iternext()
-def FdiffHessian(f_, x_, eps_=0.001, mode_ = "central", grad_ = None):
+def FdiffHessian(f_, x_, eps_=0.001, mode_ = "forward", grad_ = None):
 	"""
 	Computes a finite difference hessian of a single or multi-valued function
 	at x_ for debugging purposes.
@@ -213,9 +213,9 @@ def InternalCoordinates(x_,m):
 		elif (i%3==2):
 			D[2,i] = np.sqrt(m[int(i/3)])
 	for i in range(n):
-		Px = np.dot(xc_[i],X[0,:])
-		Py = np.dot(xc_[i],X[1,:])
-		Pz = np.dot(xc_[i],X[2,:])
+		Px = np.dot(xc_[i],X[:,0])
+		Py = np.dot(xc_[i],X[:,1])
+		Pz = np.dot(xc_[i],X[:,2])
 		for j in range(3):
 			D[3,i*3+j] = (Py*X[2,j]-Pz*X[1,j])/np.sqrt(m[i])
 			D[4,i*3+j] = (Pz*X[0,j]-Px*X[2,j])/np.sqrt(m[i])
@@ -224,9 +224,74 @@ def InternalCoordinates(x_,m):
 	S = PairOrthogonalize(D,MWC) # Returns normalized Coords.
 	nint = S.shape[0]
 	print("3N, Number of Internal Coordinates: ", n3 , nint)
-	#print("Overlap of internals: ",np.einsum("ij,kj->ik",S,S))
 	return S
+
 def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ = None):
+	"""
+	Perform a finite difference normal mode analysis
+	of a molecule. basically implements http://gaussian.com/vib/
+
+	Args:
+		f_: Energies in Hartree.
+		x_: Coordinates (A)
+		at_: element type of each atom
+		grad_: forces in Hartree/angstrom if available. (unused)
+		eps_: finite difference step
+		WriteNM_: Whether to write the normal modes to readable files
+		Mu_: A dipole field routine for intensities.
+
+	Returns:
+		Frequencies in wavenumbers and Normal modes (cart)
+	"""
+	LOGGER.info("Harmonic Analysis")
+	n = x_.shape[0]
+	n3 = 3*n
+	m_ = np.array(map(lambda x: ATOMICMASSESAMU[x-1]*ELECTRONPERPROTONMASS, at_.tolist()))
+	Crds = InternalCoordinates(x_,m_) #invbasis X cart
+	#Crds=np.eye(n3).reshape((n3,n,3))
+	#print("En?",f_(x_))
+	if 0:
+		Hess = DirectedFdiffHessian(f_, x_, Crds.reshape((len(Crds),n,3)))
+		print("Hess (Internal):", Hess)
+		# Transform the invariant hessian into cartesian coordinates.
+		cHess = np.dot(Crds.T,np.dot(Hess,Crds))
+	else:
+		cHess = FdiffHessian(f_, x_,0.0005).reshape((n3,n3))
+	cHess /= (BOHRPERA*BOHRPERA)
+	print("Hess (Cart):", cHess)
+	# Mass weight the invariant hessian in cartesian coordinate
+	for i,mi in enumerate(m_):
+		cHess[i*3:(i+1)*3, i*3:(i+1)*3] /= np.sqrt(mi*mi)
+		for j,mj in enumerate(m_):
+			if (i != j):
+				cHess[i*3:(i+1)*3, j*3:(j+1)*3] /= np.sqrt(mi*mj)
+	# Get the vibrational spectrum and normal modes.
+	u,s,v = np.linalg.svd(cHess)
+	for l in s:
+		print("Central Energy (cm**-1): ", np.sign(l)*np.sqrt(l)*WAVENUMBERPERHARTREE)
+	print("--")
+	# Get the actual normal modes, for visualization sake.
+	w,v = np.linalg.eigh(cHess)
+	v = v.real
+	wave = np.sign(w)*np.sqrt(abs(w))*WAVENUMBERPERHARTREE
+	print("N3, shape v",n3,v.shape)
+	if (WriteNM_):
+		for i in range(3*n):
+			nm = v[:,i].reshape((n,3))
+			nm *= np.sqrt(m_[:,np.newaxis]).T
+			tmp = nm.reshape((x_.shape[0],3))
+
+			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
+			step = 0.01
+			dmudq = (Mu_(x_+step*tmp)-Mu_(x_))/step
+			print("|f| (UNITS????) ",np.dot(dmudq,dmudq.T))
+
+			for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
+				mdisp = Mol(at_, x_+alpha*tmp)
+				mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
+	return wave, v
+
+def HarmonicSpectraWithProjection(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ = None):
 	"""
 	Perform a finite difference normal mode analysis
 	of a molecule. basically implements http://gaussian.com/vib/
@@ -294,7 +359,6 @@ class ConjGradient:
 		self.Energy = lambda x: self.EForce(x,False)
 		self.x0 = x0_.copy()
 		self.xold = x0_.copy()
-		self.natom = x0_.shape[0] if len(x0_.shape)==2 else x0_.shape[1]*x0_.shape[0]
 		self.e, self.gold  = self.EForce(x0_)
 		self.s = self.gold.copy()
 		self.alpha = PARAMS["GSSearchAlpha"]
@@ -304,14 +368,6 @@ class ConjGradient:
 		self.gold = g.copy()
 		return max(0,betapr)
 	def __call__(self,x0):
-		"""
-		Iterate Conjugate Gradient. 
-
-		Args:
-			x0: Point at which to minimize gradients
-		Returns:
-			Next point, energy, and gradient.
-		"""
 		e,g = self.EForce(x0)
 		beta_n = self.BetaPR(g)
 		self.s = g + beta_n*self.s
@@ -385,10 +441,7 @@ class ConjGradient:
 				fa = fc
 				fc = self.Energy(c)
 				fd = self.Energy(d)
-			if (len(self.x0.shape)==2):
-				rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/self.natom
-			elif (len(self.x0.shape)==3):
-				rmsdist = np.sum(np.linalg.norm(a-b,axis=2))/self.natom
+			rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/a.shape[0]
 			k+=1
 		return (b + a) / 2
 
