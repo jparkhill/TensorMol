@@ -57,7 +57,7 @@ class GeomOptimizer:
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Coords", m.coords)
 		CG = ConjGradient(self.WrappedEForce, m.coords)
-		while( step < self.max_opt_step and rmsgrad > self.thresh and (rmsdisp > 0.0001 or step<5) ):
+		while( step < self.max_opt_step and rmsgrad > self.thresh and (rmsdisp > 0.000001 or step<5) ):
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords, energy, frc = CG(m.coords)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/m.coords.shape[0]
