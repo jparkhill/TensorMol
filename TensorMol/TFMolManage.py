@@ -1272,6 +1272,7 @@ class TFMolManage(TFManage):
 		"""
 		The energy, force and dipole routine for BPs_EE.
 		"""
+		t = time.time()
 		mol_set=MSet()
 		mol_set.mols.append(mol)
 		nmols = len(mol_set.mols)
@@ -1290,8 +1291,11 @@ class TFMolManage(TFManage):
 		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexPeriodic(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
 		NLEE = NeighborListSetWithImages(xyzs, np.array([mol.NAtoms()]), np.array([nreal]), False, True,  Zs)
 		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(Ree_cut, self.Instances.eles_np)
+		#print ("python code time:", time.time() - t)
+		t = time.time()
 		if (DoForce):
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient  = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal)
+			#print ("tf code time:", time.time() - t)
 			if not DoCharge:
 				return Etotal, -JOULEPERHARTREE*gradient[0][0][:nreal].reshape(1, nreal, 3)  # be consist with old code
 			else:

@@ -1561,7 +1561,7 @@ def GetKunsSmooth(a):
 	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
 	PARAMS["EECutoffOff"] = 15.0
 	PARAMS["DSFAlpha"] = 0.18
-	PARAMS["AddEcc"] = True
+	PARAMS["AddEcc"] = False
 	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
 	PARAMS["learning_rate_dipole"] = 0.0001
 	PARAMS["learning_rate_energy"] = 0.00001
@@ -1569,7 +1569,7 @@ def GetKunsSmooth(a):
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha_dropout", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
-	#manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	#manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha_dropout07", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	return manager
 def GetKunsSmoothNoDropout(a):
 	TreatedAtoms = a.AtomTypes()
@@ -1771,8 +1771,20 @@ def TestSmoothIR():
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1],[2.9,0.1,0.1],[3.,0.9,1.],[2.1,0.1,0.1]])))
 	#a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	m = a.mols[9]
-	#manager = GetKunsSmoothNoDropout(a)
-	manager = GetKunsSmooth(a)
+	manager = GetKunsSmoothNoDropout(a)
+	#manager = GetKunsSmooth(a)
+	#def EnAndForceAPeriodic(x_, DoForce = True):
+	#	"""
+	#	This is the primitive form of force routine required by PeriodicForce.
+	#	"""
+	#	mtmp = Mol(m.atoms,x_)
+	#	Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+	#	energy = Etotal[0]
+	#	force = gradient[0]
+	#	return energy, force
+	#def EnergyField(x_):
+	#	return EnAndForceAPeriodic(x_,False)[0]
+	#
 	def EnAndForceAPeriodic(x_,DoForce=True):
 		"""
 		This is the primitive form of force routine required by PeriodicForce.
@@ -1798,9 +1810,9 @@ def TestSmoothIR():
 			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
 			return en[0]
 	# opt the first water.
-	PARAMS["OptMaxCycles"]=60
+	PARAMS["OptMaxCycles"]=1
 	Opt = GeomOptimizer(EnAndForceAPeriodic)
-	a.mols[-1] = Opt.Opt(a.mols[-1])
+	m = Opt.Opt(m)
 	return
 	#m = a.mols[-1]
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
@@ -1818,19 +1830,31 @@ def TestNeb():
 	#manager = GetKunsSmooth(a)
 	manager =GetKunsSmoothNoDropout(a)
 	m = a.mols[0]
-	def EnAndForceAPeriodic(x_,DoForce=True):
+
+	def EnAndForceAPeriodic(x_, DoForce = True):
 		"""
 		This is the primitive form of force routine required by PeriodicForce.
 		"""
 		mtmp = Mol(m.atoms,x_)
-		if (DoForce):
-			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(),True, DoForce)
-			return en[0], f[0]
-		else:
-			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(), True, DoForce)
-			return en[0]
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		energy = Etotal[0]
+		force = gradient[0]
+		return energy, force
 	def EnergyField(x_):
-		return EnAndForceAPeriodic(x_,False)
+		return EnAndForceAPeriodic(x_,False)[0]
+	#def EnAndForceAPeriodic(x_,DoForce=True):
+	#	"""
+	#	This is the primitive form of force routine required by PeriodicForce.
+	#	"""
+	#	mtmp = Mol(m.atoms,x_)
+	#	if (DoForce):
+	#		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(),True, DoForce)
+	#		return en[0], f[0]
+	#	else:
+	#		en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms(), True, DoForce)
+	#		return en[0]
+	#def EnergyField(x_):
+	#	return EnAndForceAPeriodic(x_,False)
 	def EnAndForce(z_, x_, nreal_, DoForce = True):
 		"""
 		This is the primitive form of force routine required by PeriodicForce.
@@ -1843,7 +1867,7 @@ def TestNeb():
 			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
 			return en[0]
 	# opt the first water dimer.
-	PARAMS["OptMaxCycles"]=100
+	PARAMS["OptMaxCycles"]=200
 	Opt = GeomOptimizer(EnAndForceAPeriodic)
 	a.mols[0] = Opt.Opt(a.mols[0],"1")
 	a.mols[1] = Opt.Opt(a.mols[1],"2")
@@ -1857,6 +1881,11 @@ def TestNeb():
 #TrainPrepare()
 #Train()
 #Eval()
+<<<<<<< HEAD
 BoxAndDensity()
 #TestSmoothIR()
+=======
+#BoxAndDensity()
+TestSmoothIR()
+>>>>>>> 5a3dbeba520156f5eff617410ca21e530c4d5a4d
 #TestNeb()
