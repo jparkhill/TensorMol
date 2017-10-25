@@ -5831,7 +5831,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 				tf.verify_tensor_all_finite(output,"Nan in output!!!")
 			bp_energy = tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
 		total_energy = tf.add(bp_energy, cc_energy)
-		vdw_energy = TFVdwPolyLRWithEle(xyzsInBohr, Zs, eles, c6, R_vdw, EE_cuton*BOHRPERA, Reep_e1e2)
+		vdw_energy = TFVdwPolyLRWithEle(xyzsInBohr, Zs, eles, c6, R_vdw, EE_cuton*BOHRPERA, Reep_e1e2)/2.0
 		total_energy_with_vdw = tf.add(total_energy, vdw_energy)
 		energy_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="EnergyNet")
 		return total_energy_with_vdw, bp_energy, vdw_energy, energy_vars, output
@@ -5903,7 +5903,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		scaled_charge_all = tf.tile(scaled_charge, [1, ntess])
 		def f1(): return TFCoulombEluSRDSFLR(xyzsInBohr, scaled_charge_all, Elu_Width*BOHRPERA, Reep, tf.cast(self.DSFAlpha, self.tf_prec), tf.cast(self.elu_alpha,self.tf_prec), tf.cast(self.elu_shift,self.tf_prec))
 		def f2(): return  tf.zeros([self.batch_size], dtype=self.tf_prec)
-		cc_energy = tf.cond(AddEcc, f1, f2)
+		cc_energy = tf.cond(AddEcc, f1, f2)/2.0
 		#dipole_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="DipoleNet")
 		return  cc_energy, dipole, scaled_charge_all, dipole_wb
 
