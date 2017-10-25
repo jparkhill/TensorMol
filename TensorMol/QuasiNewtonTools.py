@@ -258,8 +258,8 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 			if (i != j):
 				cHess[i*3:(i+1)*3, j*3:(j+1)*3] /= np.sqrt(mi*mj)
 	# Get the vibrational spectrum and normal modes.
-	pHess = np.einsum('ab,cb->ac',np.einsum('ij,jk->ik',Crds,cHess),Crds)
-	s,v = np.linalg.eigh(pHess)
+	# pHess = np.einsum('ab,cb->ac',np.einsum('ij,jk->ik',Crds,cHess),Crds)
+	s,v = np.linalg.eigh(Hess)
 	for l in s:
 		print("Central Energy (cm**-1): ", np.sign(l)*np.sqrt(l)*WAVENUMBERPERHARTREE)
 	print("--")
@@ -276,7 +276,6 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 			step = 0.01
 			dmudq = (Mu_(x_+step*tmp)-Mu_(x_))/step
 			print("|f| (UNITS????) ",np.dot(dmudq,dmudq.T))
-
 			for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
 				mdisp = Mol(at_, x_+alpha*tmp)
 				mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
@@ -305,7 +304,7 @@ class ConjGradient:
 		return max(0,betapr)
 	def __call__(self,x0):
 		"""
-		Iterate Conjugate Gradient. 
+		Iterate Conjugate Gradient.
 
 		Args:
 			x0: Point at which to minimize gradients
