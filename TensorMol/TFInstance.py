@@ -914,6 +914,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		tf.add_to_collection('losses', loss)
 		return tf.add_n(tf.get_collection('losses'), name='total_loss'), loss
 
+
+
 	def fill_feed_dict(self, batch_data):
 		"""
 		Fill the tensorflow feed dictionary.
@@ -1029,6 +1031,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		self.l_max = PARAMS["SH_LMAX"]
 		self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
 		self.atomic_embed_factors = PARAMS["ANES"]
+		TensorMol.RawEmbeddings.data_precision = self.tf_prec
 		self.MaxNAtoms = self.TData.MaxNAtoms
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
@@ -1036,6 +1039,26 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		self.orthogonalize = True
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
+
+	def compute_normalization_constants(self):
+		batch_data = self.TData.GetTrainBatch(20 * self.batch_size)
+		self.TData.ScratchPointer = 0
+		xyzs, Zs, labels = tf.convert_to_tensor(batch_data[0], dtype=self.tf_prec), tf.convert_to_tensor(batch_data[1]), tf.convert_to_tensor(batch_data[2], dtype=self.tf_prec)
+		num_mols = tf.shape(xyzs)[0]
+		rotation_params = tf.stack([np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
+				np.pi * tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec),
+				tf.random_uniform([num_mols], maxval=2.0, dtype=self.tf_prec)], axis=-1)
+		rotated_xyzs, rotated_labels = tf_random_rotate(xyzs, rotation_params, labels)
+		embedding, labels, _, _ = tf_gaussian_spherical_harmonics_element(rotated_xyzs, Zs, rotated_labels,
+											self.element, tf.Variable(self.gaussian_params, dtype=self.tf_prec),
+											tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec),
+											self.l_max, self.orthogonalize)
+		with tf.Session() as sess:
+			sess.run(tf.global_variables_initializer())
+			embed, label = sess.run([embedding, labels])
+		self.inmean, self.instd = np.mean(embed, axis=0), np.std(embed, axis=0)
+		self.outmean, self.outstd = np.mean(label), np.std(label)
+		return
 
 	def TrainPrepare(self):
 		""" Builds the graphs by calling inference """
@@ -1088,25 +1111,46 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 				self.run_metadata = tf.RunMetadata()
 			return
 
-	def training(self, loss, learning_rate, momentum):
-		"""Sets up the training Ops.
-		Creates a summarizer to track the loss over time in TensorBoard.
-		Creates an optimizer and applies the gradients to all trainable variables.
-		The Op returned by this function is what must be passed to the
-		`sess.run()` call to cause the model to train.
-		Args:
-		loss: Loss tensor, from loss().
-		learning_rate: The learning rate to use for gradient descent.
-		Returns:
-		train_op: The Op for training.
-		"""
-		tf.summary.scalar(loss.op.name, loss)
-		optimizer = tf.train.AdamOptimizer(learning_rate)
-		grads_and_vars = optimizer.compute_gradients(loss)
-		capped_grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in grads_and_vars]
-		global_step = tf.Variable(0, name='global_step', trainable=False)
-		train_op = optimizer.apply_gradients(capped_grads_and_vars)
-		return train_op
+	# def training(self, loss, learning_rate, momentum):
+	# 	"""Sets up the training Ops.
+	# 	Creates a summarizer to track the loss over time in TensorBoard.
+	# 	Creates an optimizer and applies the gradients to all trainable variables.
+	# 	The Op returned by this function is what must be passed to the
+	# 	`sess.run()` call to cause the model to train.
+	# 	Args:
+	# 	loss: Loss tensor, from loss().
+	# 	learning_rate: The learning rate to use for gradient descent.
+	# 	Returns:
+	# 	train_op: The Op for training.
+	# 	"""
+	# 	tf.summary.scalar(loss.op.name, loss)
+	# 	optimizer = tf.train.AdamOptimizer(learning_rate)
+	# 	grads_and_vars = optimizer.compute_gradients(loss)
+	# 	capped_grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in grads_and_vars]
+	# 	global_step = tf.Variable(0, name='global_step', trainable=False)
+	# 	train_op = optimizer.apply_gradients(capped_grads_and_vars)
+	# 	return train_op
+
+	# def training_op(self, loss, learning_rate, momentum):
+	# 	"""Sets up the training Ops.
+	# 	Creates a summarizer to track the loss over time in TensorBoard.
+	# 	Creates an optimizer and applies the gradients to all trainable variables.
+	# 	The Op returned by this function is what must be passed to the
+	# 	`sess.run()` call to cause the model to train.
+	# 	Args:
+	# 	loss: Loss tensor, from loss().
+	# 	learning_rate: The learning rate to use for gradient descent.
+	# 	Returns:
+	# 	train_op: The Op for training.
+	# 	"""
+	# 	tf.summary.scalar(loss.op.name, loss)
+	# 	optimizer = tf.train.AdamOptimizer(learning_rate)
+	# 	global_step = tf.Variable(0, name='global_step', trainable=False)
+	# 	gradients_vars = optimizer.compute_gradients(loss)
+	# 	for gradient, var in gradients_vars:
+	#
+	# 	train_op = optimizer.minimize(loss, global_step=global_step)
+	# 	return train_op
 
 	def Clean(self):
 		if (self.sess != None):

@@ -1233,14 +1233,14 @@ def Eval():
 		#m=Opt.Opt(m)
 
 
-                PARAMS["MDThermostat"] = "Nose"
-                PARAMS["MDTemp"] = 1000
-                PARAMS["MDdt"] = 0.2
-                PARAMS["RemoveInvariant"]=True
-                PARAMS["MDV0"] = None
-                PARAMS["MDMaxStep"] = 10000
-                md = VelocityVerlet(None, m, "water_tiny_noperi",EnergyForceField)
-                md.Prop()
+		PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDTemp"] = 1000
+		PARAMS["MDdt"] = 0.2
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDV0"] = None
+		PARAMS["MDMaxStep"] = 10000
+		md = VelocityVerlet(None, m, "water_tiny_noperi",EnergyForceField)
+		md.Prop()
 		return
 
 		#PARAMS["OptMaxCycles"]=1000
@@ -1568,9 +1568,8 @@ def GetKunsSmooth(a):
 	PARAMS["SwitchEpoch"] = 15
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha_dropout", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	#manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha_dropout07", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
-	#manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
-	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_noEcc", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	return manager
 def GetKunsSmoothNoDropout(a):
 	TreatedAtoms = a.AtomTypes()
@@ -1608,7 +1607,7 @@ def BoxAndDensity():
 	a = MSet()
 	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	m = a.mols[0]
-	manager = GetKunsWithDropout(a)
+	manager = GetKunsSmoothNoDropout(a)
 
 	def EnAndForceAPeriodic(x_):
 		"""
@@ -1657,10 +1656,11 @@ def BoxAndDensity():
 			return en[0], f[0]
 
 	if 0:
-		PARAMS["OptMaxCycles"]=30
+		PARAMS["OptMaxCycles"]=100
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
 		mt = Opt.Opt(mt,"UCopt")
 
+	if 0:
 		# Anneal the tesselation.
 		EnAndForceAPeriodic = lambda x_: EnAndForce(mt.atoms,x_,mt.NAtoms())
 		PARAMS["MDAnnealT0"] = 20.0
@@ -1686,12 +1686,13 @@ def BoxAndDensity():
 		m = s.mols[-1]
 		m.properties["Lattice"] = np.eye(3)*12.42867
 		# try a huge supercell
-		ntess = 2
-		latv = np.eye(3)*12.42867
-		# Start with a water in a ten angstrom box.
-		lat = Lattice(latv)
-		m = Mol(*lat.TessNTimes(m.atoms,m.coords,ntess))
-		m.properties["Lattice"] = np.eye(3)*2*12.42867
+		if 0:
+			ntess = 2
+			latv = np.eye(3)*12.42867
+			# Start with a water in a ten angstrom box.
+			lat = Lattice(latv)
+			m = Mol(*lat.TessNTimes(m.atoms,m.coords,ntess))
+			m.properties["Lattice"] = np.eye(3)*2*12.42867
 	else:
 		PARAMS["OptMaxCycles"]=60
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
@@ -1712,7 +1713,7 @@ def BoxAndDensity():
 	PF = PeriodicForce(m,m.properties["Lattice"])
 	PF.BindForce(EnAndForce, 12.0)
 	PF.RDF(m.coords,8,8,20.0,0.01,"RDF0")
-	print("Original Lattice: ", PF.lattice.lattice)
+	print("Original Density, Lattice: ", PF.Density(), PF.lattice.lattice)
 
 	# Test that the energy is invariant to translations of atoms through the cell.
 	if 0:
@@ -1724,7 +1725,7 @@ def BoxAndDensity():
 			#Mol(*PF.lattice.TessLattice(m.atoms,m.coords,12.0)).WriteXYZfile("./results/", "TessCHECK")
 	if 0:
 		# Try optimizing that....
-		PARAMS["OptMaxCycles"]=20
+		PARAMS["OptMaxCycles"]=100
 		POpt = PeriodicGeomOptimizer(PF)
 		m = POpt.OptToDensity(m,1.0)
 		#m = POpt.OptToDensity(m)
@@ -1742,8 +1743,10 @@ def BoxAndDensity():
 		PF.mol0.coords = traj.Minx
 
 	PARAMS["MDTemp"] = 330.0
+	PARAMS["MDMaxStep"] = 100000
 	traj = PeriodicMonteCarlo(PF,"PeriodicWaterMC")
 	traj.Prop()
+	exit(0)
 
 	if 0:
 		PARAMS["MDAnnealT0"] = 20.0
@@ -1870,6 +1873,7 @@ def TestNeb():
 	a.mols[1] = Opt.Opt(a.mols[1],"2")
 	PARAMS["OptMaxCycles"]=2000
 	PARAMS["NebSolver"]="SD"
+	PARAMS["MaxBFGS"] = 12
 	neb = NudgedElasticBand(EnAndForceAPeriodic,a.mols[0],a.mols[1])
 	Beads = neb.Opt()
 	exit(0)
@@ -1877,6 +1881,11 @@ def TestNeb():
 #TrainPrepare()
 #Train()
 #Eval()
+<<<<<<< HEAD
+BoxAndDensity()
+#TestSmoothIR()
+=======
 #BoxAndDensity()
 TestSmoothIR()
+>>>>>>> 5a3dbeba520156f5eff617410ca21e530c4d5a4d
 #TestNeb()

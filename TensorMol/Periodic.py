@@ -20,11 +20,33 @@ class Lattice:
 		"""
 		self.lattice = latvec_.copy()
 		self.latticeCenter = (self.lattice[0]+self.lattice[1]+self.lattice[2])/2.0
-		self.latticeMinDiameter = 2.0*min([np.linalg.norm(self.lattice[0]-self.latticeCenter),np.linalg.norm(self.lattice[1]-self.latticeCenter),np.linalg.norm(self.lattice[2]-self.latticeCenter)])
+		jd = np.concatenate([self.latticeCenter[np.newaxis,:],self.LatticeFacePoints()])
+		DistsToCenter = MolEmb.Make_DistMat_ForReal(jd,1)[0,1:]
+		print(DistsToCenter)
+		self.latticeMinDiameter = 2.0*np.min(DistsToCenter)
 		self.lp = np.array([[0.,0.,0.],self.lattice[0].tolist(),self.lattice[1].tolist(),self.lattice[2].tolist(),(self.lattice[0]+self.lattice[1]).tolist(),(self.lattice[0]+self.lattice[2]).tolist(),(self.lattice[1]+self.lattice[2]).tolist(),(self.lattice[0]+self.lattice[1]+self.lattice[2]).tolist()])
 		self.ntess = 1 # number of shells over which to tesselate.
 		self.facenormals = self.LatticeNormals()
 		return
+	def LatticeFacePoints(self):
+		"""
+		"""
+		lfp = np.zeros((14,3))
+		lfp[0] = self.lattice[0]
+		lfp[1] = self.lattice[1]
+		lfp[2] = self.lattice[2]
+		lfp[3] = self.lattice[0]+self.lattice[1]
+		lfp[4] = self.lattice[0]+self.lattice[2]
+		lfp[5] = self.lattice[1]+self.lattice[2]
+		lfp[6] = self.lattice[0]+self.lattice[1]+self.lattice[2]
+		lfp[7] = np.zeros(3)
+		lfp[8] = 0.5*(self.lattice[0]+self.lattice[1])
+		lfp[9] = 0.5*(self.lattice[2]+self.lattice[1])
+		lfp[10] = 0.5*(self.lattice[0]+self.lattice[2])
+		lfp[11] = 0.5*(self.lattice[0]+self.lattice[1])+self.lattice[2]
+		lfp[12] = 0.5*(self.lattice[2]+self.lattice[1])+self.lattice[0]
+		lfp[13] = 0.5*(self.lattice[0]+self.lattice[2])+self.lattice[1]
+		return lfp
 	def LatticeNormals(self):
 		lp = self.lp
 		fn = np.zeros((6,3))
@@ -111,7 +133,8 @@ class Lattice:
 		Enlarges a molecule to allow for accurate calculation of a short-ranged force
 
 		Args:
-			mol_: a molecule.
+			atoms_: an integer array of atoms.
+			coords_: a double array of coordinates.
 			rng_: minimum distance from center covered by the tesselation. (Angstrom)
 
 		Returns:
@@ -119,7 +142,10 @@ class Lattice:
 		"""
 		if (rng_ > self.latticeMinDiameter):
 			self.ntess = int(rng_/self.latticeMinDiameter)+1
-			#print("Doing",self.ntess,"tesselations...")
+			#print("Doing",self.ntess,"tesselations...", rng_,self.latticeMinDiameter)
+		else:
+			self.ntess = 1
+			#print("Doing",self.ntess,"tesselations...", rng_,self.latticeMinDiameter,atoms_.shape)
 			#print(rng_,self.latticeMinDiameter)
 		natom = atoms_.shape[0]
 		nimages = pow(2*self.ntess+1,3)
@@ -138,6 +164,7 @@ class Lattice:
 					newCoords[ind*natom:(ind+1)*natom,:] = coords_ + i*self.lattice[0] + j*self.lattice[1] + k*self.lattice[2]
 					ind = ind + 1
 		# Now pare that down where the images are too far from the edges of the lattice.
+		#print("Natom:", newAtoms.shape,newCoords.shape)
 		return newAtoms, newCoords
 		Atoms = np.zeros(nimages*natom,dtype=np.uint8)
 		Coords = np.zeros((nimages*natom,3))
@@ -414,7 +441,8 @@ class PeriodicForce:
 		# Now take the derivative by central differences
 		x2gi = np.gradient(ni / (12.56637*density),dx)
 		# finally divide by x**2 and moving average it.
-		gi = x2gi/(ri*ri)
+		gi = np.zeros(ri.shape)
+		gi[1:] = x2gi[1:]/(ri[1:]*ri[1:])
 		gi[0] = 0.0
 		gi = MovingAverage(gi,2)
 		return gi

@@ -2672,7 +2672,6 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_pl] + [self.Angt_pl] + [self.Reep_pl] + [self.natom_pl] + [self.AddEcc_pl], batch_data)}
 		return feed_dict
 
-
 	def train_step(self, step):
 		"""
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
@@ -6118,7 +6117,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 				self.summary_writer.add_run_metadata(self.run_metadata, "init", global_step=None)
 			self.sess.graph.finalize()
 
-
 	def energy_inference(self, inp, indexs,  cc_energy, xyzs, Zs, eles, c6, R_vdw, Reep, EE_cuton, EE_cutoff, keep_prob):
 		"""
 		Builds a Behler-Parinello graph
@@ -6206,7 +6204,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		print ("Ebp_atom:", Ebp_atom)
 		print ("energy_porb:", energy_prob, np.savetxt("energy_prob_H.dat",energy_prob[0]), np.savetxt("energy_prob_O.dat",energy_prob[1]))
 		return Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient
-
 
 	def EvalPrepare(self,  continue_training =False):
 		"""

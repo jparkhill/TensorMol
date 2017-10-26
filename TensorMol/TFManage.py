@@ -1,5 +1,7 @@
 """
  Either trains, tests, evaluates or provides an interface for optimization.
+
+ TODO: Unify evaluation interface, clean up TensorMolData etc. 
 """
 from __future__ import absolute_import
 from __future__ import print_function
