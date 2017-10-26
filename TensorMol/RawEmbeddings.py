@@ -2433,13 +2433,13 @@ def matrix_power2(matrix, power):
 def gaussian_overlap(gaussian_params):
 	r_nought = gaussian_params[:,0]
 	sigma = gaussian_params[:,1]
-	scaling_factor = tf.sqrt(np.pi / 2)
+	scaling_factor = tf.cast(tf.sqrt(np.pi / 2), data_precision)
 	exponential_factor = tf.exp(-tf.square(tf.expand_dims(r_nought, axis=0) - tf.expand_dims(r_nought, axis=1))
 	/ (2.0 * (tf.square(tf.expand_dims(sigma, axis=0)) + tf.square(tf.expand_dims(sigma, axis=1)))))
 	root_inverse_sigma_sum = tf.sqrt((1.0 / tf.expand_dims(tf.square(sigma), axis=0)) + (1.0 / tf.expand_dims(tf.square(sigma), axis=1)))
 	erf_numerator = (tf.expand_dims(r_nought, axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
 				+ tf.expand_dims(r_nought, axis=1) * tf.expand_dims(tf.square(sigma), axis=0))
-	erf_denominator = (tf.sqrt(2.0) * tf.expand_dims(tf.square(sigma), axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
+	erf_denominator = (tf.sqrt(tf.cast(2.0, data_precision)) * tf.expand_dims(tf.square(sigma), axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
 				* root_inverse_sigma_sum)
 	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
