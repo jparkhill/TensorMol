@@ -366,7 +366,7 @@ class VelocityVerlet:
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
 
-			if (step%1==0 and PARAMS["MDLogTrajectory"]):
+			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
