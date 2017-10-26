@@ -1686,7 +1686,7 @@ def BoxAndDensity():
 		m = s.mols[-1]
 		m.properties["Lattice"] = np.eye(3)*12.42867
 		# try a huge supercell
-		if 0:
+		if 1:
 			ntess = 2
 			latv = np.eye(3)*12.42867
 			# Start with a water in a ten angstrom box.
@@ -1881,11 +1881,8 @@ def TestNeb():
 #TrainPrepare()
 #Train()
 #Eval()
-<<<<<<< HEAD
 BoxAndDensity()
 #TestSmoothIR()
-=======
 #BoxAndDensity()
-TestSmoothIR()
->>>>>>> 5a3dbeba520156f5eff617410ca21e530c4d5a4d
+#TestSmoothIR()
 #TestNeb()
