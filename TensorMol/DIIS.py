@@ -4,7 +4,7 @@ from .Sets import *
 from .TFManage import *
 
 class DIIS:
-	def __init__(self):
+	def __init__(self, ForceAndEnergy_, x0_=None):
 		"""
 		Simplest Possible DIIS
 		"""
@@ -15,8 +15,19 @@ class DIIS:
 		self.Rs = None
 		self.M = np.zeros((self.m_max+1,self.m_max+1))
 		self.S = np.zeros((self.m_max+1,self.m_max+1)) # Overlap matrix.
+		self.EForce = ForceAndEnergy_
 		return
+	def __call__(self, new_vec_):
+		"""
+		Iterate BFGS
 
+		Args:
+			new_vec_: Point at which to minimize gradients
+		Returns:
+			Next point, energy, and gradient.
+		"""
+		e,g = self.EForce(new_vec_)
+		return self.NextStep(new_vec_, g), e, g
 	def NextStep(self, new_vec_, new_residual_):
 		if (self.n_now == 0):
 			self.v_shp = new_vec_.shape
@@ -40,14 +51,11 @@ class DIIS:
 				self.S[i,self.n_now] = np.dot(self.Rs[i].flatten(),new_residual_.flatten())
 				self.S[self.n_now,i] = self.S[i,self.n_now]
 			self.S[self.n_now,self.n_now] = np.dot(new_residual_.flatten(),new_residual_.flatten())
-
 		if (self.n_now<2):
 			return new_vec_ + 0.02*new_residual_
-
 		#print "S", self.S[:self.n_now,:self.n_now]
 		#print "Vs: ", self.Vs
 		#print "Rs: ", self.Rs
-
 		# Build the DIIS matrix which has dimension n_now + 1
 		self.M *= 0.0
 		scale_factor = 1.0#/self.S[0,0]
@@ -57,13 +65,10 @@ class DIIS:
 		self.M[self.n_now,:] = -1.0
 		self.M[:,self.n_now] = -1.0
 		self.M[self.n_now,self.n_now] = 0.0
-
 		#print self.M[:self.n_now+1,:self.n_now+1]
-
 		# Solve the DIIS problem.
 		tmp = np.zeros(self.n_now+1)
 		tmp[self.n_now]=-1.0
-
 		U, s, V = np.linalg.svd(self.M[:self.n_now+1,:self.n_now+1]) #M=u * np.diag(s) * v,
 		# Filter small values.
 		#print "s", s
@@ -77,7 +82,6 @@ class DIIS:
 		print("DIIS COEFFs: ", next_coeffs)
 		#next_coeffs = np.dot(np.linalg.inv(self.M[:self.n_now+1,:self.n_now+1]),tmp)
 		#print next_coeffs.shape
-
 		tore = np.zeros(new_vec_.shape)
 		for i in range(self.n_now):
 			tore += self.Vs[i]*next_coeffs[i]

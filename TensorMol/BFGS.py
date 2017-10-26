@@ -69,13 +69,14 @@ class BFGS(SteepestDescent):
 			self.F_Hist[-1] = new_residual_.copy()
 		# Quasi Newton L-BFGS global step.
 		q = new_residual_.copy()
+		a = np.zeros(min(self.m_max,self.step))
 		for i in range(min(self.m_max,self.step)-1, 0, -1):
 			s = self.R_Hist[i] - self.R_Hist[i-1]
 			y = self.F_Hist[i] - self.F_Hist[i-1]
 			rho = 1.0/np.sum(y*s)
-			a = rho * np.sum(s*q)
+			a[i] = rho * np.sum(s*q)
 			#print "a ",a
-			q -= a*y
+			q -= a[i]*y
 		if self.step < 1:
 			H=1.0
 		else:
@@ -83,18 +84,19 @@ class BFGS(SteepestDescent):
 			v1 = (self.R_Hist[num] - self.R_Hist[num-1])
 			v2 = (self.F_Hist[num] - self.F_Hist[num-1])
 			H = np.sum(v1*v2)/np.sum(v2*v2)
-			#print "H:", H
+			if (abs(H)<0.001):  # Switch to SD.
+				self.step += 1
+				return -0.001*new_residual_
 		z = H*q
-		for i in range (1,min(self.m_max,self.step)):
+		for i in range(1,min(self.m_max,self.step)):
 			s = (self.R_Hist[i] - self.R_Hist[i-1])
 			y = (self.F_Hist[i] - self.F_Hist[i-1])
 			rho = 1.0/np.sum(y*s)
-			a=rho*np.sum(s*q)
 			beta = rho*np.sum(y*z)
 			#print "a-b: ", (a-beta)
-			z += s*(a-beta)
+			z += s*(a[i]-beta)
 		self.step += 1
-		return z
+		return -1.0*z
 	def __call__(self, new_vec_):
 		"""
 		Iterate BFGS
@@ -106,7 +108,7 @@ class BFGS(SteepestDescent):
 		"""
 		e,g = self.EForce(new_vec_)
 		z = self.BFGSstep(new_vec_, g)
-		return new_vec_ - 0.005*z, e, g
+		return new_vec_ + 0.005*z, e, g
 
 class BFGS_WithLinesearch(BFGS):
 	def __init__(self, ForceAndEnergy_, x0_ ):
@@ -148,7 +150,7 @@ class BFGS_WithLinesearch(BFGS):
 				#print fa,fc,fd,fb
 				#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
 				print("Line Search: Overstep")
-				if (self.alpha > 0.00001):
+				if (self.alpha > 0.0001):
 					self.alpha /= 1.71
 				else:
 					print("Keeping step")

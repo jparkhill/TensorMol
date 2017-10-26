@@ -1,6 +1,7 @@
 """
 Changes that need to be made:
  - do the conservative minimization of nabla L
+ - implement Climbing image NEB
 """
 
 from __future__ import absolute_import
@@ -10,6 +11,7 @@ from .TFManage import *
 from .DIIS import *
 from .QuasiNewtonTools import *
 from .BFGS import *
+from .DIIS import *
 import random
 import time
 
@@ -45,6 +47,8 @@ class NudgedElasticBand:
 			self.Solver = SteepestDescent(self.WrappedEForce,self.beads)
 		elif (PARAMS["NebSolver"]=="BFGS"):
 			self.Solver = BFGS_WithLinesearch(self.WrappedEForce,self.beads)
+		elif (PARAMS["NebSolver"]=="DIIS"):
+			self.Solver = DIIS(self.WrappedEForce, self.beads)
 		elif (PARAMS["NebSolver"]=="CG"):
 			self.Solver = ConjGradient(self.WrappedEForce,self.beads)
 		else:
@@ -122,12 +126,12 @@ class NudgedElasticBand:
 				self.Es[i], F[i] = self.NebForce(beads_,i,DoForce)
 				F[i] = RemoveInvariantForce(bead, F[i], self.atoms)
 				F[i] /= JOULEPERHARTREE
-			TE = np.sum(self.Es)#+self.SpringEnergy(beads_)
+			TE = np.sum(self.Es)+self.SpringEnergy(beads_)
 			return TE,F
 		else:
 			for i,bead in enumerate(beads_):
 				self.Es[i] = self.NebForce(beads_,i,DoForce)
-			TE = np.sum(self.Es)#+self.SpringEnergy(beads_)
+			TE = np.sum(self.Es)+self.SpringEnergy(beads_)
 			return TE
 	def IntegrateEnergy(self):
 		"""
@@ -172,7 +176,7 @@ class NudgedElasticBand:
 		return
 	def Opt(self, filename="Neb",Debug=False):
 		"""
-		Optimize the nudged elastic band via conjugate gradients and line search.
+		Optimize the nudged elastic band using the solver that has been selected.
 		"""
 		# Sweeps one at a time
 		step=0
