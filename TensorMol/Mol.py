@@ -21,6 +21,7 @@ class Mol:
 		self.ecoords = None # equilibrium coordinates.
 		self.DistMatrix = None # a list of equilbrium distances, for GO-models.
 		return
+
 	def ToFragSet(self,frags):
 		"""
 		Divides this molecule into a set of molecules
@@ -35,18 +36,25 @@ class Mol:
 		for frag in frags:
 			mset.mols.append(Mol(self.atoms[frags],self.coords[frags]))
 		return mset
+
 	def AtomTypes(self):
 		return np.unique(self.atoms)
+
 	def Num_of_Heavy_Atom(self):
 		return len([1 for i in self.atoms if i!=1])
+
 	def NEles(self):
 		return len(self.AtomTypes())
+
 	def IsIsomer(self,other):
 		return np.array_equals(np.sort(self.atoms),np.sort(other.atoms))
+
 	def NAtoms(self):
 		return self.atoms.shape[0]
+
 	def NumOfAtomsE(self, e):
 		return sum( [1 if at==e else 0 for at in self.atoms ] )
+
 	def CalculateAtomization(self):
 		if ("roomT_H" in self.properties):
 			AE = self.properties["roomT_H"]
@@ -63,6 +71,7 @@ class Mol:
 		else:
 			raise Exception("Missing data... ")
 		return
+
 	def Calculate_vdw(self):
 		c = 0.38088
 		self.vdw = 0.0

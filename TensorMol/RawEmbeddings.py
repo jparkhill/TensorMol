@@ -2747,18 +2747,18 @@ def tf_spherical_harmonics(delta_xyzs, distance_tensor, max_l):
 		print("Spherical Harmonics only implemented up to l=8. Choose a lower order")
 	return harmonics
 
-def tf_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_params, atomic_embed_factors, l_max, orthogonalize=False):
+def tf_gaussian_spherical_harmonics_element(xyzs, Zs, element, gaussian_params, atomic_embed_factors, l_max, labels=None, orthogonalize=False):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 
 	Args:
 		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
 		Zs (tf.int32): NMol x MaxNAtoms atomic number tensor
-		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
 		element (int): element to return embedding/labels for
 		gaussian_params (tf.float): NGaussians x 2 tensor of gaussian parameters
 		atomic_embed_factors (tf.float): MaxElementNumber tensor of scaling factors for elements
 		l_max (tf.int32): Scalar for the highest order spherical harmonics to use (needs implemented)
+		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
 
 	Returns:
 		embedding (tf.float): atom embeddings for element
@@ -2769,13 +2769,16 @@ def tf_gaussian_spherical_harmonics_element(xyzs, Zs, labels, element, gaussian_
 	num_batch_elements = tf.shape(element_indices)[0]
 	element_delta_xyzs = tf.gather_nd(delta_xyzs, element_indices)
 	element_Zs = tf.gather(Zs, element_indices[:,0])
-	element_labels = tf.gather_nd(labels, element_indices)
 	distance_tensor = tf.norm(element_delta_xyzs+1.e-16,axis=2)
 	atom_scaled_gaussians, min_eigenval = tf_gaussians(tf.expand_dims(distance_tensor, axis=-1), element_Zs, gaussian_params, atomic_embed_factors, orthogonalize)
 	spherical_harmonics = tf_spherical_harmonics(element_delta_xyzs, distance_tensor, l_max)
 	element_embedding = tf.reshape(tf.einsum('jkg,jkl->jgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_batch_elements, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
-	return element_embedding, element_labels, element_indices, min_eigenval
+	if labels != None:
+		element_labels = tf.gather_nd(labels, element_indices)
+		return element_embedding, element_labels, element_indices, min_eigenval
+	else:
+		return element_embedding, element_indices, min_eigenval
 
 def tf_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False):
 	"""

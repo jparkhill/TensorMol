@@ -270,11 +270,11 @@ class Instance:
 		self.__dict__.update(tmp)
 		f.close()
 		chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
-		if (len(chkfiles)>0):
-			self.chk_file = chkfiles[0]
-		else:
-			LOGGER.error("Network not found... Traindir:"+self.train_dir)
-			LOGGER.error("Traindir contents: "+str(os.listdir(self.train_dir)))
+		# if (len(chkfiles)>0):
+		# 	self.chk_file = chkfiles[0]
+		# else:
+		# 	LOGGER.error("Network not found... Traindir:"+self.train_dir)
+		# 	LOGGER.error("Traindir contents: "+str(os.listdir(self.train_dir)))
 		return
 
 	def _variable_with_weight_decay(self, var_name, var_shape, var_stddev, var_wd):
@@ -747,14 +747,7 @@ class Instance_fc_sqdiff(Instance):
 
 class Instance_fc_sqdiff_GauSH_direct(Instance):
 	def __init__(self, TData=None, elements=None, trainable=True, name=None):
-		if name != None:
-			self.path = './networks/'
-			self.name = name
-			self.Load()
 		Instance.__init__(self, TData, elements, name)
-		self.NetType = "fc_sqdiff_GauSH_direct"
-		self.name = self.TData.name+"_"+self.NetType+"_"+str(self.element)+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
-		self.train_dir = './networks/'+self.name
 		self.number_radial = PARAMS["SH_NRAD"]
 		self.l_max = PARAMS["SH_LMAX"]
 		self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
@@ -762,6 +755,22 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.MaxNAtoms = self.TData.MaxNAtoms
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
+		TensorMol.RawEmbeddings.data_precision = self.tf_prec
+		if name != None:
+			self.path = './networks/'
+			self.name = name
+			self.Load()
+			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
+			self.atomic_embed_factors = PARAMS["ANES"]
+			self.MaxNAtoms = self.TData.MaxNAtoms
+			self.inshape =  self.number_radial * (self.l_max + 1) ** 2
+			self.outshape = 3
+			self.AssignActivation()
+
+			return
+		self.NetType = "fc_sqdiff_GauSH_direct"
+		self.name = self.TData.name+"_"+self.NetType+"_"+str(self.element)+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.train_dir = './networks/'+self.name
 		self.trainable = trainable
 		self.orthogonalize = True
 		if (self.trainable):
@@ -804,8 +813,8 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
 			rotated_xyzs, rotated_labels = tf_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
-			self.embedding, self.labels, _, min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, rotated_labels,
-							element, self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
+			self.embedding, self.labels, _, min_eigenval = tf_gaussian_spherical_harmonics_element(rotated_xyzs, self.Zs_pl, element,
+					self.gaussian_params, self.atomic_embed_factors, self.l_max, rotated_labels, orthogonalize=self.orthogonalize)
 			self.norm_embedding = (self.embedding - inmean) / instd
 			self.norm_labels = (self.labels - outmean) / outstd
 			self.norm_output = self.inference(self.norm_embedding)
@@ -822,7 +831,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.sess.run(init)
-			self.summary_writer =  tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			if self.profiling:
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
@@ -1020,6 +1029,84 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			tmp_output.resize((self.batch_size,  batch_data[1].shape[1]))
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
+
+	def evaluate_prepare(self):
+		""" Builds the graphs by calling inference """
+		with tf.Graph().as_default():
+			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
+			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]))
+			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
+			element = tf.constant(self.element, dtype=tf.int32)
+			inmean = tf.constant(self.inmean, dtype=self.tf_prec)
+			instd = tf.constant(self.instd, dtype=self.tf_prec)
+			outmean = tf.constant(self.outmean, dtype=self.tf_prec)
+			outstd = tf.constant(self.outstd, dtype=self.tf_prec)
+			# rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
+			# 		np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
+			# 		tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
+			# rotated_xyzs, rotated_labels = tf_random_rotate(self.xyzs_pl, rotation_params, self.labels_pl)
+			self.embedding, self.atom_indices, min_eigenval = tf_gaussian_spherical_harmonics_element(self.xyzs_pl, self.Zs_pl, element,
+					self.gaussian_params, self.atomic_embed_factors, self.l_max, orthogonalize=self.orthogonalize)
+			self.norm_embedding = (self.embedding - inmean) / instd
+			# self.norm_labels = (self.labels - outmean) / outstd
+			self.norm_output = self.inference(self.norm_embedding)
+			self.output = (self.norm_output * outstd) + outmean
+			self.n_atoms_batch = tf.shape(self.output)[0]
+			# self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
+			# barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9, tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1), tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
+			# truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0), barrier_function, tf.zeros_like(barrier_function)))
+			# gaussian_overlap_constraint = tf.square(0.001 / min_eigenval)
+			# loss_and_constraint = self.total_loss + truncated_barrier_function + gaussian_overlap_constraint
+			# self.train_op = self.training(loss_and_constraint, self.learning_rate, self.momentum)
+			self.summary_op = tf.summary.merge_all()
+			# init = tf.global_variables_initializer()
+			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
+			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+			self.saver.restore(self.sess, self.chk_file)
+			# self.sess.run(init)
+			self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+			# if self.profiling:
+			# 	self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+			# 	self.run_metadata = tf.RunMetadata()
+			return
+
+	def evaluate_fill_feed_dict(self, xyzs, Zs):
+		"""
+		Fill the tensorflow feed dictionary.
+
+		Args:
+			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
+			and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
+
+		Returns:
+			Filled feed dictionary.
+		"""
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
+		return feed_dict
+
+	def evaluate(self, xyzs, Zs):
+		"""
+		Takes coordinates and atomic numbers from a manager and feeds them into the network
+		for evaluation of the forces
+
+		Args:
+			xyzs (np.float): numpy array of atomic coordinates
+			Zs (np.int32): numpy array of atomic numbers
+		"""
+		if not self.sess:
+			print("loading the session..")
+			self.chk_file = self.FindLastCheckpoint()
+			self.evaluate_prepare()
+		new_xyzs = np.zeros((1, self.MaxNAtoms,3))
+		new_xyzs[0,:np.shape(xyzs)[0]] = xyzs
+		new_Zs = np.zeros((1, self.MaxNAtoms), dtype=np.int32)
+		new_Zs[0,:np.shape(Zs)[0]] = Zs
+		feed_dict=self.evaluate_fill_feed_dict(new_xyzs, new_Zs)
+		forces, atom_indices = self.sess.run([self.output, self.atom_indices], feed_dict=feed_dict)
+		return forces, atom_indices
+
 
 class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 	def __init__(self, TData_, elements_ , Trainable_ = True, Name_ = None):
