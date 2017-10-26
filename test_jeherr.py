@@ -103,23 +103,6 @@ def TestIpecac(dig_ = "GauSH"):
 	# bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 
-def TrainForces(set_ = "SmallMols", dig_ = "GauSH", BuildTrain_=True, numrot_=None):
-	if (BuildTrain_):
-		a=MSet(set_)
-		a.Load()
-		if numrot_ != None:
-			a = a.RotatedClone(numrot_)
-			a.Save(a.name+"_"+str(numrot_)+"rot")
-		TreatedAtoms = a.AtomTypes()
-		print "Number of Mols: ", len(a.mols)
-		d = Digester(TreatedAtoms, name_=dig_, OType_="Force")
-		tset = TensorData(a,d)
-		tset.BuildTrainMolwise(set_,TreatedAtoms)
-	else:
-		tset = TensorData(None,None,set_+"_"+dig_)
-	manager=TFManage("",tset,False,"fc_sqdiff")
-	manager.TrainElement(1)
-
 def OptTFForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
 	a=MSet(set_)
 	a.ReadXYZ()
@@ -180,21 +163,6 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	neb = NudgedElasticBand(tfm, m0, m1)
 	neb.OptNeb()
 	return
-
-def Brute_LJParams():
-	a=MSet("SmallMols_rand")
-	a.Load()
-	TreatedAtoms = a.AtomTypes()
-	d = MolDigester(TreatedAtoms, name_="CZ", OType_ ="Energy")
-	tset = TensorMolData(a,d)
-	ins = MolInstance_DirectForce_tmp(tset,None,False,"Harm")
-	ins.train_prepare()
-	import scipy.optimize
-	rranges = (slice(-1000, 1000, 10), slice(0.5, 6, 0.25))
-	resbrute = scipy.optimize.brute(ins.LJFrc, rranges, full_output=True, finish=scipy.optimize.fmin)
-	print resbrute[0]
-	print resbrute[1]
-	# print ins.LJFrc(p)
 
 def TestForces():
 	a=MSet("chemspid")
@@ -578,6 +546,19 @@ def train_energy_symm_func():
 	tensor_data = TensorMolDataDirect(a, "atomization", "symmetry_functions")
 	manager = TFMolManageDirect(tensor_data)
 
+def geo_opt_tf_forces(mset, manager_name, mol_index):
+	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
+								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
+	PARAMS["SH_NRAD"] = 14
+	PARAMS["SH_LMAX"] = 4
+	a=MSet(mset)
+	a.Load()
+	mol=a.mols[mol_index]
+	manager=TFManage(Name_=manager_name,Train_=False,NetType_="fc_sqdiff_GauSH_direct")
+	print manager.evaluate_mol_forces_direct(mol)
+	print mol.properties["forces"]
+
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
@@ -587,11 +568,8 @@ def train_energy_symm_func():
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
-# TrainForces(set_ = "SmallMols", BuildTrain_=False, numrot_=1)
 # OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
-# Brute_LJParams()
-# QueueTrainForces(trainset_ = "SmallMols_train", testset_ = "SmallMols_test", BuildTrain_=False, numrot_=None)
 # TestForces()
 # MakeTestSet()
 # BIMNN_NEq()
@@ -604,11 +582,12 @@ def train_energy_symm_func():
 # TestTFSym()
 # train_energy_symm_func_channel()
 # test_gaussian_overlap()
-train_forces_rotation_constraint("SmallMols")
+# train_forces_rotation_constraint("SmallMols")
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
+geo_opt_tf_forces("nicotine_full", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 
 # a=MSet("SmallMols_rand")
 # a.Load()

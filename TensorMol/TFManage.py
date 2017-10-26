@@ -1,7 +1,7 @@
 """
  Either trains, tests, evaluates or provides an interface for optimization.
 
- TODO: Unify evaluation interface, clean up TensorMolData etc. 
+ TODO: Unify evaluation interface, clean up TensorMolData etc.
 """
 from __future__ import absolute_import
 from __future__ import print_function
@@ -127,7 +127,7 @@ class TFManage:
 			elif (self.NetType == "3conv_sqdiff"):
 				self.Instances[self.TrainedAtoms[i]] = Instance_3dconv_sqdiff(None, self.TrainedAtoms[i], self.TrainedNetworks[i])
 			elif (self.NetType == "fc_sqdiff_GauSH_direct"):
-				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff_GauSH_direct(name=self.TrainedNetworks[i])
+				self.Instances[self.TrainedAtoms[i]] = Instance_fc_sqdiff_GauSH_direct(name=self.TrainedNetworks[i], trainable=False)
 			else:
 				raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.
@@ -354,7 +354,7 @@ class TFManage:
 		print(("logP:", logP))
 		return logP
 
-	def append_instances(manager):
+	def append_instances(self, manager):
 		"""
 		Appends the instances from another manager into this manager if their isn't already
 		a corresponding instance for the same element. Useful for distributing training of
@@ -369,3 +369,23 @@ class TFManage:
 				self.TrainedAtoms.append(atom)
 				self.TrainedNetworks.append(manager2.TrainedNetworks[i])
 		self.Save()
+
+	def evaluate_mol_forces_direct(self, mol):
+		"""
+		Evaluates the forces on a molecule from a network with direct embedding
+
+		Args:
+			mol (TensorMol.Mol): a TensorMol Mol object with n atoms and nx3 coordinates
+
+		Returns:
+			forces (np.float): an nx3 numpy array of atomic forces
+		"""
+		atom_types = mol.AtomTypes()
+		for element in atom_types:
+			if self.Instances[element] == None:
+				raise Exception("Molecule contains an element which manager has no network for")
+		forces = np.zeros((mol.NAtoms(), 3))
+		for element in atom_types:
+			element_forces, element_indices = self.Instances[element].evaluate(mol.coords, mol.atoms)
+			forces[element_indices[:,1]] = element_forces
+		return forces
