@@ -57,7 +57,7 @@ class GeomOptimizer:
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print("Orig Coords", m.coords)
+		print("Orig Mol:\n", m)
 		CG = ConjGradient(self.WrappedEForce, m.coords)
 		while( step < self.max_opt_step and rmsgrad > self.thresh and (rmsdisp > 0.000001 or step<5) ):
 			prev_m = Mol(m.atoms, m.coords)

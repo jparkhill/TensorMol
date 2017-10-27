@@ -307,6 +307,19 @@ class Mol:
 		if ("energy" in self.properties):
 			self.CalculateAtomization()
 		return
+	def __str__(self,wprop=False):
+		lines =""
+		natom = self.atoms.shape[0]
+		if (wprop):
+			lines = lines+(str(natom)+"\nComment: "+self.PropertyString()+"\n")
+		else:
+			lines = lines+(str(natom)+"\nComment: \n")
+		for i in range (0, natom):
+			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
+			lines = lines+(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+		return lines
+	def __repr__(self):
+		return self.__str__()
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a", wprop = False):
 		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".xyz")):
 			try:
@@ -315,14 +328,8 @@ class Mol:
 				if exc.errno != errno.EEXIST:
 					raise
 		with open(fpath+"/"+fname+".xyz", mode) as f:
-			natom = self.atoms.shape[0]
-			if (wprop):
-				f.write(str(natom)+"\nComment: "+self.PropertyString()+"\n")
-			else:
-				f.write(str(natom)+"\nComment: \n")
-			for i in range (0, natom):
-				atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
-				f.write(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+			for line in self.__str__(wprop).split("\n"):
+				f.write(line+"\n")
 	def WriteSmiles(self, fpath=".", fname="gdb9_smiles", mode = "a"):
 		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".dat")):
 			try:
@@ -449,10 +456,12 @@ class Mol:
 	def AlignAtoms(self, m):
 		"""
 		Align the geometries and atom order of myself and another molecule.
+		This alters both molecules.
 		"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
 		if (self.Center()-m.Center()).all() != 0:
 			m.coords += self.Center() - m.Center()
+
 		self.SortAtoms()
 		m.SortAtoms()
 		# Greedy assignment
@@ -506,7 +515,7 @@ class Mol:
 		m.coords=tmp_coords.copy()
 		print("best",tmp_coords)
 		print("self",self.coords)
-		self.WriteInterpolation(Mol(self.atoms,tmp_coords),9999)
+		self.WriteInterpolation(Mol(self.atoms,tmp_coords),100)
 		return
 
 # ---------------------------------------------------------------
