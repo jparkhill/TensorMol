@@ -51,11 +51,14 @@ def Eval():
 
 	def GetEnergyForceForMol(m):
 		def EnAndForce(x_, DoForce=True):
-			m.coords = x_
+			tmpm = Mol(m.atoms,x_)
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
 			energy = Etotal[0]
 			force = gradient[0]
-			return energy, force
+			if DoForce:
+				return energy, force
+			else:
+				return energy
 		return EnAndForce
 
 	if 0:
@@ -69,11 +72,8 @@ def Eval():
 			a.mols[i].WriteXYZfile("./results/", "OptMol"+str(i))
 
 	# Achieve element alignment.
-	a.mols[0].AlignAtoms(a.mols[1])
-	a.mols[1].AlignAtoms(a.mols[2])
+	a.mols[0], a.mols[1] = a.mols[0].AlignAtoms(a.mols[1])
 	a.mols[0].WriteXYZfile("./results/", "Aligned"+str(0))
-	a.mols[1].WriteXYZfile("./results/", "Aligned"+str(1))
-	a.mols[2].WriteXYZfile("./results/", "Aligned"+str(2))
 
 	# Finally do the NEB. between each.
 	PARAMS["OptMaxCycles"]=200
@@ -82,6 +82,10 @@ def Eval():
 	F = GetEnergyForceForMol(a.mols[0])
 	neb = NudgedElasticBand(F,a.mols[0],a.mols[1])
 	Beads = neb.Opt("NebStep1")
+
+	a.mols[1], a.mols[2] = a.mols[1].AlignAtoms(a.mols[2])
+	a.mols[1].WriteXYZfile("./results/", "Aligned"+str(1))
+	a.mols[2].WriteXYZfile("./results/", "Aligned"+str(2))
 	neb2 = NudgedElasticBand(F,a.mols[1],a.mols[2])
 	Beads2 = neb2.Opt("NebStep2")
 

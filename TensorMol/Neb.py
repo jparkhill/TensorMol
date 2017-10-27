@@ -163,7 +163,7 @@ class NudgedElasticBand:
 			m.properties["Energy"] = Es[i]
 			m.properties["Force"] = Fint(l)
 			m.WriteXYZfile("./results/", "NebHQTraj")
-	def WriteTrajectory(self):
+	def WriteTrajectory(self,nm_):
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.WriteXYZfile("./results/", "Bead"+str(i))
@@ -172,7 +172,7 @@ class NudgedElasticBand:
 			m.properties["bead"] = i
 			m.properties["Energy"] = self.Es[i]
 			m.properties["NormNebForce"]=np.linalg.norm(self.Fs[i])
-			m.WriteXYZfile("./results/", "NebTraj")
+			m.WriteXYZfile("./results/", nm_+"Traj")
 		return
 	def Opt(self, filename="Neb",Debug=False):
 		"""
@@ -201,7 +201,7 @@ class NudgedElasticBand:
 				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
 			if (step%10==0):
-				self.WriteTrajectory()
+				self.WriteTrajectory(filename)
 			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.sum(PES[step]), np.sqrt(np.mean(self.Fs*self.Fs)), np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
 			step+=1
 		#self.HighQualityPES()

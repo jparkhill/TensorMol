@@ -455,8 +455,8 @@ class Mol:
 			self.coords[self.ElementBounds[e][0]:self.ElementBounds[e][1],:] = blk[inds]
 		return
 
-	def WriteInterpolation(self,b,n=0):
-		for i in range(10): # Check the interpolation.
+	def WriteInterpolation(self,b,n=10):
+		for i in range(n): # Check the interpolation.
 			m=Mol(self.atoms,self.coords*((9.-i)/9.)+b.coords*((i)/9.))
 			m.WriteXYZfile(PARAMS["results_dir"], "Interp"+str(n))
 
@@ -492,9 +492,9 @@ class Mol:
 		m.Rotate([1.,0.,0.],BestTriple[0])
 		m.Rotate([0.,1.,0.],BestTriple[1])
 		m.Rotate([0.,0.,1.],BestTriple[2])
-		print("After centering and Rotation ---- ")
-		print("Self \n"+self.__str__())
-		print("Other \n"+m.__str__())
+		#print("After centering and Rotation ---- ")
+		#print("Self \n"+self.__str__())
+		#print("Other \n"+m.__str__())
 		self.SortAtoms()
 		m.SortAtoms()
 		# Greedy assignment
@@ -546,10 +546,10 @@ class Mol:
 				#print(i)
 			k+=1
 		m.coords=tmp_coords.copy()
-		print("best",tmp_coords)
-		print("self",self.coords)
-		self.WriteInterpolation(Mol(self.atoms,tmp_coords),100)
-		return
+		#print("best",tmp_coords)
+		#print("self",self.coords)
+		self.WriteInterpolation(Mol(self.atoms,tmp_coords),10)
+		return Mol(self.atoms,self.coords), Mol(self.atoms,tmp_coords)
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
