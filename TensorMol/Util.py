@@ -124,6 +124,7 @@ def TMTiming(nm_="Obs"):
 
 @atexit.register
 def exitTensorMol():
+	PrintTMTIMER()
 	LOGGER.info("~ Total Time : %0.5f s",time.time()-TMSTARTTIME)
 	LOGGER.info("~ Adios Homeshake ~")
 

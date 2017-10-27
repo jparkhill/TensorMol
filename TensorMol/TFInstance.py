@@ -1030,12 +1030,13 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
 
+	@TMTiming("DirectForceEvaluatePrepare")
 	def evaluate_prepare(self):
 		""" Builds the graphs by calling inference """
 		with tf.Graph().as_default():
-			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
-			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]))
-			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
+			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, 465, 3]))
+			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, 465]))
+			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, 465, 3]))
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
 			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
 			element = tf.constant(self.element, dtype=tf.int32)
@@ -1086,6 +1087,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
 		return feed_dict
 
+	@TMTiming("DirectForceEvaluate")
 	def evaluate(self, xyzs, Zs):
 		"""
 		Takes coordinates and atomic numbers from a manager and feeds them into the network
@@ -1099,9 +1101,9 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			print("loading the session..")
 			self.chk_file = self.FindLastCheckpoint()
 			self.evaluate_prepare()
-		new_xyzs = np.zeros((1, self.MaxNAtoms,3))
+		new_xyzs = np.zeros((1, 465,3))
 		new_xyzs[0,:np.shape(xyzs)[0]] = xyzs
-		new_Zs = np.zeros((1, self.MaxNAtoms), dtype=np.int32)
+		new_Zs = np.zeros((1, 465), dtype=np.int32)
 		new_Zs[0,:np.shape(Zs)[0]] = Zs
 		feed_dict=self.evaluate_fill_feed_dict(new_xyzs, new_Zs)
 		forces, atom_indices = self.sess.run([self.output, self.atom_indices], feed_dict=feed_dict)
