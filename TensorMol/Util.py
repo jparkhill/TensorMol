@@ -103,11 +103,11 @@ print("--------------------------")
 TMTIMER = {}
 TMSTARTTIME = time.time()
 def PrintTMTIMER():
-	print("Accumulated Time Information....")
-	print("Category   |||   Time Per Call   |||   Total Elapsed     ")
+	LOGGER.info("=======    Accumulated Time Information    =======")
+	LOGGER.info("Category   |||   Time Per Call   |||   Total Elapsed     ")
 	for key in TMTIMER.keys():
 		if (TMTIMER[key][1]>0):
-			print(key," ||| ",TMTIMER[key][0]/(TMTIMER[key][1])," ||| ",TMTIMER[key][0])
+			LOGGER.info(key+" ||| %0.5f ||| %0.5f ",TMTIMER[key][0]/(TMTIMER[key][1]),TMTIMER[key][0])
 def TMTiming(nm_="Obs"):
 	if (not nm_ in TMTIMER.keys()):
 		TMTIMER[nm_] = [0.,0]
@@ -118,14 +118,14 @@ def TMTiming(nm_="Obs"):
 			TMTIMER[nm_][0] += time.time()-t0
 			TMTIMER[nm_][1] += 1
 			return output
-		LOGGER.debug(" TMTimed "+nm_+str(TMTIMER[nm_]))
+		LOGGER.debug("TMTimed "+nm_+str(TMTIMER[nm_]))
 		return wf
 	return wrap
 
 @atexit.register
 def exitTensorMol():
 	PrintTMTIMER()
-	LOGGER.info("~ Total Time : %0.5f s",time.time()-TMSTARTTIME)
+	LOGGER.info("Total Time : %0.5f s",time.time()-TMSTARTTIME)
 	LOGGER.info("~ Adios Homeshake ~")
 
 #

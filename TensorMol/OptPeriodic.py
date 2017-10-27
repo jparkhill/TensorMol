@@ -39,7 +39,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
-		print("Orig Coords", m.coords)
+		print("Orig Mol:\n", m)
 		def WrappedEForce(x_,DoForce=True):
 			if (DoForce):
 				energy, frc = self.EnergyAndForce(x_, DoForce)
