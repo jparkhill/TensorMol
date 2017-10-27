@@ -116,7 +116,7 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 		"""
 		Propagate VelocityVerlet
 		"""
-		print ("beigin propogation")
+		print ("begin Periodic VelocityVerlet")
 		step = 0
 		self.md_log = np.zeros((self.maxstep, 7)) # time Dipoles Energy
 		while(step < self.maxstep):
@@ -133,6 +133,8 @@ class PeriodicVelocityVerlet(VelocityVerlet):
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
 
+			if (PARAMS["PrintTMTimer"]):
+				PrintTMTIMER()
 			if (step%1==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):

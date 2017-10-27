@@ -1687,12 +1687,25 @@ def BoxAndDensity():
 		m.properties["Lattice"] = np.eye(3)*12.42867
 		# try a huge supercell
 		if 1:
-			ntess = 2
+			ntess = 5
 			latv = np.eye(3)*12.42867
 			# Start with a water in a ten angstrom box.
 			lat = Lattice(latv)
 			m = Mol(*lat.TessNTimes(m.atoms,m.coords,ntess))
-			m.properties["Lattice"] = np.eye(3)*2*12.42867
+			m.properties["Lattice"] = np.eye(3)*ntess*12.42867
+
+			def EnAndForceAPeriodic(x_):
+				"""
+				This is the primitive form of force routine required by PeriodicForce.
+				"""
+				mtmp = Mol(m.atoms,x_)
+				en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
+				#print("EnAndForceAPeriodic: ", en,f)
+				return en[0], f[0]
+
+			anneal = Annealer(EnAndForceAPeriodic, None, m, "Anneal")
+			anneal.Prop()
+
 	else:
 		PARAMS["OptMaxCycles"]=60
 		Opt = GeomOptimizer(EnAndForceAPeriodic)
@@ -1742,11 +1755,11 @@ def BoxAndDensity():
 		traj.Prop()
 		PF.mol0.coords = traj.Minx
 
-	PARAMS["MDTemp"] = 330.0
-	PARAMS["MDMaxStep"] = 100000
-	traj = PeriodicMonteCarlo(PF,"PeriodicWaterMC")
-	traj.Prop()
-	exit(0)
+	if 0:
+		PARAMS["MDTemp"] = 330.0
+		PARAMS["MDMaxStep"] = 100000
+		traj = PeriodicMonteCarlo(PF,"PeriodicWaterMC")
+		traj.Prop()
 
 	if 0:
 		PARAMS["MDAnnealT0"] = 20.0
@@ -1756,11 +1769,11 @@ def BoxAndDensity():
 		traj.Prop()
 
 	# Finally do thermostatted MD.
-	PF.TestGradient(PF.mol0.coords)
 	PARAMS["MDTemp"] = 300.0
 	PARAMS["MDdt"] = 0.05 # In fs.
 	traj = PeriodicVelocityVerlet(PF,"PeriodicWaterMD")
 	traj.Prop()
+
 def TestSmoothIR():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.

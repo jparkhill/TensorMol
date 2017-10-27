@@ -99,8 +99,32 @@ print("--------------------------")
 # -- end Environment set up.
 #
 
+# A simple timing decorator.
+TMTIMER = {}
+TMSTARTTIME = time.time()
+def PrintTMTIMER():
+	print("Accumulated Time Information....")
+	print("Category   |||   Time Per Call   |||   Total Elapsed     ")
+	for key in TMTIMER.keys():
+		if (TMTIMER[key][1]>0):
+			print(key," ||| ",TMTIMER[key][0]/(TMTIMER[key][1])," ||| ",TMTIMER[key][0])
+def TMTiming(nm_="Obs"):
+	if (not nm_ in TMTIMER.keys()):
+		TMTIMER[nm_] = [0.,0]
+	def wrap(f):
+		def wf(*args,**kwargs):
+			t0 = time.time()
+			output = f(*args,**kwargs)
+			TMTIMER[nm_][0] += time.time()-t0
+			TMTIMER[nm_][1] += 1
+			return output
+		LOGGER.debug(" TMTimed "+nm_+str(TMTIMER[nm_]))
+		return wf
+	return wrap
+
 @atexit.register
 def exitTensorMol():
+	LOGGER.info("~ Total Time : %0.5f s",time.time()-TMSTARTTIME)
 	LOGGER.info("~ Adios Homeshake ~")
 
 #
@@ -129,30 +153,17 @@ def AtomicSymbol(number):
 		raise Exception("Unknown Atom")
 	return 0
 
-def SignStep(S):
-	if (S<0.5):
-		return -1.0
-	else:
-		return 1.0
-
-# Choose random samples near point...
-def PointsNear(point,NPts,Dist):
-	disps=Dist*0.2*np.abs(np.log(np.random.rand(NPts,3)))
-	signs=signstep(np.random.random((NPts,3)))
-	return (disps*signs)+point
-
 def LtoS(l):
 	s=""
 	for i in l:
 		s+=str(i)+" "
 	return s
 
-def ErfSoftCut(dist, width, x):
-	return (1-scipy.special.erf(1.0/width*(x-dist)))/2.0
-
 def nCr(n, r):
 	f = math.factorial
 	return int(f(n)/f(r)/f(n-r))
+
+# Wow... Holy shit kun. Stop putting stuff here. Totally inappropriate.
 
 def DSF(R, R_c, alpha):	# http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/10.1063/1.2206581 damp shifted force
 	if R > R_c:
@@ -175,16 +186,15 @@ def DSF_Gradient(R, R_c, alpha):
 		YY = twooversqrtpi*alpha*math.exp(-XX*XX)/R_c
 		grads = -((scipy.special.erfc(alpha*R)/R/R + twooversqrtpi*alpha*math.exp(-alpha*R*alpha*R)/R)-(ZZ/R_c + YY))
 		return grads
+
 def EluAjust(x, a, x0, shift):
 	if x > x0:
 		return a*(x-x0)+shift
 	else:
 		return a*(math.exp(x-x0)-1.0)+shift
 
-
 def sigmoid_with_param(x, prec=tf.float64):
 	return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=prec), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=prec)
-
 
 def guassian_act(x, prec=tf.float64):
 	return tf.exp(-x*x)
@@ -205,5 +215,3 @@ def square_tozero_tolinear(x, prec=tf.float64):
 	x0 = 0.005
 	step1 = tf.where(tf.greater(x, 0.0), 100.0*x*x, tf.zeros_like(x))
 	return tf.where(tf.greater(x, x0), a*x+b, step1)
-
-signstep = np.vectorize(SignStep)

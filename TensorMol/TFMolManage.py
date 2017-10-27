@@ -1237,6 +1237,7 @@ class TFMolManage(TFManage):
 		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p, ang_t, rad_eep, 1.0/natom])
 		return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
 
+	@TMTiming("EvalBPDirectEEUpdateSingle")
 	def EvalBPDirectEEUpdateSingle(self, mol, Rr_cut, Ra_cut, Ree_cut, HasVdw = False):
 		"""
 		The energy, force and dipole routine for BPs_EE.
@@ -1268,6 +1269,8 @@ class TFMolManage(TFManage):
 			#Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient, bp_gradient, syms  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
 			return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
 			#return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0], bp_gradient, syms
+
+	@TMTiming("EvalBPDirectEEUpdateSinglePeriodic")
 	def EvalBPDirectEEUpdateSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True, DoForce=True, DoCharge=False):
 		"""
 		The energy, force and dipole routine for BPs_EE.
@@ -1303,6 +1306,8 @@ class TFMolManage(TFManage):
 		else:
 			Etotal = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal, False)
 			return Etotal
+
+	@TMTiming("TFMolMangePrepare")
 	def Prepare(self):
 		self.Load()
 		self.Instances= None # In order of the elements in TData
