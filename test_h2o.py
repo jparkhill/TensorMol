@@ -1881,11 +1881,8 @@ def TestNeb():
 #TrainPrepare()
 #Train()
 #Eval()
-<<<<<<< HEAD
 BoxAndDensity()
 #TestSmoothIR()
-=======
 #BoxAndDensity()
 TestSmoothIR()
->>>>>>> 5a3dbeba520156f5eff617410ca21e530c4d5a4d
 #TestNeb()
