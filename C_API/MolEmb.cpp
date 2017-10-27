@@ -1169,22 +1169,73 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
 	// Avoid stupid python reference counting issues by just using std::vector...
+	// Argsort by x.
+	std::vector<double> XX;
+	XX.assign(xyz_data,xyz_data+3*nat);
+	std::vector<int> y(nat);
+	std::size_t n(0);
+	std::generate(std::begin(y), std::end(y), [&]{ return n++; });
+	std::sort(std::begin(y),std::end(y), [&](int i1, int i2) { return XX[i1*3] < XX[i2*3]; } );
+	// So y now contains sorted x indices, do the skipping Neighbor list.
 	std::vector< std::vector<int> > tmp(nreal);
+	for (int i=0; i< nat; ++i)
+	{
+		int I = y[i];
+			// We always work in order of increasing X...
+			for (int j=i+1; j < nat; ++j)
+			{
+				int J = y[j];
+				if (!(I<nreal || J<nreal))
+					continue;
+				if (fabs(XX[I*3] - XX[J*3]) > rng)//((XX[J*3] - XX[I*3]) > rng)//
+				{
+					break;
+				}
+				double dx = (xyz_data[I*3+0]-xyz_data[J*3+0]);
+				double dy = (xyz_data[I*3+1]-xyz_data[J*3+1]);
+				double dz = (xyz_data[I*3+2]-xyz_data[J*3+2]);
+				double dij = sqrt(dx*dx+dy*dy+dz*dz) + 0.0000000000001;
+				if (dij < rng)
+				{
+					if (I<J)
+					{
+						tmp[I].push_back(J);
+						if (J<nreal && DoPerms==1)
+							tmp[J].push_back(I);
+					}
+					else
+					{
+						tmp[J].push_back(I);
+						if (I<nreal && DoPerms==1)
+							tmp[I].push_back(J);
+					}
+				}
+			}
+	}
+  /*
+	std::vector< std::vector<int> > tmp2(nreal);
 	for (int i=0; i < nreal; ++i)
 	{
 		for (int j=i+1; j < nat; ++j)
 		{
-			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
+			double dx = (xyz_data[i*3+0]-xyz_data[j*3+0]);
+			double dy = (xyz_data[i*3+1]-xyz_data[j*3+1]);
+			double dz = (xyz_data[i*3+2]-xyz_data[j*3+2]);
+			double dij = sqrt(dx*dx+dy*dy+dz*dz) + 0.0000000000001;
 			if (dij < rng)
 			{
-				tmp[i].push_back(j);
+				tmp2[i].push_back(j);
 				if (j<nreal && DoPerms==1) {
-
-					tmp[j].push_back(i);
+					tmp2[j].push_back(i);
 				}
 			}
 		}
 	}
+	for (int i=0; i < nreal; ++i)
+		std::cout << tmp[i].size() << "HHHH" << tmp2[i].size() << DoPerms << endl;
+	// Check the two implementations are equal.
+	*/
+
 	PyObject* Tore = PyList_New(nreal);
 	for (int i=0; i < nreal; ++i)
 	{
