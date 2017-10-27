@@ -71,13 +71,12 @@ class GeomOptimizer:
 			prev_m.WriteXYZfile("./results/", filename,'a',True)
 			step+=1
 		# Checks stability in each cartesian direction.
-		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
+		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False)[0])
 		return prev_m
 
 	def Opt_LS(self,m, filename="OptLog",Debug=False):
 		"""
-		Optimize using An EnergyAndForce Function.
+		Optimize with Steepest Descent + Line search using An EnergyAndForce Function.
 
 		Args:
 		        m: A distorted molecule to optimize
@@ -114,7 +113,7 @@ class GeomOptimizer:
 
 	def Opt_GD(self,m, filename="OptLog",Debug=False):
 		"""
-		Optimize using An EnergyAndForce Function.
+		Optimize using steepest descent  and an EnergyAndForce Function.
 
 		Args:
 		        m: A distorted molecule to optimize

@@ -362,13 +362,20 @@ class Mol:
 						grids[index] = atoc[self.atoms[i]]
 		return grids
 
-	def Center(self, CenterOf="Atom"):
-		''' Returns the center of atom or mass'''
+	def Center(self, CenterOf="Atom", MomentOrder = 1.):
+		''' Returns the center of atom or mass
+
+		Args:
+			CenterOf: Whether to return center of atom position or mass.
+			MomentOrder: Option to do nth order moment.
+		Returns:
+			Center of Atom, Mass, or a higher-order moment.
+		'''
 		if (CenterOf == "Mass"):
 			m = np.array(map(lambda x: ATOMICMASSES[x-1],self.atoms))
-			return np.einsum("ax,a->x",self.coords,m)/np.sum(m)
+			return np.einsum("ax,a->x",np.power(self.coords,MomentOrder),m)/np.sum(m)
 		else:
-			return np.average(self.coords,axis=0)
+			return np.average(np.power(self.coords,MomentOrder),axis=0)
 
 	def rms(self, m):
 		""" Cartesian coordinate difference. """
@@ -456,12 +463,38 @@ class Mol:
 	def AlignAtoms(self, m):
 		"""
 		Align the geometries and atom order of myself and another molecule.
-		This alters both molecules.
+		This alters both molecules, centering them, and also permutes
+		their atoms.
+
+		Args:
+			m: A molecule to be aligned with me.
 		"""
 		assert self.NAtoms() == m.NAtoms(), "Number of atoms do not match"
-		if (self.Center()-m.Center()).all() != 0:
-			m.coords += self.Center() - m.Center()
-
+		self.coords -= self.Center()
+		m.coords -= m.Center()
+		# try to achieve best rotation alignment between them by aligning the second moments of position
+		sdm = MolEmb.Make_DistMat(self.coords)
+		d = sdm-MolEmb.Make_DistMat(m.coords)
+		BestMomentOverlap = np.sum(d*d)
+		BestTriple=[0.,0.,0.]
+		for a in np.linspace(-Pi,Pi,20):
+			for b in np.linspace(-Pi,Pi,20):
+				for c in np.linspace(-Pi,Pi,20):
+					tmpm = Mol(m.atoms,m.coords)
+					tmpm.Rotate([1.,0.,0.],a)
+					tmpm.Rotate([0.,1.,0.],b)
+					tmpm.Rotate([0.,0.,1.],c)
+					d = sdm-MolEmb.Make_DistMat(tmpm.coords)
+					lap = np.sum(d*d)
+					if ( lap < BestMomentOverlap ):
+						BestTriple = [a,b,c]
+						BestMomentOverlap = lap
+		m.Rotate([1.,0.,0.],BestTriple[0])
+		m.Rotate([0.,1.,0.],BestTriple[1])
+		m.Rotate([0.,0.,1.],BestTriple[2])
+		print("After centering and Rotation ---- ")
+		print("Self \n"+self.__str__())
+		print("Other \n"+m.__str__())
 		self.SortAtoms()
 		m.SortAtoms()
 		# Greedy assignment
@@ -508,9 +541,9 @@ class Mol:
 						perm[j] = i
 						tmp_coords=tmp_coords[perm]
 						tmp_dm = MolEmb.Make_DistMat(tmp_coords)
-						print(np.linalg.norm(self.DistMatrix - tmp_dm))
+						#print(np.linalg.norm(self.DistMatrix - tmp_dm))
 						steps = steps+1
-				print(i)
+				#print(i)
 			k+=1
 		m.coords=tmp_coords.copy()
 		print("best",tmp_coords)

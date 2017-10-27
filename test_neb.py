@@ -58,16 +58,15 @@ def Eval():
 			return energy, force
 		return EnAndForce
 
-	if 1:
+	if 0:
 		# Optimize all three steps of the reaction.
-		PARAMS["OptMaxCycles"]=100
+		PARAMS["OptMaxCycles"]=10
 		print("Optimizing ", len(a.mols), " mols")
 		for i in range(3):
 			F = GetEnergyForceForMol(a.mols[i])
 			Opt = GeomOptimizer(F)
 			a.mols[i] = Opt.Opt(a.mols[i])
 			a.mols[i].WriteXYZfile("./results/", "OptMol"+str(i))
-		return
 
 	# Achieve element alignment.
 	a.mols[0].AlignAtoms(a.mols[1])
@@ -75,5 +74,15 @@ def Eval():
 	a.mols[0].WriteXYZfile("./results/", "Aligned"+str(0))
 	a.mols[1].WriteXYZfile("./results/", "Aligned"+str(1))
 	a.mols[2].WriteXYZfile("./results/", "Aligned"+str(2))
+
+	# Finally do the NEB. between each.
+	PARAMS["OptMaxCycles"]=200
+	PARAMS["NebSolver"]="SD"
+	PARAMS["MaxBFGS"] = 12
+	F = GetEnergyForceForMol(a.mols[0])
+	neb = NudgedElasticBand(F,a.mols[0],a.mols[1])
+	Beads = neb.Opt("NebStep1")
+	neb2 = NudgedElasticBand(F,a.mols[1],a.mols[2])
+	Beads2 = neb2.Opt("NebStep2")
 
 Eval()
