@@ -370,6 +370,7 @@ class TFManage:
 				self.TrainedNetworks.append(manager2.TrainedNetworks[i])
 		self.Save()
 
+	@TMTiming("DirectForces")
 	def evaluate_mol_forces_direct(self, mol):
 		"""
 		Evaluates the forces on a molecule from a network with direct embedding

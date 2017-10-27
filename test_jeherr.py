@@ -552,13 +552,16 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
+	PARAMS["OptMaxCycles"]=40000
 	a=MSet(mset)
-	a.Load()
+	a.ReadXYZ()
 	mol=a.mols[mol_index]
 	manager=TFManage(Name_=manager_name,Train_=False,NetType_="fc_sqdiff_GauSH_direct")
+	# print manager.evaluate_mol_forces_direct(mol)
+	# print mol.properties["forces"]
 	force_field = lambda x: manager.evaluate_mol_forces_direct(x)
 	Opt = GeomOptimizer(force_field)
-	Opt.Opt_forces_only(mol)
+	Opt.Opt_GD_forces_only(mol)
 
 
 # InterpoleGeometries()
@@ -588,7 +591,7 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
-geo_opt_tf_forces("nicotine_full", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
+geo_opt_tf_forces("22529590", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 
 # a=MSet("SmallMols_rand")
 # a.Load()
