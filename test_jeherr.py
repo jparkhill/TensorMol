@@ -556,8 +556,9 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 	a.Load()
 	mol=a.mols[mol_index]
 	manager=TFManage(Name_=manager_name,Train_=False,NetType_="fc_sqdiff_GauSH_direct")
-	print manager.evaluate_mol_forces_direct(mol)
-	print mol.properties["forces"]
+	force_field = lambda x: manager.evaluate_mol_forces_direct(x)
+	Opt = GeomOptimizer(force_field)
+	Opt.Opt_forces_only(mol)
 
 
 # InterpoleGeometries()

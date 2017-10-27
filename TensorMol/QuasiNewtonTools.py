@@ -277,17 +277,16 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 	print("N3, shape v",n3,v.shape)
 	if (WriteNM_):
 		for i in range(3*n):
-			nm = v[:,i].reshape((n,3))
-			nm *= np.sqrt(m_[:,np.newaxis]).T
-			tmp = nm.reshape((x_.shape[0],3))
-
+			nm = np.zeros(3*n)
+		        for j,mi in enumerate(m_):
+				nm[3*j:3*(j+1)] = v[3*j:3*(j+1),i]/np.sqrt(mi) 
+			nm = nm.reshape((n,3))
 			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
-			step = 0.01
-			dmudq = (Mu_(x_+step*tmp)-Mu_(x_))/step
+			step = 0.005
+			dmudq = (Mu_(x_+step*nm)-Mu_(x_))/step
 			print("|f| (UNITS????) ",np.dot(dmudq,dmudq.T))
-
 			for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
-				mdisp = Mol(at_, x_+alpha*tmp)
+				mdisp = Mol(at_, x_+alpha*nm)
 				mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
 	return wave, v
 

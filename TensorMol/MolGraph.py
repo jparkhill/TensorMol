@@ -41,7 +41,7 @@ def Setdiff(A, B): # return the element of A that not included in B
 	return diff
 
 class MolGraph(Mol):
-	def __init__(self, atoms_ =  None, coords_ = None, bond_length_thresh_ =  None):
+	def __init__(self, atoms_ =  np.zeros(1,dtype=np.uint8), coords_ = np.zeros(shape=(1,1),dtype=np.float), bond_length_thresh_ =  None):
 		""" graph of a molecule """
 		Mol.__init__(self, atoms_, coords_)
 		# self.name= self.name+"_graph"
@@ -75,7 +75,7 @@ class MolGraph(Mol):
 	def Make_Mol_Graph(self):
 		self.Make_AtomNodes()
 		self.Connect_AtomNodes()
-		self.Make_Bonds()
+		#self.Make_Bonds()
 		return
 
 	def Find_Bond_Index(self):
