@@ -554,6 +554,8 @@ class Annealer(IRTrajectory):
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
 
+			if (PARAMS["PrintTMTimer"]):
+				PrintTMTIMER()
 			if (step%7==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1

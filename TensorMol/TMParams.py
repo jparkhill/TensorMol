@@ -11,6 +11,7 @@ class TMParams(dict):
 		dict.__init__(self, *args, **kwargs )
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
 		self["CheckLevel"] = 1 # whether to test the consistency of several things...
+		self["PrintTMTimer"] = False # whether to emit timing messages.
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
 		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],

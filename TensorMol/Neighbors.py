@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
 #from PairProviderTF import *
+from .Util import *
 from MolEmb import Make_NListNaive, Make_NListLinear
 import time
 
@@ -24,6 +25,7 @@ class NeighborList:
 	"""
 	TODO: incremental tree and neighborlist updates.
 	"""
+	@TMTiming("NeighborList::init")
 	def __init__(self, x_, DoTriples_ = False, DoPerms_ = False, ele_ = None, alg_ = None, sort_ = False):
 		"""
 		Builds or updates a neighbor list of atoms within rcut_
@@ -71,6 +73,7 @@ class NeighborList:
 			self.npairs = self.pairs.shape[0]
 		return
 
+	@TMTiming("NeighborList::BuildPairs")
 	def buildPairs(self, rcut=5.0, molind_=None, nreal_=None):
 		"""
 		Returns the nonzero pairs, triples in self.x within the cutoff.
@@ -243,6 +246,7 @@ class NeighborListSet:
 			self.PairMaker = PairProvider(self.nmol,self.maxnatom)
 		return
 
+	@TMTiming("NLSetUpdate")
 	def Update(self, x_, rcut_pairs = 5.0, rcut_triples = 5.0):
 		if (self.UpdateCounter == 0):
 			self.UpdateCounter = self.UpdateCounter + 1
@@ -278,6 +282,7 @@ class NeighborListSet:
 			pp += mol.npairs
 		return trp
 
+	@TMTiming("SetbuildPairsAndTriples")
 	def buildPairsAndTriples(self, rcut_pairs=5.0, rcut_triples=5.0):
 		"""
 		builds nonzero pairs and triples for current x.
@@ -316,6 +321,7 @@ class NeighborListSet:
 				tp += mol.ntriples
 			return trp, trt
 
+	@TMTiming("buildPairsWithBothEleIndex")
 	def buildPairsWithBothEleIndex(self, rcut=5.0, ele=None):
 		trp  = self.buildPairs(rcut)
 		Z1 = self.ele[trp[:, 0], trp[:, 1]]
@@ -409,6 +415,7 @@ class NeighborListSet:
 		#print (trpE_sorted, trtE_sorted, jk_max)
 		return trpE_sorted, trtE_sorted, mil_jk, jk_max
 
+	@TMTiming("buildPairsAndTriplesWithEleIndexPeriodic")
 	def buildPairsAndTriplesWithEleIndexPeriodic(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
 		"""
 		generate sorted pairs and triples with index of correspoding ele or elepair append to it.
