@@ -50,7 +50,7 @@ python test.py
 TensorMol is robust and fast. You can get an energy and force of this monstrous cube of 24,000 atoms
 in less than 100 seconds on a 2015 MacbookPro (Core i7 2.5Ghz, 16GB mem). Periodic simulations are about 3x
 more expensive at present time.
-![](doc/images/monster.png)
+<img src="doc/images/monster.png" width="200">
 ![](doc/images/Timings.png)
 ![](doc/images/PeriodicTimings.png)
 
