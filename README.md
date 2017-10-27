@@ -51,8 +51,8 @@ TensorMol is robust and fast. You can get an energy and force of this monstrous 
 in less than 100 seconds on a 2015 MacbookPro (Core i7 2.5Ghz, 16GB mem). Periodic simulations are about 3x
 more expensive at present time.
 ![](doc/images/monster.png)
-![](doc/images/Timing.png)
-![](doc/images/PeriodicTiming.png)
+![](doc/images/Timings.png)
+![](doc/images/PeriodicTimings.png)
 
 ### Sample Results
 ![](doc/images/water.png)
