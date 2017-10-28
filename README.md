@@ -54,8 +54,8 @@ in less than 100 seconds on a 2015 MacbookPro (Core i7 2.5Ghz, 16GB mem). Period
 more expensive.  
 
 <img src="doc/images/monster.png" width="300">
-<img src="doc/images/Timings.png" width="800">
-<img src="doc/images/PeriodicTimings.png" width="800">
+<img src="doc/images/Timings.png" width="500">
+<img src="doc/images/PeriodicTimings.png" width="500">
 
 ## Sample Results
 
