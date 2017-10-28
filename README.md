@@ -2,19 +2,19 @@
 ![](doc/images/newtitle.png)
 -Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
-### Authors:
+## Authors:
  Kun Yao (kyao@nd.edu), John Herr (jherr1@nd.edu),
  David Toth (dtoth1@nd.edu), Ryker McIntyre, Nicolas Casetti
  John Parkhill (john.parkhill@gmail.com)
 
-### Model Chemistries:
+## Model Chemistries:
  - Behler-Parrinello with electrostatics
  - Many Body Expansion
  - Bonds in Molecules NN
  - Atomwise Forces
  - Inductive Charges
 
-### Simulation Types:
+## Simulation Types:
  - Optimizations
  - Molecular Dynamics (NVE,NVT Nose-Hoover)
  - Monte Carlo
@@ -25,10 +25,10 @@
  - Nudged Elastic Band
  - Path integral simulations via interface with [I-PI](https://github.com/i-pi/i-pi) MD engine.
 
-### License: GPLv3
+## License: GPLv3
 By using this software you agree to the terms in COPYING
 
-### Installation:
+## Installation:
  - Works on OSX, Ubuntu, and Windows subsystem for Linux.
 ```
 git clone https://github.com/jparkhill/TensorMol.git
@@ -40,13 +40,15 @@ sudo pip3 install -e .
 python test.py
 ```
 
-### Usage:
+## Usage:
  - ```import TensorMol as tm```
  - TensorMol assumes a directory structure executing path which mirrors the git.
+ - We are working on /doc/Tutorials, but it's sparse now.
+ - There is also a lot in various test.py's
  - Please also refer to IPython notebooks in /notebooks.
  - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py
 
-### Timing Information
+## Timing Information
 TensorMol is robust and fast. You can get an BP+electrostatic energy and force of this monstrous cube of 24,000 atoms
 in less than 100 seconds on a 2015 MacbookPro (Core i7 2.5Ghz, 16GB mem). Periodic simulations are about 3x
 more expensive.  
@@ -55,9 +57,9 @@ more expensive.
 <img src="doc/images/Timings.png" width="800">
 <img src="doc/images/PeriodicTimings.png" width="800">
 
-### Sample Results
+## Sample Results
 
-## Chemical Reactions
+### Chemical Reactions
 Converged nudged elastic band simulations of the cyclization cascade of endiandric acid C (c.f. K. C. Nicolaou, N. A. Petasis, R. E. Zipkin, 1982, The endiandric acid cascade. Electrocyclizations in organic synthesis. 4. Biomimetic approach to endiandric acids A-G. Total synthesis and thermal studies, J. Am. Chem. Soc. 104(20):5560–5562).
 
 <img src="doc/images/cascade.gif" width="300">
@@ -70,13 +72,13 @@ The associated energy surface is shown below.
 
 <img src="doc/images/pes.png" width="300">
 
-## Dynamic Properties
+### Dynamic Properties
 - Water Trimer IR spectrum generated with david_testIR() in test.py
 - The red lines are MP2(qchem) solid line is TensorMol's IR propagation.
 
 ![](doc/images/water.png)
 
-### Requirements:
+## Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow
 - Python3x support coming soon.
 - Useful Pre-Requisites: CUDA7.5, PySCF
@@ -84,13 +86,13 @@ The associated energy surface is shown below.
 - To Train Realistically: 1TB Disk, GTX1070++
 - To Evaluate: Normal CPU and 10GB Mem
 
-### Acknowledgements:
+## Acknowledgements:
  - Google Inc. (for TensorFlow)
  - NVidia Corp. (hardware)
  - von Lilienfeld Group (for GBD9)
  - Chan Group (for PySCF)
 
-### Common Issues:
+## Common Issues:
 - nan during training due to bad checkpoints in /networks (clean.sh)
 - Also crashes when reviving networks from disk.
 - if you have these issues try re-installing or:
