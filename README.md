@@ -47,13 +47,13 @@ python test.py
  - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py
 
 ### Timing Information
-TensorMol is robust and fast. You can get an energy and force of this monstrous cube of 24,000 atoms
+TensorMol is robust and fast. You can get an BP+electrostatic energy and force of this monstrous cube of 24,000 atoms
 in less than 100 seconds on a 2015 MacbookPro (Core i7 2.5Ghz, 16GB mem). Periodic simulations are about 3x
 more expensive.  
 
 <img src="doc/images/monster.png" width="200">
-![](doc/images/Timings.png)
-![](doc/images/PeriodicTimings.png)
+<img src="doc/images/Timings.png" width="400">
+<img src="doc/images/PeriodicTimings.png" width="400">
 
 ### Sample Results
 ![](doc/images/water.png)
