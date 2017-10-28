@@ -59,10 +59,15 @@ more expensive.
 
 ## Chemical Reactions
 Converged nudged elastic band simulations of the cyclization cascade of endiandric acid C (c.f. K. C. Nicolaou, N. A. Petasis, R. E. Zipkin, 1982, The endiandric acid cascade. Electrocyclizations in organic synthesis. 4. Biomimetic approach to endiandric acids A-G. Total synthesis and thermal studies, J. Am. Chem. Soc. 104(20):5560–5562).
-<img src="doc/images/monster.png" width="200">
+
+<img src="doc/images/cascade.gif" width="300">
+
 This reaction path can be found in a few minutes on an ordinary laptop. Relaxation from the linearly interpolated guess looks like this:
+
 <img src="doc/images/neb.png" width="200">
+
 The associated energy surface is shown below.
+
 <img src="doc/images/pes.png" width="200">
 
 ## Dynamic Properties
