@@ -401,11 +401,12 @@ def Train():
 
 def Eval():
 	if (1):
-		a=MSet("aspirin", center_=False)
-		a.ReadXYZ("aspirin")
-		#chemspider_IR_test_mol
+		#a=MSet("aspirin", center_=False)
+		#a.ReadXYZ("aspirin")
 		#a=MSet("chemspider_IR_test_mol", center_=False)
 		#a.ReadXYZ("chemspider_IR_test_mol")
+		a=MSet("decalin_reaction", center_=False)
+		a.ReadXYZ("decalin_reaction")
 		TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
 		PARAMS["NetNameSuffix"] = "act_sigmoid100"
 		PARAMS["learning_rate"] = 0.00001
@@ -484,12 +485,24 @@ def Eval():
 		#EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
 
-		PARAMS["OptMaxCycles"]=200
-		Opt = GeomOptimizer(EnAndForce)
-		m=Opt.Opt(m)
- 		masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-		w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
-		return
+		#PARAMS["OptMaxCycles"]=500
+		#Opt = GeomOptimizer(EnAndForce)
+		#m=Opt.Opt(m)
+		#return
+ 		#masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+		#w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
+		#return
+
+
+		#PARAMS["OptMaxCycles"]=200
+		#Opt = GeomOptimizer(EnAndForce)
+		#a.mols[0] = Opt.Opt(a.mols[0],"1")
+		#a.mols[1] = Opt.Opt(a.mols[1],"2")
+		PARAMS["OptMaxCycles"]=5000
+		PARAMS["NebSolver"]="SD"
+		PARAMS["MaxBFGS"] = 12
+		neb = NudgedElasticBand(EnAndForce,a.mols[-2],a.mols[-1])
+		Beads = neb.Opt()
 		##m.coords[0] = m.coords[0] + 0.1
                 #PARAMS["MDThermostat"] = "Nose"
                 #PARAMS["MDTemp"] = 300
