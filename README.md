@@ -52,14 +52,23 @@ in less than 100 seconds on a 2015 MacbookPro (Core i7 2.5Ghz, 16GB mem). Period
 more expensive.  
 
 <img src="doc/images/monster.png" width="200">
-<img src="doc/images/Timings.png" width="400">
-<img src="doc/images/PeriodicTimings.png" width="400">
+<img src="doc/images/Timings.png" width="800">
+<img src="doc/images/PeriodicTimings.png" width="800">
 
 ### Sample Results
-![](doc/images/water.png)
 
+## Chemical Reactions
+Converged nudged elastic band simulations of the cyclization cascade of endiandric acid C (c.f. K. C. Nicolaou, N. A. Petasis, R. E. Zipkin, 1982, The endiandric acid cascade. Electrocyclizations in organic synthesis. 4. Biomimetic approach to endiandric acids A-G. Total synthesis and thermal studies, J. Am. Chem. Soc. 104(20):5560–5562).
+<img src="doc/images/monster.png" width="200">
+This reaction path can be found in a few minutes on an ordinary laptop. Relaxation from the linearly interpolated guess looks like this:
+<img src="doc/images/neb.png" width="200">
+The associated energy surface is shown below.
+<img src="doc/images/pes.png" width="200">
+
+## Dynamic Properties
 - Water Trimer IR spectrum generated with david_testIR() in test.py
 - The red lines are MP2(qchem) solid line is TensorMol's IR propagation.
+![](doc/images/water.png)
 
 ### Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow

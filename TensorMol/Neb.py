@@ -205,5 +205,6 @@ class NudgedElasticBand:
 			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.sum(PES[step]), np.sqrt(np.mean(self.Fs*self.Fs)), np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
 			step+=1
 		#self.HighQualityPES()
-		np.savetxt("./results/NEB_Energy.txt",PES)
+		print("Activation Energy:",np.max(self.Es)-np.min(self.Es))
+		np.savetxt("./results/NEB_"+filename+"_Energy.txt",PES)
 		return self.beads
