@@ -78,6 +78,7 @@ def Eval():
 	# Finally do the NEB. between each.
 	PARAMS["OptMaxCycles"]=200
 	PARAMS["NebSolver"]="SD"
+	PARAMS["NebNumBeads"] = 10
 	PARAMS["MaxBFGS"] = 12
 	F = GetEnergyForceForMol(a.mols[0])
 	neb = NudgedElasticBand(F,a.mols[0],a.mols[1])
