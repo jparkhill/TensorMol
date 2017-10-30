@@ -1,0 +1,5 @@
+These files give examples of tensormols functionality. Run them like: 
+cd $TensorMolPath
+python ./samples/test_neb.py 
+
+

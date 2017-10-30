@@ -20,11 +20,8 @@ def TrainPrepare():
 		Hbondcut = 2.2
 		Hbondangle = 30.0*math.pi/180.0
 		HOcut = 1.1
-
-
 		singlemax = 0.20 * len(a.mols)
 		doublemax = 0.10 * len(a.mols)
-
 		single_record = np.zeros((21,2))
 		single_record[:,0] = range(1,22)
 		double_record = np.zeros((21,2))

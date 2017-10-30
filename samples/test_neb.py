@@ -52,7 +52,7 @@ def Eval():
 	def GetEnergyForceForMol(m):
 		def EnAndForce(x_, DoForce=True):
 			tmpm = Mol(m.atoms,x_)
-			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(tmpm, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
 			energy = Etotal[0]
 			force = gradient[0]
 			if DoForce:
@@ -78,6 +78,7 @@ def Eval():
 	# Finally do the NEB. between each.
 	PARAMS["OptMaxCycles"]=200
 	PARAMS["NebSolver"]="SD"
+	PARAMS["NebNumBeads"] = 10
 	PARAMS["MaxBFGS"] = 12
 	F = GetEnergyForceForMol(a.mols[0])
 	neb = NudgedElasticBand(F,a.mols[0],a.mols[1])

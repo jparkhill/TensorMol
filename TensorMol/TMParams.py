@@ -98,7 +98,8 @@ class TMParams(dict):
 		self["MaxBFGS"] = 7
 		self["NebSolver"] = "SD"
 		self["NebNumBeads"] = 13
-		self["NebK"] = 0.01
+		self["NebK"] = 0.1
+		self["NebClimbingImage"] = True
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
 		# MD Parameters

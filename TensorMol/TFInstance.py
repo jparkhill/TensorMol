@@ -1030,7 +1030,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			batch_data=[ tmp_input, tmp_output]
 		return batch_data
 
-	@TMTiming("DirectForceEvaluatePrepare")
 	def evaluate_prepare(self):
 		""" Builds the graphs by calling inference """
 		with tf.Graph().as_default():
@@ -1087,7 +1086,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
 		return feed_dict
 
-	@TMTiming("DirectForceEvaluate")
 	def evaluate(self, xyzs, Zs):
 		"""
 		Takes coordinates and atomic numbers from a manager and feeds them into the network
@@ -1107,7 +1105,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		new_Zs[0,:np.shape(Zs)[0]] = Zs
 		feed_dict=self.evaluate_fill_feed_dict(new_xyzs, new_Zs)
 		forces, atom_indices = self.sess.run([self.output, self.atom_indices], feed_dict=feed_dict)
-		return forces, atom_indices
+		return -forces, atom_indices
 
 
 class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
