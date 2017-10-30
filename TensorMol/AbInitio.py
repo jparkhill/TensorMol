@@ -36,7 +36,10 @@ def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp'
 	crds[abs(crds)<0.0000] *=0.0
 	for j in range(len(m_.atoms)):
 		istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
-	istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+	if jobtype_ == "dipole":
+		istring =istring + '$end\n\n$rem\njobtype sp\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+	else:
+		istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
 	with open(path_+filename_+'.in','w') as fin:
 		fin.write(istring)
 	with open(path_+filename_+'.out','a') as fout:
@@ -68,6 +71,12 @@ def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp'
 			if line.count('Convergence criterion met')>0:
 				Energy = float(line.split()[1])
 		return Energy
+	elif jobtype_ ==  'dipole':
+		for i, line in enumerate(lines):
+			if "Dipole Moment (Debye)" in line:
+				tmp = lines[i+1].split()
+				dipole = np.asarray([float(tmp[1]),float(tmp[3]),float(tmp[5])])
+				return dipole
 	else:
 		raise Exception("jobtype needs formatted for return variables")
 

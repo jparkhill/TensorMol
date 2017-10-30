@@ -1877,10 +1877,10 @@ def TestNeb():
 			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
 			return en[0]
 	# opt the first water dimer.
-	PARAMS["OptMaxCycles"]=200
-	Opt = GeomOptimizer(EnAndForceAPeriodic)
-	a.mols[0] = Opt.Opt(a.mols[0],"1")
-	a.mols[1] = Opt.Opt(a.mols[1],"2")
+	#PARAMS["OptMaxCycles"]=200
+	#Opt = GeomOptimizer(EnAndForceAPeriodic)
+	#a.mols[0] = Opt.Opt(a.mols[0],"1")
+	#a.mols[1] = Opt.Opt(a.mols[1],"2")
 	PARAMS["OptMaxCycles"]=2000
 	PARAMS["NebSolver"]="SD"
 	PARAMS["MaxBFGS"] = 12
@@ -1891,8 +1891,8 @@ def TestNeb():
 #TrainPrepare()
 #Train()
 #Eval()
-BoxAndDensity()
+#BoxAndDensity()
 #TestSmoothIR()
 #BoxAndDensity()
 #TestSmoothIR()
-#TestNeb()
+TestNeb()
