@@ -279,7 +279,7 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 		for i in range(3*n):
 			nm = np.zeros(3*n)
 		        for j,mi in enumerate(m_):
-				nm[3*j:3*(j+1)] = v[3*j:3*(j+1),i]/np.sqrt(mi) 
+				nm[3*j:3*(j+1)] = v[3*j:3*(j+1),i]/np.sqrt(mi)
 			nm = nm.reshape((n,3))
 			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
 			step = 0.005

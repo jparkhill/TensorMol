@@ -103,15 +103,6 @@ def TestIpecac(dig_ = "GauSH"):
 	# bestfit.WriteXYZfile("./results/", "BestFit")
 	return
 
-def OptTFForces(set_= "SmallMols", dig_ = "GauSH", mol = 0):
-	a=MSet(set_)
-	a.ReadXYZ()
-	tmol=copy.deepcopy(a.mols[mol])
-	# tmol.Distort(0.1)
-	manager=TFManage("SmallMols_20rot_"+dig_+"_"+"fc_sqdiff", None, False)
-	opt=Optimizer(manager)
-	opt.OptTFRealForce(tmol)
-
 def TestOCSDB(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	"""
 	Test John Herr's first Optimized Force Network.
@@ -163,41 +154,6 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	neb = NudgedElasticBand(tfm, m0, m1)
 	neb.OptNeb()
 	return
-
-def TestForces():
-	a=MSet("chemspid")
-	# a=MSet("SmallMols")
-	a.Load()
-	manager=TFManage("SmallMols_GauSH_fc_sqdiff", None, False)
-	err = np.zeros((32000,3))
-	ntest = 0
-	for mol in a.mols:
-		for i, atom in enumerate(mol.atoms):
-			if atom == 7:
-				pforce = manager.evaluate(mol, i)
-				print "True force:", mol.properties["forces"][i], "Predicted force:", pforce
-				err[ntest] = mol.properties["forces"][i] - pforce
-				ntest += 1
-				if ntest == 32000:
-					break
-		if ntest == 32000:
-			break
-	print "MAE:", np.mean(np.abs(err)), " Std:", np.std(np.abs(err))
-	# print err
-
-def MakeTestSet():
-	b=MSet("SmallMols_train")
-	b.Load()
-	# c=MSet("SmallMols_test")
-	# c.Load()
-	TreatedAtoms = b.AtomTypes()
-	print "Number of train Mols: ", len(b.mols)
-	# print "Number of test Mols: ", len(c.mols)
-	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
-	train_set = TensorData_TFRecords(b,d)
-	train_set.BuildTrainMolwise("SmallMols_train",TreatedAtoms)
-	# test_set = TensorData_TFRecords(c,d, test_=True)
-	# test_set.BuildTrainMolwise("SmallMols_test",TreatedAtoms)
 
 def TestMetadynamics():
 	a = MSet("MDTrajectoryMetaMD")
@@ -552,7 +508,9 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
-	PARAMS["OptMaxCycles"]=40000
+	PARAMS["OptMaxCycles"]=50000
+	PARAMS["OptStepSize"] = 0.1
+	PARAMS["OptThresh"]=0.0005
 	a=MSet(mset)
 	a.ReadXYZ()
 	mol=a.mols[mol_index]
@@ -563,6 +521,26 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 	Opt = GeomOptimizer(force_field)
 	Opt.Opt_GD_forces_only(mol)
 
+def test_md():
+	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
+								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
+	PARAMS["SH_NRAD"] = 14
+	PARAMS["SH_LMAX"] = 4
+	a = MSet("OptMols")
+	a.ReadXYZ()
+	mol = a.mols[4]
+	manager=TFManage(Name_="SmallMols_GauSH_fc_sqdiff_GauSH_direct",Train_=False,NetType_="fc_sqdiff_GauSH_direct")
+	force_field = lambda x: manager.evaluate_mol_forces_direct(x)
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1], mol.atoms))
+	print "Masses:", masses
+	PARAMS["MDdt"] = 0.2
+	PARAMS["RemoveInvariant"]=True
+	PARAMS["MDMaxStep"] = 20000
+	PARAMS["MDThermostat"] = "Nose"
+	PARAMS["MDTemp"]= 300.0
+	md = VelocityVerlet(force_field, mol)
+	md.Prop()
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
@@ -572,10 +550,7 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 # BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
 # BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
 # TestIpecac()
-# OptTFForces(set_ = "peptide", mol=0)
 # TestOCSDB()
-# TestForces()
-# MakeTestSet()
 # BIMNN_NEq()
 # TestMetadynamics()
 # TestMD()
@@ -591,7 +566,8 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
-geo_opt_tf_forces("22529590", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
+# geo_opt_tf_forces("OptMols", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 4)
+test_md()
 
 # a=MSet("SmallMols_rand")
 # a.Load()

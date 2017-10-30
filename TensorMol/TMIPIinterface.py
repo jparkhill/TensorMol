@@ -14,7 +14,7 @@ class TMIPIManger():
 			print ("Connect to server with address:", TCP_IP+" "+str(TCP_PORT))
 		except:
 			print ("Fail connect to server with address: ", TCP_IP+" "+str(TCP_PORT))
-			
+
 
 	def md_run(self):
 		while (True):
@@ -28,23 +28,23 @@ class TMIPIManger():
 					self.s.sendall("READY       ")
 			elif data.strip() == "POSDATA":
 					print ("server is sending positon.")
-					buf_ = self.s.recv(9*8) # cellh np.float64 
+					buf_ = self.s.recv(9*8) # cellh np.float64
 					cellh = np.fromstring(buf_, np.float64)/BOHRPERA
-					buf_ = self.s.recv(9*8) # cellih np.float64 
+					buf_ = self.s.recv(9*8) # cellih np.float64
         		                cellih = np.fromstring(buf_, np.float64)*BOHRPERA
 					buf_ = self.s.recv(4) # natom
 					natom = np.fromstring(buf_, np.int32)[0]
 					buf_ = self.s.recv(3*natom*8) # position
-					position = (np.fromstring(buf_, np.float64)/BOHRPERA).reshape((-1, 3)) 
+					position = (np.fromstring(buf_, np.float64)/BOHRPERA).reshape((-1, 3))
 					print ("cellh:", cellh, "  cellih:", cellih, " natom:", natom)
 					print ("position:", position)
 					print ("now is running the client to calculate force...")
 
 					energy, force=self.EnergyForceField(position)
-					force = force/JOULEPERHARTREE/BOHRPERA	
-					# some dummyy function to calculte the energy, natom, 
+					force = force/JOULEPERHARTREE/BOHRPERA
+					# some dummyy function to calculte the energy, natom,
 					vir = np.zeros((3,3))
-					
+
 					self.hasdata = True
 
 			elif data.strip() == "GETFORCE":
@@ -58,5 +58,4 @@ class TMIPIManger():
 					self.s.sendall("nothing")
 					self.hasdata = False
 			else:
-				raise Exception("wrong message from server")			
-
+				raise Exception("wrong message from server")
