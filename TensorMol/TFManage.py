@@ -370,7 +370,6 @@ class TFManage:
 				self.TrainedNetworks.append(manager2.TrainedNetworks[i])
 		self.Save()
 
-	@TMTiming("DirectForces")
 	def evaluate_mol_forces_direct(self, mol):
 		"""
 		Evaluates the forces on a molecule from a network with direct embedding
@@ -382,7 +381,6 @@ class TFManage:
 			forces (np.float): an nx3 numpy array of atomic forces
 		"""
 		atom_types = mol.AtomTypes()
-		print(atom_types)
 		for element in atom_types:
 			if self.Instances[element] == None:
 				raise Exception("Molecule contains an element which manager has no network for")
