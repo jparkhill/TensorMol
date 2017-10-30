@@ -201,8 +201,8 @@ class NudgedElasticBand:
 			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
 			beadRs = [np.linalg.norm(self.beads[x+1]-self.beads[x]) for x in range(self.nbeads-1)]
 			beadCosines = [self.BeadAngleCosine(self.beads,i) for i in range(1,self.nbeads-1)]
-			print("Frce Profile: ", beadFs)
-			#print("F_|_ Profile: ", beadFperp)
+			#print("Frce Profile: ", beadFs)
+			print("F_|_ Profile: ", beadFperp)
 			#print("SFrc Profile: ", beadSfs)
 			#print("Dist Profile: ", beadRs)
 			#print("BCos Profile: ", beadCosines)
@@ -211,11 +211,11 @@ class NudgedElasticBand:
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
 			if (self.step%10==0):
 				self.WriteTrajectory(filename)
-			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", self.step, np.sum(PES[self.step]), np.sqrt(np.mean(self.Fs*self.Fs)), np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
+			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f Ea(kcal/mol): %.5f Del-E(kcal/mol): %.5f Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", self.step, np.sum(PES[self.step]), np.sqrt(np.mean(self.Fs*self.Fs)), (self.Es[self.TSI]-(self.Es[0]))*KCALPERHARTREE,((self.Es[self.nbeads-1])-(self.Es[0]))*KCALPERHARTREE, np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
 			self.step+=1
 		#self.HighQualityPES()
 		LOGGER.info("========= Nudged Elastic Band Computation Complete ==========")
-		LOGGER.info("Activation Energy: %0.5f",np.max(self.Es)-(self.Es[0]))
+		LOGGER.info("Activation Energy: %0.5f",self.Es[self.TSI]-(self.Es[0]))
 		LOGGER.info("Enthalpy: %0.5f",(self.Es[self.nbeads-1])-(self.Es[0]))
 		np.savetxt("./results/NEB_"+filename+"_Energy.txt",PES)
 		return self.beads
