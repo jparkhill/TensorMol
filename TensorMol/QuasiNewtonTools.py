@@ -247,6 +247,7 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 	n = x_.shape[0]
 	n3 = 3*n
 	m_ = np.array(map(lambda x: ATOMICMASSESAMU[x-1]*ELECTRONPERPROTONMASS, at_.tolist()))
+	print ("m_:", m_)
 	Crds = InternalCoordinates(x_,m_) #invbasis X cart
 	#Crds=np.eye(n3).reshape((n3,n,3))
 	#print("En?",f_(x_))
@@ -279,16 +280,16 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 		for i in range(3*n):
 			nm = np.zeros(3*n)
 		        for j,mi in enumerate(m_):
-				nm[3*j:3*(j+1)] = v[3*j:3*(j+1),i]/np.sqrt(mi) 
-			nm /= np.sqrt(np.sum(nm*nm))
+				nm[3*j:3*(j+1)] = v[3*j:3*(j+1),i]/np.sqrt(mi/ELECTRONPERPROTONMASS)
+			#nm /= np.sqrt(np.sum(nm*nm))
 			nm = nm.reshape((n,3))
 			# Take finite difference derivative of mu(Q) and return the <dmu/dQ, dmu/dQ>
-			step = 0.05
+			step = 0.01
 			dmudq = (Mu_(x_+step*nm)-Mu_(x_))/step
 			print("|f| (UNITS????) ",np.dot(dmudq,dmudq.T))
-			for alpha in np.append(np.linspace(-.1,.1,30),np.linspace(.1,-.1,30)):
+			for alpha in np.append(np.linspace(0.1,-0.1,30),np.linspace(0.1,-0.1,30)):
 				mdisp = Mol(at_, x_+alpha*nm)
-				print("Mu",Mu_(x+alpha*nm))
+				#print("Mu",Mu_(x_+alpha*nm))
 				mdisp.WriteXYZfile("./results/","NormalMode_"+str(i))
 	return wave, v
 

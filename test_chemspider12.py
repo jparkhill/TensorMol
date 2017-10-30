@@ -401,12 +401,14 @@ def Train():
 
 def Eval():
 	if (1):
-		#a=MSet("aspirin", center_=False)
-		#a.ReadXYZ("aspirin")
+		a=MSet("aspirin", center_=False)
+		a.ReadXYZ("aspirin")
 		#a=MSet("chemspider_IR_test_mol", center_=False)
 		#a.ReadXYZ("chemspider_IR_test_mol")
-		a=MSet("decalin_reaction", center_=False)
-		a.ReadXYZ("decalin_reaction")
+		#a=MSet("decalin_reaction", center_=False)
+		#a.ReadXYZ("decalin_reaction")
+		#a=MSet("IR_debug", center_=False)
+		#a.ReadXYZ("IR_debug")
 		TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
 		PARAMS["NetNameSuffix"] = "act_sigmoid100"
 		PARAMS["learning_rate"] = 0.00001
@@ -456,8 +458,23 @@ def Eval():
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
 			energy = Etotal[0]
 			force = gradient[0]
-			return energy, force
+			if DoForce:
+				return energy, force
+			else:
+				return energy
 
+		def GetEnergyForceForMol(m):
+			def EnAndForce(x_, DoForce=True):
+				tmpm = Mol(m.atoms,x_)
+				Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+				energy = Etotal[0]
+				force = gradient[0]
+				if DoForce:
+					return energy, force
+				else:
+					return energy
+			return EnAndForce
+	
 		def EnForceCharge(x_):
 			m.coords = x_
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
@@ -473,36 +490,51 @@ def Eval():
 			return atom_charge[0]
 
 		def EnergyField(x_):
-			return EnAndForce(x_,False)[0]
+			return EnAndForce(x_,True)[0]
 
 		def DipoleField(x_):
-			#q = ChargeField(x_)
-			q = ChargeField(eq_coords)
-			dipole = Dipole(x_, q)
+			#q = np.asarray([-0.045124, -0.077051, -0.103131, -0.086186, -0.325407, -0.181912,  0.206067, -0.339910, -0.318228, -0.345008,  0.453050,  0.299429, -0.345770,  0.269782,  0.136701,  0.118730,  0.118365,  0.119473,  0.150804,  0.149447,  0.145880])
+			q = np.asarray(ChargeField(x_))
+			#q = ChargeField(eq_coords)
+			#dipole = Dipole(x_, q)
+			#dipole = np.einsum("ax,a...", x_ , q)
+			dipole = np.zeros(3)
+			for i in  range(0, q.shape[0]):
+				dipole += q[i]*x_[i]
 			return dipole
 
+		DFTForceField = lambda x: np.asarray([QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='sp', threads=12)])[0]
+		DFTDipoleField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='dipole', threads=12)	
 		#ForceField = lambda x: EnAndForce(x)[-1]
 		#EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
 
-		#PARAMS["OptMaxCycles"]=500
+		#PARAMS["OptMaxCycles"]=200
 		#Opt = GeomOptimizer(EnAndForce)
-		#m=Opt.Opt(m)
+		#m=Opt.Opt(a.mols[1])
 		#return
- 		#masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
-		#w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
-		#return
+		##return
+ 		masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+		#w,v = HarmonicSpectra(DFTForceField, m.coords, m.atoms, WriteNM_=False)
+		#w,v = HarmonicSpectra(DFTForceField, m.coords, m.atoms,  WriteNM_=True, Mu_ = DFTDipoleField)
+		#w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DFTDipoleField)
+		w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
+		return
 
 
 		#PARAMS["OptMaxCycles"]=200
 		#Opt = GeomOptimizer(EnAndForce)
 		#a.mols[0] = Opt.Opt(a.mols[0],"1")
 		#a.mols[1] = Opt.Opt(a.mols[1],"2")
-		PARAMS["OptMaxCycles"]=5000
+		#a.mols[-2], a.mols[-1] = a.mols[-2].AlignAtoms(a.mols[-1])
+		PARAMS["OptMaxCycles"]=20000
 		PARAMS["NebSolver"]="SD"
+		PARAMS["NebNumBeads"] = 41
 		PARAMS["MaxBFGS"] = 12
+		PARAMS["NebK"] = 0.2
 		neb = NudgedElasticBand(EnAndForce,a.mols[-2],a.mols[-1])
 		Beads = neb.Opt()
+		return
 		##m.coords[0] = m.coords[0] + 0.1
                 #PARAMS["MDThermostat"] = "Nose"
                 #PARAMS["MDTemp"] = 300
