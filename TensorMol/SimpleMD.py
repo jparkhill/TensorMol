@@ -10,7 +10,7 @@ from .TFManage import *
 from .Electrostatics import *
 from .QuasiNewtonTools import *
 
-def VelocityVerletStep(f_, a_, x_, v_, m_, dt_, fande_=None):
+def VelocityVerletStep(f_, a_, x_, atoms, v_, m_, dt_, fande_=None):
 	"""
 	A Velocity Verlet Step
 
@@ -29,7 +29,7 @@ def VelocityVerletStep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 	e, f_x_ = 0.0, None
 	if (fande_==None):
-		f_x_ = f_(x)
+		f_x_ = f_(Mol(atoms, x_))
 	else:
 		e, f_x_ = fande_(x)
 	a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
@@ -100,7 +100,7 @@ class NoseThermostat(Thermostat):
 		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
 		return
 
-	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_ = True):
+	def step(self,f_, a_, x_, atoms, v_, m_, dt_ , fande_=None, frc_ = True):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
@@ -113,7 +113,7 @@ class NoseThermostat(Thermostat):
 		vdto2 = v_ + (1./2.)*(a_ - self.eta*v_)*dt_
 		e, f_x_ = 0.0, None
 		if (fande_==None):
-			f_x_ = f_(x)
+			f_x_ = f_(Mol(atoms, x_)) * JOULEPERHARTREE
 		else:
 			e, f_x_ = fande_(x)
 		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
@@ -356,9 +356,9 @@ class VelocityVerlet:
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["MDThermostat"]==None):
-				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.ForceFunction, self.a, self.x, self.atoms, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
-				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
+				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.atoms, self.v, self.m, self.dt, self.EnergyAndForce)
 			if self.cellsize != None:
 				self.x  = np.mod(self.x, self.cellsize)
 			self.md_log[step,0] = self.t

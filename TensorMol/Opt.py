@@ -178,7 +178,7 @@ class GeomOptimizer:
 			prev_mol = Mol(mol.atoms, mol.coords)
 			if step == 0:
 				old_frc = frc
-			frc = -1.0 * self.EnergyAndForce(mol)
+			frc = 1.0 * self.EnergyAndForce(mol)
 			frc = RemoveInvariantForce(mol.coords, frc, mol.atoms)
 			print(("force:", frc))
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
