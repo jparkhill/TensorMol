@@ -1417,8 +1417,10 @@ class TFMolManageDirect:
 		Args:
 			maxstep: The number of training steps.
 		"""
-		if self.network_type == "BehlerParinelloDirect":
-			self.network = BehlerParinelloDirect(self.tensor_data, "symmetry_functions")
+		if self.network_type == "BehlerParinelloDirectSymFunc":
+			self.network = BehlerParinelloDirectSymFunc(self.tensor_data, "symmetry_functions")
+		elif self.network_type == "BehlerParinelloDirectGauSH":
+			self.network = BehlerParinelloDirectGauSH(self.tensor_data, "GauSH")
 		else:
 			raise Exception("Unknown Network Type!")
 		self.network.train()

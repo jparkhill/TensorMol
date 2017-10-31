@@ -366,7 +366,7 @@ class TensorMolDataDirect:
 			Zs[i][:mol.NAtoms()] = mol.atoms
 			labels[i] = mol.properties["atomization"]
 			num_atoms[i] = mol.NAtoms()
-			gradients[i][:mol.NAtoms()] = -1.0 * mol.properties["forces"]
+			gradients[i][:mol.NAtoms()] = mol.properties["gradients"]
 		return xyzs, Zs, labels, num_atoms, gradients
 
 	def load_data_to_scratch(self):

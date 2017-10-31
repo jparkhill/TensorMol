@@ -75,6 +75,7 @@ class TMParams(dict):
 		self["ConvFilter"] = [32, 64]
 		self["ConvKernelSize"] = [[8,1],[4,1]]
 		self["ConvStrides"] = [[8,1],[4,1]]
+		self["sigmoid_alpha"] = 100.0
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
