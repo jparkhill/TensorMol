@@ -174,16 +174,16 @@ class NudgedElasticBand:
 			m.properties["Energy"] = Es[i]
 			m.properties["Force"] = Fint(l)
 			m.WriteXYZfile("./results/", "NebHQTraj")
-	def WriteTrajectory(self):
+	def WriteTrajectory(self,filename):
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
-			m.WriteXYZfile("./results/", "Bead"+str(i))
+			m.WriteXYZfile("./results/", "Bead"+filename+str(i))
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.properties["bead"] = i
 			m.properties["Energy"] = self.Es[i]
 			m.properties["NormNebForce"]=np.linalg.norm(self.Fs[i])
-			m.WriteXYZfile("./results/", "NebTraj")
+			m.WriteXYZfile("./results/", "NebTraj"+filename)
 		return
 	def Opt(self, filename="Neb",Debug=False):
 		"""

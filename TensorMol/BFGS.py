@@ -51,7 +51,7 @@ class VerletOptimizer:
 		self.x0=x0_.copy()
 		self.v=np.zeros(x0_.shape)
 		self.a=np.zeros(x0_.shape)
-		self.dt = 0.01
+		self.dt = 0.1
 		if (len(self.x0.shape)==2):
 			self.natom = self.x0.shape[0]
 		else:
@@ -67,16 +67,15 @@ class VerletOptimizer:
 		Returns:
 			Next point, energy, and gradient.
 		"""
-		e,g = self.EForce(new_vec_)
-		x = x_ + self.v*dt_ + (1./2.)*self.a*dt_*dt_
+		x = x_ + self.v*self.dt + (1./2.)*self.a*self.dt*self.dt
 		e, f_x_ = self.EForce(x)
-		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
-		self.v += (1./2.)*(self.a+a)*dt_
+		#a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		self.v += (1./2.)*(self.a+f_x_)*self.dt
 		if (np.sum(self.v*f_x_)<0):
 			self.v *= 0.0
 			self.a *= 0.0
 		self.step += 1
-		return x
+		return x, e, f_x_
 
 class BFGS(SteepestDescent):
 	def __init__(self, ForceAndEnergy_,x0_):
