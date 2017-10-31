@@ -1419,6 +1419,8 @@ class TFMolManageDirect:
 		"""
 		if self.network_type == "BehlerParinelloDirect":
 			self.network = BehlerParinelloDirect(self.tensor_data, "symmetry_functions")
+		elif self.network_type == "BehlerParinelloDirect_GauSH":
+			self.network = BehlerParinelloDirect_GauSH(self.tensor_data, "GauSH")
 		else:
 			raise Exception("Unknown Network Type!")
 		self.network.train()

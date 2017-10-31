@@ -734,24 +734,27 @@ class BehlerParinelloDirect_GauSH:
 		return variable
 
 	def compute_normalization(self):
+		xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.max_num_atoms, 3]))
+		Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.max_num_atoms]))
+		gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
+		atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_precision)
+
 		elements = tf.constant(self.elements, dtype = tf.int32)
-		element_pairs = tf.constant(self.element_pairs, dtype = tf.int32)
-		radial_rs = tf.constant(self.radial_rs, dtype = self.tf_precision)
-		angular_rs = tf.constant(self.angular_rs, dtype = self.tf_precision)
-		theta_s = tf.constant(self.theta_s, dtype = self.tf_precision)
-		radial_cutoff = tf.constant(self.radial_cutoff, dtype = self.tf_precision)
-		angular_cutoff = tf.constant(self.angular_cutoff, dtype = self.tf_precision)
-		zeta = tf.constant(self.zeta, dtype = self.tf_precision)
-		eta = tf.constant(self.eta, dtype = self.tf_precision)
-		xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms, 3]))
-		Zs_pl = tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.max_num_atoms]))
-		embeddings, molecule_indices = tf_symmetry_functions(xyzs_pl, Zs_pl, elements, element_pairs, radial_cutoff,
-										angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
-		embeddings_list = [[], [], [], []]
+		rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
+		embeddings, molecule_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, Zs_pl, elements,
+				gaussian_params, atomic_embed_factors, self.l_max)
+
+		embeddings_list = []
+		for element in range(len(self.elements)):
+			embeddings_list.append([])
 		labels_list = []
 		gradients_list = []
+		self.embeddings_mean = []
+		self.embeddings_stddev = []
 
-		self.embeddings_max = []
 		sess = tf.Session()
 		sess.run(tf.global_variables_initializer())
 		for ministep in range (0, max(2, int(0.1 * self.tensor_data.num_train_cases/self.batch_size))):
@@ -765,7 +768,8 @@ class BehlerParinelloDirect_GauSH:
 				embeddings_list[element].append(embedding[element])
 		sess.close()
 		for element in range(len(self.elements)):
-			self.embeddings_max.append(np.amax(np.concatenate(embeddings_list[element])))
+			self.embeddings_mean.append(np.mean(np.concatenate(embeddings_list[element])))
+			self.embeddings_stddev.append(np.std(np.concatenate(embeddings_list[element])))
 		labels = np.concatenate(labels_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
@@ -812,12 +816,13 @@ class BehlerParinelloDirect_GauSH:
 		"""
 		with tf.Graph().as_default():
 			#Define the placeholders to be fed in for each batch
-			self.xyzs_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
-			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.MaxNAtoms]))
-			self.labels_pl = tf.placeholder(self.tf_prec, shape=tuple([None, self.MaxNAtoms, 3]))
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.max_num_atoms, 3]))
+			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.max_num_atoms]))
+			self.labels_pl = tf.placeholder(self.tf_precision, shape=tuple([None]))
 			self.gradients_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms, 3]))
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_prec)
-			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_prec)
+			self.num_atoms_pl = tf.placeholder(tf.int32, shape=([self.batch_size]))
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
+			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_precision)
 
 			elements = tf.constant(self.elements, dtype = tf.int32)
 			embeddings_mean = tf.constant(self.embeddings_mean, dtype = self.tf_precision)
@@ -826,36 +831,24 @@ class BehlerParinelloDirect_GauSH:
 			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
 			# gradients_mean = tf.constant(self.gradients_mean, dtype = self.tf_precision)
 			# gradients_stddev = tf.constant(self.gradients_stddev, dtype = self.tf_precision)
-			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
-					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec),
-					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_prec)], axis=-1, name="rotation_params")
+			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(self.xyzs_pl, rotation_params)
-			embedding, molecule_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, elements,
-					self.gaussian_params, self.atomic_embed_factors)
-			norm_embedding = (embedding - embeddings_mean) / embeddings_stddev
-			norm_labels = (labels - labels_mean) / labels_stddev
-			norm_output = self.inference(norm_embedding)
-			self.output = (norm_output * outstd) + outmean
-			self.n_atoms_batch = tf.shape(self.output)[0]
-			self.total_loss, self.loss = self.loss_op(self.norm_output, self.norm_labels)
-
-			#Define the graph for computing the embedding, feeding through the network, and evaluating the loss
-			element_embeddings, mol_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, elements,
-					self.gaussian_params, self.atomic_embed_factors)
+			embeddings, molecule_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, elements,
+					self.gaussian_params, self.atomic_embed_factors, self.l_max)
 			for element in range(len(self.elements)):
-				element_embeddings[element] /= embeddings_max[element]
-			self.normalized_output = self.inference(element_embeddings, mol_indices)
-			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
-			self.normalized_gradients = tf.gradients(self.output, self.xyzs_pl)[0]
-			# self.gradients = (self.normalized_gradients * self.gradients_stddev) + self.gradients_mean
-			# non_padded_atoms = tf.where(tf.not_equal(self.Zs_pl, 0))
-			# self.non_padded_gradients = tf.gather_nd(self.gradients, non_padded_atoms)
-			# self.non_padded_gradients_label = tf.gather_nd(self.gradients_pl, non_padded_atoms)
-			if self.train_energy_gradients:
-				self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
-						self.labels_pl, self.non_padded_gradients, self.non_padded_gradients_label, num_atoms_batch)
-			else:
-				self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
+				embeddings[element] -= embeddings_mean[element]
+				embeddings[element] /= embeddings_stddev[element]
+			norm_output = self.inference(embeddings, molecule_indices)
+			self.output = (norm_output * labels_stddev) + labels_mean
+			self.total_loss, self.loss = self.loss_op(self.output, self.labels_pl)
+
+			# if self.train_energy_gradients:
+			# 	self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
+			# 			self.labels_pl, self.non_padded_gradients, self.non_padded_gradients_label, num_atoms_batch)
+			# else:
+			self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
 			self.train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -1010,8 +1003,8 @@ class BehlerParinelloDirect_GauSH:
 						self.num_atoms_pl],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
-				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms = self.sess.run([self.output,
-						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss,
+				output, labels, total_loss_value, energy_loss, num_atoms = self.sess.run([self.output,
+						self.labels_pl, self.total_loss, self.energy_loss,
 						self.num_atoms_pl],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
@@ -1019,24 +1012,27 @@ class BehlerParinelloDirect_GauSH:
 			test_epoch_energy_labels.append(labels)
 			test_epoch_energy_outputs.append(output)
 			num_atoms_epoch.append(num_atoms)
-			for molecule in range(self.batch_size):
-				test_epoch_force_labels.append(-1.0 * gradient_labels[molecule,:num_atoms[molecule]])
-				test_epoch_force_outputs.append(-1.0 * gradients[molecule,:num_atoms[molecule]])
+			# for molecule in range(self.batch_size):
+			# 	test_epoch_force_labels.append(-1.0 * gradient_labels[molecule,:num_atoms[molecule]])
+			# 	test_epoch_force_outputs.append(-1.0 * gradients[molecule,:num_atoms[molecule]])
 		test_epoch_energy_labels = np.concatenate(test_epoch_energy_labels)
 		test_epoch_energy_outputs = np.concatenate(test_epoch_energy_outputs)
 		test_epoch_energy_errors = test_epoch_energy_labels - test_epoch_energy_outputs
-		test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
-		test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
-		test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
+		# test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
+		# test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
+		# test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
 		num_atoms_epoch = np.sum(np.concatenate(num_atoms_epoch))
 		duration = time.time() - start_time
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 			LOGGER.info("Energy label: %.8f  Energy output: %.8f", test_epoch_energy_labels[i], test_epoch_energy_outputs[i])
-		for i in [random.randint(0, num_atoms_epoch - 1) for _ in xrange(20)]:
-			LOGGER.info("Forces label: %s  Forces output: %s", test_epoch_force_labels[i], test_epoch_force_outputs[i])
-		LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
-		LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
-		LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
+		# for i in [random.randint(0, num_atoms_epoch - 1) for _ in xrange(20)]:
+		# 	LOGGER.info("Forces label: %s  Forces output: %s", test_epoch_force_labels[i], test_epoch_force_outputs[i])
+		# LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
+		# LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
+		# LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
+		LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
+		LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
+		LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
 		if self.train_energy_gradients:
 			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
 		else:

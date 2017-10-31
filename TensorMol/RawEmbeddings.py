@@ -2812,7 +2812,7 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_
 							[tf.shape(Zs)[0], tf.shape(Zs)[1], tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
 	embeddings = tf.gather_nd(embeddings, element_indices[:,0:2])
 	element_embeddings = tf.dynamic_partition(embeddings, element_indices[:,2], num_elements)
-	molecule_indices = tf.dynamic_partition(element_indices[:,0], element_indices[:,2], num_elements)
+	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
 def tf_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False):

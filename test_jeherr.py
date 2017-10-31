@@ -507,6 +507,23 @@ def train_energy_symm_func():
 	tensor_data = TensorMolDataDirect(a, "atomization", "symmetry_functions")
 	manager = TFMolManageDirect(tensor_data)
 
+def train_energy_GauSH():
+	PARAMS["train_energy_gradients"] = False
+	PARAMS["weight_decay"] = None
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 500
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 100
+	PARAMS["NeuronType"] = "elu"
+	PARAMS["tf_prec"] = "tf.float32"
+	a=MSet("H2O_wb97xd_1to21_with_prontonated")
+	a.Load()
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	tensor_data = TensorMolDataDirect(a, "atomization", "GauSH")
+	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirect_GauSH")
+
 def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
 								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
@@ -561,7 +578,7 @@ def test_md():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
+# TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols_rand")
 # TestTFSym()
 # train_energy_symm_func_channel()
@@ -571,6 +588,7 @@ TestTFGauSH()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 
