@@ -65,7 +65,7 @@ def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp'
 						k += 4
 						l = 0
 		# return Energy, Forces
-		return -Forces*JOULEPERHARTREE/BOHRPERA
+		return Energy, -Forces*JOULEPERHARTREE/BOHRPERA
 	elif jobtype_ == 'sp':
 		for line in lines:
 			if line.count('Convergence criterion met')>0:

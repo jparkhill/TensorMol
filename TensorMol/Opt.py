@@ -71,7 +71,7 @@ class GeomOptimizer:
 			prev_m.WriteXYZfile("./results/", filename,'a',True)
 			step+=1
 		# Checks stability in each cartesian direction.
-		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False)[0])
+		print("Final Energy:", self.EnergyAndForce(prev_m.coords,True)[0])
 		return prev_m
 
 	def Opt_LS(self,m, filename="OptLog",Debug=False):

@@ -401,12 +401,12 @@ def Train():
 
 def Eval():
 	if (1):
-		a=MSet("aspirin", center_=False)
-		a.ReadXYZ("aspirin")
+		#a=MSet("aspirin", center_=False)
+		#a.ReadXYZ("aspirin")
 		#a=MSet("chemspider_IR_test_mol", center_=False)
 		#a.ReadXYZ("chemspider_IR_test_mol")
-		#a=MSet("decalin_reaction", center_=False)
-		#a.ReadXYZ("decalin_reaction")
+		a=MSet("decalin_reaction", center_=False)
+		a.ReadXYZ("decalin_reaction")
 		#a=MSet("IR_debug", center_=False)
 		#a.ReadXYZ("IR_debug")
 		TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
@@ -443,7 +443,7 @@ def Eval():
 		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 		manager=TFMolManage("Mol_chemspider12_clean_maxatom35_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 
-		m = a.mols[1]
+		m = a.mols[0]
 		eq_coords = m.coords.copy()
 		#print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
 		#print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
@@ -509,17 +509,17 @@ def Eval():
 		#EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
 
-		#PARAMS["OptMaxCycles"]=200
-		#Opt = GeomOptimizer(EnAndForce)
-		#m=Opt.Opt(a.mols[1])
+		PARAMS["OptMaxCycles"]=1
+		Opt = GeomOptimizer(EnAndForce)
+		m=Opt.Opt(a.mols[1])
 		#return
 		##return
- 		masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+ 		#masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 		#w,v = HarmonicSpectra(DFTForceField, m.coords, m.atoms, WriteNM_=False)
 		#w,v = HarmonicSpectra(DFTForceField, m.coords, m.atoms,  WriteNM_=True, Mu_ = DFTDipoleField)
 		#w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DFTDipoleField)
-		w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
-		return
+		#w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
+		#return
 
 
 		#PARAMS["OptMaxCycles"]=200
@@ -529,7 +529,7 @@ def Eval():
 		#a.mols[-2], a.mols[-1] = a.mols[-2].AlignAtoms(a.mols[-1])
 		PARAMS["OptMaxCycles"]=20000
 		PARAMS["NebSolver"]="SD"
-		PARAMS["NebNumBeads"] = 41
+		PARAMS["NebNumBeads"] = 21
 		PARAMS["MaxBFGS"] = 12
 		PARAMS["NebK"] = 0.2
 		neb = NudgedElasticBand(EnAndForce,a.mols[-2],a.mols[-1])
