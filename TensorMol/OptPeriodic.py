@@ -132,3 +132,31 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 		self.EnergyAndForce.Save(prev_m.coords,"FinalPeriodicOpt")
 		self.EnergyAndForce.mol0.coords = prev_m.coords.copy()
 		return prev_m
+
+def Solvate(f_,m1_,m2_,shells_=3,rho_target=0.87):
+	"""
+	Takes a PeriodicForce which includes an initial molecule, and solvates it with
+	shells_ of M2. and optimized to a desired density.
+	"""
+	xmn1 = min(np.min(PF_.mol0.coords),np.min(m2_.coords))
+	xmx1 = max(np.max(PF_.mol0.coords),np.max(m2_.coords))
+	dx = xmx1-xmn1
+	lat = Lattice(np.array([[dx,0.,0.],[0.,dx,0.],[0.,0.,dx]]))
+	m = lat.CenteredInLattice(m2_)
+	nat = m1_.NAtoms()
+	natsolv = m.NAtoms()
+	sa,sc = lat.TessNTimes(m.atoms,m.coords,2*shells_+1)
+	# cell index of the center.
+	ccell = shells_*pow(2*shells_+1,2)+shells_*pow(2*shells_+1,1)+shells_
+	# Replace the center cell with the solute.
+	sa = np.concatenate([m1_.atoms,sa[:ccell*natsolv],sa[(ccell+1)*natsolv:]])
+	sc = np.concatenate([m1_.coords-np.mean(m1_,axis=0)[np.newaxis,:],sa[:ccell*natsolv,:],sa[(ccell+1)*natsolv:,:]],axis=0)
+	m = Mol(sa,sc)
+	m.WriteXYZfile("./results","solvated")
+	m.coords -= np.min(m.coords)
+	xmx = np.max(m.coords)
+	PF = PeriodicForce(m,np.array([[xmx,0.,0.],[0.,xmx,0.],[0.,0.,xmx]]))
+	PF.BindForce(f_, 15.0)
+	opt = PeriodicGeomOptimizer(PF)
+	msolv = opt.OptToDensity(m,rho_target)
+	return msolv

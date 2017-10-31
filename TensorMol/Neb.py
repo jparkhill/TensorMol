@@ -16,7 +16,7 @@ import random
 import time
 
 class NudgedElasticBand:
-	def __init__(self,f_,g0_,g1_):
+	def __init__(self,f_,g0_,g1_, beads_=None):
 		"""
 		Nudged Elastic band. JCP 113 9978
 
@@ -37,11 +37,14 @@ class NudgedElasticBand:
 		self.f = f_
 		self.atoms = g0_.atoms.copy()
 		self.natoms = len(self.atoms)
-		self.beads=np.array([(1.-l)*g0_.coords+l*g1_.coords for l in np.linspace(0.,1.,self.nbeads)])
+		if beads_ is not None:
+			self.beads = beads_
+		else:
+			self.beads = np.array([(1.-l)*g0_.coords+l*g1_.coords for l in np.linspace(0.,1.,self.nbeads)])
 		self.Fs = np.zeros(self.beads.shape) # Real forces.
 		self.Ss = np.zeros(self.beads.shape) # Spring Forces.
 		self.Ts = np.zeros(self.beads.shape) # Tangents.
-		self.Es = np.zeros(self.nbeads) # As Evaluated.
+		self.Es = np.ones(self.nbeads)*1000.0 # As Evaluated.
 		self.Esi = np.zeros(self.nbeads) # Integrated
 		self.Rs = np.zeros(self.nbeads) # Distance between beads.
 		self.Solver=None
@@ -53,6 +56,8 @@ class NudgedElasticBand:
 			self.Solver = DIIS(self.WrappedEForce, self.beads)
 		elif (PARAMS["NebSolver"]=="CG"):
 			self.Solver = ConjGradient(self.WrappedEForce,self.beads)
+		elif (PARAMS["NebSolver"]=="Verlet"):
+			self.Solver = VerletOptimizer(self.WrappedEForce,self.beads)
 		else:
 			raise Exception("Missing Neb Solver")
 		for i,bead in enumerate(self.beads):
@@ -172,16 +177,16 @@ class NudgedElasticBand:
 			m.properties["Energy"] = Es[i]
 			m.properties["Force"] = Fint(l)
 			m.WriteXYZfile("./results/", "NebHQTraj")
-	def WriteTrajectory(self):
+	def WriteTrajectory(self,filename):
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
-			m.WriteXYZfile("./results/", "Bead"+str(i))
+			m.WriteXYZfile("./results/", "Bead"+filename+str(i))
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.properties["bead"] = i
 			m.properties["Energy"] = self.Es[i]
 			m.properties["NormNebForce"]=np.linalg.norm(self.Fs[i])
-			m.WriteXYZfile("./results/", "NebTraj")
+			m.WriteXYZfile("./results/", "NebTraj"+filename)
 		return
 	def Opt(self, filename="Neb",Debug=False):
 		"""

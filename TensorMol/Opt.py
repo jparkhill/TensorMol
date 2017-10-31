@@ -71,7 +71,7 @@ class GeomOptimizer:
 			prev_m.WriteXYZfile("./results/", filename,'a',True)
 			step+=1
 		# Checks stability in each cartesian direction.
-		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False)[0])
+		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
 		return prev_m
 
 	def Opt_LS(self,m, filename="OptLog",Debug=False):
@@ -108,7 +108,7 @@ class GeomOptimizer:
 			step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-		print("Final Energy:", Energy(prev_m.coords))
+		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
 		return prev_m
 
 	def Opt_GD(self,m, filename="OptLog",Debug=False):
