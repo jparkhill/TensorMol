@@ -97,8 +97,8 @@ class TMParams(dict):
 		self["GSSearchAlpha"] = 0.001
 		self["SDStep"] = 0.05
 		self["MaxBFGS"] = 7
-		self["NebSolver"] = "SD"
-		self["NebNumBeads"] = 18 # It's important to have enough beads. 
+		self["NebSolver"] = "Verlet"
+		self["NebNumBeads"] = 18 # It's important to have enough beads.
 		self["NebK"] = 0.1
 		self["NebClimbingImage"] = True
 		self["DiisSize"] = 20

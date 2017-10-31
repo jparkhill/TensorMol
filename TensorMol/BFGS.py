@@ -27,7 +27,7 @@ class SteepestDescent:
 		return
 	def __call__(self, new_vec_):
 		"""
-		Iterate BFGS
+		Iterate
 
 		Args:
 			new_vec_: Point at which to minimize gradients
@@ -37,6 +37,46 @@ class SteepestDescent:
 		e,g = self.EForce(new_vec_)
 		self.step += 1
 		return new_vec_ + PARAMS["SDStep"]*g, e, g
+
+class VerletOptimizer:
+	def __init__(self, ForceAndEnergy_,x0_):
+		"""
+		Based on Hankelman's momentum optimizer.
+
+		Args:
+			ForceAndEnergy_: a routine which returns energy, force.
+			x0_: a initial vector
+		"""
+		self.step = 0
+		self.x0=x0_.copy()
+		self.v=np.zeros(x0_.shape)
+		self.a=np.zeros(x0_.shape)
+		self.dt = 0.01
+		if (len(self.x0.shape)==2):
+			self.natom = self.x0.shape[0]
+		else:
+			self.natom = self.x0.shape[0]*self.x0.shape[1]
+		self.EForce = ForceAndEnergy_ # Used for line-search.
+		return
+	def __call__(self, x_):
+		"""
+		Iterate
+
+		Args:
+			new_vec_: Point at which to minimize gradients
+		Returns:
+			Next point, energy, and gradient.
+		"""
+		e,g = self.EForce(new_vec_)
+		x = x_ + self.v*dt_ + (1./2.)*self.a*dt_*dt_
+		e, f_x_ = self.EForce(x)
+		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		self.v += (1./2.)*(self.a+a)*dt_
+		if (np.sum(self.v*f_x_)<0):
+			self.v *= 0.0
+			self.a *= 0.0
+		self.step += 1
+		return x
 
 class BFGS(SteepestDescent):
 	def __init__(self, ForceAndEnergy_,x0_):
