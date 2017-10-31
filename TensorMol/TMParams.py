@@ -95,9 +95,10 @@ class TMParams(dict):
 		self["OptPrintLvl"] = 1
 		self["OptLatticeStep"] = 0.050
 		self["GSSearchAlpha"] = 0.001
+		self["SDStep"] = 0.05
 		self["MaxBFGS"] = 7
 		self["NebSolver"] = "SD"
-		self["NebNumBeads"] = 13
+		self["NebNumBeads"] = 18 # It's important to have enough beads. 
 		self["NebK"] = 0.1
 		self["NebClimbingImage"] = True
 		self["DiisSize"] = 20

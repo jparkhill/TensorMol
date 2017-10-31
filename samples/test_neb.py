@@ -44,7 +44,7 @@ def GetChemSpider12(a):
 	return manager
 
 def Eval():
-	a=MSet("EndiandricC", center_=False)
+	a=MSet("Endiandric", center_=False)
 	a.ReadXYZ()
 	# Optimize all three structures.
 	manager = GetChemSpider12(a)
@@ -61,24 +61,36 @@ def Eval():
 				return energy
 		return EnAndForce
 
-	if 0:
+	if 1:
 		# Optimize all three steps of the reaction.
-		PARAMS["OptMaxCycles"]=10
+		PARAMS["OptMaxCycles"]=200
 		print("Optimizing ", len(a.mols), " mols")
-		for i in range(3):
+		for i in range(6):
 			F = GetEnergyForceForMol(a.mols[i])
 			Opt = GeomOptimizer(F)
 			a.mols[i] = Opt.Opt(a.mols[i])
 			a.mols[i].WriteXYZfile("./results/", "OptMol"+str(i))
+	if 0:
+		i=3
+		PARAMS["OptMaxCycles"]=500
+		F = GetEnergyForceForMol(a.mols[i])
+		Opt = GeomOptimizer(F)
+		a.mols[i] = Opt.Opt(a.mols[i])
+		a.mols[i].WriteXYZfile("./results/", "OptMol"+str(i))
+
+
+	# The set consists of PreF, PreG, G, F, B, C
+	# Important transitions are 1<=>2, 2<>3, 1<>4, 3<>6, 4<>5
 
 	# Achieve element alignment.
 	a.mols[0], a.mols[1] = a.mols[0].AlignAtoms(a.mols[1])
 	a.mols[0].WriteXYZfile("./results/", "Aligned"+str(0))
 
 	# Finally do the NEB. between each.
-	PARAMS["OptMaxCycles"]=200
+	PARAMS["OptMaxCycles"]=500
 	PARAMS["NebSolver"]="SD"
-	PARAMS["NebNumBeads"] = 10
+	PARAMS["SDStep"] = 0.05
+	PARAMS["NebNumBeads"] = 18
 	PARAMS["MaxBFGS"] = 12
 	F = GetEnergyForceForMol(a.mols[0])
 	neb = NudgedElasticBand(F,a.mols[0],a.mols[1])

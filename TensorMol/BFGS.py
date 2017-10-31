@@ -36,7 +36,7 @@ class SteepestDescent:
 		"""
 		e,g = self.EForce(new_vec_)
 		self.step += 1
-		return new_vec_ + 0.01*g, e, g
+		return new_vec_ + PARAMS["SDStep"]*g, e, g
 
 class BFGS(SteepestDescent):
 	def __init__(self, ForceAndEnergy_,x0_):
