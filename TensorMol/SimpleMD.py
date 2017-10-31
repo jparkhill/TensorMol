@@ -28,8 +28,8 @@ def VelocityVerletStep(f_, a_, x_, atoms, v_, m_, dt_, fande_=None):
 	"""
 	x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 	e, f_x_ = 0.0, None
-	if (fande_==None):
-		f_x_ = f_(Mol(atoms, x_))
+	if (fande_ == None):
+		f_x_ = f_(Mol(atoms, x))
 	else:
 		e, f_x_ = fande_(x)
 	a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2

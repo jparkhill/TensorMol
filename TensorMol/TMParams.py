@@ -75,6 +75,7 @@ class TMParams(dict):
 		self["ConvFilter"] = [32, 64]
 		self["ConvKernelSize"] = [[8,1],[4,1]]
 		self["ConvStrides"] = [[8,1],[4,1]]
+		self["sigmoid_alpha"] = 100.0
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
@@ -95,9 +96,10 @@ class TMParams(dict):
 		self["OptPrintLvl"] = 1
 		self["OptLatticeStep"] = 0.050
 		self["GSSearchAlpha"] = 0.001
+		self["SDStep"] = 0.05
 		self["MaxBFGS"] = 7
-		self["NebSolver"] = "SD"
-		self["NebNumBeads"] = 13
+		self["NebSolver"] = "Verlet"
+		self["NebNumBeads"] = 18 # It's important to have enough beads.
 		self["NebK"] = 0.1
 		self["NebClimbingImage"] = True
 		self["DiisSize"] = 20
