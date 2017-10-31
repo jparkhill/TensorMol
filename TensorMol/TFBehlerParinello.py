@@ -82,6 +82,8 @@ class BehlerParinelloDirectSymFunc:
 				self.activation_function = tf.tanh
 			elif self.activation_function_type == "sigmoid":
 				self.activation_function = tf.sigmoid
+			elif self.activation_function_type == "sigmoid_with_param":
+				self.activation_function = sigmoid_with_param
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
