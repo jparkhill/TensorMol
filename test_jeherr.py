@@ -508,6 +508,11 @@ def train_energy_symm_func():
 	manager = TFMolManageDirect(tensor_data)
 
 def train_energy_GauSH():
+	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
+								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
+	PARAMS["SH_NRAD"] = 14
+	PARAMS["SH_LMAX"] = 4
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
@@ -522,7 +527,7 @@ def train_energy_GauSH():
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
 	tensor_data = TensorMolDataDirect(a, "atomization", "GauSH")
-	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirect_GauSH")
+	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectGauSH")
 
 def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],

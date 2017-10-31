@@ -15,7 +15,7 @@ from TensorMol.RawEmbeddings import *
 from TensorMol.Neighbors import *
 from tensorflow.python.client import timeline
 
-class BehlerParinelloDirect:
+class BehlerParinelloDirectSymFunc:
 	"""
 	Behler-Parinello network using embedding from RawEmbeddings.py
 	"""
@@ -585,7 +585,7 @@ class BehlerParinelloDirect:
 			self.summary_writer = tf.summary.FileWriter(self.network_directory, self.sess.graph)
 		return
 
-class BehlerParinelloDirect_GauSH:
+class BehlerParinelloDirectGauSH:
 	"""
 	Behler-Parinello network using embedding from RawEmbeddings.py
 	"""
