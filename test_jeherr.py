@@ -193,6 +193,7 @@ def TestTFGauSH():
 	zlist = []
 	xyzlist = []
 	labelslist = []
+	natomlist = []
 	for i, mol in enumerate(a.mols):
 		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float32)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
@@ -203,24 +204,25 @@ def TestTFGauSH():
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		labelslist.append(paddedlabels)
+		natomlist.append(mol.NAtoms())
 		if i == 99:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
 	labelstack = tf.stack(labelslist)
+	natomstack = tf.stack(natomlist)
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 	elements = tf.constant([1, 6, 7, 8], dtype=tf.int32)
-	tmp = tf_gaussian_spherical_harmonics(xyzstack, zstack, elements, gaussian_params, atomic_embed_factors, 4, orthogonalize=False)
+	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, natomstack, elements, gaussian_params, atomic_embed_factors, 4)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
+	print a.mols[0].atoms
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
 	tmp2 = sess.run(tmp)
-	print tmp2[0].shape
-	print tmp2[1].shape
-	print tmp2[2].shape
-	print tmp2[3].shape
+	print tmp2.shape
+	# print a.mols[0].atoms.shape
 	# TreatedAtoms = a.AtomTypes()
 	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	# # tset = TensorData(a,d)
@@ -490,7 +492,6 @@ def train_energy_pairs_triples():
 	manager=TFMolManage("",tset,True,"pairs_triples", Trainable_=True)
 
 def train_energy_symm_func():
-	# np.set_printoptions(formatter={'float': '{: 0.8f}'.format})
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
@@ -498,14 +499,14 @@ def train_energy_symm_func():
 	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 100
-	PARAMS["NeuronType"] = "elu"
+	PARAMS["NeuronType"] = "sigmoid_with_param"
 	PARAMS["tf_prec"] = "tf.float32"
-	a=MSet("SmallMols")
+	a=MSet("H2O_wb97xd_1to21_with_prontonated")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
-	tensor_data = TensorMolDataDirect(a, "atomization", "symmetry_functions")
-	manager = TFMolManageDirect(tensor_data)
+	tensor_data = TensorMolDataDirect(a, "atomization")
+	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
 	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
@@ -526,7 +527,7 @@ def train_energy_GauSH():
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
-	tensor_data = TensorMolDataDirect(a, "atomization", "GauSH")
+	tensor_data = TensorMolDataDirect(a, "atomization")
 	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectGauSH")
 
 def geo_opt_tf_forces(mset, manager_name, mol_index):
@@ -583,7 +584,7 @@ def test_md():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-# TestTFGauSH()
+TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols_rand")
 # TestTFSym()
 # train_energy_symm_func_channel()
@@ -593,7 +594,7 @@ def test_md():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
-train_energy_GauSH()
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 

@@ -307,20 +307,19 @@ class TensorMolDataDirect:
 	Notes:
 		Currently only implimented with atomization_energy as the learning target.
 	"""
-	def __init__(self, molecule_set, learning_target, embedding_type):
+	def __init__(self, molecule_set, learning_target):
 		self.molecule_set = molecule_set
 		self.molecule_set_name = self.molecule_set.name
 		self.learning_target = learning_target
-		self.embedding_type = embedding_type
 		self.randomize_data = PARAMS["RandomizeData"]
 		self.test_ratio = PARAMS["TestRatio"]
 		self.elements = self.molecule_set.AtomTypes()
 		self.max_num_atoms = self.molecule_set.MaxNAtoms() #Used to pad data so that each molecule is the same size
 		self.num_molecules = len(self.molecule_set.mols)
-		if embedding_type == "symmetry_functions":
-			self.element_pairs = np.array([[self.elements[i], self.elements[j]] for i in range(len(self.elements)) for j in range(i, len(self.elements))])
-			self.radial_grid_cutoff = PARAMS["AN1_r_Rc"]
-			self.angular_grid_cutoff = PARAMS["AN1_a_Rc"]
+		# if embedding_type == "symmetry_functions":
+		# 	self.element_pairs = np.array([[self.elements[i], self.elements[j]] for i in range(len(self.elements)) for j in range(i, len(self.elements))])
+		# 	self.radial_grid_cutoff = PARAMS["AN1_r_Rc"]
+		# 	self.angular_grid_cutoff = PARAMS["AN1_a_Rc"]
 		return
 
 	def clean_scratch(self):
