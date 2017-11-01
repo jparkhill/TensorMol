@@ -2448,10 +2448,10 @@ def gaussian_overlap(gaussian_params):
 	return orthogonal_scaling_matrix, min_eigenval
 
 def tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize=False):
-	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.reshape(gaussian_params[:,0],
-				[1, 1, 1, tf.shape(gaussian_params[:,0])[0]]))) / (-2.0 * (gaussian_params[:,1] ** 2))
+	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.expand_dims(tf.expand_dims(gaussian_params[:,0], axis=0), axis=1))) \
+				/ (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	orthogonal_scaling_matrix, min_eigenval = gaussian_overlap(gaussian_params)
+	# orthogonal_scaling_matrix, min_eigenval = gaussian_overlap(gaussian_params)
 	if orthogonalize:
 		gaussian_embed = tf.reduce_sum(tf.expand_dims(gaussian_embed, axis=-2) * orthogonal_scaling_matrix, axis=-1)
 	gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
@@ -2832,20 +2832,22 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 	num_elements = elements.get_shape().as_list()[0]
 	num_molecules = Zs.get_shape().as_list()[0]
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
-	element_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(Zs, axis=-1), tf.reshape(elements, [1, 1, tf.shape(elements)[0]]))), tf.int32)
-	distance_tensor = tf.norm(delta_xyzs+1.e-16,axis=3)
+	mol_atom_indices = tf.where(tf.not_equal(Zs, 0))
+	delta_xyzs = tf.gather_nd(delta_xyzs, mol_atom_indices)
+	distance_tensor = tf.norm(delta_xyzs+1.e-16,axis=2)
 	gaussians = tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize)
 	spherical_harmonics = tf_spherical_harmonics(delta_xyzs, distance_tensor, l_max)
-	broadcast = tf.where(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, tf.shape(elements)[0], 1])),
-				tf.tile(tf.ones_like(tf.expand_dims(Zs, axis=1), dtype=data_precision), [1, num_elements, 1]),
-				tf.tile(tf.zeros_like(tf.expand_dims(Zs, axis=1), dtype=data_precision), [1, num_elements, 1]))
-	element_channel_gaussians = tf.expand_dims(gaussians, axis=2) * tf.expand_dims(tf.expand_dims(broadcast, axis=1), axis=-1)
-	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=2) * tf.expand_dims(tf.expand_dims(broadcast, axis=1), axis=-1)
-	embeddings = tf.reshape(tf.einsum('ijekg,ijekl->ijegl', element_channel_gaussians, element_channel_harmonics),
-				[tf.shape(Zs)[0], tf.shape(Zs)[1], -1])
-	embeddings = tf.gather_nd(embeddings, element_indices[:,0:2])
-	element_embeddings = tf.dynamic_partition(embeddings, element_indices[:,2], num_elements)
-	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
+	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, num_elements, 1])), mol_atom_indices[:,0])
+	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=data_precision),
+			tf.zeros_like(channel_scatter_bool, dtype=data_precision))
+	element_channel_gaussians = tf.expand_dims(gaussians, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
+	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
+	embeddings = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', element_channel_gaussians, element_channel_harmonics),
+					[tf.shape(mol_atom_indices)[0], -1])
+	partition_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, mol_atom_indices), axis=-1),
+						tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+	element_embeddings = tf.dynamic_partition(embeddings, partition_indices, num_elements)
+	molecule_indices = tf.dynamic_partition(mol_atom_indices, partition_indices, num_elements)
 	return element_embeddings, molecule_indices
 
 def tf_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False):

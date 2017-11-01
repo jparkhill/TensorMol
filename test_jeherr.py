@@ -205,7 +205,7 @@ def TestTFGauSH():
 		zlist.append(paddedz)
 		labelslist.append(paddedlabels)
 		natomlist.append(mol.NAtoms())
-		if i == 99:
+		if i == 999:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
@@ -214,7 +214,7 @@ def TestTFGauSH():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 	elements = tf.constant([1, 6, 7, 8], dtype=tf.int32)
-	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, elements, gaussian_params, atomic_embed_factors, 4)
+	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, elements, gaussian_params, 4)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -222,6 +222,8 @@ def TestTFGauSH():
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
 	tmp2 = sess.run(tmp, options=options, run_metadata=run_metadata)
+	# print tmp2[1]
+	# print tmp2.shape
 	# print tmp3
 	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
 	chrome_trace = fetched_timeline.generate_chrome_trace_format()
