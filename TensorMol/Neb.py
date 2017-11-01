@@ -34,6 +34,9 @@ class NudgedElasticBand:
 		self.TSI = 0 # index of the TS bead.
 		self.nbeads = PARAMS["NebNumBeads"]
 		self.k = PARAMS["NebK"]
+		self.kMax = PARAMS["NebKMax"]
+		self.dK = self.kMax - self.k
+		self.Ks = self.k*np.ones(self.nbeads)
 		self.f = f_
 		self.atoms = g0_.atoms.copy()
 		self.natoms = len(self.atoms)
@@ -73,12 +76,12 @@ class NudgedElasticBand:
 		tmp = 0.0
 		for i in range(self.nbeads-1):
 			tmp2 = beads_[i+1] - beads_[i]
-			tmp += 0.5*self.k*self.nbeads*np.sum(tmp2*tmp2)
+			tmp += 0.5*self.Ks[i]*self.nbeads*np.sum(tmp2*tmp2)
 		return tmp
 	def SpringDeriv(self,beads_,i):
 		if (i==0 or i==(self.nbeads-1)):
 			return np.zeros(self.beads[0].shape)
-		tmp = self.k*self.nbeads*(2.0*beads_[i] - beads_[i+1] - beads_[i-1])
+		tmp = self.Ks[i]*self.nbeads*(2.0*beads_[i] - beads_[i+1] - beads_[i-1])
 		return tmp
 	def Parallel(self,v_,t_):
 		return t_*(np.einsum("ia,ia",v_,t_))
@@ -102,6 +105,14 @@ class NudgedElasticBand:
 			self.Es[i], self.Fs[i] = self.f(beads_[i],DoForce)
 		else:
 			self.Es[i] = self.f(beads_[i],DoForce)
+		# Compute Ks
+		Eref = max(self.Es[0],self.Es[-1])
+		Emax = np.max(self.Es)
+		Ei = max(self.Es[i],self.Es[i-1])
+		if (Ei > Eref):
+			self.Ks[i] = self.kMax - self.dK*(Emax - Ei)/(Emax - Eref+0.0000000001)
+		else:
+			self.Ks[i] = self.kMax - self.dK
 		# Compute the spring part of the energy.
 		if (not DoForce):
 			return self.Es[i]
@@ -183,7 +194,7 @@ class NudgedElasticBand:
 			m.properties["bead"] = i
 			m.properties["Energy"] = self.Es[i]
 			m.properties["NormNebForce"]=np.linalg.norm(self.Fs[i])
-			m.WriteXYZfile("./results/", "NebTraj"+filename)
+			m.WriteXYZfile("./results/", filename+"Traj")
 		return
 	def Opt(self, filename="Neb",Debug=False):
 		"""
@@ -205,6 +216,7 @@ class NudgedElasticBand:
 			beadCosines = [self.BeadAngleCosine(self.beads,i) for i in range(1,self.nbeads-1)]
 			#print("Frce Profile: ", beadFs)
 			print("F_|_ Profile: ", beadFperp)
+			print(self.Ks)
 			#print("SFrc Profile: ", beadSfs)
 			#print("Dist Profile: ", beadRs)
 			#print("BCos Profile: ", beadCosines)
