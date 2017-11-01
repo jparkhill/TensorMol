@@ -67,6 +67,9 @@ class BehlerParinelloDirectSymFunc:
 		LOGGER.info("self.max_steps: %d", self.max_steps)
 		return
 
+	def sigmoid_with_param(self, x):
+		return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision)
+
 	def assign_activation(self):
 		LOGGER.debug("Assigning Activation Function: %s", PARAMS["NeuronType"])
 		try:
@@ -83,7 +86,7 @@ class BehlerParinelloDirectSymFunc:
 			elif self.activation_function_type == "sigmoid":
 				self.activation_function = tf.sigmoid
 			elif self.activation_function_type == "sigmoid_with_param":
-				self.activation_function = sigmoid_with_param
+				self.activation_function = self.sigmoid_with_param
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
@@ -643,6 +646,9 @@ class BehlerParinelloDirectGauSH:
 		LOGGER.info("self.max_steps: %d", self.max_steps)
 		return
 
+	def sigmoid_with_param(self, x):
+		return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision)
+
 	def assign_activation(self):
 		LOGGER.debug("Assigning Activation Function: %s", PARAMS["NeuronType"])
 		try:
@@ -658,6 +664,8 @@ class BehlerParinelloDirectGauSH:
 				self.activation_function = tf.tanh
 			elif self.activation_function_type == "sigmoid":
 				self.activation_function = tf.sigmoid
+			elif self.activation_function_type == "sigmoid_with_param":
+				self.activation_function = self.sigmoid_with_param
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
@@ -746,7 +754,7 @@ class BehlerParinelloDirectGauSH:
 				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
-		embeddings, molecule_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, Zs_pl, elements,
+		embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, Zs_pl, elements,
 				gaussian_params, atomic_embed_factors, self.l_max)
 
 		embeddings_list = []
@@ -837,7 +845,7 @@ class BehlerParinelloDirectGauSH:
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(self.xyzs_pl, rotation_params)
-			embeddings, molecule_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, elements,
+			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, self.Zs_pl, elements,
 					self.gaussian_params, self.atomic_embed_factors, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]

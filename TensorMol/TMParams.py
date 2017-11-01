@@ -14,12 +14,12 @@ class TMParams(dict):
 		self["PrintTMTimer"] = False # whether to emit timing messages.
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
-		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
-		 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		self["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
+		self["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
+									[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+		self["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=4
-		self["SH_NRAD"]=12
+		self["SH_NRAD"]=14
 		self["SH_ORTH"]=1
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
@@ -100,7 +100,8 @@ class TMParams(dict):
 		self["MaxBFGS"] = 7
 		self["NebSolver"] = "Verlet"
 		self["NebNumBeads"] = 18 # It's important to have enough beads.
-		self["NebK"] = 0.1
+		self["NebK"] = 0.07
+		self["NebKMax"] = 1.0
 		self["NebClimbingImage"] = True
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
