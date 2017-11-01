@@ -776,8 +776,10 @@ class BehlerParinelloDirectGauSH:
 				embeddings_list[element].append(embedding[element])
 		sess.close()
 		for element in range(len(self.elements)):
-			self.embeddings_mean.append(np.mean(np.concatenate(embeddings_list[element])))
-			self.embeddings_stddev.append(np.std(np.concatenate(embeddings_list[element])))
+			self.embeddings_mean.append(np.mean(np.concatenate(embeddings_list[element]), axis=0))
+			self.embeddings_stddev.append(np.std(np.concatenate(embeddings_list[element]), axis=0))
+		self.embeddings_mean = np.stack(self.embeddings_mean)
+		self.embeddings_stddev = np.stack(self.embeddings_stddev)
 		labels = np.concatenate(labels_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
@@ -1013,9 +1015,8 @@ class BehlerParinelloDirectGauSH:
 						self.num_atoms_pl],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
-				output, labels, total_loss_value, energy_loss, num_atoms = self.sess.run([self.output,
-						self.labels_pl, self.total_loss, self.energy_loss,
-						self.num_atoms_pl],  feed_dict=feed_dict)
+				output, labels, total_loss_value, energy_loss, num_atoms, gaussian_params = self.sess.run([self.output,
+						self.labels_pl, self.total_loss, self.energy_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
@@ -1043,6 +1044,7 @@ class BehlerParinelloDirectGauSH:
 		LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
 		LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
 		LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
+		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		if self.train_energy_gradients:
 			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
 		else:
