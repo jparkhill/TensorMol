@@ -2812,7 +2812,7 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
-def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, num_atoms, elements, gaussian_params, atomic_embed_factors, l_max, orthogonalize=False):
+def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, atomic_embed_factors, l_max, orthogonalize=False):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 
@@ -2839,45 +2839,10 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, num_atoms, elements, gauss
 	broadcast = tf.where(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, tf.shape(elements)[0], 1])),
 				tf.tile(tf.ones_like(tf.expand_dims(Zs, axis=1), dtype=data_precision), [1, num_elements, 1]),
 				tf.tile(tf.zeros_like(tf.expand_dims(Zs, axis=1), dtype=data_precision), [1, num_elements, 1]))
-	element_channel_gaussians = tf.expand_dims(gaussians, axis=2) * tf.expand_dims(tf.expand_dims(broadcast, axis=1), axis=2)
-	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=-2) * tf.expand_dims(tf.expand_dims(broadcast, axis=1), axis=-1)
-	return element_channel_gaussians
-	embeddings = tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics)
-	# return element_channel_harmonics
-	#
-	#
-	# atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=data_precision), atomic_embed_factors], axis=0)
-	#
-	# element_embed_factor = tf.expand_dims(tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=-1), axis=1)
-	# return element_embed_factor
-
-	mol_gaussians = tf.dynamic_partition(tf.gather_nd(atom_scaled_gaussians, element_indices[:,0:2]), element_indices[:,0], num_molecules)
-	mol_harmonics = tf.dynamic_partition(tf.gather_nd(spherical_harmonics, element_indices[:,0:2]), element_indices[:,0], num_molecules)
-	embeddings = []
-	mol_embeddings = []
-	for mol in range(num_molecules):
-		mol_embeddings.append([])
-		for element in range(num_elements):
-			element_bool = tf.reduce_any(tf.equal(Zs[mol, :num_atoms[mol]], elements[element]))
-			if element_bool[0]:
-				return element_bool
-			pair_elements = tf.cast(tf.squeeze(tf.where(tf.equal(Zs[num_atoms[mol]], elements[element]))), tf.int32)
-			atom_indices = tf.range(num_atoms[mol])
-			atom_tile = tf.tile(tf.expand_dims(atom_indices, axis=1), [1, tf.shape(pair_elements)[0]])
-			pair_tile = tf.tile(tf.expand_dims(pair_elements, axis=0), [tf.shape(atom_indices)[0], 1])
-			gather_indices = tf.reshape(tf.stack([atom_tile, pair_tile], axis=-1), [-1, 2])
- 			gaussians = tf.gather_nd(mol_gaussians[mol], gather_indices)
-			harmonics = tf.gather_nd(mol_harmonics[mol], gather_indices)
-			gaush = tf.multiply(tf.expand_dims(gaussians, axis=-1), tf.expand_dims(harmonics, axis=-2))
-
-			gaush = tf.reduce_sum(tf.reshape(tf.multiply(tf.expand_dims(gaussians, axis=-1), tf.expand_dims(harmonics, axis=-2)), [tf.shape(atom_indices)[0], tf.shape(pair_elements)[0], -1]), axis=-2)
-			mol_embeddings[-1].append(gaush)
-		embeddings.append(tf.concat(mol_embeddings[-1], axis=-1))
-		return embeddings
-	return embeddings
-
-	embeddings = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', atom_scaled_gaussians, spherical_harmonics),
-							[tf.shape(Zs)[0], tf.shape(Zs)[1], tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
+	element_channel_gaussians = tf.expand_dims(gaussians, axis=2) * tf.expand_dims(tf.expand_dims(broadcast, axis=1), axis=-1)
+	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=2) * tf.expand_dims(tf.expand_dims(broadcast, axis=1), axis=-1)
+	embeddings = tf.reshape(tf.einsum('ijekg,ijekl->ijegl', element_channel_gaussians, element_channel_harmonics),
+				[tf.shape(Zs)[0], tf.shape(Zs)[1], -1])
 	embeddings = tf.gather_nd(embeddings, element_indices[:,0:2])
 	element_embeddings = tf.dynamic_partition(embeddings, element_indices[:,2], num_elements)
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)

@@ -754,7 +754,7 @@ class BehlerParinelloDirectGauSH:
 				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
-		embeddings, molecule_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, Zs_pl, elements,
+		embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, Zs_pl, elements,
 				gaussian_params, atomic_embed_factors, self.l_max)
 
 		embeddings_list = []
@@ -845,7 +845,7 @@ class BehlerParinelloDirectGauSH:
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(self.xyzs_pl, rotation_params)
-			embeddings, molecule_indices = tf_gaussian_spherical_harmonics(rotated_xyzs, self.Zs_pl, elements,
+			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, self.Zs_pl, elements,
 					self.gaussian_params, self.atomic_embed_factors, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
@@ -977,7 +977,6 @@ class BehlerParinelloDirectGauSH:
 			else:
 				_, total_loss_value, energy_loss, mol_output = self.sess.run([self.train_op, self.total_loss,
 							self.energy_loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
-			print(mol_output)
 			train_loss += total_loss_value
 			train_energy_loss += energy_loss
 			num_mols += self.batch_size

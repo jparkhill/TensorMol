@@ -214,14 +214,20 @@ def TestTFGauSH():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 	elements = tf.constant([1, 6, 7, 8], dtype=tf.int32)
-	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, natomstack, elements, gaussian_params, atomic_embed_factors, 4)
+	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, elements, gaussian_params, atomic_embed_factors, 4)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
-	print a.mols[0].atoms
+	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+	run_metadata = tf.RunMetadata()
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	tmp2 = sess.run(tmp)
-	print tmp2.shape
+	tmp2 = sess.run(tmp, options=options, run_metadata=run_metadata)
+	# print tmp3
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
+	# print tmp2[3].shape
 	# print a.mols[0].atoms.shape
 	# TreatedAtoms = a.AtomTypes()
 	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
@@ -584,7 +590,7 @@ def test_md():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
+# TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols_rand")
 # TestTFSym()
 # train_energy_symm_func_channel()
@@ -594,7 +600,7 @@ TestTFGauSH()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 
