@@ -2447,7 +2447,7 @@ def gaussian_overlap(gaussian_params):
 	orthogonal_scaling_matrix = matrix_power2(overlap_matrix, -0.5)
 	return orthogonal_scaling_matrix, min_eigenval
 
-def tf_gaussians(distance_tensor, Zs, gaussian_params, atomic_embed_factors, orthogonalize=False):
+def tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize=False):
 	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.reshape(gaussian_params[:,0],
 				[1, 1, 1, tf.shape(gaussian_params[:,0])[0]]))) / (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
@@ -2458,7 +2458,7 @@ def tf_gaussians(distance_tensor, Zs, gaussian_params, atomic_embed_factors, ort
 						tf.zeros_like(distance_tensor)), axis=-1)
 	# atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=data_precision), atomic_embed_factors], axis=0)
 	# element_embed_factor = tf.expand_dims(tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=-1), axis=1)
-	return gaussian_embed #* element_embed_factor
+	return gaussian_embed
 
 def tf_spherical_harmonics_0(inverse_distance_tensor):
 	return tf.fill(tf.shape(inverse_distance_tensor), tf.constant(0.28209479177387814, dtype=eval(PARAMS["tf_prec"])))
@@ -2746,7 +2746,7 @@ def tf_spherical_harmonics(delta_xyzs, distance_tensor, max_l):
 	elif max_l == 0:
 		harmonics = tf_spherical_harmonics_0(inverse_distance_tensor)
 	else:
-		print("Spherical Harmonics only implemented up to l=8. Choose a lower order")
+		raise Exception("Spherical Harmonics only implemented up to l=8. Choose a lower order")
 	return harmonics
 
 def tf_gaussian_spherical_harmonics_element(xyzs, Zs, element, gaussian_params, atomic_embed_factors, l_max, labels=None, orthogonalize=False):
@@ -2812,7 +2812,7 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
-def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, atomic_embed_factors, l_max, orthogonalize=False):
+def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, l_max, orthogonalize=False):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 
@@ -2834,7 +2834,7 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 	element_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(Zs, axis=-1), tf.reshape(elements, [1, 1, tf.shape(elements)[0]]))), tf.int32)
 	distance_tensor = tf.norm(delta_xyzs+1.e-16,axis=3)
-	gaussians = tf_gaussians(distance_tensor, Zs, gaussian_params, atomic_embed_factors, orthogonalize)
+	gaussians = tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize)
 	spherical_harmonics = tf_spherical_harmonics(delta_xyzs, distance_tensor, l_max)
 	broadcast = tf.where(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, tf.shape(elements)[0], 1])),
 				tf.tile(tf.ones_like(tf.expand_dims(Zs, axis=1), dtype=data_precision), [1, num_elements, 1]),

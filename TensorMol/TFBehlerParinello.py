@@ -747,15 +747,13 @@ class BehlerParinelloDirectGauSH:
 		xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.max_num_atoms, 3]))
 		Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.max_num_atoms]))
 		gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
-		atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_precision)
 
 		elements = tf.constant(self.elements, dtype = tf.int32)
 		rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
-		embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, Zs_pl, elements,
-				gaussian_params, atomic_embed_factors, self.l_max)
+		embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, Zs_pl, elements, gaussian_params, self.l_max)
 
 		embeddings_list = []
 		for element in range(len(self.elements)):
@@ -798,6 +796,7 @@ class BehlerParinelloDirectGauSH:
 			self.sess.close()
 		self.sess = None
 		self.total_loss = None
+		self.loss = None
 		self.train_op = None
 		self.saver = None
 		self.summary_writer = None
@@ -814,6 +813,7 @@ class BehlerParinelloDirectGauSH:
 		self.gradients_loss = None
 		self.output = None
 		self.gradients = None
+		self.gaussian_params = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -831,9 +831,9 @@ class BehlerParinelloDirectGauSH:
 			self.labels_pl = tf.placeholder(self.tf_precision, shape=tuple([None]))
 			self.gradients_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms, 3]))
 			self.num_atoms_pl = tf.placeholder(tf.int32, shape=([self.batch_size]))
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
-			self.atomic_embed_factors = tf.Variable(self.atomic_embed_factors, trainable=False, dtype=self.tf_precision)
 
+			#Define the embedding parameters and normalization constants
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_precision)
 			elements = tf.constant(self.elements, dtype = tf.int32)
 			embeddings_mean = tf.constant(self.embeddings_mean, dtype = self.tf_precision)
 			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
@@ -845,8 +845,8 @@ class BehlerParinelloDirectGauSH:
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(self.xyzs_pl, rotation_params)
-			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, self.Zs_pl, elements,
-					self.gaussian_params, self.atomic_embed_factors, self.l_max)
+			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
+											self.Zs_pl, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
