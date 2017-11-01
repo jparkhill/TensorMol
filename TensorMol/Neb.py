@@ -16,7 +16,7 @@ import random
 import time
 
 class NudgedElasticBand:
-	def __init__(self,f_,g0_,g1_):
+	def __init__(self,f_,g0_,g1_, beads_=None):
 		"""
 		Nudged Elastic band. JCP 113 9978
 
@@ -40,7 +40,10 @@ class NudgedElasticBand:
 		self.f = f_
 		self.atoms = g0_.atoms.copy()
 		self.natoms = len(self.atoms)
-		self.beads=np.array([(1.-l)*g0_.coords+l*g1_.coords for l in np.linspace(0.,1.,self.nbeads)])
+		if beads_ is not None:
+			self.beads = beads_
+		else:
+			self.beads = np.array([(1.-l)*g0_.coords+l*g1_.coords for l in np.linspace(0.,1.,self.nbeads)])
 		self.Fs = np.zeros(self.beads.shape) # Real forces.
 		self.Ss = np.zeros(self.beads.shape) # Spring Forces.
 		self.Ts = np.zeros(self.beads.shape) # Tangents.

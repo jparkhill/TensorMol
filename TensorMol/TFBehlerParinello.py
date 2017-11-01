@@ -67,6 +67,9 @@ class BehlerParinelloDirectSymFunc:
 		LOGGER.info("self.max_steps: %d", self.max_steps)
 		return
 
+	def sigmoid_with_param(self, x):
+		return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision)
+
 	def assign_activation(self):
 		LOGGER.debug("Assigning Activation Function: %s", PARAMS["NeuronType"])
 		try:
@@ -83,7 +86,7 @@ class BehlerParinelloDirectSymFunc:
 			elif self.activation_function_type == "sigmoid":
 				self.activation_function = tf.sigmoid
 			elif self.activation_function_type == "sigmoid_with_param":
-				self.activation_function = sigmoid_with_param
+				self.activation_function = self.sigmoid_with_param
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
@@ -643,6 +646,9 @@ class BehlerParinelloDirectGauSH:
 		LOGGER.info("self.max_steps: %d", self.max_steps)
 		return
 
+	def sigmoid_with_param(self, x):
+		return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision)
+
 	def assign_activation(self):
 		LOGGER.debug("Assigning Activation Function: %s", PARAMS["NeuronType"])
 		try:
@@ -658,6 +664,8 @@ class BehlerParinelloDirectGauSH:
 				self.activation_function = tf.tanh
 			elif self.activation_function_type == "sigmoid":
 				self.activation_function = tf.sigmoid
+			elif self.activation_function_type == "sigmoid_with_param":
+				self.activation_function = self.sigmoid_with_param
 			else:
 				print ("unknown activation function, set to relu")
 				self.activation_function = tf.nn.relu
@@ -969,6 +977,7 @@ class BehlerParinelloDirectGauSH:
 			else:
 				_, total_loss_value, energy_loss, mol_output = self.sess.run([self.train_op, self.total_loss,
 							self.energy_loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
+			print(mol_output)
 			train_loss += total_loss_value
 			train_energy_loss += energy_loss
 			num_mols += self.batch_size

@@ -73,10 +73,9 @@ The associated energy surface is shown below.
 <img src="doc/images/pes.png" width="300">
 
 ### Dynamic Properties
-- Water Trimer IR spectrum generated with david_testIR() in test.py
-- The red lines are MP2(qchem) solid line is TensorMol's IR propagation.
+- Tyrosine IR spectrum generated with david_testIR() in test.py
 
-![](doc/images/water.png)
+![](doc/images/tyrosine.png)
 
 ## Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow

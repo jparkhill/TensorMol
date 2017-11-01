@@ -51,6 +51,7 @@ class MolGraph(Mol):
 		self.bond_type = None # define whether it is a single, double or triple bond
 		self.bond_conju = None # whether a bond is in a conjugated system
 		self.bond_index = None # the bond index between two atoms
+		self.atom_index_in_mono = []
 		self.Bonds_Between  = None
 		self.H_Bonds_Between = None
 		self.nx_mol_graph = None
@@ -73,6 +74,7 @@ class MolGraph(Mol):
 		return np.unique(self.bonds[:,0]).astype(int)
 
 	def Make_Mol_Graph(self):
+		t = time.time()
 		self.Make_AtomNodes()
 		self.Connect_AtomNodes()
 		#self.Make_Bonds()
@@ -96,6 +98,8 @@ class MolGraph(Mol):
 	def Connect_AtomNodes(self):
 		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
 		self.num_atom_connected = []
+		assigned = []
+		assigned_mono = np.zeros(self.NAtoms(), dtype=int)
 		for i in range (0, self.NAtoms()):
 			for j in range (i+1, self.NAtoms()):
 				dist = self.DistMatrix[i][j]
@@ -107,6 +111,70 @@ class MolGraph(Mol):
 					self.atom_nodes[j].Append(self.atom_nodes[i])
 		for i in range (0, self.NAtoms()):
 			self.num_atom_connected.append(len(self.atom_nodes[i].connected_nodes))
+		return
+
+	def Group_Atoms(self):
+		self.DistMatrix = MolEmb.Make_DistMat(self.coords)
+		self.num_atom_connected = []
+		assigned = []
+		assigned_mono = np.zeros(self.NAtoms(), dtype=int)
+		to_merge = []
+		for i in range (0, self.NAtoms()):
+			for j in range (i+1, self.NAtoms()):
+				dist = self.DistMatrix[i][j]
+				if dist < 1.7:
+					atom_pair=[self.atoms[i], self.atoms[j]]
+					atom_pair.sort()
+					bond_name = AtomName_From_List(atom_pair)
+					if dist <= self.bond_length_thresh[bond_name]:
+						if i not in assigned and j not in assigned:
+							self.atom_index_in_mono.append([i,j])
+							assigned += [i,j]
+							assigned_mono[[i,j]]=len(self.atom_index_in_mono)-1
+						elif i in assigned and j in assigned:
+							if assigned_mono[i] == assigned_mono[j]:
+								pass
+							else:
+								to_merge.append([assigned_mono[i],  assigned_mono[j]])
+						elif i in assigned and j not in assigned:
+							assigned += [j]
+							self.atom_index_in_mono[assigned_mono[i]].append(j)
+							assigned_mono[j] = assigned_mono[i]
+						else:
+							assigned += [i]
+							self.atom_index_in_mono[assigned_mono[j]].append(i)
+							assigned_mono[i] = assigned_mono[j]
+		l = to_merge
+		out = []
+		while len(l)>0:
+			first = l[0]
+			rest = l[1:]
+			first = set(first)
+			lf = -1
+			while len(first)>lf:
+				lf = len(first)
+				rest2 = []
+				for r in rest:
+					if len(first.intersection(set(r)))>0:
+						first |= set(r)
+					else:
+						rest2.append(r)    
+				rest = rest2
+			out.append(first)
+			l = rest
+		tmp1 = []
+		tmp2 = []
+		for merge_index in out:
+			tmp = []
+			for i in merge_index:
+				tmp += self.atom_index_in_mono[i]
+			tmp1.append(tmp)
+		flat_out = [item for sublist in out for item in sublist]
+		for i in range(0, len(self.atom_index_in_mono)):
+			if i not in flat_out:
+				tmp2.append(self.atom_index_in_mono[i])
+		self.atom_index_in_mono = tmp1 + tmp2
+		print ("self.atom_index_in_mono:", self.atom_index_in_mono)
 		return
 
 	def Make_Bonds(self):
