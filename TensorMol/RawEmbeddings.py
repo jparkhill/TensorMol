@@ -2430,7 +2430,7 @@ def matrix_power2(matrix, power):
 	matrix_to_power = tf.matmul(matrix_eigenvecs, tf.matmul(tf.matrix_diag(tf.pow(matrix_eigenvals, power)), tf.transpose(matrix_eigenvecs)))
 	return matrix_to_power
 
-def gaussian_overlap(gaussian_params):
+def tf_gaussian_overlap(gaussian_params):
 	r_nought = gaussian_params[:,0]
 	sigma = gaussian_params[:,1]
 	scaling_factor = tf.cast(tf.sqrt(np.pi / 2), data_precision)
@@ -2443,15 +2443,17 @@ def gaussian_overlap(gaussian_params):
 				* root_inverse_sigma_sum)
 	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
-	min_eigenval = tf.reduce_min(tf.self_adjoint_eig(overlap_matrix)[0])
-	orthogonal_scaling_matrix = matrix_power2(overlap_matrix, -0.5)
-	return orthogonal_scaling_matrix, min_eigenval
+	return overlap_matrix
+
+	# min_eigenval = tf.reduce_min(tf.self_adjoint_eig(overlap_matrix)[0])
+	# orthogonal_scaling_matrix = matrix_power2(overlap_matrix, -0.5)
+	# return orthogonal_scaling_matrix, min_eigenval
 
 def tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize=False):
 	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.expand_dims(tf.expand_dims(gaussian_params[:,0], axis=0), axis=1))) \
 				/ (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	# orthogonal_scaling_matrix, min_eigenval = gaussian_overlap(gaussian_params)
+	# orthogonal_scaling_matrix, min_eigenval = tf_gaussian_overlap(gaussian_params)
 	if orthogonalize:
 		gaussian_embed = tf.reduce_sum(tf.expand_dims(gaussian_embed, axis=-2) * orthogonal_scaling_matrix, axis=-1)
 	gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
