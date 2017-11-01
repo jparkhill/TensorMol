@@ -856,12 +856,18 @@ class BehlerParinelloDirectGauSH:
 			self.output = (norm_output * labels_stddev) + labels_mean
 			self.total_loss, self.loss = self.loss_op(self.output, self.labels_pl)
 
+			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9,
+								tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1),
+								tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
+			truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0),
+								barrier_function, tf.zeros_like(barrier_function)))
+			loss_and_constraint = self.total_loss + truncated_barrier_function
 			# if self.train_energy_gradients:
 			# 	self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
 			# 			self.labels_pl, self.non_padded_gradients, self.non_padded_gradients_label, num_atoms_batch)
 			# else:
 			self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
-			self.train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum)
+			self.train_op = self.optimizer(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
