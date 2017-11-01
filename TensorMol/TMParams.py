@@ -100,7 +100,8 @@ class TMParams(dict):
 		self["MaxBFGS"] = 7
 		self["NebSolver"] = "Verlet"
 		self["NebNumBeads"] = 18 # It's important to have enough beads.
-		self["NebK"] = 0.1
+		self["NebK"] = 0.07
+		self["NebKMax"] = 1.0
 		self["NebClimbingImage"] = True
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
