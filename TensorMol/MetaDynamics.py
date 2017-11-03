@@ -24,7 +24,7 @@ class MetaDynamics(VelocityVerlet):
 			PARAMS["BowlK"] : a force constant of an attractive potential.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
-		self.BumpTime = 8.0 # Fs
+		self.BumpTime = 4.0 # Fs
 		self.MaxBumps = PARAMS["MetaMaxBumps"]
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
 		self.NBump = 0
@@ -160,7 +160,7 @@ class BoxingDynamics(VelocityVerlet):
 		return
 
 class BoxedMetaDynamics(VelocityVerlet):
-	def __init__(self,EandF_, g0_, name_="MetaMD", Box_=np.array(10.0*np.eye(3))):
+	def __init__(self, EandF_, g0_, name_="MetaMD", Box_=np.array(10.0*np.eye(3))):
 		VelocityVerlet.__init__(self, None, g0_, name_, EandF_)
 		self.BumpTime = 12.0 # Fs
 		self.MaxBumps = PARAMS["MetaMaxBumps"] # think you want this to be >500k
@@ -169,9 +169,17 @@ class BoxedMetaDynamics(VelocityVerlet):
 		self.Tstat = NoseThermostat(self.m,self.v)
 		self.Boxer = TFForces.BoxHolder(self.natoms)
 		self.Box = Box_.copy()
+		self.BowlK = 0.0
 		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK)
+	def Bump(self):
+		if (self.NBump == self.MaxBumps):
+			return
+		self.BumpCoords[self.NBump] = self.x
+		self.NBump += 1
+		LOGGER.info("Bump added!")
+		return
 	def BoxForce(self, x_ ):
-		BxE, BxF = self.Boxer(x_, self.boxnow)
+		BxE, BxF = self.Boxer(x_, self.Box)
 		BxF *= -500.0*JOULEPERHARTREE*(self.m[:,None]/np.sqrt(np.sum(self.m*self.m)))
 		PE, PF = self.EnergyAndForce(x_)
 		BE = 0.0
@@ -195,9 +203,9 @@ class BoxedMetaDynamics(VelocityVerlet):
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["MDThermostat"]==None):
-				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.BoxForce, self.a, self.x, self.v, self.m, self.dt, None)
+				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.BoxForce, self.a, self.x, self.v, self.m, self.dt, self.BoxForce)
 			else:
-				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.BoxForce, self.a, self.x, self.v, self.m, self.dt, None)
+				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.BoxForce, self.a, self.x, self.v, self.m, self.dt, self.BoxForce)
 
 			self.md_log[step,0] = self.t
 			self.md_log[step,4] = self.KE
@@ -211,7 +219,7 @@ class BoxedMetaDynamics(VelocityVerlet):
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
-				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
+				np.savetxt("./results/"+"MDBoxLog"+self.name+".txt",self.md_log)
 
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)

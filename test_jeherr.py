@@ -205,7 +205,7 @@ def TestTFGauSH():
 		zlist.append(paddedz)
 		labelslist.append(paddedlabels)
 		natomlist.append(mol.NAtoms())
-		if i == 99:
+		if i == 999:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
@@ -214,14 +214,22 @@ def TestTFGauSH():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 	elements = tf.constant([1, 6, 7, 8], dtype=tf.int32)
-	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, natomstack, elements, gaussian_params, atomic_embed_factors, 4)
+	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, elements, gaussian_params, 4)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
-	print a.mols[0].atoms
+	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+	run_metadata = tf.RunMetadata()
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	tmp2 = sess.run(tmp)
-	print tmp2.shape
+	tmp2 = sess.run(tmp, options=options, run_metadata=run_metadata)
+	# print tmp2[1]
+	# print tmp2.shape
+	# print tmp3
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
+	# print tmp2[3].shape
 	# print a.mols[0].atoms.shape
 	# TreatedAtoms = a.AtomTypes()
 	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
@@ -232,7 +240,9 @@ def TestTFGauSH():
 
 def test_gaussian_overlap():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
-	tmp = gaussian_overlap(gaussian_params)
+	tf_precision = eval(PARAMS["tf_prec"])
+	TensorMol.RawEmbeddings.data_precision = tf_precision
+	tmp = tf_gaussian_overlap(gaussian_params)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	tmp2 = sess.run(tmp)
@@ -570,6 +580,24 @@ def test_md():
 	md = VelocityVerlet(force_field, mol)
 	md.Prop()
 
+def test_h2o():
+	PARAMS["OptMaxCycles"]=60
+	PARAMS["weight_decay"] = None
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["batch_size"] = 100
+	PARAMS["OptMaxCycles"]=500
+	PARAMS["OptStepSize"] = 0.1
+	PARAMS["OptThresh"]=0.0001
+	PARAMS["NeuronType"] = "elu"
+	PARAMS["tf_prec"] = "tf.float32"
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	mol = a.mols[0]
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	force_field = lambda m, f: manager.evaluate(m, f)
+	Opt = GeomOptimizerDirect(force_field)
+	Opt.opt_conjugate_gradient(mol)
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
@@ -584,7 +612,7 @@ def test_md():
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
-TestTFGauSH()
+# TestTFGauSH()
 # train_forces_GauSH_direct("SmallMols_rand")
 # TestTFSym()
 # train_energy_symm_func_channel()
@@ -597,6 +625,7 @@ TestTFGauSH()
 # train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
+test_h2o()
 
 # a=MSet("SmallMols_rand")
 # a.Load()

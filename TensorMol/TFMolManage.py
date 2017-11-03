@@ -1387,7 +1387,7 @@ class TFMolManage(TFManage):
 		return
 
 class TFMolManageDirect:
-	def __init__(self, tensor_data, name = None, train = True, network_type = "BehlerParinelloDirect"):
+	def __init__(self, tensor_data=None, name=None, train=True, network_type="BehlerParinelloDirectSymFunc"):
 		"""
 			Args:
 				Name_: If not blank, will try to load a network with that name using Prepare()
@@ -1400,7 +1400,7 @@ class TFMolManageDirect:
 
 		if (name != None):
 			self.name = name
-			self.Prepare()
+			self.prepare()
 			return
 		self.tensor_data = tensor_data
 		self.network_type = network_type
@@ -1424,6 +1424,7 @@ class TFMolManageDirect:
 		else:
 			raise Exception("Unknown Network Type!")
 		self.network.train()
+		self.network_name = self.network.name
 		self.save()
 		return
 
@@ -1444,3 +1445,27 @@ class TFMolManageDirect:
 		f.close()
 		print("TFManager Loaded, Reviving Networks.")
 		return
+
+	def prepare(self):
+		self.load()
+		if self.network_type == "BehlerParinelloDirectSymFunc":
+			self.network = BehlerParinelloDirectSymFunc(None,  self.TrainedNetworks[0], None, Trainable_ = self.Trainable)
+		elif (self.network_type == "BehlerParinelloDirectGauSH"):
+			self.network = BehlerParinelloDirectGauSH(name="BehlerParinelloDirect_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017")
+		else:
+			raise Exception("Unknown Network Type!")
+		# Raise TF instances for each atom which have already been trained.
+		return
+
+	def evaluate(self, mol, forces=True):
+		"""
+		Evaluates the energies on a molecule from a network with direct embedding
+
+		Args:
+			mol (TensorMol.Mol): a TensorMol Mol object with n atoms and nx3 coordinates
+
+		Returns:
+			energy (np.float): a numpy float of molecular energy
+		"""
+		energy = self.network.evaluate(mol, forces)
+		return energy
