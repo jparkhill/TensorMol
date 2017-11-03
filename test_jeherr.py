@@ -582,21 +582,29 @@ def test_md():
 
 def test_h2o():
 	PARAMS["OptMaxCycles"]=60
-	PARAMS["weight_decay"] = None
-	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["batch_size"] = 100
 	PARAMS["OptMaxCycles"]=500
 	PARAMS["OptStepSize"] = 0.1
 	PARAMS["OptThresh"]=0.0001
-	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["MDAnnealT0"] = 20.0
+	PARAMS["MDAnnealSteps"] = 200
 	a = MSet()
 	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	mol = a.mols[0]
 	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
-	force_field = lambda m, f: manager.evaluate(m, f)
-	Opt = GeomOptimizerDirect(force_field)
-	Opt.opt_conjugate_gradient(mol)
+	def force_field(mol, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate(mol, True)
+			forces = RemoveInvariantForce(mol.coords, forces, mol.atoms)
+			return energy, forces
+		else:
+			energy = manager.evaluate(mol, False)
+			return energy
+	Opt = GeometryOptimizer(force_field)
+	opt_mol = Opt.opt_conjugate_gradient(mol)
+	annealer = AnnealerDirect(force_field, opt_mol)
+	annealer.propagate()
+	# mt.coords = aper.Minx
+
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)

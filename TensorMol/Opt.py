@@ -153,7 +153,7 @@ class GeomOptimizer:
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
 		return prev_m
 
-class GeomOptimizerDirect:
+class GeometryOptimizer:
 	def __init__(self, force_field):
 		"""
 		Geometry optimizations based on NN-PES's etc.
@@ -171,15 +171,6 @@ class GeomOptimizerDirect:
 		self.force_field = force_field
 		return
 
-	def wrapped_force_field(self, mol, force=True):
-		if force:
-			energy, forces = self.force_field(mol, True)
-			forces = RemoveInvariantForce(mol.coords, forces, mol.atoms)
-			return energy, forces
-		else:
-			energy = self.force_field(mol, False)
-			return energy
-
 	def opt_conjugate_gradient(self, mol, filename="OptLog"):
 		"""
 		Optimize using An EnergyAndForce Function with conjugate gradients.
@@ -195,7 +186,7 @@ class GeomOptimizerDirect:
 		mol_hist = []
 		prev_mol = Mol(mol.atoms, mol.coords)
 		print("Orig Mol:\n", mol)
-		CG = ConjugateGradientDirect(self.wrapped_force_field, mol)
+		CG = ConjugateGradientDirect(self.force_field, mol)
 		while( step < self.max_opt_step and rmsgrad > self.thresh and (rmsdisp > 0.000001 or step<5) ):
 			prev_mol = Mol(mol.atoms, mol.coords)
 			mol, energy, forces = CG(mol)
