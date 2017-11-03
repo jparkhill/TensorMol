@@ -82,7 +82,7 @@ def Eval():
 	PARAMS["OptMaxCycles"]=500
 	PARAMS["NebSolver"]="Verlet"
 	PARAMS["SDStep"] = 0.05
-	PARAMS["NebNumBeads"] = 18
+	PARAMS["NebNumBeads"] = 22
 	PARAMS["MaxBFGS"] = 12
 	a.mols[0], a.mols[1] = a.mols[0].AlignAtoms(a.mols[1])
 	a.mols[0].WriteXYZfile("./results/", "Aligned"+str(0))

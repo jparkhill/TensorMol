@@ -1,4 +1,4 @@
-# &#9658;TensorMol 0.1
+# &#9658;<img src="doc/images/TensorMol.png" width="300">
 ![](doc/images/newtitle.png)
 -Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
