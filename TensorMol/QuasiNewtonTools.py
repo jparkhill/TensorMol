@@ -463,9 +463,6 @@ class ConjugateGradientDirect:
 		"""
 		self.force_field = force_field
 		self.energy, self.prev_forces = self.force_field(mol)
-		# self.x0 = mol.coords.copy()
-		# self.xold = mol.coords.copy()
-		# self.e, self.gold = self.force_field(mol)
 		self.s = self.prev_forces.copy()
 		self.alpha = PARAMS["GSSearchAlpha"]
 		return
@@ -510,7 +507,7 @@ class ConjugateGradientDirect:
 		fa = self.force_field(a, False)
 		fb = self.force_field(b, False)
 		fc = self.force_field(c, False)
-		fd = self.force_field(a, False)
+		fd = self.force_field(d, False)
 		while (rmsdist > thresh):
 			if (fa < fc and fa < fd and fa < fb):
 				if (self.alpha > 0.00001):
@@ -525,7 +522,7 @@ class ConjugateGradientDirect:
 				fa = self.force_field(a, False)
 				fb = self.force_field(b, False)
 				fc = self.force_field(c, False)
-				fd = self.force_field(a, False)
+				fd = self.force_field(d, False)
 			elif (fb < fc and fb < fd and fb < fa):
 				if (self.alpha < 100.0):
 					self.alpha *= 1.7
@@ -536,24 +533,23 @@ class ConjugateGradientDirect:
 				fa = self.force_field(a, False)
 				fb = self.force_field(b, False)
 				fc = self.force_field(c, False)
-				fd = self.force_field(a, False)
+				fd = self.force_field(d, False)
 			elif fc < fd:
 				b = Mol(d.atoms.copy(), d.coords.copy().copy())
 				c = Mol(mol.atoms, b.coords.copy() - (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
 				d = Mol(mol.atoms, a.coords.copy() + (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
 				fb = fd
 				fc = self.force_field(c, False)
-				fd = self.force_field(a, False)
+				fd = self.force_field(d, False)
 			else:
 				a = Mol(c.atoms.copy(), c.coords.copy().copy())
 				c = Mol(mol.atoms, b.coords.copy() - (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
 				d = Mol(mol.atoms, a.coords.copy() + (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
 				fa = fc
 				fc = self.force_field(c, False)
-				fd = self.force_field(a, False)
+				fd = self.force_field(d, False)
 			rmsdist = np.sum(np.linalg.norm(a.coords.copy() - b.coords.copy(), axis=1)) / a.coords.copy().shape[0]
 			k+=1
-		print(b.coords.copy(), a.coords.copy(), (b.coords.copy() + a.coords.copy()) / 2)
 		return Mol(mol.atoms, (b.coords.copy() + a.coords.copy()) / 2)
 
 def LineSearch(f_, x0_, p_, thresh = 0.0001):
