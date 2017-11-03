@@ -580,6 +580,24 @@ def test_md():
 	md = VelocityVerlet(force_field, mol)
 	md.Prop()
 
+def test_h2o():
+	PARAMS["OptMaxCycles"]=60
+	PARAMS["weight_decay"] = None
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["batch_size"] = 100
+	PARAMS["OptMaxCycles"]=500
+	PARAMS["OptStepSize"] = 0.1
+	PARAMS["OptThresh"]=0.0001
+	PARAMS["NeuronType"] = "elu"
+	PARAMS["tf_prec"] = "tf.float32"
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	mol = a.mols[0]
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	force_field = lambda m, f: manager.evaluate(m, f)
+	Opt = GeomOptimizerDirect(force_field)
+	Opt.opt_conjugate_gradient(mol)
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
@@ -604,9 +622,10 @@ def test_md():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
-train_energy_GauSH()
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
+test_h2o()
 
 # a=MSet("SmallMols_rand")
 # a.Load()
