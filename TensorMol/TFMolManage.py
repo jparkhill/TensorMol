@@ -1457,7 +1457,7 @@ class TFMolManageDirect:
 		# Raise TF instances for each atom which have already been trained.
 		return
 
-	def evaluate(self, mol, forces=True):
+	def evaluate(self, mol, eval_forces=True):
 		"""
 		Evaluates the energies on a molecule from a network with direct embedding
 
@@ -1467,5 +1467,9 @@ class TFMolManageDirect:
 		Returns:
 			energy (np.float): a numpy float of molecular energy
 		"""
-		energy = self.network.evaluate(mol, forces)
-		return energy
+		if eval_forces:
+			energy, forces = self.network.evaluate(mol, True)
+			return energy, forces
+		else:
+			energy = self.network.evaluate(mol, False)
+			return energy

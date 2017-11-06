@@ -1133,12 +1133,12 @@ class BehlerParinelloDirectGauSH:
 			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
 			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
 
-			tiled_xyzs = tf.tile(self.xyzs_pl, [self.batch_size, 1, 1])
-			tiled_Zs = tf.tile(self.Zs_pl, [self.batch_size, 1])
+			tiled_xyzs = tf.tile(self.xyzs_pl, [10 * self.batch_size, 1, 1])
+			tiled_Zs = tf.tile(self.Zs_pl, [10 * self.batch_size, 1])
 
-			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+			rotation_params = tf.stack([np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
 											tiled_Zs, elements, self.gaussian_params, self.l_max)
@@ -1171,7 +1171,7 @@ class BehlerParinelloDirectGauSH:
 		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
 		return feed_dict
 
-	def evaluate(self, mol, forces=True):
+	def evaluate(self, mol, eval_forces=True):
 		"""
 		Takes coordinates and atomic numbers from a manager and feeds them into the network
 		for evaluation of the forces
@@ -1191,10 +1191,14 @@ class BehlerParinelloDirectGauSH:
 		xyzs_feed[0,:mol.NAtoms()] = mol.coords
 		Zs_feed[0,:mol.NAtoms()] = mol.atoms
 		feed_dict=self.evaluate_fill_feed_dict(xyzs_feed, Zs_feed)
-		if forces:
+		atomization_energy = 0.0
+		for atom in mol.atoms:
+			if atom in ele_U:
+				atomization_energy += ele_U[atom]
+		if eval_forces:
 			energy, gradients = self.sess.run([self.output, self.gradients], feed_dict=feed_dict)
 			forces = -gradients[0,:mol.NAtoms()]
-			return np.mean(energy), forces
+			return np.mean(energy) + atomization_energy, forces
 		else:
 			energy = self.sess.run(self.output, feed_dict=feed_dict)
-			return np.mean(energy)
+			return np.mean(energy) + atomization_energy

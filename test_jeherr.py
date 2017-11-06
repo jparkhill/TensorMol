@@ -586,7 +586,30 @@ def test_h2o():
 	PARAMS["OptStepSize"] = 0.1
 	PARAMS["OptThresh"]=0.0001
 	PARAMS["MDAnnealT0"] = 20.0
-	PARAMS["MDAnnealSteps"] = 200
+	PARAMS["MDAnnealSteps"] = 2000
+	a = MSet("water_dimer_cccbdb_opt")
+	a.ReadXYZ()
+	# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	mol = a.mols[0]
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	def force_field(mol, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate(mol, True)
+			forces = RemoveInvariantForce(mol.coords, forces, mol.atoms)
+			return energy, forces
+		else:
+			energy = manager.evaluate(mol, False)
+			return energy
+	Opt = GeometryOptimizer(force_field)
+	opt_mol = Opt.opt_conjugate_gradient(mol)
+
+def test_h2o_anneal():
+	PARAMS["OptMaxCycles"]=60
+	PARAMS["OptMaxCycles"]=500
+	PARAMS["OptStepSize"] = 0.1
+	PARAMS["OptThresh"]=0.0001
+	PARAMS["MDAnnealT0"] = 20.0
+	PARAMS["MDAnnealSteps"] = 2000
 	a = MSet()
 	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	mol = a.mols[0]
@@ -601,8 +624,18 @@ def test_h2o():
 			return energy
 	Opt = GeometryOptimizer(force_field)
 	opt_mol = Opt.opt_conjugate_gradient(mol)
-	annealer = AnnealerDirect(force_field, opt_mol)
-	annealer.propagate()
+
+	# Tesselate that water to create a box
+	ntess = 4
+	latv = 2.8*np.eye(3)
+	# Start with a water in a ten angstrom box.
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(opt_mol)
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+	nreal = mt.NAtoms()
+	mt.Distort(0.01)
+	annealer = AnnealerDirect(force_field)
+	annealer.propagate(mt)
 	# mt.coords = aper.Minx
 
 
@@ -633,7 +666,8 @@ def test_h2o():
 # train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
-test_h2o()
+# test_h2o()
+# test_h2o_anneal()
 
 # a=MSet("SmallMols_rand")
 # a.Load()
@@ -641,3 +675,93 @@ test_h2o()
 # b=MSet("rot_const_test_mol")
 # b.mols.append(mol)
 # b.Save()
+def tmp():
+	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
+		istring = '$molecule\n0 1 \n'
+		crds = m_.coords.copy()
+		crds[abs(crds)<0.0000] *=0.0
+		for j in range(len(m_.atoms)):
+			if j in ghostatoms:
+				istring=istring+"@"+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+			else:
+				istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+		if jobtype_ == "dipole":
+			istring =istring + '$end\n\n$rem\njobtype sp\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		else:
+			istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		with open(path_+filename_+'.in','w') as fin:
+			fin.write(istring)
+		with open(path_+filename_+'.out','a') as fout:
+			if threads:
+				proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			else:
+				proc = subprocess.Popen(['qchem', path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			out, err = proc.communicate()
+			fout.write(out)
+		lines = out.split('\n')
+		if jobtype_ == 'force':
+			Forces = np.zeros((m_.atoms.shape[0],3))
+			for i, line in enumerate(lines):
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+				if line.count("Gradient of SCF Energy") > 0:
+					k = 0
+					l = 0
+					for j in range(1, m_.atoms.shape[0]+1):
+						Forces[j-1,:] = float(lines[i+k+2].split()[l+1]), float(lines[i+k+3].split()[l+1]), float(lines[i+k+4].split()[l+1])
+						l += 1
+						if (j % 6) == 0:
+							k += 4
+							l = 0
+			# return Energy, Forces
+			return Energy, -Forces*JOULEPERHARTREE/BOHRPERA
+		elif jobtype_ == 'sp':
+			for line in lines:
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+			return Energy
+		elif jobtype_ ==  'dipole':
+			for i, line in enumerate(lines):
+				if "Dipole Moment (Debye)" in line:
+					tmp = lines[i+1].split()
+					dipole = np.asarray([float(tmp[1]),float(tmp[3]),float(tmp[5])])
+					return dipole
+		else:
+			raise Exception("jobtype needs formatted for return variables")
+
+	a = MSet("water_dimer")
+	a.ReadXYZ()
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	qchemff = lambda x, y: qchemdft(x, y, basis_ = '6-311g**',xc_='wb97x-d', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=8)
+	cp_correction = []
+	for mol in a.mols:
+		h2o1 = qchemff(Mol(mol.atoms[:3], mol.coords[:3]), [])
+		h2o2 = qchemff(Mol(mol.atoms[3:], mol.coords[3:]), [])
+		h2o1cp = qchemff(mol, [3, 4, 5])
+		h2o2cp = qchemff(mol, [0, 1, 2])
+		dimer = qchemff(mol, [])
+		cpc = h2o1cp - h2o1 + h2o2cp - h2o2
+		cp_correction.append(cpc)
+		bond_e = dimer - h2o1 - h2o2
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
+	print "TensorMol evaluation"
+	for i, mol in enumerate(a.mols):
+		h2o1 = manager.evaluate(Mol(mol.atoms[:3], mol.coords[:3]), False)
+		h2o2 = manager.evaluate(Mol(mol.atoms[3:], mol.coords[3:]), False)
+		dimer = manager.evaluate(mol, False)
+		bond_e = dimer - h2o1 - h2o2
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
+
+tmp()
+# a=MSet("water_dimer_cccbdb_opt")
+# a.ReadXYZ()
+# b = MSet("water_dimer")
+# mol = a.mols[0]
+# oovec = mol.coords[1] - mol.coords[3]
+# for i in range(-80, 30):
+# 	coords = mol.coords.copy()
+# 	coords[3:] += 0.01 * i * oovec
+# 	new_mol = Mol(mol.atoms, coords)
+# 	b.mols.append(new_mol)
+# 	print np.linalg.norm(b.mols[-1].coords[1] - b.mols[-1].coords[3])
+# b.WriteXYZ()
