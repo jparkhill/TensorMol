@@ -871,7 +871,7 @@ class BehlerParinelloDirectGauSH:
 			norm_output = self.inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 
-			self.gradients = tf.gather_nd(tf.gradients(self.output, self.xyzs_pl)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradients = tf.gather_nd(tf.gradients(self.output, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
 			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
@@ -978,7 +978,7 @@ class BehlerParinelloDirectGauSH:
 		energy_loss = tf.nn.l2_loss(tf.subtract(output, labels))
 		tf.add_to_collection('losses', energy_loss)
 		if self.train_energy_gradients:
-			gradients_loss = self.batch_size * tf.nn.l2_loss(tf.subtract(gradients, gradient_labels)) / tf.cast(num_atoms, self.tf_precision)
+			gradients_loss = tf.nn.l2_loss(tf.subtract(gradients, gradient_labels)) / tf.cast(num_atoms, self.tf_precision)
 			tf.add_to_collection('losses', gradients_loss)
 			return tf.add_n(tf.get_collection('losses'), name='total_loss'), energy_loss, gradients_loss
 		else:
