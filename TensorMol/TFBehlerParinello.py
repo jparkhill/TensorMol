@@ -7,12 +7,10 @@ from __future__ import division
 from __future__ import print_function
 
 import time
-import itertools
 import random
 
 from TensorMol.TensorMolData import *
 from TensorMol.RawEmbeddings import *
-from TensorMol.Neighbors import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirectSymFunc:
