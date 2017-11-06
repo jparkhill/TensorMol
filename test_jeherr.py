@@ -524,12 +524,12 @@ def train_energy_GauSH():
 	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
-	PARAMS["train_energy_gradients"] = False
+	PARAMS["train_energy_gradients"] = True
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 500
-	PARAMS["test_freq"] = 5
+	PARAMS["max_steps"] = 2
+	PARAMS["test_freq"] = 1
 	PARAMS["batch_size"] = 100
 	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
@@ -663,7 +663,7 @@ def test_h2o_anneal():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func()
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
@@ -675,7 +675,8 @@ def test_h2o_anneal():
 # b=MSet("rot_const_test_mol")
 # b.mols.append(mol)
 # b.Save()
-def tmp():
+
+def water_dimer_plot():
 	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
 		istring = '$molecule\n0 1 \n'
 		crds = m_.coords.copy()
@@ -752,7 +753,7 @@ def tmp():
 		bond_e = dimer - h2o1 - h2o2
 		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
 
-tmp()
+# water_dimer_plot()
 # a=MSet("water_dimer_cccbdb_opt")
 # a.ReadXYZ()
 # b = MSet("water_dimer")

@@ -789,8 +789,6 @@ class BehlerParinelloDirectGauSH:
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			num_atoms = batch_data[4]
 			labels_list.append(batch_data[2])
-			for molecule in range(self.batch_size):
-				gradients_list.append(batch_data[3][molecule,:num_atoms[molecule]])
 			embedding, molecule_index = sess.run([embeddings, molecule_indices], feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1]})
 			for element in range(len(self.elements)):
 				embeddings_list[element].append(embedding[element])
@@ -803,9 +801,6 @@ class BehlerParinelloDirectGauSH:
 		labels = np.concatenate(labels_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
-		gradients = np.concatenate(gradients_list)
-		self.gradients_mean = np.mean(gradients)
-		self.gradients_stddev = np.std(gradients)
 		self.tensor_data.train_scratch_pointer = 0
 
 		#Set the embedding and label shape
@@ -832,10 +827,12 @@ class BehlerParinelloDirectGauSH:
 		self.num_atoms_pl = None
 		self.gradients_pl = None
 		self.energy_loss = None
-		self.gradients_loss = None
+		self.gradient_loss = None
 		self.output = None
 		self.gradients = None
+		self.gradient_labels
 		self.gaussian_params = None
+		print(self.__dict__)
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -861,8 +858,7 @@ class BehlerParinelloDirectGauSH:
 			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
 			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
 			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
-			# gradients_mean = tf.constant(self.gradients_mean, dtype = self.tf_precision)
-			# gradients_stddev = tf.constant(self.gradients_stddev, dtype = self.tf_precision)
+
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
@@ -875,8 +871,18 @@ class BehlerParinelloDirectGauSH:
 			norm_output = self.inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 
+			nonzero_coords = tf.gather_nd(self.xyzs_pl, tf.where(tf.not_equal(self.Zs_pl, 0)))
+			normalized_gradients = tf.gather_nd(tf.gradients(self.output, self.xyzs_pl)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradients = normalized_gradients * labels_stddev
+			self.gradient_labels = tf.gather_nd(self.gradients_pl, tf.where(tf.not_equal(self.Zs_pl, 0)))
+			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
+
 			#loss and constraints
-			self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
+			if self.train_energy_gradients:
+				self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
+						self.labels_pl, self.gradients, self.gradient_labels, num_atoms_batch)
+			else:
+				self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
 			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9,
 								tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1),
 								tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
@@ -884,10 +890,7 @@ class BehlerParinelloDirectGauSH:
 								barrier_function, tf.zeros_like(barrier_function)))
 			gaussian_overlap_loss = tf.square(0.001 / tf.reduce_min(tf.self_adjoint_eig(tf_gaussian_overlap(self.gaussian_params))[0]))
 			loss_and_constraint = self.total_loss + truncated_barrier_function + gaussian_overlap_loss
-			# if self.train_energy_gradients:
-			# 	self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
-			# 			self.labels_pl, self.non_padded_gradients, self.non_padded_gradients_label, num_atoms_batch)
-			# else:
+
 			self.train_op = self.optimizer(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -999,9 +1002,8 @@ class BehlerParinelloDirectGauSH:
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			if self.train_energy_gradients:
-				_, total_loss_value, energy_loss, gradient_loss, mol_output, n_atoms, gradients, gradient_labels = self.sess.run([self.train_op,
-						self.total_loss, self.energy_loss, self.gradient_loss, self.output, self.num_atoms_pl, self.gradients,
-						self.gradients_pl], feed_dict=self.fill_feed_dict(batch_data))
+				_, total_loss_value, energy_loss, gradient_loss, mol_output = self.sess.run([self.train_op, self.total_loss,
+							self.energy_loss, self.gradient_loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 				train_gradient_loss += gradient_loss
 			else:
 				_, total_loss_value, energy_loss, mol_output = self.sess.run([self.train_op, self.total_loss,
@@ -1037,40 +1039,39 @@ class BehlerParinelloDirectGauSH:
 			batch_data = self.tensor_data.get_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.train_energy_gradients:
-				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms = self.sess.run([self.output,
-						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradient_loss,
-						self.num_atoms_pl],  feed_dict=feed_dict)
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms, gaussian_params = self.sess.run([self.output,
+							self.labels_pl, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
+							self.gradient_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
 				output, labels, total_loss_value, energy_loss, num_atoms, gaussian_params = self.sess.run([self.output,
-						self.labels_pl, self.total_loss, self.energy_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
+							self.labels_pl, self.total_loss, self.energy_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
 			test_epoch_energy_labels.append(labels)
 			test_epoch_energy_outputs.append(output)
 			num_atoms_epoch.append(num_atoms)
-			# for molecule in range(self.batch_size):
-			# 	test_epoch_force_labels.append(-1.0 * gradient_labels[molecule,:num_atoms[molecule]])
-			# 	test_epoch_force_outputs.append(-1.0 * gradients[molecule,:num_atoms[molecule]])
+			test_epoch_force_labels.append(-1.0 * gradient_labels)
+			test_epoch_force_outputs.append(-1.0 * gradients)
 		test_epoch_energy_labels = np.concatenate(test_epoch_energy_labels)
 		test_epoch_energy_outputs = np.concatenate(test_epoch_energy_outputs)
 		test_epoch_energy_errors = test_epoch_energy_labels - test_epoch_energy_outputs
-		# test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
-		# test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
-		# test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
+		test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
+		test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
+		test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
 		num_atoms_epoch = np.sum(np.concatenate(num_atoms_epoch))
 		duration = time.time() - start_time
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 			LOGGER.info("Energy label: %.8f  Energy output: %.8f", test_epoch_energy_labels[i], test_epoch_energy_outputs[i])
-		# for i in [random.randint(0, num_atoms_epoch - 1) for _ in xrange(20)]:
-		# 	LOGGER.info("Forces label: %s  Forces output: %s", test_epoch_force_labels[i], test_epoch_force_outputs[i])
-		# LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
-		# LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
-		# LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
-		LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
-		LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
-		LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
+		for i in [random.randint(0, num_atoms_epoch - 1) for _ in xrange(20)]:
+			LOGGER.info("Forces label: %s  Forces output: %s", test_epoch_force_labels[i], test_epoch_force_outputs[i])
+		LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
+		LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
+		LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
+		# LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
+		# LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
+		# LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		if self.train_energy_gradients:
 			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
