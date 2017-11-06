@@ -528,11 +528,11 @@ def train_energy_GauSH():
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 2
-	PARAMS["test_freq"] = 1
+	PARAMS["max_steps"] = 500
+	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 100
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["tf_prec"] = "tf.float64"
 	a=MSet("H2O_wb97xd_1to21_with_prontonated")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()

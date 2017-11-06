@@ -862,7 +862,7 @@ class BehlerParinelloDirectGauSH:
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
-			rotated_xyzs = tf_random_rotate(self.xyzs_pl, rotation_params)
+			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
 											self.Zs_pl, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
@@ -871,10 +871,8 @@ class BehlerParinelloDirectGauSH:
 			norm_output = self.inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 
-			nonzero_coords = tf.gather_nd(self.xyzs_pl, tf.where(tf.not_equal(self.Zs_pl, 0)))
-			normalized_gradients = tf.gather_nd(tf.gradients(self.output, self.xyzs_pl)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
-			self.gradients = normalized_gradients * labels_stddev
-			self.gradient_labels = tf.gather_nd(self.gradients_pl, tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradients = tf.gather_nd(tf.gradients(self.output, self.xyzs_pl)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
 			#loss and constraints
