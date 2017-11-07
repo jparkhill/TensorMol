@@ -247,6 +247,7 @@ class BehlerParinelloDirectSymFunc:
 		self.gradients_loss = None
 		self.output = None
 		self.gradients = None
+		self.gradient_labels = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -289,16 +290,14 @@ class BehlerParinelloDirectSymFunc:
 					element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
 			for element in range(len(self.elements)):
 				element_embeddings[element] /= embeddings_max[element]
-			self.normalized_output = self.inference(element_embeddings, mol_indices)
-			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
-			self.normalized_gradients = tf.gradients(self.output, self.xyzs_pl)[0]
-			self.gradients = (self.normalized_gradients * self.gradients_stddev) + self.gradients_mean
-			non_padded_atoms = tf.where(tf.not_equal(self.Zs_pl, 0))
-			self.non_padded_gradients = tf.gather_nd(self.gradients, non_padded_atoms)
-			self.non_padded_gradients_label = tf.gather_nd(self.gradients_pl, non_padded_atoms)
+			normalized_output = self.inference(element_embeddings, mol_indices)
+			self.output = (normalized_output * self.labels_stddev) + self.labels_mean
+
+			self.gradients = tf.gather_nd(tf.gradients(self.output, self.xyzs_pl)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradient_labels = tf.gather_nd(self.gradients_pl, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			if self.train_energy_gradients:
 				self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
-						self.labels_pl, self.non_padded_gradients, self.non_padded_gradients_label, num_atoms_batch)
+						self.labels_pl, self.gradients, self.gradient_labels, num_atoms_batch)
 			else:
 				self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
 			self.train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum)
@@ -445,35 +444,33 @@ class BehlerParinelloDirectSymFunc:
 		test_gradient_loss = 0.0
 		test_epoch_energy_labels, test_epoch_energy_outputs = [], []
 		test_epoch_force_labels, test_epoch_force_outputs = [], []
-		num_atoms_epoch = []
+		num_atoms_epoch = 0.0
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data = self.tensor_data.get_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.train_energy_gradients:
-				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms = self.sess.run([self.output,
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms_batch = self.sess.run([self.output,
 						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradient_loss,
 						self.num_atoms_pl],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
-				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms = self.sess.run([self.output,
-						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss,
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms_batch = self.sess.run([self.output,
+						self.labels_pl, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
 						self.num_atoms_pl],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
 			test_epoch_energy_labels.append(labels)
 			test_epoch_energy_outputs.append(output)
-			num_atoms_epoch.append(num_atoms)
-			for molecule in range(self.batch_size):
-				test_epoch_force_labels.append(-1.0 * gradient_labels[molecule,:num_atoms[molecule]])
-				test_epoch_force_outputs.append(-1.0 * gradients[molecule,:num_atoms[molecule]])
+			num_atoms_epoch += np.sum(num_atoms_batch)
+			test_epoch_force_labels.append(-1.0 * gradient_labels)
+			test_epoch_force_outputs.append(-1.0 * gradients)
 		test_epoch_energy_labels = np.concatenate(test_epoch_energy_labels)
 		test_epoch_energy_outputs = np.concatenate(test_epoch_energy_outputs)
 		test_epoch_energy_errors = test_epoch_energy_labels - test_epoch_energy_outputs
 		test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
 		test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
 		test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
-		num_atoms_epoch = np.sum(np.concatenate(num_atoms_epoch))
 		duration = time.time() - start_time
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 			LOGGER.info("Energy label: %.8f  Energy output: %.8f", test_epoch_energy_labels[i], test_epoch_energy_outputs[i])
