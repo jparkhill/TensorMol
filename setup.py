@@ -1,5 +1,11 @@
 # To make TensorMol available.
-# pip install -e .
+# sudo pip install -e .
+#
+# to make and upload a source dist 
+# python setup.py sdist
+# twine upload dist/*
+# And of course also be me. 
+# 
 
 from __future__ import absolute_import
 from distutils.core import setup, Extension
