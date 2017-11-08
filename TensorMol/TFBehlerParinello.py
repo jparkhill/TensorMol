@@ -41,6 +41,7 @@ class BehlerParinelloDirectSymFunc:
 		self.activation_function_type = PARAMS["NeuronType"]
 		self.assign_activation()
 		self.embedding_type = embedding_type
+		self.path = PARAMS["networks_directory"]
 
 		#Reloads a previous network if name variable is not None
 		if name !=  None:
@@ -112,10 +113,10 @@ class BehlerParinelloDirectSymFunc:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+self.name+".tfn","rb")
+		f = open(self.path+"/BehlerParinelloDirect_nicotine_metamd_10000_Tue_Nov_07_22.35.07_2017.tfn","rb")
 		import TensorMol.PickleTM
 		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
-		self.Clean()
+		self.clean()
 		self.__dict__.update(network_member_variables)
 		f.close()
 		checkpoint_files = [x for x in os.listdir(self.network_directory) if (x.count('checkpoint')>0 and x.count('meta')==0)]
@@ -227,8 +228,8 @@ class BehlerParinelloDirectSymFunc:
 		return
 
 	def clean(self):
-		if (self.sess != None):
-			self.sess.close()
+		# if (self.sess != None):
+		# 	self.sess.close()
 		self.sess = None
 		self.total_loss = None
 		self.train_op = None
@@ -531,9 +532,6 @@ class BehlerParinelloDirectSymFunc:
 			#Define the placeholders to be fed in for each batch
 			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.num_atoms, 3]))
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.num_atoms]))
-			# self.labels_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size]))
-			# self.gradients_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms, 3]))
-			# self.num_atoms_pl = tf.placeholder(tf.int32, shape=([self.batch_size]))
 
 			#Define the constants/Variables for the symmetry function basis
 			elements = tf.constant(self.elements, dtype = tf.int32)
@@ -550,9 +548,6 @@ class BehlerParinelloDirectSymFunc:
 			embeddings_max = tf.constant(self.embeddings_max, dtype = self.tf_precision)
 			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
 			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
-			# gradients_mean = tf.constant(self.gradients_mean, dtype = self.tf_precision)
-			# gradients_stddev = tf.constant(self.gradients_stddev, dtype = self.tf_precision)
-			# num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
 			#Define the graph for computing the embedding, feeding through the network, and evaluating the loss
 			element_embeddings, mol_indices = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements,
@@ -561,6 +556,7 @@ class BehlerParinelloDirectSymFunc:
 				element_embeddings[element] /= embeddings_max[element]
 			self.normalized_output = self.inference(element_embeddings, mol_indices)
 			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
+			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0] / self.batch_size
 
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -583,7 +579,7 @@ class BehlerParinelloDirectSymFunc:
 		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
 		return feed_dict
 
-	def evaluate(self, mol):
+	def evaluate(self, mol, eval_forces=True):
 		"""
 		Takes coordinates and atomic numbers from a manager and feeds them into the network
 		for evaluation of the forces
@@ -595,8 +591,9 @@ class BehlerParinelloDirectSymFunc:
 		if not self.sess:
 			print(self.latest_checkpoint_file)
 			print("loading the session..")
+			self.batch_size=1
 			self.num_atoms = mol.NAtoms()
-			self.chk_file = self.FindLastCheckpoint()
+			self.assign_activation()
 			self.evaluate_prepare()
 		xyzs = np.expand_dims(mol.coords, axis=0)
 		Zs = np.expand_dims(mol.atoms, axis=0)
