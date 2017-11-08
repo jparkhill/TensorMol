@@ -267,6 +267,16 @@ class MSet:
 		self.mols=mols
 		return
 
+	def OnlyAtoms(self,allowed_eles):
+		for mol in self.mols:
+			included = []
+			for i,atom in enumerate(mol.atoms):
+				if (atom in allowed_eles):
+					included.append(i)
+			mol.atoms = mol.atoms[included]
+			mol.coords = mol.coords[included]
+		return
+
 	def AppendSet(self, b):
 		if (self.name == None):
 			self.name = self.name + b.name
