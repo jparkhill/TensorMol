@@ -38,7 +38,14 @@ extensions = ['sphinx.ext.autodoc','sphinx.ext.todo',
 templates_path = ['_templates']
 
 #MolEmb doesn't import propertly so mock it out. 
-autodoc_mock_imports = ["MolEmb","numpy","scipy","scipy.special","tensorflow"]
+
+from unittest.mock import MagicMock
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+            return MagicMock()
+MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'pandas','tensorflow','MolEmb','scipy','scipy.special']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
