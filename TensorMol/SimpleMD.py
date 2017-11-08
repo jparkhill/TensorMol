@@ -564,51 +564,151 @@ class Annealer(IRTrajectory):
 		print("Achieved Minimum energy ", self.MinE, " at step ", step)
 		return
 
-class NoEnergyAnnealer(VelocityVerlet):
-	def __init__(self,f_,g0_,name_="anneal",AnnealThresh_ = 10.0):
-		PARAMS["MDThermostat"] = None
+class AnnealerDirect:
+	def __init__(self, force_field, name_="anneal", annealing_threshold = 0.000009):
 		PARAMS["MDV0"] = None
-		VelocityVerlet.__init__(self, f_, g0_, name_)
-		self.dt = 0.2
-		self.v *= 0.0
-		self.AnnealT0 = 20.0
-		self.MinS = 0
-		self.MinF = 1e10
-		self.Minx = None
-		self.AnnealSteps = 3000
-		self.AnnealThresh = AnnealThresh_
-		self.Tstat = NoseThermostat(self.m,self.v)
+		self.time_step = PARAMS["MDdt"]
+		self.initial_temp = PARAMS["MDAnnealT0"]
+		self.annealing_steps = PARAMS["MDAnnealSteps"]
+		self.field_vector = PARAMS["MDFieldVec"]
+		self.field_amplitude = PARAMS["MDFieldAmp"]
+		self.field_frequency = PARAMS["MDFieldFreq"]
+		self.tau = PARAMS["MDFieldTau"]
+		self.TOn = PARAMS["MDFieldT0"]
+		# self.update_charge = PARAMS["MDUpdateCharges"]
+		self.update_charge = False
+		self.force_field = force_field
+		self.md_log = None
+
+		self.steps_to_minimum = 0
+		self.minimum_energy = 0.0
+		self.minimum_geometry = None
+		self.annealing_threshold = annealing_threshold
+
 		# The annealing program is 1K => 0K in 500 steps.
 		return
 
-	def Prop(self):
+	def write_trajectory(self, mol):
+		mol.WriteXYZfile("./results/", "MDTrajectoryAnneal")
+		return
+
+	def pulse(self, time):
+		"""
+		delta pulse of duration
+		"""
+		sin_part = np.sin(2.0 * 3.1415 * self.field_frequency * time)
+		exp_part = (1.0 / np.sqrt(2.0 * 3.1415 * self.tau * self.tau)) \
+					* np.exp(-1.0 * np.power(time - self.TOn, 2.0) / (2.0 * self.tau * self.tau))
+		amplitude = self.field_amplitude * sin_part * exp_part
+		if np.abs(amplitude) > 10e-12:
+			return self.field_vector * amplitude, True
+		else:
+			return np.zeros(3), False
+
+	def propagate(self, mol):
 		"""
 		Propagate VelocityVerlet
 		"""
 		step = 0
-		while(step < self.AnnealSteps):
-			self.t = step*self.dt
-			self.KE = KineticEnergy(self.v,self.m)
-			Teff = (2./3.)*self.KE/IDEALGASR
 
+		mol.properties["masses"] = np.array(map(lambda x: ATOMICMASSES[x-1], mol.atoms))
+		mol.properties["velocity"] = np.zeros((mol.NAtoms(), 3))
+		mol.properties["acceleration"] = np.zeros((mol.NAtoms(), 3))
+		mol.properties["kinetic_energy"] = KineticEnergy(mol.properties["velocity"], mol.properties["masses"])
+		mol.properties["charges"] = np.zeros(mol.NAtoms())
+		mol.properties["dipole_moment"] = np.zeros(3)
+
+		self.thermostat = NoseThermostatDirect(mol.properties["masses"], mol.properties["velocity"])
+		self.thermostat.temp = self.initial_temp * (self.annealing_steps - step) / self.annealing_steps + 10e-10
+
+		trajectory = []
+		trajectory.append(mol)
+
+		while step < self.annealing_steps:
+			self.temp = step * self.time_step
+			effective_temp = (2./3.) * mol.properties["kinetic_energy"] / IDEALGASR
+
+			self.e_field, self.IsOn = self.pulse(self.temp)
+			if (self.update_charge and not self.IsOn):
+				mol.properties["charges"] = self.ChargeFunction(mol.coords)
+			else:
+				mol.properties["charges"] = trajectory[-1].properties["charges"]
+			mol.properties["dipole_moment"] = Dipole(mol.coords, mol.properties["charges"]) - trajectory[0].properties["dipole_moment"]
 			# avoid the thermostat blowing up.
-			self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
+			AnnealFrac = float(self.annealing_steps - step) / self.annealing_steps
+			self.thermostat.temp = self.initial_temp * AnnealFrac + PARAMS["MDAnnealTF"] * (1.0 - AnnealFrac) + 10e-10
 			# First 50 steps without any thermostat.
-			self.x , self.v, self.a, self.EPot, self.frc = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce, True)
+			mol = self.thermostat.step(self.force_field, mol, self.time_step)
+			mol.properties["kinetic_energy"] = KineticEnergy(mol.properties["velocity"], mol.properties["masses"])
 
-			if (RmsForce(self.frc) < self.MinF and abs(RmsForce(self.frc) - self.MinF)>self.AnnealThresh):
-				self.MinF = RmsForce(self.frc)
-				self.Minx = self.x.copy()
-				self.MinS = step
+			if (mol.properties["energy"] < self.minimum_energy) and (abs(mol.properties["energy"] - self.minimum_energy) > self.annealing_threshold):
+				self.minimum_energy = mol.properties["energy"]
+				self.minimum_geometry = mol
+				self.steps_to_minimum = step
 				LOGGER.info("   -- cycling annealer -- ")
-				self.AnnealT0 = self.Tstat.T
-				print(self.x)
+				if PARAMS["MDAnnealT0"] > PARAMS["MDAnnealTF"]:
+					self.initial_temp = self.thermostat.temp + PARAMS["MDAnnealKickBack"]
+				mol.properties["dipole_moment"] = Dipole(mol.coords, mol.properties["charges"])
 				step=0
 
+			if (PARAMS["PrintTMTimer"]):
+				PrintTMTIMER()
 			if (step%7==0 and PARAMS["MDLogTrajectory"]):
-				self.WriteTrajectory()
+				self.write_trajectory(mol)
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f ", self.name, step, self.t, self.KE, RmsForce(self.frc), self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff)
-		self.Minx = self.x.copy()
-		print("Achieved Minimum energy ", self.MinF, " at step ", step)
+			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f",
+						step, self.temp, mol.properties["kinetic_energy"], mol.properties["energy"],
+						mol.properties["kinetic_energy"] / 1000.0 + (mol.properties["energy"] - mol.properties["energy"]) * 2625.5,
+						effective_temp, self.thermostat.temp)
+			trajectory.append(mol)
+		#self.x = self.Minx.copy()
+		print("Achieved Minimum energy ", self.minimum_energy, " at step ", step)
 		return
+
+class NoseThermostatDirect:
+	def __init__(self,m_,v_):
+		"""
+		Velocity Verlet step with a Nose-Hoover Thermostat.
+		"""
+		self.m = m_.copy()
+		self.N = len(m_)
+		self.temp = PARAMS["MDTemp"]  # Length of NH chain.
+		self.eta = 0.0
+		self.name = "Nose"
+		self.rescale(v_)
+		print("Using ", self.name, " thermostat at ",self.temp, " degrees Kelvin")
+		return
+
+	def rescale(self,v_):
+		# Do this elementwise otherwise H's blow off.
+		for i in range(self.N):
+			Teff = (2.0/(3.0*IDEALGASR))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
+			if (Teff != 0.0):
+				v_[i] *= np.sqrt(self.T/(Teff))
+		return
+
+	def step(self, force_field, mol, time_step):
+		"""
+		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
+		"""
+		# Recompute these stepwise in case of variable T.
+		self.kb_t = IDEALGASR * 10e-10 * self.temp # energy units here are kg (A/fs)^2
+		self.tau = 20.0*PARAMS["MDdt"]*self.N
+		self.Q = self.kb_t * (self.tau ** 2)
+
+		updated_coords = mol.coords + mol.properties["velocity"] * time_step \
+						+ 0.5 * (mol.properties["acceleration"] - self.eta * mol.properties["velocity"]) * (time_step ** 2)
+		updated_mol = Mol(mol.atoms, updated_coords)
+		updated_mol.properties["charges"] = mol.properties["charges"]
+		updated_mol.properties["masses"] = mol.properties["masses"]
+		updated_mol.properties["energy"], updated_mol.properties["forces"] = force_field(updated_mol)
+		velocity_half_dt = mol.properties["velocity"] + 0.5 * (mol.properties["acceleration"] - self.eta * mol.properties["velocity"]) * time_step
+
+		updated_mol.properties["acceleration"] = 10e-10 * np.einsum("ax,a->ax", updated_mol.properties["forces"], 1.0 / mol.properties["masses"]) # m^2/s^2 => A^2/Fs^2
+		kinetic_energy = 0.5 * np.dot(np.einsum("ia,ia->i", mol.properties["velocity"],
+													mol.properties["velocity"]), mol.properties["masses"])
+		eta_half_dt = self.eta + (time_step / (2. * self.Q)) * (kinetic_energy - ((3.*self.N+1)/2.) * self.kb_t)
+		ke_half_dt = 0.5 * np.dot(np.einsum("ia,ia->i", velocity_half_dt, velocity_half_dt), mol.properties["masses"])
+		self.eta = eta_half_dt + (time_step / (2. * self.Q)) * (ke_half_dt - ((3. * self.N + 1) / 2.) * self.kb_t)
+		updated_mol.properties["velocity"] = (velocity_half_dt + (time_step / 2.) * updated_mol.properties["acceleration"]) / (1. + (time_step / 2.) * self.eta)
+		return updated_mol
