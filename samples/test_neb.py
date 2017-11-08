@@ -109,12 +109,25 @@ def TestBetaHairpin():
 			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
 			return en[0]
 	m = a.mols[0]
-	xmn = np.min(m.coords)
-	xmx = np.max(m.coords)
+	xmn = np.amin(m.coords,axis=0)
+	m.coords -= xmn
+	xmx = np.amax(m.coords,axis=0)
 	print("Xmn,Xmx",xmn,xmx)
-	m.properties["lattice"] = np.array([[xmx,0.,0.],[0.,xmx,0.],[0.,0.,xmx]])
+	m.properties["lattice"] = np.array([[xmx[0],0.,0.],[0.,xmx[1],0.],[0.,0.,xmx[2]]])
 	PF = PeriodicForce(m,m.properties["lattice"])
 	PF.BindForce(F, 15.0)
+
+	if 0:
+		for i in range(4):
+			print("En0:", PF(m.coords)[0])
+			m.coords += (np.random.random((1,3))-0.5)*3.0
+			m.coords = PF.lattice.ModuloLattice(m.coords)
+			print("En:"+str(i), PF(m.coords)[0])
+
+	PARAMS["OptMaxCycles"]=100
+	POpt = PeriodicGeomOptimizer(PF)
+	PF.mol0=POpt.Opt(m,"ProOpt")
+
 	PARAMS["MDTemp"] = 300.0
 	PARAMS["MDdt"] = 0.2 # In fs.
 	PARAMS["MDMaxStep"]=2000
