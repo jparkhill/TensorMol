@@ -38,7 +38,7 @@ extensions = ['sphinx.ext.autodoc','sphinx.ext.todo',
 templates_path = ['_templates']
 
 #MolEmb doesn't import propertly so mock it out. 
-autodoc_mock_imports = ["MolEmb"]
+autodoc_mock_imports = ["MolEmb","numpy","scipy","scipy.special"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
