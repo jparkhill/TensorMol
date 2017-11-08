@@ -1,11 +1,16 @@
-# &#9658;<img src="doc/images/TensorMol.png" width="300">
+# &#9658;<img src="doc/images/TensorMol.png" width="400">
 ![](doc/images/newtitle.png)
 -Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
+[![PyPI version](https://badge.fury.io/py/TensorMol.svg)](https://badge.fury.io/py/TensorMol)
+![](https://img.shields.io/badge/Python-2.7-brightgreen.svg)
+[![Documentation Status](https://readthedocs.org/projects/tensormol/badge/?version=latest)](http://tensormol.readthedocs.io/en/latest/?badge=latest)
+
+
 ## Authors:
  Kun Yao (kyao@nd.edu), John Herr (jherr1@nd.edu),
- David Toth (dtoth1@nd.edu), Ryker McIntyre, Nicolas Casetti
- John Parkhill (john.parkhill@gmail.com)
+ David Toth (dtoth1@nd.edu), Ryker McIntyre(rmcinty3@nd.edu), Nicolas Casetti,
+ [John Parkhill](http://blogs.nd.edu/parkhillgroup) (john.parkhill@gmail.com)
 
 ## Model Chemistries:
  - Behler-Parrinello with electrostatics
@@ -29,7 +34,8 @@
 By using this software you agree to the terms in COPYING
 
 ## Installation:
- - Works on OSX, Ubuntu, and Windows subsystem for Linux.
+ - Install TensorFlow(>1.1), otherwise TensorMol is self-contained.
+ - Works on OSX, Ubuntu, and Windows subsystem for Linux:
 ```
 git clone https://github.com/jparkhill/TensorMol.git
 cd TensorMol
@@ -40,24 +46,27 @@ sudo pip3 install -e .
 python test.py
 ```
 
-## Usage:
- - ```import TensorMol as tm```
- - TensorMol assumes a directory structure executing path which mirrors the git.
- - We are working on /doc/Tutorials, but it's sparse now.
- - There is also a lot in various test.py's
- - Please also refer to IPython notebooks in /notebooks.
- - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py
-
 ## Timing Information
 TensorMol is robust and fast. You can get an BP+electrostatic energy and force of this monstrous cube of 24,000 atoms
 in less than 100 seconds on a 2015 MacbookPro (Core i7 2.5Ghz, 16GB mem). Periodic simulations are about 3x
 more expensive.  
 
-<img src="doc/images/monster.png" width="300">
-<img src="doc/images/Timings.png" width="500">
-<img src="doc/images/PeriodicTimings.png" width="500">
+<img src="doc/images/monster.png" width="400">
+<img src="doc/images/Timings.png" width="400">
+<img src="doc/images/PeriodicTimings.png" width="400">
+
+## Usage:
+ - ```import TensorMol as tm```
+ - We are working on /doc/Tutorials, but it's sparse now.
+ - There is also a lot of examples in /samples/test-ZZZ.py and IPython notebooks in /notebooks.
+ - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py
 
 ## Sample Results
+
+### Biological molecules
+Because Neural network force fields do not rely on any specific atom typing or bond topology, the agony of setting up  simulations of biological molecules is greatly reduced. This gif is a periodic optimization of PDB structure 2EVQ, in explicit polarizable TensorMol solvent.
+
+<img src="doc/images/2evq.gif" width="300">
 
 ### Chemical Reactions
 Converged nudged elastic band simulations of the cyclization cascade of endiandric acid C (c.f. K. C. Nicolaou, N. A. Petasis, R. E. Zipkin, 1982, The endiandric acid cascade. Electrocyclizations in organic synthesis. 4. Biomimetic approach to endiandric acids A-G. Total synthesis and thermal studies, J. Am. Chem. Soc. 104(20):5560–5562).
@@ -73,9 +82,9 @@ The associated energy surface is shown below.
 <img src="doc/images/pes.png" width="300">
 
 ### Dynamic Properties
-- Tyrosine IR spectrum generated with david_testIR() in test.py
+- Tyrosine Harmonic IR spectrum
 
-![](doc/images/tyrosine.png)
+<img src="doc/images/tyrosine.png" width="300">
 
 ## Requirements:
 - Minimum Pre-Requisites: Python2.7x, TensorFlow

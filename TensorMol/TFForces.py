@@ -1,6 +1,8 @@
 """
 	Tensorflow holders for simple force field ingredients
 	That cannot be trained.
+
+	TODO: some simple BP-Style Traditional force field for atoms in general. 
 """
 
 from __future__ import absolute_import

@@ -30,6 +30,7 @@ class Lattice:
 		return
 	def LatticeFacePoints(self):
 		"""
+		Returns vertices, Face centers, and axis centers.
 		"""
 		lfp = np.zeros((14,3))
 		lfp[0] = self.lattice[0]

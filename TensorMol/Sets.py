@@ -258,6 +258,9 @@ class MSet:
 		return
 
 	def OnlyWithElements(self, allowed_eles):
+		"""
+		Removes molecules with unwanted atoms from a set.
+		"""
 		mols=[]
 		for mol in self.mols:
 			if set(list(mol.atoms)).issubset(allowed_eles):
@@ -265,6 +268,19 @@ class MSet:
 		for i in allowed_eles:
 			self.name += "_"+str(i)
 		self.mols=mols
+		return
+
+	def OnlyAtoms(self,allowed_eles):
+		"""
+		Removes any unwanted atoms from the set.
+		"""
+		for mol in self.mols:
+			included = []
+			for i,atom in enumerate(mol.atoms):
+				if (atom in allowed_eles):
+					included.append(i)
+			mol.atoms = mol.atoms[included]
+			mol.coords = mol.coords[included]
 		return
 
 	def AppendSet(self, b):
