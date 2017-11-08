@@ -3,7 +3,7 @@
 -Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
 [![PyPI version](https://badge.fury.io/py/TensorMol.svg)](https://badge.fury.io/py/TensorMol)
-![](https://img.shields.io/badge/Python-2.7-brightgreen.svg
+![](https://img.shields.io/badge/Python-2.7-brightgreen.svg)
 
 ## Authors:
  Kun Yao (kyao@nd.edu), John Herr (jherr1@nd.edu),
