@@ -16,7 +16,7 @@ import random
 import time
 
 class NudgedElasticBand:
-	def __init__(self,f_,g0_,g1_, beads_=None):
+	def __init__(self,f_,g0_,g1_):
 		"""
 		Nudged Elastic band. JCP 113 9978
 
@@ -30,24 +30,16 @@ class NudgedElasticBand:
 		"""
 		self.thresh = PARAMS["OptThresh"]
 		self.max_opt_step = PARAMS["OptMaxCycles"]
-		self.step=0
-		self.TSI = 0 # index of the TS bead.
 		self.nbeads = PARAMS["NebNumBeads"]
 		self.k = PARAMS["NebK"]
-		self.kMax = PARAMS["NebKMax"]
-		self.dK = self.kMax - self.k
-		self.Ks = self.k*np.ones(self.nbeads)
 		self.f = f_
 		self.atoms = g0_.atoms.copy()
 		self.natoms = len(self.atoms)
-		if beads_ is not None:
-			self.beads = beads_
-		else:
-			self.beads = np.array([(1.-l)*g0_.coords+l*g1_.coords for l in np.linspace(0.,1.,self.nbeads)])
+		self.beads=np.array([(1.-l)*g0_.coords+l*g1_.coords for l in np.linspace(0.,1.,self.nbeads)])
 		self.Fs = np.zeros(self.beads.shape) # Real forces.
 		self.Ss = np.zeros(self.beads.shape) # Spring Forces.
 		self.Ts = np.zeros(self.beads.shape) # Tangents.
-		self.Es = np.ones(self.nbeads)*1000.0 # As Evaluated.
+		self.Es = np.zeros(self.nbeads) # As Evaluated.
 		self.Esi = np.zeros(self.nbeads) # Integrated
 		self.Rs = np.zeros(self.nbeads) # Distance between beads.
 		self.Solver=None
@@ -59,8 +51,6 @@ class NudgedElasticBand:
 			self.Solver = DIIS(self.WrappedEForce, self.beads)
 		elif (PARAMS["NebSolver"]=="CG"):
 			self.Solver = ConjGradient(self.WrappedEForce,self.beads)
-		elif (PARAMS["NebSolver"]=="Verlet"):
-			self.Solver = VerletOptimizer(self.WrappedEForce,self.beads)
 		else:
 			raise Exception("Missing Neb Solver")
 		for i,bead in enumerate(self.beads):
@@ -79,12 +69,12 @@ class NudgedElasticBand:
 		tmp = 0.0
 		for i in range(self.nbeads-1):
 			tmp2 = beads_[i+1] - beads_[i]
-			tmp += 0.5*self.Ks[i]*self.nbeads*np.sum(tmp2*tmp2)
+			tmp += 0.5*self.k*self.nbeads*np.sum(tmp2*tmp2)
 		return tmp
 	def SpringDeriv(self,beads_,i):
 		if (i==0 or i==(self.nbeads-1)):
 			return np.zeros(self.beads[0].shape)
-		tmp = self.Ks[i]*self.nbeads*(2.0*beads_[i] - beads_[i+1] - beads_[i-1])
+		tmp = self.k*self.nbeads*(2.0*beads_[i] - beads_[i+1] - beads_[i-1])
 		return tmp
 	def Parallel(self,v_,t_):
 		return t_*(np.einsum("ia,ia",v_,t_))
@@ -108,18 +98,9 @@ class NudgedElasticBand:
 			self.Es[i], self.Fs[i] = self.f(beads_[i],DoForce)
 		else:
 			self.Es[i] = self.f(beads_[i],DoForce)
-		# Compute Ks
-		Eref = max(self.Es[0],self.Es[-1])
-		Emax = np.max(self.Es)
-		Ei = max(self.Es[i],self.Es[i-1])
-		if (Ei > Eref):
-			self.Ks[i] = self.kMax - self.dK*(Emax - Ei)/(Emax - Eref+0.0000000001)
-		else:
-			self.Ks[i] = self.kMax - self.dK
 		# Compute the spring part of the energy.
 		if (not DoForce):
 			return self.Es[i]
-
 		t = self.Tangent(beads_,i)
 		self.Ts[i] = t
 		S = -1.0*self.SpringDeriv(beads_,i)
@@ -136,10 +117,6 @@ class NudgedElasticBand:
 		Sperp = self.Perpendicular(self.Perpendicular(S,t),Fn)
 		#Fneb = self.PauliForce(i)+Spara+Sperp+F
 		Fneb = Spara+F#+Sperp
-		# If enabled and this is the TS bead, do the climbing image.
-		if (PARAMS["NebClimbingImage"] and self.step>10 and i==self.TSI):
-			print("Climbing image i", i)
-			Fneb = self.Fs[i] + -2.0*np.sum(self.Fs[i]*self.Ts[i])*self.Ts[i]
 		return self.Es[i], Fneb
 	def WrappedEForce(self, beads_, DoForce=True):
 		F = np.zeros(beads_.shape)
@@ -149,8 +126,6 @@ class NudgedElasticBand:
 				self.Es[i], F[i] = self.NebForce(beads_,i,DoForce)
 				F[i] = RemoveInvariantForce(bead, F[i], self.atoms)
 				F[i] /= JOULEPERHARTREE
-			TSE = np.max(self.Es[1:self.nbeads-1])
-			self.TSI = np.where(self.Es==TSE)[0][0]
 			TE = np.sum(self.Es)+self.SpringEnergy(beads_)
 			return TE,F
 		else:
@@ -188,51 +163,48 @@ class NudgedElasticBand:
 			m.properties["Energy"] = Es[i]
 			m.properties["Force"] = Fint(l)
 			m.WriteXYZfile("./results/", "NebHQTraj")
-	def WriteTrajectory(self,filename):
+	def WriteTrajectory(self,nm_):
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
-			m.WriteXYZfile("./results/", "Bead"+filename+str(i))
+			m.WriteXYZfile("./results/", "Bead"+str(i))
 		for i,bead in enumerate(self.beads):
 			m=Mol(self.atoms,bead)
 			m.properties["bead"] = i
 			m.properties["Energy"] = self.Es[i]
 			m.properties["NormNebForce"]=np.linalg.norm(self.Fs[i])
-			m.WriteXYZfile("./results/", filename+"Traj")
+			m.WriteXYZfile("./results/", nm_+"Traj")
 		return
 	def Opt(self, filename="Neb",Debug=False):
 		"""
 		Optimize the nudged elastic band using the solver that has been selected.
 		"""
 		# Sweeps one at a time
-		self.step=0
+		step=0
 		self.Fs = np.ones(self.beads.shape)
 		PES = np.zeros((self.max_opt_step, self.nbeads))
-		while(self.step < self.max_opt_step and np.sqrt(np.mean(self.Fs*self.Fs))>self.thresh):
+		while(step < self.max_opt_step and np.sqrt(np.mean(self.Fs*self.Fs))>self.thresh):
 			# Update the positions of every bead together.
 			self.beads, energy, self.Fs = self.Solver(self.beads)
-			PES[self.step] = self.Es.copy()
+			PES[step] = self.Es.copy()
 			self.IntegrateEnergy()
-			print("Rexn Profile: ", self.Es)
+			print("Rexn Profile: ", self.Es, self.Esi)
 			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
 			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
 			beadRs = [np.linalg.norm(self.beads[x+1]-self.beads[x]) for x in range(self.nbeads-1)]
 			beadCosines = [self.BeadAngleCosine(self.beads,i) for i in range(1,self.nbeads-1)]
-			#print("Frce Profile: ", beadFs)
+			print("Frce Profile: ", beadFs)
 			print("F_|_ Profile: ", beadFperp)
-			print(self.Ks)
 			#print("SFrc Profile: ", beadSfs)
-			#print("Dist Profile: ", beadRs)
-			#print("BCos Profile: ", beadCosines)
+			print("Dist Profile: ", beadRs)
+			print("BCos Profile: ", beadCosines)
 			minforce = np.min(beadFs)
 				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
-			if (self.step%10==0):
+			if (step%10==0):
 				self.WriteTrajectory(filename)
-			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f Ea(kcal/mol): %.5f Del-E(kcal/mol): %.5f Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", self.step, np.sum(PES[self.step]), np.sqrt(np.mean(self.Fs*self.Fs)), (self.Es[self.TSI]-(self.Es[0]))*KCALPERHARTREE,((self.Es[self.nbeads-1])-(self.Es[0]))*KCALPERHARTREE, np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
-			self.step+=1
+			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.sum(PES[step]), np.sqrt(np.mean(self.Fs*self.Fs)), np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
+			step+=1
 		#self.HighQualityPES()
-		LOGGER.info("========= Nudged Elastic Band Computation Complete ==========")
-		LOGGER.info("Activation Energy: %0.5f",self.Es[self.TSI]-(self.Es[0]))
-		LOGGER.info("Enthalpy: %0.5f",(self.Es[self.nbeads-1])-(self.Es[0]))
+		print("Activation Energy:",np.max(self.Es)-np.min(self.Es))
 		np.savetxt("./results/NEB_"+filename+"_Energy.txt",PES)
 		return self.beads
