@@ -84,8 +84,6 @@ class NudgedElasticBand:
 		v1 = (beads_[i+1] - beads_[i])
 		v2 = (beads_[i-1] - beads_[i])
 		return np.einsum('ia,ia',v1,v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
-	def CornerPenalty(self,x):
-		return 1./(1.+np.exp(-5.0*(x-0.5)))
 	def NebForce(self, beads_, i, DoForce = True):
 		"""
 		This uses the mixing of Perpendicular spring force
@@ -108,15 +106,19 @@ class NudgedElasticBand:
 		self.Ss[i] = Spara
 		F = self.Fs[i].copy()
 		F = self.Perpendicular(F,t)
-		#Sperp = self.CornerPenalty(self.BeadAngleCosine(i))*(self.Perpendicular(S,t))
 		# Instead use Wales' DNEB
-		if (np.linalg.norm(F) != 0.0):
-			Fn = F/np.linalg.norm(F)
-		else:
-			Fn = F
-		Sperp = self.Perpendicular(self.Perpendicular(S,t),Fn)
-		#Fneb = self.PauliForce(i)+Spara+Sperp+F
-		Fneb = Spara+F#+Sperp
+		if (0):
+			if (np.linalg.norm(F) != 0.0):
+				Fn = F/np.linalg.norm(F)
+			else:
+				Fn = F
+			Sperp = self.Perpendicular(self.Perpendicular(S,t),Fn)
+			#Fneb = self.PauliForce(i)+Spara+Sperp+F
+		Fneb = Spara+F
+		# If enabled and this is the TS bead, do the climbing image.
+		if (PARAMS["NebClimbingImage"] and self.step>10 and i==self.TSI):
+			print("Climbing image i", i)
+			Fneb = self.Fs[i] + -2.0*np.sum(self.Fs[i]*self.Ts[i])*self.Ts[i]
 		return self.Es[i], Fneb
 	def WrappedEForce(self, beads_, DoForce=True):
 		F = np.zeros(beads_.shape)

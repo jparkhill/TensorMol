@@ -184,6 +184,8 @@ def GetPairPotential():
 		np.savetxt("PairPotentialValues_elempair_"+str(i)+".dat",PairPotVals[i])
 
 def TestTFGauSH():
+	tf_precision = eval(PARAMS["tf_prec"])
+	TensorMol.RawEmbeddings.data_precision = tf_precision
 	np.set_printoptions(threshold=100000)
 	a=MSet("SmallMols_rand")
 	a.Load()
@@ -191,6 +193,7 @@ def TestTFGauSH():
 	zlist = []
 	xyzlist = []
 	labelslist = []
+	natomlist = []
 	for i, mol in enumerate(a.mols):
 		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float32)
 		paddedxyz[:mol.atoms.shape[0]] = mol.coords
@@ -201,21 +204,33 @@ def TestTFGauSH():
 		xyzlist.append(paddedxyz)
 		zlist.append(paddedz)
 		labelslist.append(paddedlabels)
-		if i == 99:
+		natomlist.append(mol.NAtoms())
+		if i == 999:
 			break
 	xyzstack = tf.stack(xyzlist)
 	zstack = tf.stack(zlist)
 	labelstack = tf.stack(labelslist)
+	natomstack = tf.stack(natomlist)
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 	atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
-	element = tf.constant(1, dtype=tf.int32)
-	tmp, tmp2, _ = TF_gaussian_spherical_harmonics_element(xyzstack, zstack, labelstack, element, gaussian_params, atomic_embed_factors, 8, orthogonalize=False)
+	elements = tf.constant([1, 6, 7, 8], dtype=tf.int32)
+	tmp = tf_gaussian_spherical_harmonics_channel(xyzstack, zstack, elements, gaussian_params, 4)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
+	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+	run_metadata = tf.RunMetadata()
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-	tmp3, tmp4, mint = sess.run([tmp, tmp2, _])
-	print tmp3.shape
+	tmp2 = sess.run(tmp, options=options, run_metadata=run_metadata)
+	# print tmp2[1]
+	# print tmp2.shape
+	# print tmp3
+	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+	chrome_trace = fetched_timeline.generate_chrome_trace_format()
+	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+		f.write(chrome_trace)
+	# print tmp2[3].shape
+	# print a.mols[0].atoms.shape
 	# TreatedAtoms = a.AtomTypes()
 	# d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	# # tset = TensorData(a,d)
@@ -225,7 +240,9 @@ def TestTFGauSH():
 
 def test_gaussian_overlap():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
-	tmp = gaussian_overlap(gaussian_params)
+	tf_precision = eval(PARAMS["tf_prec"])
+	TensorMol.RawEmbeddings.data_precision = tf_precision
+	tmp = tf_gaussian_overlap(gaussian_params)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	tmp2 = sess.run(tmp)
@@ -484,9 +501,32 @@ def train_energy_pairs_triples():
 	tset = TensorMolData_BP_Direct(a,d)
 	manager=TFMolManage("",tset,True,"pairs_triples", Trainable_=True)
 
-def train_energy_symm_func():
-	# np.set_printoptions(formatter={'float': '{: 0.8f}'.format})
+def train_energy_symm_func(mset):
 	PARAMS["train_energy_gradients"] = False
+	PARAMS["weight_decay"] = None
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 2000
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 100
+	PARAMS["NeuronType"] = "elu"
+	PARAMS["tf_prec"] = "tf.float32"
+	a=MSet(mset)
+	a.Load()
+	for mol in a.mols:
+		mol.properties["gradients"] = -mol.properties["forces"]
+	TreatedAtoms = a.AtomTypes()
+	print "Number of Mols: ", len(a.mols)
+	tensor_data = TensorMolDataDirect(a, "atomization")
+	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
+
+def train_energy_GauSH():
+	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
+								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
+	PARAMS["SH_NRAD"] = 14
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["train_energy_gradients"] = True
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
@@ -494,13 +534,13 @@ def train_energy_symm_func():
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 100
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float32"
-	a=MSet("SmallMols")
+	PARAMS["tf_prec"] = "tf.float64"
+	a=MSet("H2O_wb97xd_1to21_with_prontonated")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
-	tensor_data = TensorMolDataDirect(a, "atomization", "symmetry_functions")
-	manager = TFMolManageDirect(tensor_data)
+	tensor_data = TensorMolDataDirect(a, "atomization")
+	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectGauSH")
 
 def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
@@ -510,7 +550,7 @@ def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["OptMaxCycles"]=50000
 	PARAMS["OptStepSize"] = 0.1
-	PARAMS["OptThresh"]=0.0005
+	PARAMS["OptThresh"]=0.0001
 	a=MSet(mset)
 	a.ReadXYZ()
 	mol=a.mols[mol_index]
@@ -542,6 +582,65 @@ def test_md():
 	md = VelocityVerlet(force_field, mol)
 	md.Prop()
 
+def test_h2o():
+	PARAMS["OptMaxCycles"]=60
+	PARAMS["OptMaxCycles"]=500
+	PARAMS["OptStepSize"] = 0.1
+	PARAMS["OptThresh"]=0.0001
+	PARAMS["MDAnnealT0"] = 20.0
+	PARAMS["MDAnnealSteps"] = 2000
+	a = MSet("water_dimer_cccbdb_opt")
+	a.ReadXYZ()
+	# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	mol = a.mols[0]
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	def force_field(mol, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate(mol, True)
+			forces = RemoveInvariantForce(mol.coords, forces, mol.atoms)
+			return energy, forces
+		else:
+			energy = manager.evaluate(mol, False)
+			return energy
+	Opt = GeometryOptimizer(force_field)
+	opt_mol = Opt.opt_conjugate_gradient(mol)
+
+def test_h2o_anneal():
+	PARAMS["OptMaxCycles"]=60
+	PARAMS["OptMaxCycles"]=500
+	PARAMS["OptStepSize"] = 0.1
+	PARAMS["OptThresh"]=0.0001
+	PARAMS["MDAnnealT0"] = 20.0
+	PARAMS["MDAnnealSteps"] = 2000
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	mol = a.mols[0]
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	def force_field(mol, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate(mol, True)
+			forces = RemoveInvariantForce(mol.coords, forces, mol.atoms)
+			return energy, forces
+		else:
+			energy = manager.evaluate(mol, False)
+			return energy
+	Opt = GeometryOptimizer(force_field)
+	opt_mol = Opt.opt_conjugate_gradient(mol)
+
+	# Tesselate that water to create a box
+	ntess = 4
+	latv = 2.8*np.eye(3)
+	# Start with a water in a ten angstrom box.
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(opt_mol)
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+	nreal = mt.NAtoms()
+	mt.Distort(0.01)
+	annealer = AnnealerDirect(force_field)
+	annealer.propagate(mt)
+	# mt.coords = aper.Minx
+
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
@@ -565,13 +664,107 @@ def test_md():
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func()
-# geo_opt_tf_forces("OptMols", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 4)
-test_md()
+train_energy_symm_func("nicotine_aimd_2500")
+# train_energy_GauSH()
+# geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
+# test_md()
+# test_h2o()
+# test_h2o_anneal()
 
-# a=MSet("SmallMols_rand")
-# a.Load()
-# mol = a.mols[random.randint(0, 9999)]
-# b=MSet("rot_const_test_mol")
-# b.mols.append(mol)
-# b.Save()
+train_energy_symm_func("nicotine_aimd_2500")
+train_energy_symm_func("nicotine_aimd_5000")
+train_energy_symm_func("nicotine_aimd_10000")
+train_energy_symm_func("nicotine_aimd_20000")
+train_energy_symm_func("nicotine_aimd_40000")
+train_energy_symm_func("nicotine_aimd")
+
+def water_dimer_plot():
+	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
+		istring = '$molecule\n0 1 \n'
+		crds = m_.coords.copy()
+		crds[abs(crds)<0.0000] *=0.0
+		for j in range(len(m_.atoms)):
+			if j in ghostatoms:
+				istring=istring+"@"+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+			else:
+				istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+		if jobtype_ == "dipole":
+			istring =istring + '$end\n\n$rem\njobtype sp\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		else:
+			istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		with open(path_+filename_+'.in','w') as fin:
+			fin.write(istring)
+		with open(path_+filename_+'.out','a') as fout:
+			if threads:
+				proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			else:
+				proc = subprocess.Popen(['qchem', path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			out, err = proc.communicate()
+			fout.write(out)
+		lines = out.split('\n')
+		if jobtype_ == 'force':
+			Forces = np.zeros((m_.atoms.shape[0],3))
+			for i, line in enumerate(lines):
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+				if line.count("Gradient of SCF Energy") > 0:
+					k = 0
+					l = 0
+					for j in range(1, m_.atoms.shape[0]+1):
+						Forces[j-1,:] = float(lines[i+k+2].split()[l+1]), float(lines[i+k+3].split()[l+1]), float(lines[i+k+4].split()[l+1])
+						l += 1
+						if (j % 6) == 0:
+							k += 4
+							l = 0
+			# return Energy, Forces
+			return Energy, -Forces*JOULEPERHARTREE/BOHRPERA
+		elif jobtype_ == 'sp':
+			for line in lines:
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+			return Energy
+		elif jobtype_ ==  'dipole':
+			for i, line in enumerate(lines):
+				if "Dipole Moment (Debye)" in line:
+					tmp = lines[i+1].split()
+					dipole = np.asarray([float(tmp[1]),float(tmp[3]),float(tmp[5])])
+					return dipole
+		else:
+			raise Exception("jobtype needs formatted for return variables")
+
+	a = MSet("water_dimer")
+	a.ReadXYZ()
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	qchemff = lambda x, y: qchemdft(x, y, basis_ = '6-311g**',xc_='wb97x-d', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=8)
+	cp_correction = []
+	for mol in a.mols:
+		h2o1 = qchemff(Mol(mol.atoms[:3], mol.coords[:3]), [])
+		h2o2 = qchemff(Mol(mol.atoms[3:], mol.coords[3:]), [])
+		h2o1cp = qchemff(mol, [3, 4, 5])
+		h2o2cp = qchemff(mol, [0, 1, 2])
+		dimer = qchemff(mol, [])
+		cpc = h2o1cp - h2o1 + h2o2cp - h2o2
+		cp_correction.append(cpc)
+		bond_e = dimer - h2o1 - h2o2
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
+	print "TensorMol evaluation"
+	for i, mol in enumerate(a.mols):
+		h2o1 = manager.evaluate(Mol(mol.atoms[:3], mol.coords[:3]), False)
+		h2o2 = manager.evaluate(Mol(mol.atoms[3:], mol.coords[3:]), False)
+		dimer = manager.evaluate(mol, False)
+		bond_e = dimer - h2o1 - h2o2
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
+
+# water_dimer_plot()
+# a=MSet("water_dimer_cccbdb_opt")
+# a.ReadXYZ()
+# b = MSet("water_dimer")
+# mol = a.mols[0]
+# oovec = mol.coords[1] - mol.coords[3]
+# for i in range(-80, 30):
+# 	coords = mol.coords.copy()
+# 	coords[3:] += 0.01 * i * oovec
+# 	new_mol = Mol(mol.atoms, coords)
+# 	b.mols.append(new_mol)
+# 	print np.linalg.norm(b.mols[-1].coords[1] - b.mols[-1].coords[3])
+# b.WriteXYZ()

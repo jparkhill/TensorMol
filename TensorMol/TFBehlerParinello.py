@@ -7,12 +7,10 @@ from __future__ import division
 from __future__ import print_function
 
 import time
-import itertools
 import random
 
 from TensorMol.TensorMolData import *
 from TensorMol.RawEmbeddings import *
-from TensorMol.Neighbors import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirectSymFunc:
@@ -249,6 +247,7 @@ class BehlerParinelloDirectSymFunc:
 		self.gradients_loss = None
 		self.output = None
 		self.gradients = None
+		self.gradient_labels = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -291,16 +290,14 @@ class BehlerParinelloDirectSymFunc:
 					element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
 			for element in range(len(self.elements)):
 				element_embeddings[element] /= embeddings_max[element]
-			self.normalized_output = self.inference(element_embeddings, mol_indices)
-			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
-			self.normalized_gradients = tf.gradients(self.output, self.xyzs_pl)[0]
-			self.gradients = (self.normalized_gradients * self.gradients_stddev) + self.gradients_mean
-			non_padded_atoms = tf.where(tf.not_equal(self.Zs_pl, 0))
-			self.non_padded_gradients = tf.gather_nd(self.gradients, non_padded_atoms)
-			self.non_padded_gradients_label = tf.gather_nd(self.gradients_pl, non_padded_atoms)
+			normalized_output = self.inference(element_embeddings, mol_indices)
+			self.output = (normalized_output * self.labels_stddev) + self.labels_mean
+
+			self.gradients = tf.gather_nd(tf.gradients(self.output, self.xyzs_pl)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradient_labels = tf.gather_nd(self.gradients_pl, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			if self.train_energy_gradients:
 				self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
-						self.labels_pl, self.non_padded_gradients, self.non_padded_gradients_label, num_atoms_batch)
+						self.labels_pl, self.gradients, self.gradient_labels, num_atoms_batch)
 			else:
 				self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
 			self.train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum)
@@ -447,35 +444,33 @@ class BehlerParinelloDirectSymFunc:
 		test_gradient_loss = 0.0
 		test_epoch_energy_labels, test_epoch_energy_outputs = [], []
 		test_epoch_force_labels, test_epoch_force_outputs = [], []
-		num_atoms_epoch = []
+		num_atoms_epoch = 0.0
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data = self.tensor_data.get_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.train_energy_gradients:
-				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms = self.sess.run([self.output,
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms_batch = self.sess.run([self.output,
 						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradient_loss,
 						self.num_atoms_pl],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
-				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms = self.sess.run([self.output,
-						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss,
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms_batch = self.sess.run([self.output,
+						self.labels_pl, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
 						self.num_atoms_pl],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
 			test_epoch_energy_labels.append(labels)
 			test_epoch_energy_outputs.append(output)
-			num_atoms_epoch.append(num_atoms)
-			for molecule in range(self.batch_size):
-				test_epoch_force_labels.append(-1.0 * gradient_labels[molecule,:num_atoms[molecule]])
-				test_epoch_force_outputs.append(-1.0 * gradients[molecule,:num_atoms[molecule]])
+			num_atoms_epoch += np.sum(num_atoms_batch)
+			test_epoch_force_labels.append(-1.0 * gradient_labels)
+			test_epoch_force_outputs.append(-1.0 * gradients)
 		test_epoch_energy_labels = np.concatenate(test_epoch_energy_labels)
 		test_epoch_energy_outputs = np.concatenate(test_epoch_energy_outputs)
 		test_epoch_energy_errors = test_epoch_energy_labels - test_epoch_energy_outputs
 		test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
 		test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
 		test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
-		num_atoms_epoch = np.sum(np.concatenate(num_atoms_epoch))
 		duration = time.time() - start_time
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 			LOGGER.info("Energy label: %.8f  Energy output: %.8f", test_epoch_energy_labels[i], test_epoch_energy_outputs[i])
@@ -524,39 +519,6 @@ class BehlerParinelloDirectSymFunc:
 						step, duration, loss / num_mols, energy_loss / num_mols)
 		return
 
-	# def evaluate(self, batch_data):
-	# 	"""
-	# 	Evaluate the energy, atom energies, and IfGrad = True the gradients
-	# 	of this Direct Behler-Parinello graph.
-	#
-	# 	Args:
-	# 		batch_data: a list containing
-	# 		XYZ,Z,radial pairs, angular triples (all set format Mol X MaxNAtoms... )
-	# 	"""
-	# 	# Check sanity of input
-	# 	xf = batch_data[0].copy()
-	# 	zf = batch_data[1].copy()
-	# 	MustPrepare = not self.sess
-	# 	if (batch_data[0].shape[1] > self.max_num_atoms or self.batch_size > batch_data[0].shape[0]):
-	# 		print("Natoms Match?", batch_data[0].shape[1] , self.max_num_atoms)
-	# 		print("BatchSizes Match?", self.batch_size , batch_data[0].shape[0])
-	# 		self.batch_size = batch_data[0].shape[0]
-	# 		self.max_num_atoms = batch_data[0].shape[1]
-	# 		MustPrepare = True
-	# 		# Create tensors with the right shape, and sub-fill them.
-	# 	elif (batch_data[0].shape[1] != self.max_num_atoms or self.batch_size != batch_data[0].shape[0]):
-	# 		xf = np.zeros((self.batch_size,self.max_num_atoms,3))
-	# 		zf = np.zeros((self.batch_size,self.max_num_atoms))
-	# 		xf[:batch_data[0].shape[0],:batch_data[0].shape[1],:] = batch_data[0]
-	# 		zf[:batch_data[1].shape[0],:batch_data[1].shape[1]] = batch_data[1]
-	# 	LOGGER.debug("Batch_Size: %i", self.batch_size)
-	# 	if MustPrepare:
-	# 		print ("loading the session..")
-	# 		self.EvalPrepare()
-	# 	feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Radp_pl]+[self.Angt_pl], [xf]+[zf]+[batch_data[2]]+[batch_data[3]])}
-	# 	mol_output, atom_outputs, gradient = self.sess.run([self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-	# 	return mol_output, atom_outputs, gradient
-
 	def evaluate_prepare(self):
 		"""
 		Get placeholders, graph and losses in order to begin training.
@@ -603,7 +565,7 @@ class BehlerParinelloDirectSymFunc:
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
-			self.saver.restore(self.sess, self.latest_checkpoint_file)
+			self.saver.restore(self.sess, tf.train.latest_checkpoint(self.network_directory))
 			self.summary_writer = tf.summary.FileWriter(self.network_directory, self.sess.graph)
 		return
 
@@ -646,7 +608,7 @@ class BehlerParinelloDirectGauSH:
 	"""
 	Behler-Parinello network using embedding from RawEmbeddings.py
 	"""
-	def __init__(self, tensor_data, embedding_type, name = None):
+	def __init__(self, tensor_data=None, embedding_type=None, name=None):
 		"""
 		Args:
 			tensor_data (TensorMol.TensorMolData object): a class which holds the training data
@@ -674,6 +636,7 @@ class BehlerParinelloDirectGauSH:
 		self.atomic_embed_factors = PARAMS["ANES"]
 		self.assign_activation()
 		self.embedding_type = embedding_type
+		self.path = PARAMS["networks_directory"]
 
 		#Reloads a previous network if name variable is not None
 		if name !=  None:
@@ -745,10 +708,10 @@ class BehlerParinelloDirectGauSH:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+self.name+".tfn","rb")
+		f = open(self.path+"/"+self.name+".tfn","rb")
 		import TensorMol.PickleTM
 		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
-		self.Clean()
+		# self.clean()
 		self.__dict__.update(network_member_variables)
 		f.close()
 		checkpoint_files = [x for x in os.listdir(self.network_directory) if (x.count('checkpoint')>0 and x.count('meta')==0)]
@@ -821,8 +784,6 @@ class BehlerParinelloDirectGauSH:
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			num_atoms = batch_data[4]
 			labels_list.append(batch_data[2])
-			for molecule in range(self.batch_size):
-				gradients_list.append(batch_data[3][molecule,:num_atoms[molecule]])
 			embedding, molecule_index = sess.run([embeddings, molecule_indices], feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1]})
 			for element in range(len(self.elements)):
 				embeddings_list[element].append(embedding[element])
@@ -835,9 +796,6 @@ class BehlerParinelloDirectGauSH:
 		labels = np.concatenate(labels_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
-		gradients = np.concatenate(gradients_list)
-		self.gradients_mean = np.mean(gradients)
-		self.gradients_stddev = np.std(gradients)
 		self.tensor_data.train_scratch_pointer = 0
 
 		#Set the embedding and label shape
@@ -846,8 +804,8 @@ class BehlerParinelloDirectGauSH:
 		return
 
 	def clean(self):
-		if (self.sess != None):
-			self.sess.close()
+		# if (self.sess != None):
+		# 	self.sess.close()
 		self.sess = None
 		self.total_loss = None
 		self.loss = None
@@ -864,10 +822,12 @@ class BehlerParinelloDirectGauSH:
 		self.num_atoms_pl = None
 		self.gradients_pl = None
 		self.energy_loss = None
-		self.gradients_loss = None
+		self.gradient_loss = None
 		self.output = None
 		self.gradients = None
+		self.gradient_labels
 		self.gaussian_params = None
+		print(self.__dict__)
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -893,12 +853,11 @@ class BehlerParinelloDirectGauSH:
 			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
 			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
 			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
-			# gradients_mean = tf.constant(self.gradients_mean, dtype = self.tf_precision)
-			# gradients_stddev = tf.constant(self.gradients_stddev, dtype = self.tf_precision)
+
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
-			rotated_xyzs = tf_random_rotate(self.xyzs_pl, rotation_params)
+			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
 											self.Zs_pl, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
@@ -907,8 +866,16 @@ class BehlerParinelloDirectGauSH:
 			norm_output = self.inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 
+			self.gradients = tf.gather_nd(tf.gradients(self.output, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
+			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
+
 			#loss and constraints
-			self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
+			if self.train_energy_gradients:
+				self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
+						self.labels_pl, self.gradients, self.gradient_labels, num_atoms_batch)
+			else:
+				self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
 			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9,
 								tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1),
 								tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
@@ -916,10 +883,7 @@ class BehlerParinelloDirectGauSH:
 								barrier_function, tf.zeros_like(barrier_function)))
 			gaussian_overlap_loss = tf.square(0.001 / tf.reduce_min(tf.self_adjoint_eig(tf_gaussian_overlap(self.gaussian_params))[0]))
 			loss_and_constraint = self.total_loss + truncated_barrier_function + gaussian_overlap_loss
-			# if self.train_energy_gradients:
-			# 	self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
-			# 			self.labels_pl, self.non_padded_gradients, self.non_padded_gradients_label, num_atoms_batch)
-			# else:
+
 			self.train_op = self.optimizer(loss_and_constraint, self.learning_rate, self.momentum)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
@@ -1009,7 +973,7 @@ class BehlerParinelloDirectGauSH:
 		energy_loss = tf.nn.l2_loss(tf.subtract(output, labels))
 		tf.add_to_collection('losses', energy_loss)
 		if self.train_energy_gradients:
-			gradients_loss = self.batch_size * tf.nn.l2_loss(tf.subtract(gradients, gradient_labels)) / tf.cast(num_atoms, self.tf_precision)
+			gradients_loss = tf.nn.l2_loss(tf.subtract(gradients, gradient_labels)) / tf.cast(num_atoms, self.tf_precision)
 			tf.add_to_collection('losses', gradients_loss)
 			return tf.add_n(tf.get_collection('losses'), name='total_loss'), energy_loss, gradients_loss
 		else:
@@ -1031,9 +995,8 @@ class BehlerParinelloDirectGauSH:
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			if self.train_energy_gradients:
-				_, total_loss_value, energy_loss, gradient_loss, mol_output, n_atoms, gradients, gradient_labels = self.sess.run([self.train_op,
-						self.total_loss, self.energy_loss, self.gradient_loss, self.output, self.num_atoms_pl, self.gradients,
-						self.gradients_pl], feed_dict=self.fill_feed_dict(batch_data))
+				_, total_loss_value, energy_loss, gradient_loss, mol_output = self.sess.run([self.train_op, self.total_loss,
+							self.energy_loss, self.gradient_loss, self.output], feed_dict=self.fill_feed_dict(batch_data))
 				train_gradient_loss += gradient_loss
 			else:
 				_, total_loss_value, energy_loss, mol_output = self.sess.run([self.train_op, self.total_loss,
@@ -1069,40 +1032,39 @@ class BehlerParinelloDirectGauSH:
 			batch_data = self.tensor_data.get_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.train_energy_gradients:
-				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms = self.sess.run([self.output,
-						self.labels_pl, self.gradients, self.gradients_pl, self.total_loss, self.energy_loss, self.gradient_loss,
-						self.num_atoms_pl],  feed_dict=feed_dict)
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms, gaussian_params = self.sess.run([self.output,
+							self.labels_pl, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
+							self.gradient_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
 				output, labels, total_loss_value, energy_loss, num_atoms, gaussian_params = self.sess.run([self.output,
-						self.labels_pl, self.total_loss, self.energy_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
+							self.labels_pl, self.total_loss, self.energy_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
 			test_epoch_energy_labels.append(labels)
 			test_epoch_energy_outputs.append(output)
 			num_atoms_epoch.append(num_atoms)
-			# for molecule in range(self.batch_size):
-			# 	test_epoch_force_labels.append(-1.0 * gradient_labels[molecule,:num_atoms[molecule]])
-			# 	test_epoch_force_outputs.append(-1.0 * gradients[molecule,:num_atoms[molecule]])
+			test_epoch_force_labels.append(-1.0 * gradient_labels)
+			test_epoch_force_outputs.append(-1.0 * gradients)
 		test_epoch_energy_labels = np.concatenate(test_epoch_energy_labels)
 		test_epoch_energy_outputs = np.concatenate(test_epoch_energy_outputs)
 		test_epoch_energy_errors = test_epoch_energy_labels - test_epoch_energy_outputs
-		# test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
-		# test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
-		# test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
+		test_epoch_force_labels = np.concatenate(test_epoch_force_labels)
+		test_epoch_force_outputs = np.concatenate(test_epoch_force_outputs)
+		test_epoch_force_errors = test_epoch_force_labels - test_epoch_force_outputs
 		num_atoms_epoch = np.sum(np.concatenate(num_atoms_epoch))
 		duration = time.time() - start_time
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 			LOGGER.info("Energy label: %.8f  Energy output: %.8f", test_epoch_energy_labels[i], test_epoch_energy_outputs[i])
-		# for i in [random.randint(0, num_atoms_epoch - 1) for _ in xrange(20)]:
-		# 	LOGGER.info("Forces label: %s  Forces output: %s", test_epoch_force_labels[i], test_epoch_force_outputs[i])
-		# LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
-		# LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
-		# LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
-		LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
-		LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
-		LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
+		for i in [random.randint(0, num_atoms_epoch - 1) for _ in xrange(20)]:
+			LOGGER.info("Forces label: %s  Forces output: %s", test_epoch_force_labels[i], test_epoch_force_outputs[i])
+		LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
+		LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
+		LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
+		# LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
+		# LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
+		# LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		if self.train_energy_gradients:
 			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
@@ -1144,68 +1106,93 @@ class BehlerParinelloDirectGauSH:
 						step, duration, loss / num_mols, energy_loss / num_mols)
 		return
 
-	def evaluate(self, batch_data):
-		"""
-		Evaluate the energy, atom energies, and IfGrad = True the gradients
-		of this Direct Behler-Parinello graph.
-
-		Args:
-			batch_data: a list containing
-			XYZ,Z,radial pairs, angular triples (all set format Mol X MaxNAtoms... )
-		"""
-		# Check sanity of input
-		xf = batch_data[0].copy()
-		zf = batch_data[1].copy()
-		MustPrepare = not self.sess
-		if (batch_data[0].shape[1] > self.max_num_atoms or self.batch_size > batch_data[0].shape[0]):
-			print("Natoms Match?", batch_data[0].shape[1] , self.max_num_atoms)
-			print("BatchSizes Match?", self.batch_size , batch_data[0].shape[0])
-			self.batch_size = batch_data[0].shape[0]
-			self.max_num_atoms = batch_data[0].shape[1]
-			MustPrepare = True
-			# Create tensors with the right shape, and sub-fill them.
-		elif (batch_data[0].shape[1] != self.max_num_atoms or self.batch_size != batch_data[0].shape[0]):
-			xf = np.zeros((self.batch_size,self.max_num_atoms,3))
-			zf = np.zeros((self.batch_size,self.max_num_atoms))
-			xf[:batch_data[0].shape[0],:batch_data[0].shape[1],:] = batch_data[0]
-			zf[:batch_data[1].shape[0],:batch_data[1].shape[1]] = batch_data[1]
-		LOGGER.debug("Batch_Size: %i", self.batch_size)
-		if MustPrepare:
-			print ("loading the session..")
-			self.EvalPrepare()
-		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Radp_pl]+[self.Angt_pl], [xf]+[zf]+[batch_data[2]]+[batch_data[3]])}
-		mol_output, atom_outputs, gradient = self.sess.run([self.output, self.atom_outputs, self.gradient],  feed_dict=feed_dict)
-		return mol_output, atom_outputs, gradient
-
-	def EvalPrepare(self):
+	def evaluate_prepare(self):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
+
+		Args:
+			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.SetANI1Param()
-			self.xyzs_pl=tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms,3]))
-			self.Zs_pl=tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.max_num_atoms]))
-			self.gradients_pl=tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms,3]))
-			self.Radp_Ele_pl=tf.placeholder(tf.int32, shape=tuple([None,4]))
-			self.Angt_Elep_pl=tf.placeholder(tf.int32, shape=tuple([None,5]))
-			self.mil_jk_pl = tf.placeholder(tf.int32, shape=tuple([None,4]))
-			Ele = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
-			Elep = tf.Variable(self.element_pairs, trainable=False, dtype = tf.int32)
-			SFPa2 = tf.Variable(self.SFPa2, trainable= False, dtype = self.tf_precision)
-			SFPr2 = tf.Variable(self.SFPr2, trainable= False, dtype = self.tf_precision)
-			Rr_cut = tf.Variable(self.Rr_cut, trainable=False, dtype = self.tf_precision)
-			Ra_cut = tf.Variable(self.Ra_cut, trainable=False, dtype = self.tf_precision)
-			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_precision)
-			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_precision)
-			element_factors = tf.Variable(np.array([2.20, 2.55, 3.04, 3.44]), trainable=False, dtype=tf.float64)
-			element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=False, dtype=tf.float64)
-			self.Scatter_Sym, self.Sym_Index = TFSymSet_Linear_channel(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_pl, self.Angt_pl, mil_jkt, element_factors, element_pair_factors )
-			self.output, self.atom_outputs = self.inference(self.Scatter_Sym, self.Sym_Index)
-			self.gradient = tf.gradients(self.output, self.xyzs_pl)
+			#Define the placeholders to be fed in for each batch
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.num_atoms, 3]))
+			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.num_atoms]))
+
+			#Define the embedding parameters and normalization constants
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_precision)
+			elements = tf.constant(self.elements, dtype = tf.int32)
+			embeddings_mean = tf.constant(self.embeddings_mean, dtype = self.tf_precision)
+			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
+			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
+			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
+
+			tiled_xyzs = tf.tile(self.xyzs_pl, [10 * self.batch_size, 1, 1])
+			tiled_Zs = tf.tile(self.Zs_pl, [10 * self.batch_size, 1])
+
+			rotation_params = tf.stack([np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+			rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
+			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
+											tiled_Zs, elements, self.gaussian_params, self.l_max)
+			for element in range(len(self.elements)):
+				embeddings[element] -= embeddings_mean[element]
+				embeddings[element] /= embeddings_stddev[element]
+			norm_output = self.inference(embeddings, molecule_indices)
+			self.output = (norm_output * labels_stddev) + labels_mean
+
+			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0] / self.batch_size
+
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
-			self.saver.restore(self.sess, self.chk_file)
+			self.saver = tf.train.Saver()
+			self.saver.restore(self.sess, tf.train.latest_checkpoint(self.network_directory))
 			self.summary_writer = tf.summary.FileWriter(self.network_directory, self.sess.graph)
 		return
+
+	def evaluate_fill_feed_dict(self, xyzs, Zs):
+		"""
+		Fill the tensorflow feed dictionary.
+
+		Args:
+			batch_data: a list of numpy arrays containing inputs, bounds, matrices and desired energies in that order.
+			and placeholders to be assigned. (it can be longer than that c.f. TensorMolData_BP)
+
+		Returns:
+			Filled feed dictionary.
+		"""
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
+		return feed_dict
+
+	def evaluate(self, mol, eval_forces=True):
+		"""
+		Takes coordinates and atomic numbers from a manager and feeds them into the network
+		for evaluation of the forces
+
+		Args:
+			xyzs (np.float): numpy array of atomic coordinates
+			Zs (np.int32): numpy array of atomic numbers
+		"""
+		if not self.sess:
+			print("loading the session..")
+			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
+			self.assign_activation()
+			self.num_atoms = self.max_num_atoms
+			self.evaluate_prepare()
+		xyzs_feed = np.zeros((1,self.max_num_atoms, 3))
+		Zs_feed = np.zeros((1,self.max_num_atoms))
+		xyzs_feed[0,:mol.NAtoms()] = mol.coords
+		Zs_feed[0,:mol.NAtoms()] = mol.atoms
+		feed_dict=self.evaluate_fill_feed_dict(xyzs_feed, Zs_feed)
+		atomization_energy = 0.0
+		for atom in mol.atoms:
+			if atom in ele_U:
+				atomization_energy += ele_U[atom]
+		if eval_forces:
+			energy, gradients = self.sess.run([self.output, self.gradients], feed_dict=feed_dict)
+			forces = -gradients[0,:mol.NAtoms()]
+			return np.mean(energy) + atomization_energy, forces
+		else:
+			energy = self.sess.run(self.output, feed_dict=feed_dict)
+			return np.mean(energy) + atomization_energy

@@ -1,6 +1,8 @@
 """
 	Tensorflow holders for simple force field ingredients
 	That cannot be trained.
+
+	TODO: some simple BP-Style Traditional force field for atoms in general. 
 """
 
 from __future__ import absolute_import
@@ -35,7 +37,7 @@ def XInLat(x_, lat_):
 
 def WallEn(x_, lat_):
 	"""
-	quadratic wall forces which go off into infinity at the sides of a lattice cell. Within the cell they increase linearly with a slope of 10Eh / 0.1 Angstrom. beginning at zero at a skin-depth of self.skinD. This can be used to crush a
+	quadratic wall forces which go off into infinity at the sides of a lattice cell. Within the cell forces increase linearly with a slope of 10Eh / 0.1 Angstrom. beginning at zero at a skin-depth of self.skinD. This can be used to crush a
 	simulation.
 
 	Args:
@@ -49,6 +51,34 @@ def WallEn(x_, lat_):
 	lower_walls = tf.where(xinlat<0.0, xinlat2, tf.zeros_like(x_))
 	upper_walls = tf.where(xinlat>1.0, xinlatm12, tf.zeros_like(x_))
 	return tf.reduce_sum(lower_walls+upper_walls)
+
+def Elastic(xs_,ks_):
+	"""
+	This is the energy kernel for an elastic band in many dimensions
+	It can be used to construct a conservative NEB lagrangian.
+	c.f. http://www.inference.vc/my-notes-on-the-numerics-of-gans/
+
+	Args:
+		xs_: nbeads, bead coordinates
+		ks_: n-1 band forces.
+	Returns:
+		Differentiable energy kernel of the band.
+	"""
+	nbeads = tf.shape(xs_)[0]
+	ds = xs_[:-2]-xs_[1:]
+	return tf.reduce_sum(ds*ds*ks_)
+
+def BandForce(xs_,ks_,F_):
+	"""
+	Differentiable Nudged elastic band force including the projection of the spring
+	forces onto tangents and forces onto perpendiculars.
+
+	Args:
+		xs_: the beads.
+		ks_: the force constants.
+		F_: a routine which returns energies and physical forces on each bead.
+	"""
+	return
 
 class ForceHolder:
 	def __init__(self,natom_):

@@ -31,7 +31,7 @@ def GetChemSpider12(a):
 	#PARAMS["AN1_num_r_Rs"] = 64
 	PARAMS["EECutoffOff"] = 15.0
 	#PARAMS["DSFAlpha"] = 0.18
-	PARAMS["DSFAlpha"] = 0.18*BOHRPERA
+	PARAMS["DSFAlpha"] = 0.18
 	PARAMS["AddEcc"] = True
 	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
 	#PARAMS["KeepProb"] = 0.7
@@ -40,7 +40,7 @@ def GetChemSpider12(a):
 	PARAMS["SwitchEpoch"] = 2
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-	manager=TFMolManage("Mol_chemspider12_clean_maxatom35_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	manager=TFMolManage("Mol_chemspider12_maxatom35_H2O_with_CH4_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	return manager
 
 def Eval():
@@ -82,7 +82,7 @@ def Eval():
 	PARAMS["OptMaxCycles"]=500
 	PARAMS["NebSolver"]="Verlet"
 	PARAMS["SDStep"] = 0.05
-	PARAMS["NebNumBeads"] = 18
+	PARAMS["NebNumBeads"] = 22
 	PARAMS["MaxBFGS"] = 12
 	a.mols[0], a.mols[1] = a.mols[0].AlignAtoms(a.mols[1])
 	a.mols[0].WriteXYZfile("./results/", "Aligned"+str(0))
@@ -91,4 +91,48 @@ def Eval():
 	neb = NudgedElasticBand(F,a.mols[0],a.mols[1])
 	Beads = neb.Opt("NebStep1")
 
-Eval()
+def TestBetaHairpin():
+	a=MSet("2evq", center_=False)
+	a.ReadXYZ()
+	a.OnlyAtoms([1, 6, 7, 8])
+	# Optimize all three structures.
+	manager = GetChemSpider12(a)
+	def F(z_, x_, nreal_, DoForce = True):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(z_,x_)
+		if (DoForce):
+			en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_,True)
+			return en[0], f[0]
+		else:
+			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
+			return en[0]
+	m = a.mols[0]
+	xmn = np.amin(m.coords,axis=0)
+	m.coords -= xmn
+	xmx = np.amax(m.coords,axis=0)
+	print("Xmn,Xmx",xmn,xmx)
+	m.properties["lattice"] = np.array([[xmx[0],0.,0.],[0.,xmx[1],0.],[0.,0.,xmx[2]]])
+	PF = PeriodicForce(m,m.properties["lattice"])
+	PF.BindForce(F, 15.0)
+
+	if 0:
+		for i in range(4):
+			print("En0:", PF(m.coords)[0])
+			m.coords += (np.random.random((1,3))-0.5)*3.0
+			m.coords = PF.lattice.ModuloLattice(m.coords)
+			print("En:"+str(i), PF(m.coords)[0])
+
+	PARAMS["OptMaxCycles"]=100
+	POpt = PeriodicGeomOptimizer(PF)
+	PF.mol0=POpt.Opt(m,"ProOpt")
+
+	PARAMS["MDTemp"] = 300.0
+	PARAMS["MDdt"] = 0.2 # In fs.
+	PARAMS["MDMaxStep"]=2000
+	traj = PeriodicVelocityVerlet(PF,"Protein0")
+	traj.Prop()
+
+#Eval()
+TestBetaHairpin()
