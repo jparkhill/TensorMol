@@ -349,7 +349,7 @@ def HarmonicSpectraWithProjection(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM
 	return wave, v
 
 class ConjGradient:
-	def __init__(self,f_,x0_):
+	def __init__(self,f_,x0_,thresh_=0.0001):
 		"""
 		Args:
 			f_ : an energy, force routine.
@@ -362,6 +362,7 @@ class ConjGradient:
 		self.xold = x0_.copy()
 		self.e, self.gold  = self.EForce(x0_)
 		self.s = self.gold.copy()
+		self.thresh = thresh_
 		self.alpha = PARAMS["GSSearchAlpha"]
 		return
 	def BetaPR(self,g):
@@ -380,7 +381,7 @@ class ConjGradient:
 		e,g = self.EForce(x0)
 		beta_n = self.BetaPR(g)
 		self.s = g + beta_n*self.s
-		self.xold = self.LineSearch(x0,self.s)
+		self.xold = self.LineSearch(x0,self.s,self.thresh)
 		return self.xold, e, g
 	def LineSearch(self, x0_, p_, thresh = 0.0001):
 		'''
