@@ -4,8 +4,6 @@ from __future__ import print_function
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]=""
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.NN_MBE import *
 
 def GetChemSpider12(a):
 	TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
@@ -48,7 +46,6 @@ def Eval():
 	a.ReadXYZ()
 	# Optimize all three structures.
 	manager = GetChemSpider12(a)
-
 	def GetEnergyForceForMol(m):
 		def EnAndForce(x_, DoForce=True):
 			tmpm = Mol(m.atoms,x_)
@@ -60,7 +57,6 @@ def Eval():
 			else:
 				return energy
 		return EnAndForce
-
 	if 0:
 		# Optimize all three steps of the reaction.
 		PARAMS["OptMaxCycles"]=20
@@ -134,5 +130,29 @@ def TestBetaHairpin():
 	traj = PeriodicVelocityVerlet(PF,"Protein0")
 	traj.Prop()
 
+def TestUrey():
+	a = MSet("Urey")
+	a.ReadXYZ()
+	m = a.mols[0]
+	m.coords -= np.min(m.coords)
+	# Optimize all three structures.
+	manager = GetChemSpider12(a)
+	def GetEnergyForceForMol(m):
+		def EnAndForce(x_, DoForce=True):
+			tmpm = Mol(m.atoms,x_)
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(tmpm, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			if DoForce:
+				return energy, force
+			else:
+				return energy
+		return EnAndForce
+	F = GetEnergyForceForMol(m)
+	PARAMS["OptMaxCycles"]=500
+	Opt = MetaOptimizer(F,m)
+	Opt.Opt(m)
+
 #Eval()
-TestBetaHairpin()
+#TestBetaHairpin()
+TestUrey()

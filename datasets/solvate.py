@@ -1,3 +1,10 @@
+#
+# This little script shows you how to make a reasonably solvated xyz 
+# from a pdb file using OpenMM and SimTk. 
+# Well it makes a pdb from which you can generate an xyz in VMD
+# or other reasonable converters. JAP 2017
+#
+
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *

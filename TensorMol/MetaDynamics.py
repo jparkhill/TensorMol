@@ -36,7 +36,7 @@ class MetaDynamics(VelocityVerlet):
 		BE = 0.0
 		BF = np.zeros(x_.shape)
 		if (self.NBump > 0):
-			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump)
+			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump%self.MaxBumps)
 		PF = self.ForceFunction(x_)
 		if self.NBump > 0:
 			BF[0] *= self.m[:,None]
@@ -44,9 +44,7 @@ class MetaDynamics(VelocityVerlet):
 		return tmp
 
 	def Bump(self):
-		if (self.NBump == self.MaxBumps):
-			return
-		self.BumpCoords[self.NBump] = self.x
+		self.BumpCoords[self.NBump%self.MaxBumps] = self.x
 		self.NBump += 1
 		LOGGER.info("Bump added!")
 		return
@@ -172,9 +170,7 @@ class BoxedMetaDynamics(VelocityVerlet):
 		self.BowlK = 0.0
 		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK)
 	def Bump(self):
-		if (self.NBump == self.MaxBumps):
-			return
-		self.BumpCoords[self.NBump] = self.x
+		self.BumpCoords[self.NBump%self.MaxBumps] = self.x
 		self.NBump += 1
 		LOGGER.info("Bump added!")
 		return
@@ -185,8 +181,7 @@ class BoxedMetaDynamics(VelocityVerlet):
 		BE = 0.0
 		BF = np.zeros(x_.shape)
 		if (self.NBump > 0):
-			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump)
-		if self.NBump > 0:
+			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump%self.MaxBumps)
 			BF[0] *= self.m[:,None]
 		return BxE+BE+PE,PF+BxF+JOULEPERHARTREE*BF[0]
 	def Prop(self):

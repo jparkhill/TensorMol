@@ -640,6 +640,18 @@ def test_h2o_anneal():
 	annealer.propagate(mt)
 	# mt.coords = aper.Minx
 
+def evaluate_BPSymFunc(mset):
+	a=MSet(mset)
+	a.Load()
+	output, labels = [], []
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_10000_Tue_Nov_07_22.35.07_2017", network_type = "BehlerParinelloDirectSymFunc")
+	for i, mol in enumerate(a.mols):
+		output.append(manager.evaluate(mol, eval_forces=False)[0])
+ 		labels.append(mol.properties["atomization"])
+	output = np.array(output)
+	labels = np.array(labels)
+	print "MAE:", np.mean(np.abs(output-labels))
+	print "RMSE:",np.sqrt(np.mean(np.square(output-labels)))
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
@@ -664,19 +676,13 @@ def test_h2o_anneal():
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-train_energy_symm_func("nicotine_aimd_2500")
+# train_energy_symm_func("nicotine_aimd_2500")
 # train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
-
-train_energy_symm_func("nicotine_aimd_2500")
-train_energy_symm_func("nicotine_aimd_5000")
-train_energy_symm_func("nicotine_aimd_10000")
-train_energy_symm_func("nicotine_aimd_20000")
-train_energy_symm_func("nicotine_aimd_40000")
-train_energy_symm_func("nicotine_aimd")
+evaluate_BPSymFunc("nicotine_aimd")
 
 def water_dimer_plot():
 	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):

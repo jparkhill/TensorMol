@@ -2,6 +2,11 @@
 ![](doc/images/newtitle.png)
 -Title signature by Alex Graves' handwriting LSTM https://arxiv.org/abs/1308.0850
 
+[![PyPI version](https://badge.fury.io/py/TensorMol.svg)](https://badge.fury.io/py/TensorMol)
+![](https://img.shields.io/badge/Python-2.7-brightgreen.svg)
+[![Documentation Status](https://readthedocs.org/projects/tensormol/badge/?version=latest)](http://tensormol.readthedocs.io/en/latest/?badge=latest)
+
+
 ## Authors:
  Kun Yao (kyao@nd.edu), John Herr (jherr1@nd.edu),
  David Toth (dtoth1@nd.edu), Ryker McIntyre(rmcinty3@nd.edu), Nicolas Casetti,
