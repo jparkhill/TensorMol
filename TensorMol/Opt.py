@@ -198,7 +198,7 @@ class GeomOptimizer:
 		return prev_m
 
 class MetaOptimizer(GeomOptimizer):
-	def __init__(self,f_,m):
+	def __init__(self,f_,m,Box_=False):
 		"""
 		A Meta-Optimizer performs repeated optimizatons
 		Each time converging to a new local minimum,
@@ -214,16 +214,21 @@ class MetaOptimizer(GeomOptimizer):
 		self.MaxBumps = PARAMS["MetaMaxBumps"] # think you want this to be >500k
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
 		self.NBump = 0
+		self.UseBox = Box_
 		self.Boxer = TFForces.BoxHolder(self.natoms)
+		self.lastbumpstep = 0
 		# just put the atoms in a box the size of their max and min coordinates.
 		self.Box =  Box_=np.array((np.max(m.coords)+0.1)*np.eye(3))
 		self.BowlK = 0.0
-		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK)
+		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=0.5,w_=3.0,Type_="MR")
 		return
 
 	def WrappedEForce(self, x_ ,DoForce = True):
-		BxE, BxF = self.Boxer(x_, self.Box)
-		BxF *= -5.0*JOULEPERHARTREE#*(self.masses[:,None]/np.sqrt(np.sum(self.masses*self.masses)))
+		BxE = 0.0
+		BxF = np.zeros(x_.shape)
+		if (self.UseBox):
+			BxE, BxF = self.Boxer(x_, self.Box)
+			BxF *= -5.0*JOULEPERHARTREE#*(self.masses[:,None]/np.sqrt(np.sum(self.masses*self.masses)))
 		#print("Box Force",np.max(x_),np.max(BxF),BxE)
 		PE,PF = None, None
 		if (DoForce):
@@ -234,7 +239,9 @@ class MetaOptimizer(GeomOptimizer):
 		BF = np.zeros(x_.shape)
 		if (self.NBump > 0):
 			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump%self.MaxBumps)
+			#print(BF)
 			#BF[0] *= self.masses[:,None]
+			BE *= -1.0
 			BF = JOULEPERHARTREE*BF[0]
 		if (DoForce):
 			frc = PF+BF+BxE
@@ -244,8 +251,8 @@ class MetaOptimizer(GeomOptimizer):
 		else:
 			return BE+PE+BxE
 
-	def Bump(self):
-		self.BumpCoords[self.NBump%self.MaxBumps] = self.x
+	def Bump(self,x_):
+		self.BumpCoords[self.NBump%self.MaxBumps] = x_
 		self.NBump += 1
 		LOGGER.info("Bump added!")
 		return
@@ -268,15 +275,20 @@ class MetaOptimizer(GeomOptimizer):
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Mol:\n", m)
 		CG = ConjGradient(self.WrappedEForce, m.coords,0.0005)
-		while( step < self.max_opt_step*self.MaxBumps and rmsgrad > self.thresh and (rmsdisp > 0.000001 or step<5) ):
+		while( step < self.max_opt_step*self.MaxBumps and (rmsgrad > self.thresh or (rmsdisp > 0.00001 or step<5)) ):
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords, energy, frc = CG(m.coords)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/m.coords.shape[0]
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/m.coords.shape[0]
 			LOGGER.info("step: %i energy: %0.5f rmsgrad: %0.5f rmsdisp: %0.5f ", step , energy, rmsgrad, rmsdisp)
-			if (rmsgrad < 0.001):
+			if (rmsgrad < 0.002 and abs(self.lastbumpstep-step)>3):
 				LOGGER.info("Added local minimum...")
-				self.Bump()
+				self.lastbumpstep = step
+				self.Bump(m.coords)
+				# Because there's no gradient at x, give the coordinates a very weak nudge.
+				m.coords += np.random.normal(0.0005,shape=(x.coords.shape))
+				# This reliably fucks the line search stepsize, so help it out.
+				CG.alpha /= 10.0
 				prev_m.WriteXYZfile("./results/", filename+"LM"+str(nlocmin),'a',True)
 				rmsgrad = 10.0
 				nlocmin += 1
