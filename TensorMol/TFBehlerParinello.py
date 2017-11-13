@@ -830,8 +830,6 @@ class BehlerParinelloDirectGauSH:
 		return
 
 	def clean(self):
-		# if (self.sess != None):
-		# 	self.sess.close()
 		self.sess = None
 		self.total_loss = None
 		self.loss = None
@@ -873,11 +871,11 @@ class BehlerParinelloDirectGauSH:
 
 			#Define the embedding parameters and normalization constants
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
-			elements = tf.constant(self.elements, dtype = tf.int32)
-			embeddings_mean = tf.constant(self.embeddings_mean, dtype = self.tf_precision)
-			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
-			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
-			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
+			elements = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
+			embeddings_mean = tf.Variable(self.embeddings_mean, trainable=False, dtype = self.tf_precision)
+			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
+			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
+			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
@@ -1088,9 +1086,6 @@ class BehlerParinelloDirectGauSH:
 		LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
 		LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
 		LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
-		# LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
-		# LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
-		# LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		if self.train_energy_gradients:
 			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
@@ -1111,6 +1106,7 @@ class BehlerParinelloDirectGauSH:
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
 					self.save_checkpoint(step)
+		self.sess.close()
 		self.save_network()
 		return
 
@@ -1146,19 +1142,19 @@ class BehlerParinelloDirectGauSH:
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.num_atoms]))
 
 			#Define the embedding parameters and normalization constants
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_precision)
-			elements = tf.constant(self.elements, dtype = tf.int32)
-			embeddings_mean = tf.constant(self.embeddings_mean, dtype = self.tf_precision)
-			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
-			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
-			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
+			elements = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
+			embeddings_mean = tf.Variable(self.embeddings_mean, trainable=False, dtype = self.tf_precision)
+			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
+			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
+			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 
-			tiled_xyzs = tf.tile(self.xyzs_pl, [10 * self.batch_size, 1, 1])
-			tiled_Zs = tf.tile(self.Zs_pl, [10 * self.batch_size, 1])
+			tiled_xyzs = tf.tile(self.xyzs_pl, [self.batch_size, 1, 1])
+			tiled_Zs = tf.tile(self.Zs_pl, [self.batch_size, 1])
 
-			rotation_params = tf.stack([np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
 											tiled_Zs, elements, self.gaussian_params, self.l_max)

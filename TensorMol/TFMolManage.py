@@ -1451,7 +1451,7 @@ class TFMolManageDirect:
 		if self.network_type == "BehlerParinelloDirectSymFunc":
 			self.network = BehlerParinelloDirectSymFunc(name=self.network_name)
 		elif (self.network_type == "BehlerParinelloDirectGauSH"):
-			self.network = BehlerParinelloDirectGauSH(name="BehlerParinelloDirect_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017")
+			self.network = BehlerParinelloDirectGauSH(name=self.network_name)
 		else:
 			raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.
