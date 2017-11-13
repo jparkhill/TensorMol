@@ -333,10 +333,12 @@ class MolGraph(Mol):
 		return names
 
 class Frag_of_MolGraph(MolGraph):
-	def __init__(self, mol_, undefined_bonds_ = None, undefined_bond_type_ = None, bond_length_thresh_ =  None):
-		Mol.__init__(self, mol_, bond_length_thresh_)
+	def __init__(self, mol_, undefined_bonds_ = None, undefined_bond_type_ = "any", bond_length_thresh_ =  None):
+		Mol.__init__(self, mol_.atoms, mol_.coords)
 		self.undefined_bond_type = undefined_bond_type_  # whether the dangling bond can be connected  to H or not
 		self.undefined_bonds = undefined_bonds_  # capture the undefined bonds of each atom
+		if bond_length_thresh_ ==  None:
+			self.bond_length_thresh = bond_length_thresh
 
 	def FromXYZString(self,string, set_name = None):
 		self.properties["set_name"] = set_name

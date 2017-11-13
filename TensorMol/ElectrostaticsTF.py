@@ -131,6 +131,42 @@ def BumpEnergy(h,w,xyz,x,nbump):
 	ToSum = -1.0*h*tf.exp(-0.5*ToExp/w2)
 	return tf.reduce_sum(ToSum,axis=0)
 
+def BumpEnergyMR(h,w,xyz,x,nbump):
+	"""
+	A -1*potential energy which is just the sum of gaussians
+	with height h and width w at positions xyz sampled at x.
+	This uses distance matrices to maintain rotational invariance.
+	The factor of negative 1 is because we only desire the force...
+
+	This version screens the difference so that distant and bonded atoms do not contribute to the force.
+
+	Args:
+		h: bump height
+		w: bump width
+		xyz: a nbump X N X 3 tensor of bump centers.
+		x: (n X 3) tensor representing the point at which the energy is sampled.
+		nbump: an integer determining the number of nonzero bumps.
+	"""
+	xshp = tf.shape(x)
+	nx = xshp[0]
+	Nzxyz = tf.slice(xyz,[0,0,0],[nbump,nx,3])
+	Ds = TFDistances(Nzxyz) # nbump X MaxNAtom X MaxNAtom Distance tensor.
+	Dx = TFDistance(x) # MaxNAtom X MaxNAtom Distance tensor.	#sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
+	w2 = w*w
+	rij = Ds - Dx[tf.newaxis,:,:]
+	ToExp = rij*rij
+	CenterOfVision=9.0
+	sigma = 5.0
+	# The bump is larger in real space the further apart the atoms are.
+	# Screen local structure, so only long range changes contribute to the difference
+	#Screen = tf.exp(-0.5*(Dx - CenterOfVision)*(Dx - CenterOfVision)/(sigma*sigma))[tf.newaxis,:,:] # Make 5 angstrom distances most important.
+	Screen = w2+(Dx*Dx)[tf.newaxis,:,:]
+	ToProd = tf.exp(-0.5*ToExp/Screen)
+	# We want the product of the gaussians for each bump within the sensory radius.
+	# then we want to sum between bumps.
+	ToSum = tf.reduce_prod(ToProd,axis=[1,2])
+	return -1.0*h*tf.reduce_sum(ToSum,axis=0)
+
 def BowlEnergy(BowlK,x):
 	"""
 	A bowl which attracts everything to 0,0,0

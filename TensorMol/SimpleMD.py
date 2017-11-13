@@ -506,10 +506,10 @@ class IRTrajectory(VelocityVerlet):
 class Annealer(IRTrajectory):
 	def __init__(self,f_,q_,g0_,name_="anneal",AnnealThresh_ = 0.000009):
 		PARAMS["MDThermostat"] = None
-		PARAMS["MDV0"] = None
+		#PARAMS["MDV0"] = None
 		IRTrajectory.__init__(self, f_, q_, g0_, name_)
 		#self.dt = 0.2
-		self.v *= 0.0
+		#self.v *= 0.0
 		self.AnnealT0 = PARAMS["MDAnnealT0"]
 		self.AnnealSteps = PARAMS["MDAnnealSteps"]
 		self.MinS = 0
@@ -526,10 +526,12 @@ class Annealer(IRTrajectory):
 		"""
 		step = 0
 		self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
-		while(step < self.AnnealSteps):
+		Teff = PARAMS["MDAnnealT0"]
+		print ("Teff", Teff, " MDAnnealTF:", PARAMS["MDAnnealTF"])
+		while(step < self.AnnealSteps or abs(Teff -  PARAMS["MDAnnealTF"])>0.1):
 			self.t = step*self.dt
 			self.KE = KineticEnergy(self.v,self.m)
-			Teff = (2./3.)*self.KE/IDEALGASR
+			#Teff = (2./3.)*self.KE/IDEALGASR
 
 			self.EField, self.IsOn = self.Pulse(self.t)
 			if (self.UpdateCharges and not self.IsOn):
@@ -539,17 +541,17 @@ class Annealer(IRTrajectory):
 			self.Mu = Dipole(self.x, self.qs) - self.Mu0
 			# avoid the thermostat blowing up.
 			AnnealFrac = float(self.AnnealSteps - step)/self.AnnealSteps
-			self.Tstat.T = self.AnnealT0*AnnealFrac + PARAMS["MDAnnealTF"]*(1.0-AnnealFrac) + pow(10.0,-10.0)
+			self.Tstat.T = max(0.1, self.AnnealT0*AnnealFrac + PARAMS["MDAnnealTF"]*(1.0-AnnealFrac) + pow(10.0,-10.0))
 			# First 50 steps without any thermostat.
 			self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
-
+			Teff = (2./3.)*self.KE/IDEALGASR
 			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh):
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
 				self.MinS = step
 				LOGGER.info("   -- cycling annealer -- ")
 				if (PARAMS["MDAnnealT0"] > PARAMS["MDAnnealTF"]):
-					self.AnnealT0 = self.Tstat.T+PARAMS["MDAnnealKickBack"]
+					self.AnnealT0 = min(PARAMS["MDAnnealT0"], self.Tstat.T+PARAMS["MDAnnealKickBack"])
 				print(self.x)
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0

@@ -39,7 +39,8 @@ templates_path = ['_templates']
 
 #MolEmb doesn't import propertly so mock it out. 
 
-from unittest.mock import MagicMock
+#from unittest.mock import MagicMock
+from mock import Mock as MagicMock
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):

@@ -1833,7 +1833,7 @@ def TestSmoothIR():
 	HarmonicSpectra(PYSCFFIELD, m.coords, m.atoms,None,0.005)
 	exit(0)
 def TestNeb():
-	a = MSet("water6")
+	a = MSet("water3")
 	a.ReadXYZ()
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[0.1,0.9,.1],[0.1,0.1,0.1],[-.6,-.6,.1],[0.,0.9,6.1],[0.1,0.1,6.1]])))
 	#a.mols.append(Mol(np.array([1,1,8,1,1,8]),np.array([[0.9,0.1,0.1],[0.1,0.9,.1],[0.1,0.1,0.1],[-.6,-.6,6.1],[0.,0.9,6.1],[0.1,0.1,6.1]])))

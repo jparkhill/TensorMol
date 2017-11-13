@@ -2,7 +2,7 @@
 	Tensorflow holders for simple force field ingredients
 	That cannot be trained.
 
-	TODO: some simple BP-Style Traditional force field for atoms in general. 
+	TODO: some simple BP-Style Traditional force field for atoms in general.
 """
 
 from __future__ import absolute_import
@@ -138,17 +138,23 @@ class BoxHolder(ForceHolder):
 		return e, f[0]
 
 class BumpHolder(ForceHolder):
-	def __init__(self,natom_,maxbump_,bowlk_=0.0):
+	def __init__(self,natom_,maxbump_,bowlk_=0.0,h_=0.5,w_=1.0,Type_="LR"):
 		"""
 		Holds a bump-function graph to allow for rapid
 		metadynamics. Can also hold an attractive bump which draws
 		atoms towards 0,0,0
 		Args:
-			m: a molecule.
+			natom_: number of atoms in the molecule to be bumped.
+			maxbump_: maximum size of the coordinate arrays to store old positions.
+			Type: "LR", means that small changes in distant atoms will satisfy the bump. (slow collective bumps.)
+				  "MR", means that on average 5-angstrom differences are most important in the loss. (dihedralish-bumps.)
 		"""
 		ForceHolder.__init__(self, natom_)
 		self.maxbump = maxbump_
+		self.Type=Type_
 		self.nb_pl = None
+		self.h_a = h_
+		self.w_a = w_
 		self.h = None
 		self.w = None
 		self.BowlK = bowlk_
@@ -159,12 +165,16 @@ class BumpHolder(ForceHolder):
 			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
 			self.x_pl=tf.placeholder(tf.float64, shape=tuple([self.natom,3]))
 			self.nb_pl=tf.placeholder(tf.int32)
-			self.h = tf.Variable(0.5,dtype = tf.float64)
-			self.w = tf.Variable(1.0,dtype = tf.float64)
+			self.h = tf.Variable(self.h_a,dtype = tf.float64)
+			self.w = tf.Variable(self.w_a,dtype = tf.float64)
 			self.BowlKv = tf.Variable(self.BowlK,dtype = tf.float64)
 			init = tf.global_variables_initializer()
-			self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
-			self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
+			if (self.Type=="LR"):
+				self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
+				self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
+			else:
+				self.BE = BumpEnergyMR(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
+				self.BF = tf.gradients(BumpEnergyMR(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
 			self.BowlE = BowlEnergy(self.BowlKv, self.x_pl)
 			self.BowlF = tf.gradients(BowlEnergy(self.BowlKv, self.x_pl), self.x_pl)
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))

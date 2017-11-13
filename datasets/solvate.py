@@ -9,20 +9,34 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
+from pdbfixer import PDBFixer
 import numpy as np
 
-pdb = PDBFile('2evq.pdb')
-p = 0.1
+#fixer = PDBFixer(filename='2mzx.pdb')
+#fixer.findMissingResidues()
+#fixer.findMissingAtoms()
+#fixer.addMissingAtoms()
+#fixer.addMissingHydrogens(7.0)
+##fixer.addSolvent(fixer.topology.getUnitCellDimensions())
+#PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
+
+
+pdb = PDBFile('output.pdb')
+p = 0.8
 # Center the thing and set the box size. 
 x = pdb.getPositions(asNumpy=True)
+print x 
 xmn = np.min(x[:,0])._value - p 
 ymn = np.min(x[:,1])._value - p 
 zmn = np.min(x[:,2])._value - p 
-pdb.positions -= Quantity(np.array([xmn,ymn,zmn]),nanometer)
-x = pdb.getPositions(asNumpy=True)
+x = pdb.getPositions(asNumpy=True,frame=0)
+x._value -= np.array([xmn,ymn,zmn])
+print x
 xmx = np.max(x[:,0])._value + p 
 ymx = np.max(x[:,1])._value + p 
 zmx = np.max(x[:,2])._value + p 
+print xmx,ymx,zmx
+pdb.positions = x
 pdb.topology.setUnitCellDimensions([xmx,ymx,zmx])
 modeller = Modeller(pdb.topology, pdb.positions)
 print modeller.topology.getUnitCellDimensions()
