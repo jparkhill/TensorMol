@@ -6,6 +6,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow.examples.tutorials.mnist import input_data
+
 class Autoencoder(object):
 	def __init__(self):
 		self.tf_precision = eval(PARAMS["tf_prec"])
@@ -331,6 +333,8 @@ class RestrictedBoltzmann(object):
 		Args:
 			step: the index of this step.
 		"""
+		mnist = input_data.read_data_sets('MNIST_data/', one_hot=True)
+		mnist_images = mnist.train.images
 		batch_data = self.tensor_data.get_train_batch(self.batch_size)
 		feed_dict = self.fill_feed_dict(batch_data)
 		self.weights, self.hidden_bias, self.visible_bias = self.sess.run([self.update_w,

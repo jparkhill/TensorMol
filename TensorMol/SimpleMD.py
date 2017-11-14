@@ -84,6 +84,7 @@ class Thermostat:
 			Teff = (2.0/(3.0*IDEALGASR))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
 			if (Teff != 0.0):
 				v_[i] *= np.sqrt(self.T/(Teff))
+		print("Initial velocities:", v_*BOHRPERA*FSPERAU)
 		return
 
 class NoseThermostat(Thermostat):
@@ -353,8 +354,8 @@ class VelocityVerlet:
 		while(step < self.maxstep):
 			t = time.time()
 			self.t = step*self.dt
-			self.KE = KineticEnergy(self.v,self.m)
-			Teff = (2./3.)*self.KE/IDEALGASR
+			#self.KE = KineticEnergy(self.v,self.m)
+			#Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["MDThermostat"]==None):
 				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
 			else:
@@ -366,13 +367,17 @@ class VelocityVerlet:
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
 
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/IDEALGASR
+
 			if (step%3==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
 
 			step+=1
-			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot)*KJPERHARTREE, Teff)
+			#LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
 			print(("per step cost:", time.time() -t ))
 		return
 
@@ -464,8 +469,8 @@ class IRTrajectory(VelocityVerlet):
 		step = 0
 		while(step < self.maxstep):
 			self.t = step*self.dt
-			self.KE = KineticEnergy(self.v,self.m)
-			Teff = (2./3.)*self.KE/IDEALGASR
+			#self.KE = KineticEnergy(self.v,self.m)
+			#Teff = (2./3.)*self.KE/IDEALGASR
 
 			self.EField, self.IsOn = self.Pulse(self.t)
 			if (self.UpdateCharges and not self.IsOn):
@@ -494,12 +499,16 @@ class IRTrajectory(VelocityVerlet):
 				print(self.x)
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
+
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/IDEALGASR
+
 			if (step%50==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
 			if (step%1000==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
 		#WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 
@@ -530,7 +539,7 @@ class Annealer(IRTrajectory):
 		print ("Teff", Teff, " MDAnnealTF:", PARAMS["MDAnnealTF"])
 		while(step < self.AnnealSteps or abs(Teff -  PARAMS["MDAnnealTF"])>0.1):
 			self.t = step*self.dt
-			self.KE = KineticEnergy(self.v,self.m)
+			#self.KE = KineticEnergy(self.v,self.m)
 			#Teff = (2./3.)*self.KE/IDEALGASR
 
 			self.EField, self.IsOn = self.Pulse(self.t)
@@ -544,7 +553,6 @@ class Annealer(IRTrajectory):
 			self.Tstat.T = max(0.1, self.AnnealT0*AnnealFrac + PARAMS["MDAnnealTF"]*(1.0-AnnealFrac) + pow(10.0,-10.0))
 			# First 50 steps without any thermostat.
 			self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.ForceFunction, self.a, self.x, self.v, self.m, self.dt, self.EnergyAndForce)
-			Teff = (2./3.)*self.KE/IDEALGASR
 			if (self.EPot < self.MinE and abs(self.EPot - self.MinE)>self.AnnealThresh):
 				self.MinE = self.EPot
 				self.Minx = self.x.copy()
@@ -555,13 +563,14 @@ class Annealer(IRTrajectory):
 				print(self.x)
 				self.Mu0 = Dipole(self.x, self.qs)
 				step=0
-
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/IDEALGASR
 			if (PARAMS["PrintTMTimer"]):
 				PrintTMTIMER()
 			if (step%7==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE, self.EPot, self.KE/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
 		#self.x = self.Minx.copy()
 		print("Achieved Minimum energy ", self.MinE, " at step ", step)
 		return
@@ -659,8 +668,8 @@ class AnnealerDirect:
 				self.write_trajectory(mol)
 			step+=1
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f",
-						step, self.temp, mol.properties["kinetic_energy"], mol.properties["energy"],
-						mol.properties["kinetic_energy"] / 1000.0 + (mol.properties["energy"] - mol.properties["energy"]) * 2625.5,
+						step, self.temp, mol.properties["kinetic_energy"]*len(self.m), mol.properties["energy"],
+						mol.properties["kinetic_energy"]*len(self.m)/ 1000.0 + (mol.properties["energy"] - mol.properties["energy"]) * 2625.5,
 						effective_temp, self.thermostat.temp)
 			trajectory.append(mol)
 		#self.x = self.Minx.copy()

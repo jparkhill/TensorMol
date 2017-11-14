@@ -1451,13 +1451,13 @@ class TFMolManageDirect:
 		if self.network_type == "BehlerParinelloDirectSymFunc":
 			self.network = BehlerParinelloDirectSymFunc(name=self.network_name)
 		elif (self.network_type == "BehlerParinelloDirectGauSH"):
-			self.network = BehlerParinelloDirectGauSH(name="BehlerParinelloDirect_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017")
+			self.network = BehlerParinelloDirectGauSH(name=self.name)
 		else:
 			raise Exception("Unknown Network Type!")
 		# Raise TF instances for each atom which have already been trained.
 		return
 
-	def evaluate(self, mol, eval_forces=True):
+	def evaluate_mol(self, mol, eval_forces=True):
 		"""
 		Evaluates the energies on a molecule from a network with direct embedding
 
@@ -1468,8 +1468,25 @@ class TFMolManageDirect:
 			energy (np.float): a numpy float of molecular energy
 		"""
 		if eval_forces:
-			energy, forces = self.network.evaluate(mol, True)
+			energy, forces = self.network.evaluate_mol(mol, True)
 			return energy, forces
 		else:
-			energy = self.network.evaluate(mol, False)
+			energy = self.network.evaluate_mol(mol, False)
+			return energy
+
+	def evaluate_batch(self, mols, eval_forces=True):
+		"""
+		Evaluates the energies on a batch of molecules from a network with direct embedding
+
+		Args:
+			mol (list): a list of TensorMol Mol object with n atoms and nx3 coordinates
+
+		Returns:
+			energy (np.float): a numpy float of molecular energy
+		"""
+		if eval_forces:
+			energy, forces = self.network.evaluate_batch(mols, True)
+			return energy, forces
+		else:
+			energy = self.network.evaluate_batch(mols, False)
 			return energy

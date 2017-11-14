@@ -388,6 +388,7 @@ class PeriodicForce:
 			self.maxrng = max([f.range for f in self.LocalForces])
 		# Tesselate atoms.
 		z,x = self.lattice.TessLattice(self.atoms,self.lattice.ModuloLattice(x_), self.maxrng)
+		Mol(z[:self.natomsReal], x[:self.natomsReal]).WriteXYZfile(fpath="./results", fname="random_spare_box_vmd")
 		# Compute forces and energies.
 		for f in self.LocalForces:
 			if (DoForce):
