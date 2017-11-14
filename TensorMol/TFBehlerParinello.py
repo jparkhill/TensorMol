@@ -55,8 +55,8 @@ class BehlerParinelloDirectSymFunc:
 		self.elements = self.tensor_data.elements
 		self.max_num_atoms = self.tensor_data.max_num_atoms
 		self.network_type = "BehlerParinelloDirect"
-		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name
-		self.network_directory = './networks/'+self.name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.network_directory = './networks/'+self.name
 
 		if self.embedding_type == "symmetry_functions":
 			self.set_symmetry_function_params()
@@ -113,7 +113,7 @@ class BehlerParinelloDirectSymFunc:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+"/BehlerParinelloDirect_nicotine_metamd_10000_Tue_Nov_07_22.35.07_2017.tfn","rb")
+		f = open(self.path+"/BehlerParinelloDirect_nicotine_metamd_Fri_Nov_10_16.19.55_2017.tfn","rb")
 		import TensorMol.PickleTM
 		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
 		self.clean()
@@ -530,8 +530,8 @@ class BehlerParinelloDirectSymFunc:
 		"""
 		with tf.Graph().as_default():
 			#Define the placeholders to be fed in for each batch
-			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.num_atoms, 3]))
-			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.num_atoms]))
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms, 3]))
+			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([self.batch_size, self.max_num_atoms]))
 
 			#Define the constants/Variables for the symmetry function basis
 			elements = tf.constant(self.elements, dtype = tf.int32)
@@ -579,7 +579,7 @@ class BehlerParinelloDirectSymFunc:
 		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
 		return feed_dict
 
-	def evaluate(self, mol, eval_forces=True):
+	def evaluate_mol(self, mol, eval_forces=True):
 		"""
 		Takes coordinates and atomic numbers from a manager and feeds them into the network
 		for evaluation of the forces
@@ -591,7 +591,7 @@ class BehlerParinelloDirectSymFunc:
 		if not self.sess:
 			print(self.latest_checkpoint_file)
 			print("loading the session..")
-			self.batch_size=1
+			self.batch_size = 1
 			self.num_atoms = mol.NAtoms()
 			self.assign_activation()
 			self.evaluate_prepare()
@@ -600,6 +600,35 @@ class BehlerParinelloDirectSymFunc:
 		feed_dict=self.evaluate_fill_feed_dict(xyzs, Zs)
 		energy = self.sess.run(self.output, feed_dict=feed_dict)
 		return energy
+
+	def evaluate_batch(self, mols, eval_forces=True):
+		"""
+		Takes coordinates and atomic numbers from a manager and feeds them into the network
+		for evaluation of the forces
+
+		Args:
+			xyzs (np.float): numpy array of atomic coordinates
+			Zs (np.int32): numpy array of atomic numbers
+		"""
+		if not self.sess:
+			print(self.latest_checkpoint_file)
+			print("loading the session..")
+			self.batch_size = len(mols)
+			self.max_num_atoms = max([mol.NAtoms() for mol in mols])
+			self.assign_activation()
+			self.evaluate_prepare()
+		# if (max([mol.NAtoms() for mol in mols]) > self.max_num_atoms) or (len(mols) > self.batch_size):
+ 	# 		self.max_num_atoms = max([mol.NAtoms() for mol in mols])
+		# 	self.batch_size = len(mols)
+		# 	self.evaluate_prepare()
+		xyzs = np.zeros((self.batch_size, self.max_num_atoms, 3))
+		Zs = np.zeros((self.batch_size, self.max_num_atoms))
+		for i, mol in enumerate(mols):
+			xyzs[i, :mol.NAtoms()] = mol.coords
+			Zs[i, :mol.NAtoms()] = mol.atoms
+		feed_dict=self.evaluate_fill_feed_dict(xyzs, Zs)
+		energy = self.sess.run(self.output, feed_dict=feed_dict)
+		return energy[:len(mols)]
 
 class BehlerParinelloDirectGauSH:
 	"""
@@ -646,7 +675,7 @@ class BehlerParinelloDirectGauSH:
 		self.tensor_data = tensor_data
 		self.elements = self.tensor_data.elements
 		self.max_num_atoms = self.tensor_data.max_num_atoms
-		self.network_type = "BehlerParinelloDirect"
+		self.network_type = "BehlerParinelloDirectGauSH"
 		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name
 		self.network_directory = './networks/'+self.name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 
@@ -801,8 +830,6 @@ class BehlerParinelloDirectGauSH:
 		return
 
 	def clean(self):
-		# if (self.sess != None):
-		# 	self.sess.close()
 		self.sess = None
 		self.total_loss = None
 		self.loss = None
@@ -822,9 +849,8 @@ class BehlerParinelloDirectGauSH:
 		self.gradient_loss = None
 		self.output = None
 		self.gradients = None
-		self.gradient_labels
+		self.gradient_labels = None
 		self.gaussian_params = None
-		print(self.__dict__)
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -844,12 +870,12 @@ class BehlerParinelloDirectGauSH:
 			self.num_atoms_pl = tf.placeholder(tf.int32, shape=([self.batch_size]))
 
 			#Define the embedding parameters and normalization constants
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_precision)
-			elements = tf.constant(self.elements, dtype = tf.int32)
-			embeddings_mean = tf.constant(self.embeddings_mean, dtype = self.tf_precision)
-			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
-			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
-			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
+			elements = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
+			embeddings_mean = tf.Variable(self.embeddings_mean, trainable=False, dtype = self.tf_precision)
+			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
+			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
+			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
@@ -1034,8 +1060,9 @@ class BehlerParinelloDirectGauSH:
 							self.gradient_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
-				output, labels, total_loss_value, energy_loss, num_atoms, gaussian_params = self.sess.run([self.output,
-							self.labels_pl, self.total_loss, self.energy_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
+				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms, gaussian_params = self.sess.run([self.output,
+							self.labels_pl, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
+							self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
@@ -1059,9 +1086,6 @@ class BehlerParinelloDirectGauSH:
 		LOGGER.info("MAE  Energy: %11.8f    Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)), np.mean(np.abs(test_epoch_force_errors)))
 		LOGGER.info("MSE  Energy: %11.8f    Forces: %11.8f", np.mean(test_epoch_energy_errors), np.mean(test_epoch_force_errors))
 		LOGGER.info("RMSE Energy: %11.8f    Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))), np.sqrt(np.mean(np.square(test_epoch_force_errors))))
-		# LOGGER.info("MAE  Energy: %11.8f", np.mean(np.abs(test_epoch_energy_errors)))
-		# LOGGER.info("MSE  Energy: %11.8f", np.mean(test_epoch_energy_errors))
-		# LOGGER.info("RMSE Energy: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
 		if self.train_energy_gradients:
 			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
@@ -1082,6 +1106,7 @@ class BehlerParinelloDirectGauSH:
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
 					self.save_checkpoint(step)
+		self.sess.close()
 		self.save_network()
 		return
 
@@ -1117,19 +1142,19 @@ class BehlerParinelloDirectGauSH:
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.num_atoms]))
 
 			#Define the embedding parameters and normalization constants
-			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_precision)
-			elements = tf.constant(self.elements, dtype = tf.int32)
-			embeddings_mean = tf.constant(self.embeddings_mean, dtype = self.tf_precision)
-			embeddings_stddev = tf.constant(self.embeddings_stddev, dtype = self.tf_precision)
-			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
-			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
+			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
+			elements = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
+			embeddings_mean = tf.Variable(self.embeddings_mean, trainable=False, dtype = self.tf_precision)
+			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
+			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
+			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 
-			tiled_xyzs = tf.tile(self.xyzs_pl, [10 * self.batch_size, 1, 1])
-			tiled_Zs = tf.tile(self.Zs_pl, [10 * self.batch_size, 1])
+			tiled_xyzs = tf.tile(self.xyzs_pl, [self.batch_size, 1, 1])
+			tiled_Zs = tf.tile(self.Zs_pl, [self.batch_size, 1])
 
-			rotation_params = tf.stack([np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					np.pi * tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					tf.random_uniform([10 * self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
 											tiled_Zs, elements, self.gaussian_params, self.l_max)
@@ -1162,7 +1187,7 @@ class BehlerParinelloDirectGauSH:
 		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
 		return feed_dict
 
-	def evaluate(self, mol, eval_forces=True):
+	def evaluate_mol(self, mol, eval_forces=True):
 		"""
 		Takes coordinates and atomic numbers from a manager and feeds them into the network
 		for evaluation of the forces

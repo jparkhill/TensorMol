@@ -521,12 +521,10 @@ def train_energy_symm_func(mset):
 	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
-								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
-	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
-	PARAMS["SH_NRAD"] = 14
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
+	PARAMS["SH_NRAD"] = 32
 	PARAMS["SH_LMAX"] = 4
-	PARAMS["train_energy_gradients"] = True
+	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
@@ -534,7 +532,7 @@ def train_energy_GauSH():
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 100
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["tf_prec"] = "tf.float32"
 	a=MSet("H2O_wb97xd_1to21_with_prontonated")
 	a.Load()
 	TreatedAtoms = a.AtomTypes()
@@ -589,18 +587,18 @@ def test_h2o():
 	PARAMS["OptThresh"]=0.0001
 	PARAMS["MDAnnealT0"] = 20.0
 	PARAMS["MDAnnealSteps"] = 2000
-	a = MSet("water_dimer_cccbdb_opt")
-	a.ReadXYZ()
-	# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	a = MSet("water")
+	# a.ReadXYZ()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	mol = a.mols[0]
-	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Nov_13_11.11.15_2017", network_type = "BehlerParinelloDirectGauSH")
 	def force_field(mol, eval_forces=True):
 		if eval_forces:
-			energy, forces = manager.evaluate(mol, True)
+			energy, forces = manager.evaluate_mol(mol, True)
 			forces = RemoveInvariantForce(mol.coords, forces, mol.atoms)
 			return energy, forces
 		else:
-			energy = manager.evaluate(mol, False)
+			energy = manager.evaluate_mol(mol, False)
 			return energy
 	Opt = GeometryOptimizer(force_field)
 	opt_mol = Opt.opt_conjugate_gradient(mol)
@@ -644,45 +642,19 @@ def evaluate_BPSymFunc(mset):
 	a=MSet(mset)
 	a.Load()
 	output, labels = [], []
-	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_10000_Tue_Nov_07_22.35.07_2017", network_type = "BehlerParinelloDirectSymFunc")
-	for i, mol in enumerate(a.mols):
-		output.append(manager.evaluate(mol, eval_forces=False)[0])
- 		labels.append(mol.properties["atomization"])
-	output = np.array(output)
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_aimd_10000_Wed_Nov_08_22.39.49_2017", network_type = "BehlerParinelloDirectSymFunc")
+	random.shuffle(a.mols)
+	batch = []
+	for i in range(len(a.mols) / 100):
+		for j in range(100):
+			labels.append(a.mols[i*100+j].properties["atomization"])
+			batch.append(a.mols[i*100+j])
+		output.append(manager.evaluate_batch(batch, eval_forces=False))
+		batch = []
+	output = np.concatenate(output)
 	labels = np.array(labels)
-	print "MAE:", np.mean(np.abs(output-labels))
-	print "RMSE:",np.sqrt(np.mean(np.square(output-labels)))
-
-# InterpoleGeometries()
-# ReadSmallMols(set_="SmallMols", forces=True, energy=True)
-# ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
-# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
-# RandomSmallSet("SmallMols", 10000)
-# BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
-# BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
-# TestIpecac()
-# TestOCSDB()
-# BIMNN_NEq()
-# TestMetadynamics()
-# TestMD()
-# TestTFBond()
-# GetPairPotential()
-# TestTFGauSH()
-# train_forces_GauSH_direct("SmallMols_rand")
-# TestTFSym()
-# train_energy_symm_func_channel()
-# test_gaussian_overlap()
-# train_forces_rotation_constraint("SmallMols")
-# read_unpacked_set()
-# test_tf_neighbor()
-# train_energy_pairs_triples()
-# train_energy_symm_func("nicotine_aimd_2500")
-# train_energy_GauSH()
-# geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
-# test_md()
-# test_h2o()
-# test_h2o_anneal()
-evaluate_BPSymFunc("nicotine_aimd")
+	print "MAE:", np.mean(np.abs(output-labels))*627.509
+	print "RMSE:",np.sqrt(np.mean(np.square(output-labels)))*627.509
 
 def water_dimer_plot():
 	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
@@ -761,7 +733,38 @@ def water_dimer_plot():
 		bond_e = dimer - h2o1 - h2o2
 		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
 
+# InterpoleGeometries()
+# ReadSmallMols(set_="SmallMols", forces=True, energy=True)
+# ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
+# TrainKRR(set_="SmallMols_rand", dig_ = "GauSH", OType_="Force")
+# RandomSmallSet("SmallMols", 10000)
+# BasisOpt_KRR("KRR", "SmallMols_rand", "GauSH", OType = "Force", Elements_ = [1,6,7,8])
+# BasisOpt_Ipecac("KRR", "ammonia_rand", "GauSH")
+# TestIpecac()
+# TestOCSDB()
+# BIMNN_NEq()
+# TestMetadynamics()
+# TestMD()
+# TestTFBond()
+# GetPairPotential()
+# TestTFGauSH()
+# train_forces_GauSH_direct("SmallMols_rand")
+# TestTFSym()
+# train_energy_symm_func_channel()
+# test_gaussian_overlap()
+# train_forces_rotation_constraint("SmallMols")
+# read_unpacked_set()
+# test_tf_neighbor()
+# train_energy_pairs_triples()
+# train_energy_symm_func("nicotine_aimd_2500")
+train_energy_GauSH()
+# geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
+# test_md()
+# test_h2o()
+# test_h2o_anneal()
+# evaluate_BPSymFunc("nicotine_metamd")
 # water_dimer_plot()
+
 # a=MSet("water_dimer_cccbdb_opt")
 # a.ReadXYZ()
 # b = MSet("water_dimer")

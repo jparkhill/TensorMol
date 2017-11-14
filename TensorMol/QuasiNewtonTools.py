@@ -411,7 +411,7 @@ class ConjGradient:
 				#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
 				print("Line Search: Overstep")
 				if (self.alpha > 0.00001):
-					self.alpha /= 1.71
+					self.alpha /= 1.8001
 				else:
 					print("Keeping step")
 					return a
@@ -428,9 +428,10 @@ class ConjGradient:
 				#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
 				print("Line Search: Understep")
 				if (self.alpha < 100.0):
-					self.alpha *= 1.7
+					self.alpha *= 1.8
 				a = x0_
 				b = x0_ + self.alpha*p_
+				return (b + a) / 2 # It's okay to return understeps, the force evals arent worth it.
 				c = b - (b - a) / GOLDENRATIO
 				d = a + (b - a) / GOLDENRATIO
 				fa = self.Energy(a)
@@ -454,104 +455,6 @@ class ConjGradient:
 			rmsdist = np.sum(np.linalg.norm(a-b,axis=1))/a.shape[0]
 			k+=1
 		return (b + a) / 2
-
-class ConjugateGradientDirect:
-	def __init__(self, force_field, mol):
-		"""
-		Args:
-			force_field: an energy and force routine.
-			mol (TensorMol.Mol): a TensorMol molecule object
-		"""
-		self.force_field = force_field
-		self.energy, self.prev_forces = self.force_field(mol)
-		self.s = self.prev_forces.copy()
-		self.alpha = PARAMS["GSSearchAlpha"]
-		return
-
-	def __call__(self, mol):
-		"""
-		Iterate Conjugate Gradient.
-
-		Args:
-			x0: Point at which to minimize gradients
-		Returns:
-			Next point, energy, and gradient.
-		"""
-		energy, forces = self.force_field(mol)
-		beta_n = self.BetaPR(forces)
-		self.s = forces + beta_n * self.s
-		mol = self.line_search(mol, self.s)
-		return mol, energy, forces
-
-	def BetaPR(self, forces):
-		betapr = np.sum(forces * (forces - self.prev_forces)) / np.sum(self.prev_forces * self.prev_forces)
-		self.prev_forces = forces.copy()
-		return max(0, betapr)
-
-	def line_search(self, mol, p_, thresh = 0.0001):
-		'''
-		golden section search to find the minimum of f on [a,b]
-
-		Args:
-			x0_: Origin of the search.
-			p_: search direction.
-
-		Returns:
-			x: coordinates which minimize along this search direction.
-		'''
-		k=0
-		rmsdist = 10.0
-		a = Mol(mol.atoms, mol.coords.copy())
-		b = Mol(mol.atoms, mol.coords.copy() + self.alpha*p_)
-		c = Mol(mol.atoms, b.coords.copy() - (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-		d = Mol(mol.atoms, a.coords.copy() + (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-		fa = self.force_field(a, False)
-		fb = self.force_field(b, False)
-		fc = self.force_field(c, False)
-		fd = self.force_field(d, False)
-		while (rmsdist > thresh):
-			if (fa < fc and fa < fd and fa < fb):
-				if (self.alpha > 0.00001):
-					self.alpha /= 1.71
-				else:
-					print("Keeping step")
-					return a
-				a = Mol(mol.atoms, mol.coords.copy())
-				b = Mol(mol.atoms, mol.coords.copy() + self.alpha*p_)
-				c = Mol(mol.atoms, b.coords.copy() - (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				d = Mol(mol.atoms, a.coords.copy() + (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				fa = self.force_field(a, False)
-				fb = self.force_field(b, False)
-				fc = self.force_field(c, False)
-				fd = self.force_field(d, False)
-			elif (fb < fc and fb < fd and fb < fa):
-				if (self.alpha < 100.0):
-					self.alpha *= 1.7
-				a = Mol(mol.atoms, mol.coords.copy())
-				b = Mol(mol.atoms, mol.coords.copy() + self.alpha*p_)
-				c = Mol(mol.atoms, b.coords.copy() - (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				d = Mol(mol.atoms, a.coords.copy() + (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				fa = self.force_field(a, False)
-				fb = self.force_field(b, False)
-				fc = self.force_field(c, False)
-				fd = self.force_field(d, False)
-			elif fc < fd:
-				b = Mol(d.atoms.copy(), d.coords.copy().copy())
-				c = Mol(mol.atoms, b.coords.copy() - (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				d = Mol(mol.atoms, a.coords.copy() + (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				fb = fd
-				fc = self.force_field(c, False)
-				fd = self.force_field(d, False)
-			else:
-				a = Mol(c.atoms.copy(), c.coords.copy().copy())
-				c = Mol(mol.atoms, b.coords.copy() - (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				d = Mol(mol.atoms, a.coords.copy() + (b.coords.copy() - a.coords.copy()) / GOLDENRATIO)
-				fa = fc
-				fc = self.force_field(c, False)
-				fd = self.force_field(d, False)
-			rmsdist = np.sum(np.linalg.norm(a.coords.copy() - b.coords.copy(), axis=1)) / a.coords.copy().shape[0]
-			k+=1
-		return Mol(mol.atoms, (b.coords.copy() + a.coords.copy()) / 2)
 
 def LineSearch(f_, x0_, p_, thresh = 0.0001):
 	'''
