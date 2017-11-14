@@ -113,7 +113,7 @@ class BehlerParinelloDirectSymFunc:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+"/BehlerParinelloDirect_nicotine_metamd_Fri_Nov_10_16.19.55_2017.tfn","rb")
+		f = open(self.path+"/BehlerParinelloDirect_nicotine_aimd_40000_Fri_Nov_10_17.36.01_2017.tfn","rb")
 		import TensorMol.PickleTM
 		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
 		self.clean()
@@ -676,8 +676,8 @@ class BehlerParinelloDirectGauSH:
 		self.elements = self.tensor_data.elements
 		self.max_num_atoms = self.tensor_data.max_num_atoms
 		self.network_type = "BehlerParinelloDirectGauSH"
-		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name
-		self.network_directory = './networks/'+self.name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.network_directory = './networks/'+self.name
 
 		if self.embedding_type == "symmetry_functions":
 			self.set_symmetry_function_params()

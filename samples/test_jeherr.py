@@ -156,17 +156,19 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	return
 
 def TestMetadynamics():
-	a = MSet("MDTrajectoryMetaMD")
+	a = MSet("nicotine_opt")
+	# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	a.ReadXYZ()
 	m = a.mols[0]
 	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
-	PARAMS["MDdt"] = 2.0
+	PARAMS["MDdt"] = 1.0
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 200
+	PARAMS["MDMaxStep"] = 20
 	PARAMS["MDThermostat"] = "Nose"
-	PARAMS["MDTemp"]= 600.0
+	PARAMS["MDTemp"]= 300.0
+	# PARAMS["MDV0"] = None
 	meta = MetaDynamics(ForceField, m)
 	meta.Prop()
 
@@ -521,7 +523,7 @@ def train_energy_symm_func(mset):
 	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
+	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 32), np.repeat(0.35, 32)), axis=1)
 	PARAMS["SH_NRAD"] = 32
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["train_energy_gradients"] = False
@@ -642,7 +644,7 @@ def evaluate_BPSymFunc(mset):
 	a=MSet(mset)
 	a.Load()
 	output, labels = [], []
-	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_aimd_10000_Wed_Nov_08_22.39.49_2017", network_type = "BehlerParinelloDirectSymFunc")
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_aimd_40000_Fri_Nov_10_17.36.01_2017", network_type = "BehlerParinelloDirectSymFunc")
 	random.shuffle(a.mols)
 	batch = []
 	for i in range(len(a.mols) / 100):
@@ -657,6 +659,9 @@ def evaluate_BPSymFunc(mset):
 	print "RMSE:",np.sqrt(np.mean(np.square(output-labels)))*627.509
 
 def water_dimer_plot():
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
+	PARAMS["SH_NRAD"] = 32
+	PARAMS["SH_LMAX"] = 4
 	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
 		istring = '$molecule\n0 1 \n'
 		crds = m_.coords.copy()
@@ -701,18 +706,12 @@ def water_dimer_plot():
 				if line.count('Convergence criterion met')>0:
 					Energy = float(line.split()[1])
 			return Energy
-		elif jobtype_ ==  'dipole':
-			for i, line in enumerate(lines):
-				if "Dipole Moment (Debye)" in line:
-					tmp = lines[i+1].split()
-					dipole = np.asarray([float(tmp[1]),float(tmp[3]),float(tmp[5])])
-					return dipole
 		else:
 			raise Exception("jobtype needs formatted for return variables")
 
 	a = MSet("water_dimer")
 	a.ReadXYZ()
-	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Wed_Nov_01_16.53.25_2017", network_type = "BehlerParinelloDirectGauSH")
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Nov_13_11.35.07_2017", network_type = "BehlerParinelloDirectGauSH")
 	qchemff = lambda x, y: qchemdft(x, y, basis_ = '6-311g**',xc_='wb97x-d', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=8)
 	cp_correction = []
 	for mol in a.mols:
@@ -723,15 +722,15 @@ def water_dimer_plot():
 		dimer = qchemff(mol, [])
 		cpc = h2o1cp - h2o1 + h2o2cp - h2o2
 		cp_correction.append(cpc)
-		bond_e = dimer - h2o1 - h2o2
-		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
+		bond_e = dimer - h2o1 - h2o2 - cpc
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e*627.509)
 	print "TensorMol evaluation"
 	for i, mol in enumerate(a.mols):
-		h2o1 = manager.evaluate(Mol(mol.atoms[:3], mol.coords[:3]), False)
-		h2o2 = manager.evaluate(Mol(mol.atoms[3:], mol.coords[3:]), False)
-		dimer = manager.evaluate(mol, False)
-		bond_e = dimer - h2o1 - h2o2
-		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e)
+		h2o1 = manager.evaluate_mol(Mol(mol.atoms[:3], mol.coords[:3]), False)
+		h2o2 = manager.evaluate_mol(Mol(mol.atoms[3:], mol.coords[3:]), False)
+		dimer = manager.evaluate_mol(mol, False)
+		bond_e = dimer - h2o1 - h2o2 - cp_correction[i]
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e*627.509)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
@@ -762,7 +761,7 @@ train_energy_GauSH()
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
-# evaluate_BPSymFunc("nicotine_metamd")
+# evaluate_BPSymFunc("nicotine_aimd")
 # water_dimer_plot()
 
 # a=MSet("water_dimer_cccbdb_opt")
