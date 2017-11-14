@@ -131,7 +131,7 @@ def TestBetaHairpin():
 	traj.Prop()
 
 def TestUrey():
-	a = MSet("Urey")
+	a = MSet("2mzx_open")
 	a.ReadXYZ()
 	m = a.mols[0]
 	m.coords -= np.min(m.coords)
@@ -150,7 +150,7 @@ def TestUrey():
 		return EnAndForce
 	F = GetEnergyForceForMol(m)
 	PARAMS["OptMaxCycles"]=500
-	Opt = MetaOptimizer(F,m)
+	Opt = MetaOptimizer(F,m,Box_=False)
 	Opt.Opt(m)
 
 #Eval()
