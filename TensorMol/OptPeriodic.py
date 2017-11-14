@@ -124,7 +124,7 @@ class PeriodicGeomOptimizer(GeomOptimizer):
 				mol_hist.append(prev_m)
 				prev_m.properties['Lattice']=self.EnergyAndForce.lattice.lattice.copy()
 				prev_m.WriteXYZfile("./results/", filename,'a',True)
-				Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename,'a',wprop=True)
+				#Mol(*self.EnergyAndForce.lattice.TessNTimes(prev_m.atoms,prev_m.coords,2)).WriteXYZfile("./results/", "Tess"+filename,'a',wprop=True)
 				step+=1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
