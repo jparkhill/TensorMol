@@ -164,7 +164,7 @@ class BoxingDynamics(VelocityVerlet):
 class BoxedMetaDynamics(VelocityVerlet):
 	def __init__(self, EandF_, g0_, name_="MetaMD", Box_=np.array(10.0*np.eye(3))):
 		VelocityVerlet.__init__(self, None, g0_, name_, EandF_)
-		self.BumpTime = 12.0 # Fs
+		self.BumpTime = 12000000000000.0 # Fs
 		self.MaxBumps = PARAMS["MetaMaxBumps"] # think you want this to be >500k
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
 		self.NBump = 0

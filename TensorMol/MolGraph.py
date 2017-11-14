@@ -101,6 +101,7 @@ class MolGraph(Mol):
 		assigned = []
 		assigned_mono = np.zeros(self.NAtoms(), dtype=int)
 		for i in range (0, self.NAtoms()):
+			print ("conecting nodes", i)
 			for j in range (i+1, self.NAtoms()):
 				dist = self.DistMatrix[i][j]
 				atom_pair=[self.atoms[i], self.atoms[j]]
