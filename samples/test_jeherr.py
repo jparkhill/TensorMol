@@ -529,7 +529,7 @@ def train_energy_GauSH():
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.0001
+	PARAMS["learning_rate"] = 0.00001
 	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 100
@@ -658,6 +658,34 @@ def evaluate_BPSymFunc(mset):
 	print "MAE:", np.mean(np.abs(output-labels))*627.509
 	print "RMSE:",np.sqrt(np.mean(np.square(output-labels)))*627.509
 
+def SubSampledDimerPlot():
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
+	PARAMS["SH_NRAD"] = 32
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["NeuronType"] = 'elu'
+	PARAMS["tf_prec"] = 'tf.float32'
+	a = MSet("water_dimer")
+	a.ReadXYZ()
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Nov_13_11.35.07_2017", network_type = "BehlerParinelloDirectGauSH")
+	ens=[]
+	embs = []
+	for i in range(len(a.mols)-1):
+	#if (1):
+		A = a.mols[i]
+		B = a.mols[i+1]
+		for J in range(10):
+			m=Mol(A.atoms,A.coords*((9.-J)/9.)+B.coords*((J)/9.))
+			ens.append(manager.evaluate_mol(m, False))
+			#embs.append(manager.network.evaluate_embs(m)[0])
+	#print len(embs[0]),embs[0][0].shape
+	#print embs[0][0][:6]
+	#exit(0)
+	import matplotlib.pyplot as plt
+	plt.plot(ens)
+	plt.show()
+	exit(0)
+# SubSampledDimerPlot()
+
 def water_dimer_plot():
 	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 	PARAMS["SH_NRAD"] = 32
@@ -717,20 +745,20 @@ def water_dimer_plot():
 	for mol in a.mols:
 		h2o1 = qchemff(Mol(mol.atoms[:3], mol.coords[:3]), [])
 		h2o2 = qchemff(Mol(mol.atoms[3:], mol.coords[3:]), [])
-		h2o1cp = qchemff(mol, [3, 4, 5])
-		h2o2cp = qchemff(mol, [0, 1, 2])
+		# h2o1cp = qchemff(mol, [3, 4, 5])
+		# h2o2cp = qchemff(mol, [0, 1, 2])
 		dimer = qchemff(mol, [])
-		cpc = h2o1cp - h2o1 + h2o2cp - h2o2
-		cp_correction.append(cpc)
-		bond_e = dimer - h2o1 - h2o2 - cpc
-		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e*627.509)
+		# cpc = h2o1cp - h2o1 + h2o2cp - h2o2
+		# cp_correction.append(cpc)
+		bond_e = dimer - h2o1 - h2o2
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
 	print "TensorMol evaluation"
 	for i, mol in enumerate(a.mols):
 		h2o1 = manager.evaluate_mol(Mol(mol.atoms[:3], mol.coords[:3]), False)
 		h2o2 = manager.evaluate_mol(Mol(mol.atoms[3:], mol.coords[3:]), False)
 		dimer = manager.evaluate_mol(mol, False)
-		bond_e = dimer - h2o1 - h2o2 - cp_correction[i]
-		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e*627.509)
+		bond_e = dimer - h2o1 - h2o2
+		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
 
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
@@ -756,13 +784,13 @@ def water_dimer_plot():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("nicotine_aimd_2500")
-train_energy_GauSH()
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
 # evaluate_BPSymFunc("nicotine_aimd")
-# water_dimer_plot()
+water_dimer_plot()
 
 # a=MSet("water_dimer_cccbdb_opt")
 # a.ReadXYZ()

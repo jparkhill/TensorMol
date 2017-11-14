@@ -1137,11 +1137,9 @@ class BehlerParinelloDirectGauSH:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			#Define the placeholders to be fed in for each batch
 			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.num_atoms, 3]))
 			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.num_atoms]))
 
-			#Define the embedding parameters and normalization constants
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
 			elements = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
 			embeddings_mean = tf.Variable(self.embeddings_mean, trainable=False, dtype = self.tf_precision)
@@ -1152,15 +1150,21 @@ class BehlerParinelloDirectGauSH:
 			tiled_xyzs = tf.tile(self.xyzs_pl, [self.batch_size, 1, 1])
 			tiled_Zs = tf.tile(self.Zs_pl, [self.batch_size, 1])
 
-			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+			rotation_params = tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 5), [20]), axis=1),
+					tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 5), axis=1), [1,20]), [100,1]),
+					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 4), axis=1),
+					axis=2), [5,1,5]), [100,1])], axis=1)
+
+			# rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+			# 		np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+			# 		tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
 											tiled_Zs, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
+
 			norm_output = self.inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 
