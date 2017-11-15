@@ -793,7 +793,7 @@ class BehlerParinelloDirectGauSH:
 		tiled_xyzs = tf.tile(tf.expand_dims(xyzs_pl, axis=1), [1, 27, 1, 1])
 		tiled_Zs = tf.reshape(tf.tile(tf.expand_dims(Zs_pl, axis=1), [1, 27, 1]), [-1, self.max_num_atoms])
 		rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 3), [9]), axis=1),
-				tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 2), axis=1), [1,3]), [27,1]),
+				tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1), [1,9]), [27,1]),
 				tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1),
 				axis=2), [3,1,3]), [27,1])], axis=1), axis=0), [self.batch_size, 1, 1])
 		rotated_xyzs = tf.reshape(tf_random_rotate(tiled_xyzs, rotation_params), [-1, self.max_num_atoms, 3])
