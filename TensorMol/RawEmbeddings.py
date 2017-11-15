@@ -2453,13 +2453,10 @@ def tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize=False):
 	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.expand_dims(tf.expand_dims(gaussian_params[:,0], axis=0), axis=1))) \
 				/ (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	# orthogonal_scaling_matrix, min_eigenval = tf_gaussian_overlap(gaussian_params)
 	if orthogonalize:
 		gaussian_embed = tf.reduce_sum(tf.expand_dims(gaussian_embed, axis=-2) * orthogonal_scaling_matrix, axis=-1)
 	gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
 						tf.zeros_like(distance_tensor)), axis=-1)
-	# atomic_embed_factor = tf.concat([tf.Variable([0.0], dtype=data_precision), atomic_embed_factors], axis=0)
-	# element_embed_factor = tf.expand_dims(tf.expand_dims(tf.gather(atomic_embed_factor, Zs), axis=-1), axis=1)
 	return gaussian_embed
 
 def tf_spherical_harmonics_0(inverse_distance_tensor):
