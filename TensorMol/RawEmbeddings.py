@@ -2862,17 +2862,18 @@ def tf_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False
 		new_xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor of randomly rotated molecules
 		new_labels (tf.float): NMol x MaxNAtoms x label shape tensor of randomly rotated learning targets
 	"""
-	r = tf.sqrt(rotation_params[:,2])
-	v = tf.stack([tf.sin(rotation_params[:,1]) * r, tf.cos(rotation_params[:,1]) * r, tf.sqrt(2.0 - rotation_params[:,2])], axis=-1)
-	zero_tensor = tf.zeros_like(rotation_params[:,1])
-	R1 = tf.stack([tf.cos(rotation_params[:,0]), tf.sin(rotation_params[:,0]), zero_tensor], axis=-1)
-	R2 = tf.stack([-tf.sin(rotation_params[:,0]), tf.cos(rotation_params[:,0]), zero_tensor], axis=-1)
-	R3 = tf.stack([zero_tensor, zero_tensor, tf.ones_like(rotation_params[:,1])], axis=-1)
-	R = tf.stack([R1, R2, R3], axis=1)
-	M = tf.matmul((tf.expand_dims(v, axis=1) * tf.expand_dims(v, axis=2)) - tf.eye(3, dtype=eval(PARAMS["tf_prec"])), R)
-	new_xyzs = tf.einsum("lij,lkj->lki",M, xyzs)
+	r = tf.sqrt(rotation_params[...,2])
+	v = tf.stack([tf.sin(rotation_params[...,1]) * r, tf.cos(rotation_params[...,1]) * r, tf.sqrt(2.0 - rotation_params[...,2])], axis=-1)
+	zero_tensor = tf.zeros_like(rotation_params[...,1])
+
+	R1 = tf.stack([tf.cos(rotation_params[...,0]), tf.sin(rotation_params[...,0]), zero_tensor], axis=-1)
+	R2 = tf.stack([-tf.sin(rotation_params[...,0]), tf.cos(rotation_params[...,0]), zero_tensor], axis=-1)
+	R3 = tf.stack([zero_tensor, zero_tensor, tf.ones_like(rotation_params[...,1])], axis=-1)
+	R = tf.stack([R1, R2, R3], axis=-2)
+	M = tf.matmul((tf.expand_dims(v, axis=-2) * tf.expand_dims(v, axis=-1)) - tf.eye(3, dtype=eval(PARAMS["tf_prec"])), R)
+	new_xyzs = tf.einsum("lmij,lmkj->lmki", M, xyzs)
 	if labels != None:
-		new_labels = tf.einsum("lij,lkj->lki",M, (xyzs + labels)) - new_xyzs
+		new_labels = tf.einsum("lmij,lmkj->lmki",M, (xyzs + labels)) - new_xyzs
 		if return_matrix:
 			return new_xyzs, new_labels, M
 		else:

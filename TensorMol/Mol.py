@@ -307,6 +307,7 @@ class Mol:
 		if ("energy" in self.properties):
 			self.CalculateAtomization()
 		return
+
 	def __str__(self,wprop=False):
 		lines =""
 		natom = self.atoms.shape[0]
@@ -318,8 +319,10 @@ class Mol:
 			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
 			lines = lines+(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
 		return lines
+
 	def __repr__(self):
 		return self.__str__()
+
 	def WriteXYZfile(self, fpath=".", fname="mol", mode="a", wprop = False):
 		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".xyz")):
 			try:
@@ -330,6 +333,7 @@ class Mol:
 		with open(fpath+"/"+fname+".xyz", mode) as f:
 			for line in self.__str__(wprop).split("\n"):
 				f.write(line+"\n")
+
 	def WriteSmiles(self, fpath=".", fname="gdb9_smiles", mode = "a"):
 		if not os.path.exists(os.path.dirname(fpath+"/"+fname+".dat")):
 			try:
@@ -341,6 +345,7 @@ class Mol:
 			f.write(self.name+ "  "+ self.smiles+"\n")
 			f.close()
 		return
+
 	def XYZtoGridIndex(self, xyz, ngrids = 250,padding = 2.0):
 		Max = (self.coords).max() + padding
 		Min = (self.coords).min() - padding

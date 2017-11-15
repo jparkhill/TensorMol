@@ -788,13 +788,20 @@ class BehlerParinelloDirectGauSH:
 		xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.max_num_atoms, 3]))
 		Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.max_num_atoms]))
 		gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
-
 		elements = tf.constant(self.elements, dtype = tf.int32)
-		rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
-		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
-		embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, Zs_pl, elements, gaussian_params, self.l_max)
+
+		tiled_xyzs = tf.tile(tf.expand_dims(xyzs_pl, axis=1), [1, 8, 1, 1])
+		tiled_Zs = tf.reshape(tf.tile(tf.expand_dims(Zs_pl, axis=1), [1, 8, 1]), [-1, self.max_num_atoms])
+		rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 2), [4]), axis=1),
+				tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 2), axis=1), [1,4]), [8,1]),
+				tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 2), axis=1),
+				axis=2), [2,1,2]), [8,1])], axis=1), axis=0), [self.batch_size, 1, 1])
+		rotated_xyzs = tf.reshape(tf_random_rotate(tiled_xyzs, rotation_params), [-1, self.max_num_atoms, 3])
+		# rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+		# 		np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+		# 		tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+		# rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
+		embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs, tiled_Zs, elements, gaussian_params, self.l_max)
 
 		embeddings_list = []
 		for element in range(len(self.elements)):
@@ -806,7 +813,7 @@ class BehlerParinelloDirectGauSH:
 
 		sess = tf.Session()
 		sess.run(tf.global_variables_initializer())
-		for ministep in range (0, max(2, int(0.1 * self.tensor_data.num_train_cases/self.batch_size))):
+		for ministep in range (0, max(2, int(0.05 * self.tensor_data.num_train_cases/self.batch_size))):
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			num_atoms = batch_data[4]
 			labels_list.append(batch_data[2])
@@ -877,28 +884,43 @@ class BehlerParinelloDirectGauSH:
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 
-			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
-			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
+			tiled_xyzs = tf.tile(tf.expand_dims(self.xyzs_pl, axis=1), [1, 27, 1, 1])
+			tiled_gradients = tf.tile(tf.expand_dims(self.gradients_pl, axis=1), [1, 27, 1, 1])
+			self.tiled_labels = tf.reshape(tf.tile(tf.expand_dims(self.labels_pl, axis=1), [1, 27]), [-1])
+			tiled_Zs = tf.reshape(tf.tile(tf.expand_dims(self.Zs_pl, axis=1), [1, 27, 1]), [-1, self.max_num_atoms])
+			rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 3), [9]), axis=1),
+					tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1), [1,9]), [27,1]),
+					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1),
+					axis=2), [3,1,3]), [27,1])], axis=1), axis=0), [self.batch_size, 1, 1])
+			rotated_xyzs, rotated_gradients = tf_random_rotate(tiled_xyzs, rotation_params, tiled_gradients)
+			rotated_xyzs = tf.reshape(rotated_xyzs, [-1, self.max_num_atoms, 3])
+			rotated_gradients = tf.reshape(rotated_gradients, [-1, self.max_num_atoms, 3])
+
+			# tiled_xyzs = tf.tile(self.xyzs_pl, [1, 100, 1])
+			# tiled_Zs = tf.tile(self.Zs_pl, [1, 100])
+			# rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+			# 		np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+			# 		tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
+			# rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
+
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
-											self.Zs_pl, elements, self.gaussian_params, self.l_max)
+											tiled_Zs, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
 			norm_output = self.inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 
-			self.gradients = tf.gather_nd(tf.gradients(self.output, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
-			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
+			self.gradients = tf.gather_nd(tf.gradients(self.output, rotated_xyzs)[0], tf.where(tf.not_equal(tiled_Zs, 0)))
+			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(tiled_Zs, 0)))
 			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
 			#loss and constraints
 			if self.train_energy_gradients:
 				self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
-						self.labels_pl, self.gradients, self.gradient_labels, num_atoms_batch)
+						self.tiled_labels, self.gradients, self.gradient_labels, num_atoms_batch)
 			else:
-				self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
+				self.total_loss, self.energy_loss = self.loss_op(self.output, self.tiled_labels)
 			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9,
 								tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1),
 								tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
@@ -944,7 +966,7 @@ class BehlerParinelloDirectGauSH:
 			The BP graph output
 		"""
 		branches=[]
-		output = tf.zeros([self.batch_size, self.max_num_atoms], dtype=self.tf_precision)
+		output = tf.zeros([self.batch_size * 27, self.max_num_atoms], dtype=self.tf_precision)
 		for e in range(len(self.elements)):
 			branches.append([])
 			inputs = inp[e]
@@ -967,9 +989,9 @@ class BehlerParinelloDirectGauSH:
 						stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
 				branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
-				output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
+				output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size * 27, self.max_num_atoms])
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
-		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
+		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size * 27])
 
 	def optimizer(self, loss, learning_rate, momentum):
 		"""
@@ -1056,12 +1078,12 @@ class BehlerParinelloDirectGauSH:
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.train_energy_gradients:
 				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms, gaussian_params = self.sess.run([self.output,
-							self.labels_pl, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
+							self.tiled_labels, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
 							self.gradient_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 				test_gradient_loss += gradient_loss
 			else:
 				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, num_atoms, gaussian_params = self.sess.run([self.output,
-							self.labels_pl, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
+							self.tiled_labels, self.gradients, self.gradient_labels, self.total_loss, self.energy_loss,
 							self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 			test_loss += total_loss_value
 			num_mols += self.batch_size
@@ -1147,34 +1169,43 @@ class BehlerParinelloDirectGauSH:
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 
-			tiled_xyzs = tf.tile(self.xyzs_pl, [self.batch_size, 1, 1])
-			tiled_Zs = tf.tile(self.Zs_pl, [self.batch_size, 1])
-
-			rotation_params = tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 5), [20]), axis=1),
+			self.tiled_xyzs = tf.tile(tf.expand_dims(self.xyzs_pl, axis=1), [1, 100, 1, 1])
+			self.tiled_Zs = tf.tile(tf.expand_dims(self.Zs_pl, axis=1), [1, 100, 1])
+			self.rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 5), [20]), axis=1),
 					tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 5), axis=1), [1,20]), [100,1]),
 					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 4), axis=1),
-					axis=2), [5,1,5]), [100,1])], axis=1)
+					axis=2), [5,1,5]), [100,1])], axis=1), axis=0), [self.batch_size, 1, 1])
+			self.rotated_xyzs = tf_random_rotate(self.tiled_xyzs, self.rotation_params)
+			self.rotated_xyzs = tf.reshape(self.rotated_xyzs, [-1, self.num_atoms, 3])
+			# self.rotated_gradients = tf.reshape(rotated_gradients, [-1, self.max_num_atoms, 3])
+			self.tiled_Zs = tf.reshape(self.tiled_Zs, [-1, self.num_atoms])
 
+			# tiled_xyzs = tf.tile(self.xyzs_pl, [self.batch_size, 1, 1])
+			# tiled_Zs = tf.tile(self.Zs_pl, [self.batch_size, 1])
+			# rotation_params = tf.concat([np.pi * tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 5), [20]), axis=1),
+			# 		np.pi * tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 5), axis=1), [1,20]), [100,1]),
+			# 		tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 4), axis=1),
+			# 		axis=2), [5,1,5]), [100,1])], axis=1)
 			# rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 			# 		np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 			# 		tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
-			rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
-			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
-											tiled_Zs, elements, self.gaussian_params, self.l_max)
-			for element in range(len(self.elements)):
-				embeddings[element] -= embeddings_mean[element]
-				embeddings[element] /= embeddings_stddev[element]
-
-			norm_output = self.inference(embeddings, molecule_indices)
-			self.output = (norm_output * labels_stddev) + labels_mean
-
-			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0] / self.batch_size
+			# rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
+			# embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
+			# 								tiled_Zs, elements, self.gaussian_params, self.l_max)
+			# for element in range(len(self.elements)):
+			# 	embeddings[element] -= embeddings_mean[element]
+			# 	embeddings[element] /= embeddings_stddev[element]
+			#
+			# norm_output = self.inference(embeddings, molecule_indices)
+			# self.output = (norm_output * labels_stddev) + labels_mean
+			#
+			# self.gradients = tf.gradients(self.output, self.xyzs_pl)[0] / self.batch_size
 
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			self.saver.restore(self.sess, tf.train.latest_checkpoint(self.network_directory))
-			self.summary_writer = tf.summary.FileWriter(self.network_directory, self.sess.graph)
+			# self.summary_writer = tf.summary.FileWriter(self.network_directory, self.sess.graph)
 		return
 
 	def evaluate_fill_feed_dict(self, xyzs, Zs):
@@ -1204,21 +1235,24 @@ class BehlerParinelloDirectGauSH:
 			print("loading the session..")
 			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
 			self.assign_activation()
-			self.num_atoms = self.max_num_atoms
+			self.num_atoms = mol.NAtoms()
+			self.batch_size = 1
 			self.evaluate_prepare()
-		xyzs_feed = np.zeros((1,self.max_num_atoms, 3))
-		Zs_feed = np.zeros((1,self.max_num_atoms))
+		xyzs_feed = np.zeros((1,self.num_atoms, 3))
+		Zs_feed = np.zeros((1,self.num_atoms))
 		xyzs_feed[0,:mol.NAtoms()] = mol.coords
 		Zs_feed[0,:mol.NAtoms()] = mol.atoms
 		feed_dict=self.evaluate_fill_feed_dict(xyzs_feed, Zs_feed)
-		atomization_energy = 0.0
-		for atom in mol.atoms:
-			if atom in ele_U:
-				atomization_energy += ele_U[atom]
-		if eval_forces:
-			energy, gradients = self.sess.run([self.output, self.gradients], feed_dict=feed_dict)
-			forces = -gradients[0,:mol.NAtoms()]
-			return np.mean(energy) + atomization_energy, forces
-		else:
-			energy = self.sess.run(self.output, feed_dict=feed_dict)
-			return np.mean(energy) + atomization_energy
+		energy = self.sess.run(self.rotated_xyzs, feed_dict=feed_dict)
+		return energy
+		# atomization_energy = 0.0
+		# for atom in mol.atoms:
+		# 	if atom in ele_U:
+		# 		atomization_energy += ele_U[atom]
+		# if eval_forces:
+		# 	energy, gradients = self.sess.run([self.output, self.gradients], feed_dict=feed_dict)
+		# 	forces = -gradients[0,:mol.NAtoms()]
+		# 	return np.mean(energy) + atomization_energy, forces
+		# else:
+		# 	energy = self.sess.run(self.output, feed_dict=feed_dict)
+		# 	return np.mean(energy) + atomization_energy

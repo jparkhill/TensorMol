@@ -523,16 +523,16 @@ def train_energy_symm_func(mset):
 	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 32), np.repeat(0.35, 32)), axis=1)
-	PARAMS["SH_NRAD"] = 32
+	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 18), np.repeat(0.35, 18)), axis=1)
+	PARAMS["SH_NRAD"] = 18
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.00001
-	PARAMS["max_steps"] = 500
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 200
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 100
+	PARAMS["batch_size"] = 20
 	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
 	a=MSet("H2O_wb97xd_1to21_with_prontonated")
@@ -760,6 +760,17 @@ def water_dimer_plot():
 		bond_e = dimer - h2o1 - h2o2
 		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
 
+# PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
+# PARAMS["SH_NRAD"] = 32
+# PARAMS["SH_LMAX"] = 4
+# a = MSet("water_dimer")
+# a.ReadXYZ()
+# manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Nov_13_11.35.07_2017", network_type = "BehlerParinelloDirectGauSH")
+# print manager.evaluate_mol(a.mols[0], False).shape
+# for i in range(100):
+# 	mol = Mol(a.mols[0].atoms, rot_coords[0,i])
+#  	mol.WriteXYZfile()
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
@@ -784,13 +795,13 @@ def water_dimer_plot():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("nicotine_aimd_2500")
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
 # evaluate_BPSymFunc("nicotine_aimd")
-water_dimer_plot()
+# water_dimer_plot()
 
 # a=MSet("water_dimer_cccbdb_opt")
 # a.ReadXYZ()
