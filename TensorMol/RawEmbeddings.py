@@ -2445,19 +2445,25 @@ def tf_gaussian_overlap(gaussian_params):
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
 	return overlap_matrix
 
-	# min_eigenval = tf.reduce_min(tf.self_adjoint_eig(overlap_matrix)[0])
-	# orthogonal_scaling_matrix = matrix_power2(overlap_matrix, -0.5)
-	# return orthogonal_scaling_matrix, min_eigenval
-
-def tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize=False):
+def tf_gaussians(distance_tensor, Zs, gaussian_params):
 	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.expand_dims(tf.expand_dims(gaussian_params[:,0], axis=0), axis=1))) \
 				/ (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	if orthogonalize:
-		gaussian_embed = tf.reduce_sum(tf.expand_dims(gaussian_embed, axis=-2) * orthogonal_scaling_matrix, axis=-1)
 	gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
 						tf.zeros_like(distance_tensor)), axis=-1)
 	return gaussian_embed
+
+def tf_gaussians_cutoff(distance_tensor, Zs, gaussian_params):
+	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.expand_dims(tf.expand_dims(gaussian_params[:,0], axis=0), axis=1))) \
+				/ (-2.0 * (gaussian_params[:,1] ** 2))
+	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
+	gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
+						tf.zeros_like(distance_tensor)), axis=-1)
+	xi = (distance_tensor - 4.5) / (5.5 - 4.5)
+	cutoff_factor = 1 - 3 * tf.square(xi) + 2 * tf.pow(xi, 3.0)
+	cutoff_factor = tf.where(tf.greater(distance_tensor, 5.5), tf.zeros_like(cutoff_factor), cutoff_factor)
+	cutoff_factor = tf.where(tf.less(distance_tensor, 4.5), tf.ones_like(cutoff_factor), cutoff_factor)
+	return gaussian_embed * tf.expand_dims(cutoff_factor, axis=-1)
 
 def tf_spherical_harmonics_0(inverse_distance_tensor):
 	return tf.fill(tf.shape(inverse_distance_tensor), tf.constant(0.28209479177387814, dtype=eval(PARAMS["tf_prec"])))
@@ -2748,7 +2754,7 @@ def tf_spherical_harmonics(delta_xyzs, distance_tensor, max_l):
 		raise Exception("Spherical Harmonics only implemented up to l=8. Choose a lower order")
 	return harmonics
 
-def tf_gaussian_spherical_harmonics_element(xyzs, Zs, element, gaussian_params, atomic_embed_factors, l_max, labels=None, orthogonalize=False):
+def tf_gaussian_spherical_harmonics_element(xyzs, Zs, element, gaussian_params, atomic_embed_factors, l_max, labels=None):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 
@@ -2771,7 +2777,7 @@ def tf_gaussian_spherical_harmonics_element(xyzs, Zs, element, gaussian_params, 
 	element_delta_xyzs = tf.gather_nd(delta_xyzs, element_indices)
 	element_Zs = tf.gather(Zs, element_indices[:,0])
 	distance_tensor = tf.norm(element_delta_xyzs+1.e-16,axis=2)
-	atom_scaled_gaussians, min_eigenval = tf_gaussians(tf.expand_dims(distance_tensor, axis=-1), element_Zs, gaussian_params, atomic_embed_factors, orthogonalize)
+	atom_scaled_gaussians, min_eigenval = tf_gaussians(tf.expand_dims(distance_tensor, axis=-1), element_Zs, gaussian_params, atomic_embed_factors)
 	spherical_harmonics = tf_spherical_harmonics(element_delta_xyzs, distance_tensor, l_max)
 	element_embedding = tf.reshape(tf.einsum('jkg,jkl->jgl', atom_scaled_gaussians, spherical_harmonics),
 							[num_batch_elements, tf.shape(gaussian_params)[0] * (l_max + 1) ** 2])
@@ -2781,7 +2787,7 @@ def tf_gaussian_spherical_harmonics_element(xyzs, Zs, element, gaussian_params, 
 	else:
 		return element_embedding, element_indices, min_eigenval
 
-def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_embed_factors, l_max, orthogonalize=False):
+def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_embed_factors, l_max):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 
@@ -2811,7 +2817,7 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
-def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, l_max, orthogonalize=False):
+def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, l_max):
 	"""
 	Encodes atoms into a gaussians and spherical harmonics embedding
 
@@ -2820,7 +2826,6 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 		Zs (tf.int32): NMol x MaxNAtoms atomic number tensor
 		element (int): element to return embedding/labels for
 		gaussian_params (tf.float): NGaussians x 2 tensor of gaussian parameters
-		atomic_embed_factors (tf.float): MaxElementNumber tensor of scaling factors for elements
 		l_max (tf.int32): Scalar for the highest order spherical harmonics to use (needs implemented)
 		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
 
@@ -2834,7 +2839,7 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 	mol_atom_indices = tf.where(tf.not_equal(Zs, 0))
 	delta_xyzs = tf.gather_nd(delta_xyzs, mol_atom_indices)
 	distance_tensor = tf.norm(delta_xyzs+1.e-16,axis=2)
-	gaussians = tf_gaussians(distance_tensor, Zs, gaussian_params, orthogonalize)
+	gaussians = tf_gaussians_cutoff(distance_tensor, Zs, gaussian_params)
 	spherical_harmonics = tf_spherical_harmonics(delta_xyzs, distance_tensor, l_max)
 	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, num_elements, 1])), mol_atom_indices[:,0])
 	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=data_precision),
@@ -2871,9 +2876,9 @@ def tf_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False
 	R3 = tf.stack([zero_tensor, zero_tensor, tf.ones_like(rotation_params[...,1])], axis=-1)
 	R = tf.stack([R1, R2, R3], axis=-2)
 	M = tf.matmul((tf.expand_dims(v, axis=-2) * tf.expand_dims(v, axis=-1)) - tf.eye(3, dtype=eval(PARAMS["tf_prec"])), R)
-	new_xyzs = tf.einsum("lmij,lmkj->lmki", M, xyzs)
+	new_xyzs = tf.einsum("lij,lkj->lki", M, xyzs)
 	if labels != None:
-		new_labels = tf.einsum("lmij,lmkj->lmki",M, (xyzs + labels)) - new_xyzs
+		new_labels = tf.einsum("lij,lkj->lki",M, (xyzs + labels)) - new_xyzs
 		if return_matrix:
 			return new_xyzs, new_labels, M
 		else:
