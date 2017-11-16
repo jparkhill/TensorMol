@@ -858,6 +858,7 @@ class BehlerParinelloDirectGauSH:
 		self.gradients = None
 		self.gradient_labels = None
 		self.gaussian_params = None
+		self.tiled_labels = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -966,7 +967,7 @@ class BehlerParinelloDirectGauSH:
 			The BP graph output
 		"""
 		branches=[]
-		output = tf.zeros([self.batch_size * 27, self.max_num_atoms], dtype=self.tf_precision)
+		output = tf.zeros([self.batch_size * 8, self.max_num_atoms], dtype=self.tf_precision)
 		for e in range(len(self.elements)):
 			branches.append([])
 			inputs = inp[e]
@@ -1049,6 +1050,8 @@ class BehlerParinelloDirectGauSH:
 			train_loss += total_loss_value
 			train_energy_loss += energy_loss
 			num_mols += self.batch_size
+			if ministep == 10:
+				break
 		duration = time.time() - start_time
 		if self.train_energy_gradients:
 			self.print_training(step, train_loss, train_energy_loss, num_mols, duration, train_gradient_loss)
@@ -1093,6 +1096,8 @@ class BehlerParinelloDirectGauSH:
 			num_atoms_epoch.append(num_atoms)
 			test_epoch_force_labels.append(-1.0 * gradient_labels)
 			test_epoch_force_outputs.append(-1.0 * gradients)
+			if ministep == 10:
+				break
 		test_epoch_energy_labels = np.concatenate(test_epoch_energy_labels)
 		test_epoch_energy_outputs = np.concatenate(test_epoch_energy_outputs)
 		test_epoch_energy_errors = test_epoch_energy_labels - test_epoch_energy_outputs

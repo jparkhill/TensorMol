@@ -530,8 +530,8 @@ def train_energy_GauSH():
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 200
-	PARAMS["test_freq"] = 5
+	PARAMS["max_steps"] = 1
+	PARAMS["test_freq"] = 1
 	PARAMS["batch_size"] = 20
 	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
@@ -795,7 +795,7 @@ def water_dimer_plot():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("nicotine_aimd_2500")
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
