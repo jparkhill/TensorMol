@@ -663,6 +663,12 @@ class BehlerParinelloDirectGauSH:
 		self.assign_activation()
 		self.embedding_type = embedding_type
 		self.path = PARAMS["networks_directory"]
+		self.Ree_on  = PARAMS["EECutoffOn"]
+		self.Ree_off  = PARAMS["EECutoffOff"]
+		self.DSFAlpha = PARAMS["DSFAlpha"]
+		self.elu_width = PARAMS["Elu_Width"]
+		self.elu_shift = DSF(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.DSFAlpha/BOHRPERA)
+		self.elu_alpha = DSF_Gradient(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.DSFAlpha/BOHRPERA)
 
 		#Reloads a previous network if name variable is not None
 		if name !=  None:
@@ -861,11 +867,13 @@ class BehlerParinelloDirectGauSH:
 		"""
 		with tf.Graph().as_default():
 			#Define the placeholders to be fed in for each batch
-			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.max_num_atoms, 3]))
-			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.max_num_atoms]))
-			self.labels_pl = tf.placeholder(self.tf_precision, shape=tuple([None]))
-			self.gradients_pl = tf.placeholder(self.tf_precision, shape=tuple([self.batch_size, self.max_num_atoms, 3]))
-			self.num_atoms_pl = tf.placeholder(tf.int32, shape=([self.batch_size]))
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
+			self.Zs_pl = tf.placeholder(tf.int32, shape=[None, self.max_num_atoms])
+			self.labels_pl = tf.placeholder(self.tf_precision, shape=[None])
+			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
+			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
+			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[None])
+			self.Reep_pl = tf.placeholder(tf.int32, shape=[None,3])
 
 			#Define the embedding parameters and normalization constants
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
@@ -874,6 +882,10 @@ class BehlerParinelloDirectGauSH:
 			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
+			elu_width = tf.Variable(self.elu_width * BOHRPERA, trainable=False, dtype = self.tf_precision)
+			elu_alpha = tf.Variable(self.elu_alpha, trainable=False, dtype = self.tf_precision)
+			elu_shift = tf.Variable(self.elu_shift, trainable=False, dtype = self.tf_precision)
+			damp_shifted_alpha = tf.Variable(self.DSFAlpha, trainable=False, dtype = self.tf_precision)
 
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
@@ -884,8 +896,12 @@ class BehlerParinelloDirectGauSH:
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
-			norm_output = self.inference(embeddings, molecule_indices)
+			dipole, charges = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
+			self.coulomb_energy = TFCoulombEluSRDSFLR(rotated_xyzs * BOHRPERA, charges, elu_width, self.Reep_pl, damp_shifted_alpha, elu_alpha, elu_shift)
+
+			norm_output = self.energy_inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
+			self.total_energy = self.output + self.coulomb_energy
 			self.gradients = tf.gather_nd(tf.gradients(self.output, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
 			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
@@ -895,7 +911,7 @@ class BehlerParinelloDirectGauSH:
 				self.total_loss, self.energy_loss, self.gradient_loss = self.loss_op(self.output,
 						self.tiled_labels, self.gradients, self.gradient_labels, num_atoms_batch)
 			else:
-				self.total_loss, self.energy_loss = self.loss_op(self.output, self.labels_pl)
+				self.total_loss, self.energy_loss = self.loss_op(self.total_energy, self.labels_pl)
 			barrier_function = -1000.0 * tf.log(tf.concat([self.gaussian_params + 0.9,
 								tf.expand_dims(6.5 - self.gaussian_params[:,0], axis=-1),
 								tf.expand_dims(1.75 - self.gaussian_params[:,1], axis=-1)], axis=1))
@@ -927,10 +943,10 @@ class BehlerParinelloDirectGauSH:
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
 			print("I was fed shit")
 			raise Exception("DontEatShit")
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.labels_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.labels_pl, self.dipole_pl, self.gradients_pl, self.num_atoms_pl, self.Reep_pl], batch_data)}
 		return feed_dict
 
-	def inference(self, inp, indexs):
+	def energy_inference(self, inp, indexs):
 		"""
 		Builds a Behler-Parinello graph
 
@@ -942,31 +958,78 @@ class BehlerParinelloDirectGauSH:
 		"""
 		branches=[]
 		output = tf.zeros([self.batch_size, self.max_num_atoms], dtype=self.tf_precision)
-		for e in range(len(self.elements)):
-			branches.append([])
-			inputs = inp[e]
-			index = indexs[e]
-			for i in range(len(self.hidden_layers)):
-				if i == 0:
-					with tf.name_scope(str(self.elements[e])+'_hidden1'):
-						weights = self.variable_with_weight_decay(shape=[self.embedding_shape, self.hidden_layers[i]],
-								stddev=math.sqrt(2.0 / float(self.embedding_shape)), weight_decay=self.weight_decay, name="weights")
-						biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
-						branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
-				else:
-					with tf.name_scope(str(self.elements[e])+'_hidden'+str(i+1)):
-						weights = self.variable_with_weight_decay(shape=[self.hidden_layers[i-1], self.hidden_layers[i]],
-								stddev=math.sqrt(2.0 / float(self.hidden_layers[i-1])), weight_decay=self.weight_decay, name="weights")
-						biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
-						branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
-			with tf.name_scope(str(self.elements[e])+'_regression_linear'):
-				weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
-						stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
-				biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
-				branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
-				output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
-			tf.verify_tensor_all_finite(output,"Nan in output!!!")
+		with tf.name_scope("energy_network"):
+			for e in range(len(self.elements)):
+				branches.append([])
+				inputs = inp[e]
+				index = indexs[e]
+				for i in range(len(self.hidden_layers)):
+					if i == 0:
+						with tf.name_scope(str(self.elements[e])+'_hidden1'):
+							weights = self.variable_with_weight_decay(shape=[self.embedding_shape, self.hidden_layers[i]],
+									stddev=math.sqrt(2.0 / float(self.embedding_shape)), weight_decay=self.weight_decay, name="weights")
+							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
+							branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+					else:
+						with tf.name_scope(str(self.elements[e])+'_hidden'+str(i+1)):
+							weights = self.variable_with_weight_decay(shape=[self.hidden_layers[i-1], self.hidden_layers[i]],
+									stddev=math.sqrt(2.0 / float(self.hidden_layers[i-1])), weight_decay=self.weight_decay, name="weights")
+							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
+							branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+				with tf.name_scope(str(self.elements[e])+'_regression_linear'):
+					weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
+							stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
+					biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
+					branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
+					output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
+				tf.verify_tensor_all_finite(output,"Nan in output!!!")
 		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
+
+	def dipole_inference(self, inp, indexs, xyzs, natom):
+		"""
+		Builds a Behler-Parinello graph
+
+		Args:
+			inp: a list of (num_of atom type X flattened input shape) matrix of input cases.
+			index: a list of (num_of atom type X batchsize) array which linearly combines the elements
+		Returns:
+			The BP graph output
+		"""
+		xyzs *= BOHRPERA
+		branches=[]
+		atom_outputs_charge = []
+		output = tf.zeros([self.batch_size, self.max_num_atoms], dtype=self.tf_precision)
+		with tf.name_scope("dipole_network"):
+			for e in range(len(self.elements)):
+				branches.append([])
+				inputs = inp[e]
+				index = indexs[e]
+				for i in range(len(self.hidden_layers)):
+					if i == 0:
+						with tf.name_scope(str(self.elements[e])+'_hidden1'):
+							weights = self.variable_with_weight_decay(shape=[self.embedding_shape, self.hidden_layers[i]],
+									stddev=math.sqrt(2.0 / float(self.embedding_shape)), weight_decay=self.weight_decay, name="weights")
+							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
+							branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+					else:
+						with tf.name_scope(str(self.elements[e])+'_hidden'+str(i+1)):
+							weights = self.variable_with_weight_decay(shape=[self.hidden_layers[i-1], self.hidden_layers[i]],
+									stddev=math.sqrt(2.0 / float(self.hidden_layers[i-1])), weight_decay=self.weight_decay, name="weights")
+							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
+							branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+				with tf.name_scope(str(self.elements[e])+'_regression_linear'):
+					weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
+							stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
+					biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
+					branches[-1].append(tf.matmul(branches[-1][-1], weights) + biases)
+					output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
+
+			tf.verify_tensor_all_finite(output,"Nan in output!!!")
+			net_charge = tf.reduce_sum(output_charge, axis=1)
+			delta_charge = net_charge / natom
+			charges = output - tf.expand_dims(delta_charge, axis=1)
+			dipole = tf.reduce_sum(xyzs * tf.expand_dims(charges, axis=-1), axis=1)
+		return dipole, charges
 
 	def optimizer(self, loss, learning_rate, momentum):
 		"""
