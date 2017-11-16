@@ -163,6 +163,7 @@ class Mol:
 		for i in range(0, self.atoms.shape[0]):
 			if (random.uniform(0, 1)<movechance):
 				self.atoms[i] = random.random_integers(1,PARAMS["MAX_ATOMIC_NUMBER"])
+
 	def read_xyz_with_properties(self, path, properties, center=True):
 		try:
 			f=open(path,"r")
@@ -186,17 +187,18 @@ class Mol:
 					self.properties["name"] = properties_line.split(";")[i]
 				if mol_property == "energy":
 					self.properties["energy"] = float(properties_line.split(";")[i])
-				if mol_property == "forces":
-					self.properties['forces'] = np.zeros((natoms, 3))
+					self.CalculateAtomization()
+				if mol_property == "gradients":
+					self.properties['gradients'] = np.zeros((natoms, 3))
 					read_forces = (properties_line.split(";")[i]).split(",")
 					for j in range(natoms):
 						for k in range(3):
-							self.properties['forces'][j,k] = float(read_forces[j*3+k])
-				if mol_property == "dipoles":
-					self.properties['dipoles'] = np.zeros((3))
+							self.properties['gradients'][j,k] = float(read_forces[j*3+k])
+				if mol_property == "dipole":
+					self.properties['dipole'] = np.zeros((3))
 					read_dipoles = (properties_line.split(";")[i]).split(",")
 					for j in range(3):
-						self.properties['dipoles'][j] = float(read_dipoles[j])
+						self.properties['dipole'][j] = float(read_dipoles[j])
 				if mol_property == "mulliken_charges":
 					self.properties["mulliken_charges"] = np.zeros((natoms))
 					read_charges = (properties_line.split(";")[i]).split(",")
@@ -207,6 +209,7 @@ class Mol:
 			print("Read Failed.", Ex)
 			raise Ex
 		return
+
 	def ReadGDB9(self,path,filename):
 		try:
 			f=open(path,"r")

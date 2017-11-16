@@ -790,12 +790,12 @@ class BehlerParinelloDirectGauSH:
 		gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
 		elements = tf.constant(self.elements, dtype = tf.int32)
 
-		tiled_xyzs = tf.tile(tf.expand_dims(xyzs_pl, axis=1), [1, 27, 1, 1])
-		tiled_Zs = tf.reshape(tf.tile(tf.expand_dims(Zs_pl, axis=1), [1, 27, 1]), [-1, self.max_num_atoms])
-		rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 3), [9]), axis=1),
-				tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1), [1,9]), [27,1]),
-				tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1),
-				axis=2), [3,1,3]), [27,1])], axis=1), axis=0), [self.batch_size, 1, 1])
+		tiled_xyzs = tf.tile(tf.expand_dims(xyzs_pl, axis=1), [1, 8, 1, 1])
+		tiled_Zs = tf.reshape(tf.tile(tf.expand_dims(Zs_pl, axis=1), [1, 8, 1]), [-1, self.max_num_atoms])
+		rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 2), [4]), axis=1),
+				tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 2), axis=1), [1, 4]), [8,1]),
+				tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 2), axis=1),
+				axis=2), [2,1,2]), [8,1])], axis=1), axis=0), [self.batch_size, 1, 1])
 		rotated_xyzs = tf.reshape(tf_random_rotate(tiled_xyzs, rotation_params), [-1, self.max_num_atoms, 3])
 		# rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 		# 		np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
@@ -884,14 +884,14 @@ class BehlerParinelloDirectGauSH:
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 
-			tiled_xyzs = tf.tile(tf.expand_dims(self.xyzs_pl, axis=1), [1, 27, 1, 1])
-			tiled_gradients = tf.tile(tf.expand_dims(self.gradients_pl, axis=1), [1, 27, 1, 1])
-			self.tiled_labels = tf.reshape(tf.tile(tf.expand_dims(self.labels_pl, axis=1), [1, 27]), [-1])
-			tiled_Zs = tf.reshape(tf.tile(tf.expand_dims(self.Zs_pl, axis=1), [1, 27, 1]), [-1, self.max_num_atoms])
-			rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 3), [9]), axis=1),
-					tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1), [1,9]), [27,1]),
-					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 3), axis=1),
-					axis=2), [3,1,3]), [27,1])], axis=1), axis=0), [self.batch_size, 1, 1])
+			tiled_xyzs = tf.tile(tf.expand_dims(self.xyzs_pl, axis=1), [1, 8, 1, 1])
+			tiled_gradients = tf.tile(tf.expand_dims(self.gradients_pl, axis=1), [1, 8, 1, 1])
+			self.tiled_labels = tf.reshape(tf.tile(tf.expand_dims(self.labels_pl, axis=1), [1, 8]), [-1])
+			tiled_Zs = tf.reshape(tf.tile(tf.expand_dims(self.Zs_pl, axis=1), [1, 8, 1]), [-1, self.max_num_atoms])
+			rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 2), [4]), axis=1),
+					tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 2), axis=1), [1,4]), [8,1]),
+					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 2), axis=1),
+					axis=2), [2,1,2]), [8,1])], axis=1), axis=0), [self.batch_size, 1, 1])
 			rotated_xyzs, rotated_gradients = tf_random_rotate(tiled_xyzs, rotation_params, tiled_gradients)
 			rotated_xyzs = tf.reshape(rotated_xyzs, [-1, self.max_num_atoms, 3])
 			rotated_gradients = tf.reshape(rotated_gradients, [-1, self.max_num_atoms, 3])
@@ -989,9 +989,9 @@ class BehlerParinelloDirectGauSH:
 						stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
 				biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
 				branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
-				output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size * 27, self.max_num_atoms])
+				output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size * 8, self.max_num_atoms])
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
-		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size * 27])
+		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size * 8])
 
 	def optimizer(self, loss, learning_rate, momentum):
 		"""

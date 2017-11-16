@@ -28,7 +28,7 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	print len(a.mols), " Molecules"
 	a.Save()
 
-def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "forces", "dipole"]):
+def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "gradients", "dipole"]):
 	import glob
 	a=MSet(set_name)
 	for path in glob.iglob(paths):
@@ -795,7 +795,7 @@ def water_dimer_plot():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("nicotine_aimd_2500")
-train_energy_GauSH()
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
