@@ -417,7 +417,7 @@ class TensorMolDataDirect:
 		self.test_scratch_pointer += batch_size
 		xyzs = self.xyzs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		Zs = self.Zs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		energies = self.labels[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		energies = self.energies[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		dipoles = self.dipoles[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		num_atoms = self.num_atoms[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		gradients = self.gradients[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]

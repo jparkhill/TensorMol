@@ -382,8 +382,8 @@ def train_energy_symm_func(mset):
 	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 32), np.repeat(0.35, 32)), axis=1)
-	PARAMS["SH_NRAD"] = 32
+	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 14), np.repeat(0.35, 14)), axis=1)
+	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
@@ -394,6 +394,7 @@ def train_energy_GauSH():
 	PARAMS["batch_size"] = 400
 	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["Profiling"] = False
 	a=MSet("H2O_wb97xd_1to21_with_prontonated")
 	a.Load()
 	tensor_data = TensorMolDataDirect(a, "atomization")

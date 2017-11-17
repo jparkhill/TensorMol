@@ -3050,6 +3050,60 @@ def tf_symmetry_function_angular_grid(xyzs, Zs, angular_cutoff, angular_rs, thet
 						* tf.expand_dims(exponential_factor, axis=-2), [tf.shape(triples_indices)[0], tf.shape(theta_s)[0] * tf.shape(angular_rs)[0]])
 	return angular_embedding, triples_indices, triples_elements, sorted_triples_element_pairs
 
+def tf_coulomb_damp_shifted_force(R, Qs, R_cut, Radpair, alpha, elu_a, elu_shift):
+	"""
+	A tensorflow linear scaling implementation of the Damped Shifted Electrostatic Force with short range cutoff with elu function (const at short range).
+	http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/10.1063/1.2206581
+	Batched over molecules.
+
+	Args:
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Qs : nmol X maxnatom X 1 tensor of atomic charges.
+		R_srcut: Short Range Erf Cutoff
+		R_lrcut: Long Range DSF Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		alpha: DSF alpha parameter (~0.2)
+	Returns
+		Energy of  Mols
+	"""
+	alpha = alpha/BOHRPERA
+	R_lrcut = PARAMS["EECutoffOff"]*BOHRPERA
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	natom2 = natom*natom
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	RijRij2 = tf.sqrt(tf.reduce_sum(Rij*Rij, axis=1)+infinitesimal)
+
+	SR_sub = tf.where(tf.greater(RijRij2, R_cut), elu_a*(RijRij2-R_cut)+elu_shift, elu_a*(tf.exp(RijRij2-R_cut)-1.0)+elu_shift)
+
+	twooversqrtpi = tf.constant(1.1283791671, dtype=data_precision)
+	Qii = tf.slice(Radpair,[0,0],[-1,2])
+	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
+	Qi = tf.gather_nd(Qs,Qii)
+	Qj = tf.gather_nd(Qs,Qji)
+	# Gather desired LJ parameters.
+	Qij = Qi*Qj
+	# This is Dan's Equation (18)
+	XX = alpha*R_lrcut
+	ZZ = tf.erfc(XX)/R_lrcut
+	YY = twooversqrtpi*alpha*tf.exp(-XX*XX)/R_lrcut
+	LR = Qij*(tf.erfc(alpha*RijRij2)/RijRij2 - ZZ + (RijRij2-R_lrcut)*(ZZ/R_lrcut+YY))
+	LR= tf.where(tf.is_nan(LR), tf.zeros_like(LR), LR)
+	LR = tf.where(tf.greater(RijRij2,R_lrcut), tf.zeros_like(LR), LR)
+
+	SR = Qij*SR_sub
+
+	K = tf.where(tf.greater(RijRij2, R_cut), LR, SR)
+	range_index = tf.range(nnz)
+	mol_index = tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz])
+	sparse_index = tf.cast(tf.stack([mol_index, range_index], axis=1), tf.int64)
+	sp_atomoutputs = tf.SparseTensor(sparse_index, K, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
+	# Now use the sparse reduce sum trick to scatter this into mols.
+	return tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+
 class ANISym:
 	def __init__(self, mset_):
 		self.set = mset_
