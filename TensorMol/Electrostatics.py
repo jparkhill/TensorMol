@@ -24,6 +24,14 @@ def Dipole(x_, q_):
 	""" Arguments are in A, and elementary charges.  """
 	return WeightedCoordAverage(x_*BOHRPERA, q_)
 
+
+def Dipole_Naive(x_, q_):
+	""" Arguments are in A, and elementary charges.  """
+	dipole = np.zeros(3)
+	for i in  range(0, q_.shape[0]):
+		dipole += q_[i]*x_[i]*BOHRPERA
+	return dipole
+
 def ChargeCharge(m1_, m2_):
 	"""calculate  the charge-charge interaction energy between two molecules"""
 	cc_energy = 0.0
