@@ -803,7 +803,7 @@ class BehlerParinelloDirectGauSH:
 		for element in range(len(self.elements)):
 			embeddings_list.append([])
 		labels_list = []
-		gradients_list = []
+		dipoles_list = []
 		self.embeddings_mean = []
 		self.embeddings_stddev = []
 
@@ -813,6 +813,7 @@ class BehlerParinelloDirectGauSH:
 			batch_data = self.tensor_data.get_train_batch(self.batch_size)
 			num_atoms = batch_data[4]
 			labels_list.append(batch_data[2])
+			dipoles_list.append(batch_data[3])
 			embedding, molecule_index = sess.run([embeddings, molecule_indices], feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1]})
 			for element in range(len(self.elements)):
 				embeddings_list[element].append(embedding[element])
@@ -823,8 +824,11 @@ class BehlerParinelloDirectGauSH:
 		self.embeddings_mean = np.stack(self.embeddings_mean)
 		self.embeddings_stddev = np.stack(self.embeddings_stddev)
 		labels = np.concatenate(labels_list)
+		dipoles = np.concatenate(dipoles_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
+		self.dipoles_mean = np.mean(dipoles)
+		self.dipoles_stddev = np.std(dipoles)
 		self.tensor_data.train_scratch_pointer = 0
 
 		#Set the embedding and label shape
@@ -883,6 +887,8 @@ class BehlerParinelloDirectGauSH:
 			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
+			dipoles_mean = tf.Variable(self.dipoles_mean, trainable=False, dtype = self.tf_precision)
+			dipoles_stddev = tf.Variable(self.dipoles_stddev, trainable=False, dtype = self.tf_precision)
 			elu_width = tf.Variable(self.elu_width * BOHRPERA, trainable=False, dtype = self.tf_precision)
 			elu_alpha = tf.Variable(self.elu_alpha, trainable=False, dtype = self.tf_precision)
 			elu_shift = tf.Variable(self.elu_shift, trainable=False, dtype = self.tf_precision)
@@ -899,7 +905,9 @@ class BehlerParinelloDirectGauSH:
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
 
-			self.dipoles, self.charges = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
+			norm_dipoles, norm_charges = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
+			self.dipoles = (norm_dipoles * dipoles_stddev) + dipoles_mean
+			self.charges = (norm_charges * dipoles_stddev) + dipoles_mean
 			self.coulomb_energy = tf_coulomb_damp_shifted_force(rotated_xyzs * BOHRPERA, self.charges, elu_width, self.Reep_pl,
 									damp_shifted_alpha, elu_alpha, elu_shift)
 			norm_output = self.energy_inference(embeddings, molecule_indices)
