@@ -421,7 +421,7 @@ class IRTrajectory(VelocityVerlet):
 			self.ChargeFunction = q_
 			self.q0 = self.ChargeFunction(self.x)
 			self.qs = self.q0.copy()
-			self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
+			self.Mu0 = Dipole_Naive(self.x, self.ChargeFunction(self.x))
 		else:
 			self.UpdateCharges = False
 		# This can help in case you had a bad initial geometry
@@ -477,7 +477,7 @@ class IRTrajectory(VelocityVerlet):
 				self.qs = self.ChargeFunction(self.x)
 			else:
 				self.qs = self.q0
-			self.Mu = Dipole(self.x, self.qs) - self.Mu0
+			self.Mu = Dipole_Naive(self.x, self.qs) - self.Mu0
 			self.mu_his[step,0] = self.t
 			self.mu_his[step,1:4] = self.Mu.copy()
 			self.mu_his[step,4] = self.KE
@@ -497,7 +497,7 @@ class IRTrajectory(VelocityVerlet):
 				LOGGER.info(" -- You didn't start from the global minimum -- ")
 				LOGGER.info("   -- I'mma set you back to the beginning -- ")
 				print(self.x)
-				self.Mu0 = Dipole(self.x, self.qs)
+				self.Mu0 = Dipole_Naive(self.x, self.qs)
 				step=0
 
 			self.KE = KineticEnergy(self.v,self.m)
