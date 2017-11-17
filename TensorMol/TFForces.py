@@ -160,6 +160,7 @@ class BumpHolder(ForceHolder):
 		self.BowlK = bowlk_
 		self.Prepare()
 		return
+
 	def Prepare(self):
 		with tf.Graph().as_default():
 			self.xyzs_pl=tf.placeholder(tf.float64, shape=tuple([self.maxbump,self.natom,3]))
@@ -181,6 +182,7 @@ class BumpHolder(ForceHolder):
 			#self.summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
 			self.sess.run(init)
 		return
+
 	def Bump(self, BumpCoords, x_, NBump_):
 		"""
 		Returns the Bump energy force.
@@ -190,6 +192,7 @@ class BumpHolder(ForceHolder):
 		else:
 			e,f,we,wf = self.sess.run([self.BE,self.BF,self.BowlE,self.BowlF], feed_dict = {self.xyzs_pl:BumpCoords, self.x_pl:x_, self.nb_pl:NBump_})
 			return (e+we), ([f[0]+wf[0]])
+
 	def Bowl(self, x_):
 		"""
 		Returns the Bowl force.

@@ -130,6 +130,8 @@ class TMParams(dict):
 		# Metadynamics parameters
 		self["MetaBowlK"] = 0.0
 		self["MetaMaxBumps"] = 500
+		self["MetaMDBumpHeight"] = 0.05
+		self["MetaMDBumpWidth"] = 0.1
 		# parameters of electrostatic embedding
 		self["AddEcc"] = True
 		self["Poly_Width"] = 4.6
