@@ -113,7 +113,7 @@ class BehlerParinelloDirectSymFunc:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+"/BehlerParinelloDirect_nicotine_aimd_40000_Fri_Nov_10_17.36.01_2017.tfn","rb")
+		f = open(self.path+"/"+self.name+".tfn","rb")
 		import TensorMol.PickleTM
 		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
 		self.clean()
@@ -228,8 +228,6 @@ class BehlerParinelloDirectSymFunc:
 		return
 
 	def clean(self):
-		# if (self.sess != None):
-		# 	self.sess.close()
 		self.sess = None
 		self.total_loss = None
 		self.train_op = None
@@ -852,14 +850,20 @@ class BehlerParinelloDirectGauSH:
 		self.labels_pl = None
 		self.num_atoms_pl = None
 		self.gradients_pl = None
+		self.dipole_pl = None
+		self.Reep_pl = None
 		self.energy_loss = None
+		self.dipole_loss = None
 		self.gradient_loss = None
 		self.output = None
 		self.gradients = None
 		self.gradient_labels = None
 		self.gaussian_params = None
-		self.dipole = None
+		self.dipoles = None
 		self.charges = None
+		self.dipole_labels = None
+		self.coulomb_energy = None
+		self.total_energy = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -905,21 +909,19 @@ class BehlerParinelloDirectGauSH:
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
 
-			norm_dipoles, norm_charges = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
-			self.dipoles = (norm_dipoles * dipoles_stddev) + dipoles_mean
-			self.charges = (norm_charges * dipoles_stddev) + dipoles_mean
+			self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
 			self.coulomb_energy = tf_coulomb_damp_shifted_force(rotated_xyzs * BOHRPERA, self.charges, elu_width, self.Reep_pl,
 									damp_shifted_alpha, elu_alpha, elu_shift)
-			norm_output = self.energy_inference(embeddings, molecule_indices)
+			norm_output, energy_variables = self.energy_inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 			self.total_energy = self.output + self.coulomb_energy
 			self.gradients = tf.gather_nd(tf.gradients(self.output, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
 			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
-			#loss and constraints
 			self.energy_loss = self.energy_loss_op(self.total_energy, self.labels_pl)
 			self.dipole_loss = self.dipole_loss_op(self.dipoles, self.dipole_labels)
+			self.charge_loss = self.charge_loss_op(self.net_charge)
 			if self.train_energy_gradients:
 				self.gradient_loss = self.gradient_loss_op(self.gradients, self.gradient_labels, num_atoms_batch)
 			self.total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
@@ -932,7 +934,8 @@ class BehlerParinelloDirectGauSH:
 			# gaussian_overlap_loss = tf.square(0.001 / tf.reduce_min(tf.self_adjoint_eig(tf_gaussian_overlap(self.gaussian_params))[0]))
 			# loss_and_constraint = self.total_loss + truncated_barrier_function + gaussian_overlap_loss
 
-			self.train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum)
+			self.dipole_train_op = self.optimizer(self.dipole_loss, self.learning_rate, self.momentum, dipole_variables)
+			self.energy_train_op = self.optimizer(self.total_loss, self.learning_rate, self.momentum, energy_variables)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -973,6 +976,7 @@ class BehlerParinelloDirectGauSH:
 			The BP graph output
 		"""
 		branches=[]
+		variables=[]
 		output = tf.zeros([self.batch_size, self.max_num_atoms], dtype=self.tf_precision)
 		with tf.name_scope("energy_network"):
 			for e in range(len(self.elements)):
@@ -986,20 +990,26 @@ class BehlerParinelloDirectGauSH:
 									stddev=math.sqrt(2.0 / float(self.embedding_shape)), weight_decay=self.weight_decay, name="weights")
 							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
 							branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+							variables.append(weights)
+							variables.append(biases)
 					else:
 						with tf.name_scope(str(self.elements[e])+'_hidden'+str(i+1)):
 							weights = self.variable_with_weight_decay(shape=[self.hidden_layers[i-1], self.hidden_layers[i]],
 									stddev=math.sqrt(2.0 / float(self.hidden_layers[i-1])), weight_decay=self.weight_decay, name="weights")
 							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
 							branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+							variables.append(weights)
+							variables.append(biases)
 				with tf.name_scope(str(self.elements[e])+'_regression_linear'):
 					weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
 							stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
 					biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
 					branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
+					variables.append(weights)
+					variables.append(biases)
 					output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
 				tf.verify_tensor_all_finite(output,"Nan in output!!!")
-		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size])
+		return tf.reshape(tf.reduce_sum(output, axis=1), [self.batch_size]), variables
 
 	def dipole_inference(self, inp, indexs, xyzs, natom):
 		"""
@@ -1013,6 +1023,7 @@ class BehlerParinelloDirectGauSH:
 		"""
 		xyzs *= BOHRPERA
 		branches=[]
+		variables=[]
 		atom_outputs_charge = []
 		output = tf.zeros([self.batch_size, self.max_num_atoms], dtype=self.tf_precision)
 		with tf.name_scope("dipole_network"):
@@ -1027,17 +1038,23 @@ class BehlerParinelloDirectGauSH:
 									stddev=math.sqrt(2.0 / float(self.embedding_shape)), weight_decay=self.weight_decay, name="weights")
 							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
 							branches[-1].append(self.activation_function(tf.matmul(inputs, weights) + biases))
+							variables.append(weights)
+							variables.append(biases)
 					else:
 						with tf.name_scope(str(self.elements[e])+'_hidden'+str(i+1)):
 							weights = self.variable_with_weight_decay(shape=[self.hidden_layers[i-1], self.hidden_layers[i]],
 									stddev=math.sqrt(2.0 / float(self.hidden_layers[i-1])), weight_decay=self.weight_decay, name="weights")
 							biases = tf.Variable(tf.zeros([self.hidden_layers[i]], dtype=self.tf_precision), name='biases')
 							branches[-1].append(self.activation_function(tf.matmul(branches[-1][-1], weights) + biases))
+							variables.append(weights)
+							variables.append(biases)
 				with tf.name_scope(str(self.elements[e])+'_regression_linear'):
 					weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
 							stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
 					biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
 					branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
+					variables.append(weights)
+					variables.append(biases)
 					output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
 
 			tf.verify_tensor_all_finite(output,"Nan in output!!!")
@@ -1045,9 +1062,9 @@ class BehlerParinelloDirectGauSH:
 			delta_charge = net_charge / tf.cast(natom, self.tf_precision)
 			charges = output - tf.expand_dims(delta_charge, axis=1)
 			dipole = tf.reduce_sum(xyzs * tf.expand_dims(charges, axis=-1), axis=1)
-		return dipole, charges
+		return dipole, charges, net_charge, variables
 
-	def optimizer(self, loss, learning_rate, momentum):
+	def optimizer(self, loss, learning_rate, momentum, variables):
 		"""
 		Sets up the training Ops.
 		Creates a summarizer to track the loss over time in TensorBoard.
@@ -1065,25 +1082,52 @@ class BehlerParinelloDirectGauSH:
 		tf.summary.scalar(loss.op.name, loss)
 		optimizer = tf.train.AdamOptimizer(learning_rate)
 		global_step = tf.Variable(0, name='global_step', trainable=False)
-		train_op = optimizer.minimize(loss, global_step=global_step)
+		train_op = optimizer.minimize(loss, global_step=global_step, var_list=variables)
 		return train_op
 
-	def energy_loss_op(self, output, labels):
-		energy_loss = tf.nn.l2_loss(tf.subtract(output, labels))
+	def energy_loss_op(self, total_energies, total_energy_labels):
+		energy_loss = tf.nn.l2_loss(total_energies - total_energy_labels)
 		tf.add_to_collection('losses', energy_loss)
 		return energy_loss
 
 	def gradient_loss_op(self, gradients, gradient_labels, num_atoms):
-		gradient_loss = tf.nn.l2_loss(tf.subtract(gradients, gradient_labels)) / tf.cast(num_atoms, self.tf_precision)
+		gradient_loss = tf.nn.l2_loss(gradients - gradient_labels) / tf.cast(num_atoms, self.tf_precision)
 		tf.add_to_collection('losses', gradient_loss)
 		return gradient_loss
 
 	def dipole_loss_op(self, dipoles, dipole_labels):
-		dipole_loss = tf.nn.l2_loss(tf.subtract(dipoles, dipole_labels))
-		tf.add_to_collection('losses', dipole_loss)
+		dipole_loss = tf.nn.l2_loss(dipoles - dipole_labels)
 		return dipole_loss
 
-	def train_step(self, step):
+	def charge_loss_op(self, net_charge):
+		charge_loss = tf.nn.l2_loss(net_charge)
+		tf.add_to_collection('losses', charge_loss)
+		return charge_loss
+
+	def dipole_train_step(self, step):
+		"""
+		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		Ncase_train = self.tensor_data.num_train_cases
+		start_time = time.time()
+		train_loss =  0.0
+		train_energy_loss = 0.0
+		train_dipole_loss = 0.0
+		train_gradient_loss = 0.0
+		num_mols = 0
+		for ministep in range (0, int(Ncase_train/self.batch_size)):
+			batch_data = self.tensor_data.get_train_batch(self.batch_size)
+			_, dipole_loss = self.sess.run([self.dipole_train_op, self.dipole_loss], feed_dict=self.fill_feed_dict(batch_data))
+			train_dipole_loss += dipole_loss
+			num_mols += self.batch_size
+		duration = time.time() - start_time
+		LOGGER.info("step: %7d  duration: %.5f  train dipole loss: %.10f", step, duration, train_dipole_loss / num_mols)
+		return
+
+	def energy_train_step(self, step):
 		"""
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
 
@@ -1104,17 +1148,8 @@ class BehlerParinelloDirectGauSH:
 				self.energy_loss, self.dipole_loss, self.gradient_loss], feed_dict=self.fill_feed_dict(batch_data))
 				train_gradient_loss += gradient_loss
 			else:
-				if self.profiling:
-					_, total_loss, energy_loss, dipole_loss = self.sess.run([self.train_op, self.total_loss,
-					self.energy_loss, self.dipole_loss], feed_dict=self.fill_feed_dict(batch_data), options=self.options,
-					run_metadata=self.run_metadata)
-					fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
-					chrome_trace = fetched_timeline.generate_chrome_trace_format()
-					with open('timeline_step_%d_tm_nocheck_h2o.json' % ministep, 'w') as f:
-						f.write(chrome_trace)
-				else:
-					_, total_loss, energy_loss, dipole_loss = self.sess.run([self.train_op, self.total_loss,
-					self.energy_loss, self.dipole_loss], feed_dict=self.fill_feed_dict(batch_data))
+				_, total_loss, energy_loss, dipole_loss = self.sess.run([self.train_op, self.total_loss,
+				self.energy_loss, self.dipole_loss], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss += total_loss
 			train_energy_loss += energy_loss
 			train_dipole_loss += dipole_loss
@@ -1125,6 +1160,42 @@ class BehlerParinelloDirectGauSH:
 		else:
 			self.print_training(step, train_loss, train_energy_loss, train_dipole_loss, num_mols, duration)
 		return
+
+	def dipole_test_step(self, step):
+		"""
+		Perform a single test step (complete processing of all input), using minibatches of size self.batch_size
+
+		Args:
+			step: the index of this step.
+		"""
+		print( "testing...")
+		test_loss =  0.0
+		start_time = time.time()
+		Ncase_test = self.tensor_data.num_test_cases
+		num_mols = 0
+		test_dipole_loss = 0.0
+		test_epoch_dipole_labels, test_epoch_dipole_outputs = [], []
+		for ministep in range (0, int(Ncase_test/self.batch_size)):
+			batch_data = self.tensor_data.get_test_batch(self.batch_size)
+			feed_dict = self.fill_feed_dict(batch_data)
+			dipoles, dipole_labels, dipole_loss, gaussian_params = self.sess.run([self.dipoles, self.dipole_labels,
+				self.dipole_loss, self.gaussian_params],  feed_dict=feed_dict)
+			num_mols += self.batch_size
+			test_dipole_loss += dipole_loss
+			test_epoch_dipole_labels.append(dipole_labels)
+			test_epoch_dipole_outputs.append(dipoles)
+		test_epoch_dipole_labels = np.concatenate(test_epoch_dipole_labels)
+		test_epoch_dipole_outputs = np.concatenate(test_epoch_dipole_outputs)
+		test_epoch_dipole_errors = test_epoch_dipole_labels - test_epoch_dipole_outputs
+		duration = time.time() - start_time
+		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
+			LOGGER.info("Dipole label: %s  Dipole output: %s", test_epoch_dipole_labels[i], test_epoch_dipole_outputs[i])
+		LOGGER.info("MAE  Dipole: %11.8f", np.mean(np.abs(test_epoch_dipole_errors)))
+		LOGGER.info("MSE  Dipole: %11.8f", np.mean(test_epoch_dipole_errors))
+		LOGGER.info("RMSE Dipole: %11.8f", np.sqrt(np.mean(np.square(test_epoch_dipole_errors))))
+		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
+		LOGGER.info("step: %7d  duration: %.5f  test dipole loss: %.10f", step, duration, dipole_loss / num_mols)
+		return test_dipole_loss
 
 	def test_step(self, step):
 		"""
@@ -1161,8 +1232,8 @@ class BehlerParinelloDirectGauSH:
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
 			test_dipole_loss += dipole_loss
-			test_epoch_energy_labels.append(labels)
-			test_epoch_energy_outputs.append(output)
+			test_epoch_energy_labels.append(energy_labels)
+			test_epoch_energy_outputs.append(total_energies)
 			test_epoch_dipole_labels.append(dipole_labels)
 			test_epoch_dipole_outputs.append(dipoles)
 			num_atoms_epoch.append(num_atoms)
@@ -1180,9 +1251,9 @@ class BehlerParinelloDirectGauSH:
 		num_atoms_epoch = np.sum(np.concatenate(num_atoms_epoch))
 		duration = time.time() - start_time
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
-			LOGGER.info("Energy label: %.8f  Energy output: %.8f", test_epoch_energy_labels[i], test_epoch_energy_outputs[i])
+			LOGGER.info("Energy label: %11.8f  Energy output: %11.8f", test_epoch_energy_labels[i], test_epoch_energy_outputs[i])
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
-			LOGGER.info("Dipole label: %.8f  Dipole output: %.8f", test_epoch_dipole_labels[i], test_epoch_dipole_outputs[i])
+			LOGGER.info("Dipole label: %s  Dipole output: %s", test_epoch_dipole_labels[i], test_epoch_dipole_outputs[i])
 		for i in [random.randint(0, num_atoms_epoch - 1) for _ in xrange(20)]:
 			LOGGER.info("Forces label: %s  Forces output: %s", test_epoch_force_labels[i], test_epoch_force_outputs[i])
 		LOGGER.info("MAE  Energy: %11.8f  Dipole: %11.8f  Forces: %11.8f", np.mean(np.abs(test_epoch_energy_errors)),
@@ -1205,9 +1276,9 @@ class BehlerParinelloDirectGauSH:
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 100000000 # some big numbers
 		for step in range(1, self.max_steps+1):
-			self.train_step(step)
+			self.dipole_train_step(step)
 			if step%test_freq==0 and step!=0 :
-				test_loss = self.test_step(step)
+				test_loss = self.dipole_test_step(step)
 				if (test_loss < mini_test_loss):
 					mini_test_loss = test_loss
 					self.save_checkpoint(step)
