@@ -43,7 +43,6 @@ class MetaDynamics(VelocityVerlet):
 		if self.NBump > 0:
 			BF[0] *= self.m[:,None]
 		PF += JOULEPERHARTREE*BF[0]
-		print(PF / JOULEPERHARTREE * BOHRPERA)
 		return PE, PF
 
 	def Bump(self):

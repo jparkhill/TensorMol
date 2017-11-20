@@ -84,7 +84,6 @@ class Thermostat:
 			Teff = (2.0/(3.0*IDEALGASR))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
 			if (Teff != 0.0):
 				v_[i] *= np.sqrt(self.T/(Teff))
-		print("Initial velocities:", v_*BOHRPERA*FSPERAU)
 		return
 
 class NoseThermostat(Thermostat):
