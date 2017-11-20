@@ -366,7 +366,7 @@ def train_energy_symm_func(mset):
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.0001
+	PARAMS["learning_rate"] = 0.00001
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 100
@@ -385,11 +385,12 @@ def train_energy_GauSH():
 	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 14), np.repeat(0.35, 14)), axis=1)
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
-	PARAMS["EECutoffOn"] = 4.4
+	PARAMS["EECutoffOn"] = 0.0
+	PARAMS["Elu_Width"] = 5.5
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.00001
+	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 400
@@ -398,8 +399,7 @@ def train_energy_GauSH():
 	PARAMS["Profiling"] = False
 	a=MSet("H2O_wb97xd_1to21_with_prontonated")
 	a.Load()
-	tensor_data = TensorMolDataDirect(a, "atomization")
-	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectGauSH")
+	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectGauSH")
 
 def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],

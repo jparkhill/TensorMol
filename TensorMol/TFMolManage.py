@@ -1387,7 +1387,7 @@ class TFMolManage(TFManage):
 		return
 
 class TFMolManageDirect:
-	def __init__(self, tensor_data=None, name=None, train=True, network_type="BehlerParinelloDirectSymFunc"):
+	def __init__(self, molecule_set=None, name=None, train=True, network_type="BehlerParinelloDirectSymFunc"):
 		"""
 			Args:
 				Name_: If not blank, will try to load a network with that name using Prepare()
@@ -1402,9 +1402,10 @@ class TFMolManageDirect:
 			self.name = name
 			self.prepare()
 			return
-		self.tensor_data = tensor_data
+		self.molecule_set = molecule_set
+		self.molecule_set_name = self.molecule_set.name
 		self.network_type = network_type
-		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.name = self.network_type+"_"+self.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 		if (train):
 			self.train()
 			return
@@ -1418,9 +1419,9 @@ class TFMolManageDirect:
 			maxstep: The number of training steps.
 		"""
 		if self.network_type == "BehlerParinelloDirectSymFunc":
-			self.network = BehlerParinelloDirectSymFunc(self.tensor_data, "symmetry_functions")
+			self.network = BehlerParinelloDirectSymFunc(self.molecule_set, "symmetry_functions")
 		elif self.network_type == "BehlerParinelloDirectGauSH":
-			self.network = BehlerParinelloDirectGauSH(self.tensor_data, "GauSH")
+			self.network = BehlerParinelloDirectGauSH(self.molecule_set, "GauSH")
 		else:
 			raise Exception("Unknown Network Type!")
 		self.network.train()
@@ -1430,7 +1431,7 @@ class TFMolManageDirect:
 
 	def save(self):
 		print("Saving TFManager:",self.path+self.name+".tfm")
-		self.tensor_data.clean_scratch()
+		self.molecule_set == None
 		f = open(self.path+self.name+".tfm","wb")
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
@@ -1454,7 +1455,6 @@ class TFMolManageDirect:
 			self.network = BehlerParinelloDirectGauSH(name=self.network_name)
 		else:
 			raise Exception("Unknown Network Type!")
-		# Raise TF instances for each atom which have already been trained.
 		return
 
 	def evaluate_mol(self, mol, eval_forces=True):
