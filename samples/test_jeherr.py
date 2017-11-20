@@ -163,12 +163,12 @@ def TestMetadynamics():
 	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
-	PARAMS["MDdt"] = 1.0
+	PARAMS["MDdt"] = 0.02
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 20
+	PARAMS["MDMaxStep"] = 100
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 300.0
-	# PARAMS["MDV0"] = None
+	PARAMS["MDV0"] = "Thermal"
 	meta = MetaDynamics(ForceField, m)
 	meta.Prop()
 
@@ -382,7 +382,7 @@ def train_energy_symm_func(mset):
 	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 14), np.repeat(0.35, 14)), axis=1)
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 14), np.repeat(0.35, 14)), axis=1)
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["EECutoffOn"] = 0.0
@@ -612,7 +612,7 @@ def water_dimer_plot():
 # TestIpecac()
 # TestOCSDB()
 # BIMNN_NEq()
-TestMetadynamics()
+# TestMetadynamics()
 # TestMD()
 # TestTFBond()
 # GetPairPotential()
@@ -626,7 +626,7 @@ TestMetadynamics()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("nicotine_aimd_2500")
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
