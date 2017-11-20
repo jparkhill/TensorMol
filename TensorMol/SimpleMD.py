@@ -323,6 +323,8 @@ class VelocityVerlet:
 			np.random.seed()   # reset random seed
 			self.v = np.random.randn(*self.x.shape)
 			Tstat = Thermostat(self.m, self.v) # Will rescale self.v appropriately.
+		elif PARAMS["MDV0"]=="Thermal":
+			self.v = np.random.normal(size=self.x.shape) * np.sqrt(1.38064852e-23 * self.T / self.m)[:,None]
 		self.Tstat = None
 		if (PARAMS["MDThermostat"]=="Rescaling"):
 			self.Tstat = Thermostat(self.m,self.v)

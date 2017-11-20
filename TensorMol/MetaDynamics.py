@@ -24,7 +24,7 @@ class MetaDynamics(VelocityVerlet):
 			PARAMS["BowlK"] : a force constant of an attractive potential.
 		"""
 		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
-		self.BumpTime = 100.0 # Fs
+		self.BumpTime = 0.2 # Fs
 		self.MaxBumps = PARAMS["MetaMaxBumps"]
 		self.bump_height = PARAMS["MetaMDBumpHeight"]
 		self.bump_width = PARAMS["MetaMDBumpWidth"]
