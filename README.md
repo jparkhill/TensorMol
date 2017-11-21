@@ -62,8 +62,9 @@ more expensive.
 
 ## Usage:
  - ```import TensorMol as tm```
- - We are working on /doc/Tutorials, but it's sparse now.
- - There is also a lot of examples in /samples/test-ZZZ.py and IPython notebooks in /notebooks.
+ - We are working on /doc/Tutorials, but it's sparse now. We've done a lot of re-writing, and so if you are looking for good examples, look for /samples files with recent commits.
+ - A collection of tests are located in samples/test_tensormol01.py but this requires first downloading the trained networks from the Arxiv paper.
+ - `python samples/test_tensormol01.py`
  - IPI interface: start server: ~/i-pi/i-pi samples/i-pi_interface/H2O_cluster.xml > log &; run client: python test_ipi.py
 
 
@@ -93,6 +94,7 @@ The associated energy surface is shown below.
 <img src="doc/images/tyrosine.png" width="300">
 
 ## Publications and Press:
+ - Kun Yao, John E. Herr, David W. Toth, Ryker Mcintyre, John Parkhill. The TensorMol-0.1 Model Chemistry: a Neural Network Augmented with Long-Range Physics. [Arxiv](https://arxiv.org/abs/1711.06385)
  - Writeup in [Chemistry World](https://www.chemistryworld.com/news/neural-network-predicts-bond-energies-like-a-pro/3007598.article)
  - Kun Yao, John E. Herr, Seth N. Brown, & John Parkhill. Intrinsic Bond Energies from a Bonds-in-Molecules Neural Network. Journal of Physical Chemistry Letters (2017). DOI: [10.1021/acs.jpclett.7b01072](http://pubs.acs.org/doi/abs/10.1021/acs.jpclett.7b01072)
  - Kun Yao, John Herr, & John Parkhill. The Many-body Expansion Combined with Neural Networks. Journal of Chemical Physics (2016). DOI:  [10.1063/1.4973380](http://aip.scitation.org/doi/abs/10.1063/1.4973380?journalCode=jcp)
