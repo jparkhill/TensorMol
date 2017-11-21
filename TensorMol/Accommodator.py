@@ -28,6 +28,27 @@ class Force:
 		"""
 		return np.zeros(x.shape)
 
+class DenseForce:
+	def __init__(self, rng_=1.0, NeedsTriples_=False):
+		"""
+		This is a force which has a local sight radius.
+		and is then broken into overlapping local forces. 
+		"""
+		self.range = rng_
+		return
+	def __call__(self, z, x, NZ, DoForce = True):
+		"""
+		Generic call to a linear scaling local force.
+
+		Args:
+			z: atomic number vector
+			x: atoms X 3 coordinate vector.
+			NZ: pair or triples matrix. (NZP X 2)
+		returns:
+			energy number, and force vector with same shape as x.
+		"""
+		return np.zeros(x.shape)
+
 class ForceAdaptor:
 	def __init__(self, m):
 		"""
@@ -69,4 +90,4 @@ class ForceAdaptor:
 			self.maxrng = max([f.range for f in self.LocalForces])
 		for i in range(len(self.Forces)):
 			# Compute all the atoms within the sensory radius
-			# and all forced atoms, and increment the forces. 
+			# and all forced atoms, and increment the forces.

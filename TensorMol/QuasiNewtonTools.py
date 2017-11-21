@@ -279,7 +279,7 @@ def HarmonicSpectra(f_, x_, at_, grad_=None, eps_ = 0.001, WriteNM_=False, Mu_ =
 	if (WriteNM_):
 		for i in range(3*n):
 			nm = np.zeros(3*n)
-		        for j,mi in enumerate(m_):
+			for j,mi in enumerate(m_):
 				nm[3*j:3*(j+1)] = v[3*j:3*(j+1),i]/np.sqrt(mi/ELECTRONPERPROTONMASS)
 			#nm /= np.sqrt(np.sum(nm*nm))
 			nm = nm.reshape((n,3))

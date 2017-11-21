@@ -156,29 +156,29 @@ def TrainPrepare():
 		WB97XDAtom[6]=-37.8387398698
 		WB97XDAtom[7]=-54.5806161811
 		WB97XDAtom[8]=-75.0586028656
-                a = MSet("H2O_wb97xd_1to21_with_prontonated")
-                dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated.dat", "rb"))
-                for mol_index, dic in enumerate(dic_list):
-                        atoms = []
+		a = MSet("H2O_wb97xd_1to21_with_prontonated")
+		dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated.dat", "rb"))
+		for mol_index, dic in enumerate(dic_list):
+		    atoms = []
 			print ("mol_index:", mol_index)
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
+			for atom in dic['atoms']:
+				atoms.append(AtomicNumber(atom))
+			atoms = np.asarray(atoms, dtype=np.uint8)
 			#print (dic.keys())
 			#print (dic['xyz'])
-                        mol = Mol(atoms, dic['xyz'])
-                        #mol.properties['charges'] = dic['charges']
-                        mol.properties['dipole'] = np.asarray(dic['dipole'])
-                        #mol.properties['quadropole'] = dic['quad']
-                        mol.properties['energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
+			mol = Mol(atoms, dic['xyz'])
+			#mol.properties['charges'] = dic['charges']
+			mol.properties['dipole'] = np.asarray(dic['dipole'])
+			#mol.properties['quadropole'] = dic['quad']
+			mol.properties['energy'] = dic['scf_energy']
+			mol.properties['gradients'] = dic['gradients']
 			mol.properties['atomization'] = dic['scf_energy']
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= WB97XDAtom[mol.atoms[i]]
-                        a.mols.append(mol)
+			a.mols.append(mol)
 		#a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
 		#print(a.mols[100].properties)
-                a.Save()
+		a.Save()
 
 	if (0):
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
@@ -245,26 +245,26 @@ def TrainPrepare():
 		WB97XDAtom[8]=-75.0586028656
 		ch4_min_atomization = -0.6654760227400112
 		water_avg_atomization = -0.35551059977287
-                a = MSet("H2O_wb97xd_1to21_with_prontonated_with_ch4")
-                dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated_with_ch4.dat", "rb"))
-                for mol_index, dic in enumerate(dic_list):
-                        atoms = []
+		a = MSet("H2O_wb97xd_1to21_with_prontonated_with_ch4")
+		dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated_with_ch4.dat", "rb"))
+		for mol_index, dic in enumerate(dic_list):
+			atoms = []
 			print ("mol_index:", mol_index)
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
+			for atom in dic['atoms']:
+				atoms.append(AtomicNumber(atom))
+			atoms = np.asarray(atoms, dtype=np.uint8)
 			#print (dic.keys())
 			#print (dic['xyz'])
-                        mol = Mol(atoms, dic['xyz'])
-                        #mol.properties['charges'] = dic['charges']
-                        mol.properties['dipole'] = np.asarray(dic['dipole'])
-                        #mol.properties['quadropole'] = dic['quad']
-                        mol.properties['energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
+			mol = Mol(atoms, dic['xyz'])
+			#mol.properties['charges'] = dic['charges']
+			mol.properties['dipole'] = np.asarray(dic['dipole'])
+			#mol.properties['quadropole'] = dic['quad']
+			mol.properties['energy'] = dic['scf_energy']
+			mol.properties['gradients'] = dic['gradients']
 			mol.properties['atomization_old'] = dic['scf_energy']
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization_old'] -= WB97XDAtom[mol.atoms[i]]
-                        a.mols.append(mol)
+			a.mols.append(mol)
 			if 6 in mol.atoms: # contain one CH4
 				mol.properties['atomization'] = mol.properties['atomization_old'] - (mol.NAtoms()-5)/3*water_avg_atomization - ch4_min_atomization
 			else:
@@ -272,7 +272,7 @@ def TrainPrepare():
 			print ("mol.properties['atomization']:", mol.properties['atomization'])
 		#a.mols[10000].WriteXYZfile(fname="H2O_sample.xyz")
 		#print(a.mols[100].properties)
-                a.Save()
+		a.Save()
 def Train():
 	if (0):
 		a = MSet("H2O_wb97xd_1to10")
@@ -1598,6 +1598,51 @@ def GetKunsSmoothNoDropout(a):
 	manager=TFMolManage("Mol_H2O_wb97xd_1to21_with_prontonated_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_act_sigmoid100_rightalpha_nodropout",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	return manager
 
+def GetJohns():
+	"""
+	Returns a routine mapping mols to energy.
+	"""
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
+	PARAMS["SH_NRAD"] = 32
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["NeuronType"] = 'elu'
+	PARAMS["tf_prec"] = 'tf.float32'
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Nov_13_11.35.07_2017", network_type = "BehlerParinelloDirectGauSH")
+	return manager
+
+def TestJohnWater():
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+	m = a.mols[0]
+	manager = GetJohns()
+	def GetAPeriodicForce(m_):
+		def Frc(x_,DoForce=True):
+			tmp = manager.evaluate_mol(Mol(m_.atoms,x_),DoForce)
+			if (DoForce):
+				return tmp[0],tmp[1]*JOULEPERHARTREE
+			else:
+				return tmp
+		return Frc
+	PARAMS["OptMaxCycles"]=60
+	F = GetAPeriodicForce(m)
+	print("F at 0", F(m.coords))
+	Opt = GeomOptimizer(F)
+	a.mols[-1] = Opt.Opt(a.mols[-1])
+	m = a.mols[-1]
+	# Tesselate that water to create a box
+	ntess = 4
+	latv = 2.8*np.eye(3)
+	# Start with a water in a ten angstrom box.
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(m)
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+	nreal = mt.NAtoms()
+	mt.Distort(0.01)
+	PARAMS["OptMaxCycles"]=100
+	F = GetAPeriodicForce(mt)
+	Opt = GeomOptimizer(F)
+	mt = Opt.Opt(mt,"UCopt")
+
 def BoxAndDensity():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.
@@ -1605,7 +1650,6 @@ def BoxAndDensity():
 	a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	m = a.mols[0]
 	manager = GetKunsSmoothNoDropout(a)
-
 	def EnAndForceAPeriodic(x_):
 		"""
 		This is the primitive form of force routine required by PeriodicForce.
@@ -1614,7 +1658,6 @@ def BoxAndDensity():
 		en,f = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
 		#print("EnAndForceAPeriodic: ", en,f)
 		return en[0], f[0]
-
 	def EnAndForce(z_, x_, nreal_, DoForce = True):
 		"""
 		This is the primitive form of force routine required by PeriodicForce.
@@ -1626,7 +1669,6 @@ def BoxAndDensity():
 		else:
 			en = manager.EvalBPDirectEEUpdateSinglePeriodic(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], nreal_, True, DoForce)
 			return en[0]
-
 	if 0:
 		# opt the first water.
 		PARAMS["OptMaxCycles"]=60
@@ -1770,7 +1812,6 @@ def BoxAndDensity():
 	PARAMS["MDdt"] = 0.05 # In fs.
 	traj = PeriodicVelocityVerlet(PF,"PeriodicWaterMD")
 	traj.Prop()
-
 def TestSmoothIR():
 	# Prepare a Box of water at a desired density
 	# from a rough water molecule.
@@ -1895,4 +1936,5 @@ def TestNeb():
 #TestSmoothIR()
 #BoxAndDensity()
 #TestSmoothIR()
-TestNeb()
+#TestNeb()
+TestJohnWater()

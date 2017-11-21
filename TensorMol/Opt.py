@@ -52,9 +52,7 @@ class GeomOptimizer:
 		"""
 		self.m = m
 		rmsdisp = 10.0
-		maxdisp = 10.0
 		rmsgrad = 10.0
-		maxgrad = 10.0
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
@@ -63,6 +61,7 @@ class GeomOptimizer:
 		while( step < self.max_opt_step and rmsgrad > self.thresh and (rmsdisp > 0.000001 or step<5) ):
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords, energy, frc = CG(m.coords)
+			print("Frc", frc)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/m.coords.shape[0]
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/m.coords.shape[0]
 			LOGGER.info("step: %i energy: %0.5f rmsgrad: %0.5f rmsdisp: %0.5f ", step , energy, rmsgrad, rmsdisp)
@@ -94,7 +93,6 @@ class GeomOptimizer:
 		rmsdisp = 10.0
 		maxdisp = 10.0
 		rmsgrad = 10.0
-		maxgrad = 10.0
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
@@ -115,9 +113,6 @@ class GeomOptimizer:
 		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
 		return prev_m
 
-
-
-
 	def Opt_LS(self,m, filename="OptLog",Debug=False):
 		"""
 		Optimize with Steepest Descent + Line search using An EnergyAndForce Function.
@@ -129,7 +124,6 @@ class GeomOptimizer:
 		rmsdisp = 10.0
 		maxdisp = 10.0
 		rmsgrad = 10.0
-		maxgrad = 10.0
 		step=0
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)

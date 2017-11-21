@@ -4,7 +4,6 @@ import random
 PARAMS["max_checkpoints"] = 3
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
-
 # Takes two nearly identical crystal lattices and interpolates a core/shell structure, must be oriented identically and stoichiometric
 def InterpolateGeometries():
 	a=MSet('cspbbr3_tess')

@@ -9,6 +9,7 @@ from .Sets import *
 from .TFManage import *
 from .Electrostatics import *
 from .QuasiNewtonTools import *
+from .Statistics import *
 
 def VelocityVerletStep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	"""
@@ -128,39 +129,38 @@ class NoseThermostat(Thermostat):
 		else:
 			return x,v,a,e
 
-class NosePerParticleThermostat(Thermostat):
+class LangevinThermostat(Thermostat):
 	def __init__(self,m_,v_):
 		"""
-		This
+		Velocity Verlet step with a Langevin Thermostat
 		"""
 		self.m = m_.copy()
 		self.N = len(m_)
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
-		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
-		self.tau = 40.0*PARAMS["MDdt"]
-		self.Q = self.kT*self.tau*self.tau
-		self.eta = np.zeros(self.N)
-		self.name = "NosePerParticle"
+		self.gamma = 1.0 # friction of the thermostat.
+		self.name = "Langevin"
 		self.Rescale(v_)
 		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
 		return
-	def step(self,f_, a_, x_, v_, m_, dt_, fande_=None , frc_ = True):
+
+	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_ = True):
 		"""
 		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
 		"""
-		x = x_ + v_*dt_ + (1./2.)*(a_ - np.einsum("i,ij->ij",self.eta,v_))*dt_*dt_
-		vdto2 = v_ + (1./2.)*(a_ - np.einsum("i,ij->ij",self.eta,v_))*dt_
+		# Recompute these stepwise in case of variable T.
+		x = x_ + v_*dt_ + (1./2.)*(a_)*dt_*dt_
 		e, f_x_ = 0.0, None
 		if (fande_==None):
 			f_x_ = f_(x)
 		else:
 			e, f_x_ = fande_(x)
 		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
-		kes = (1./2.)*np.einsum("i,i->i",np.einsum("ia,ia->i",v_,v_),m_)
-		etadto2 = self.eta + (dt_/(2.*self.Q))*(kes - (((3.*self.N+1)/2.))*self.kT)
-		kedto2s = (1./2.)*np.einsum("i,i->i",np.einsum("ia,ia->i",vdto2,vdto2),m_)
-		self.eta = etadto2 + (dt_/(2.*self.Q))*(kedto2s - (((3.*self.N+1)/2.))*self.kT)
-		v = np.einsum("ij,i->ij",(vdto2 + (dt_/2.)*a),1.0/(1 + (dt_/2.)*self.eta))
+		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		sigmas = np.sqrt(2.0*self.gamma*self.m*self.kT) # Mass is in kg,
+		print(sigmas)
+		dps = np.array([[np.random.normal(0.0,s) for i in range(3)] for s in sigmas])
+		print(dps)
+		v = v_ + 0.5*(a+a_)*dt_ - self.gamma*v_*dt_ + dps*dt_
 		if frc_:
 			return x,v,a,e,f_x_
 		else:
@@ -288,9 +288,9 @@ class VelocityVerlet:
 		Molecular dynamics
 
 		Args:
-			f_: a force routine
+			f_: a force routine (optionally None if EandF_ is nonzero)
 			g0_: initial molecule.
-			EandF_: An energy,force routine.
+			EandF_: An energy,force routine. (optionally None)
 			PARAMS["MDMaxStep"]: Number of steps to take.
 			PARAMS["MDTemp"]: Temperature to initialize or Thermostat to.
 			PARAMS["MDdt"]: Timestep.
@@ -310,6 +310,8 @@ class VelocityVerlet:
 		if (EandF_ != None):
 			self.EPot0 , self.f0 = self.EnergyAndForce(g0_.coords)
 		self.EPot = self.EPot0
+		self.EnergyStat = OnlineEstimator(self.EPot0)
+		self.RealPot = 0.0 # The real potential energy.
 		self.t = 0.0
 		self.KE = 0.0
 		self.atoms = g0_.atoms.copy()
@@ -329,8 +331,8 @@ class VelocityVerlet:
 			self.Tstat = Thermostat(self.m,self.v)
 		elif (PARAMS["MDThermostat"]=="Nose"):
 			self.Tstat = NoseThermostat(self.m,self.v)
-		elif (PARAMS["MDThermostat"]=="NosePerParticle"):
-			self.Tstat = NosePerParticleThermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="Langevin"):
+			self.Tstat = LangevinThermostat(self.m,self.v)
 		elif (PARAMS["MDThermostat"]=="NoseHooverChain"):
 			self.Tstat = NoseChainThermostat(self.m, self.v)
 		else:
@@ -366,7 +368,7 @@ class VelocityVerlet:
 			self.md_log[step,4] = self.KE
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
-
+			avE, Evar = self.EnergyStat(self.EPot) # I should log these.
 			self.KE = KineticEnergy(self.v,self.m)
 			Teff = (2./3.)*self.KE/IDEALGASR
 
@@ -376,7 +378,7 @@ class VelocityVerlet:
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
 
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot)*KJPERHARTREE, Teff)
+			LOGGER.info("%s Step: %i time: %.1f(fs) KE(kJ): %.5f PotE(Eh): %.5f ETot(kJ/mol): %.5f Teff(K): %.5f", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot)*KJPERHARTREE, Teff)
 			#LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
 			print(("per step cost:", time.time() -t ))
 		return

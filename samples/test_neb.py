@@ -153,6 +153,70 @@ def TestUrey():
 	Opt = MetaOptimizer(F,m,Box_=False)
 	Opt.Opt(m)
 
+def MetadynamicsStatistics():
+	"""
+	Gather statistics about the metadynamics exploration process varying bump depth, and width.
+	"""
+	sugarXYZ="""23
+	Comment: ;;;Step 49;;;Energy -3.59693651142
+	C   0.469967402303  -0.184327130198  -0.917373448369
+	O   -0.860722187686  0.100808621215  -0.54490767945
+	C   -1.33117697015  -0.50864531104  0.653969200715
+	C   -0.43674566003  -0.0711904472758  1.80766028994
+	O   -0.77002931029  -0.682382709637  3.03710172981
+	C   1.00094194018  -0.472728470218  1.52537394557
+	C   1.47651659856  0.082882226831  0.194808971819
+	O   1.67882168598  1.46505030148  0.293016270788
+	O   1.85344147164  0.0627404787338  2.51095975747
+	C   -2.7831517316  -0.10480234569  0.824111204699
+	O   0.624777981739  -1.51188274174  -1.31544630493
+	H   -1.26892701887  -1.60055527765  0.558878833361
+	H   -0.477952648862  1.02554438685  1.88903361815
+	H   1.04603853328  -1.56934691498  1.51216391872
+	H   2.41653181894  -0.42448501622  -0.0663941448752
+	H   0.686722010962  0.49969621976  -1.74595815766
+	H   -0.187352616832  -1.77441341862  -1.74973034436
+	H   2.04109700394  1.59384830863  1.1769462844
+	H   1.58593984973  -0.300556807915  3.35779231898
+	H   -1.59337604893  -0.319220019115  3.36340560897
+	H   -2.86433382659  0.961010767071  1.05113694235
+	H   -3.32279481219  -0.294255086797  -0.104506847018
+	H   -3.26848346524  -0.671549613462  1.61956803093
+	"""
+	m = Mol()
+	m.FromXYZString(sugarXYZ)
+	def GetEnergyForceForMol(m):
+		s = MSet()
+		s.mols.append(m)
+		manager = GetChemSpider12(s)
+		def EnAndForce(x_, DoForce=True):
+			tmpm = Mol(m.atoms,x_)
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(tmpm, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			if DoForce:
+				return energy, force
+			else:
+				return energy
+		return EnAndForce
+	F = GetEnergyForceForMol(m)
+
+	Opt = GeomOptimizer(F)
+	m = Opt.Opt(m)
+	PARAMS["MDdt"] = 0.2 # In fs.
+	PARAMS["MDMaxStep"] = 4000
+	PARAMS["MetaBumpTime"] = 10.0
+	PARAMS["MetaMaxBumps"] = 500
+	PARAMS["MetaMDBumpHeight"] = 0.000
+	PARAMS["MetaMDBumpWidth"] = 0.5
+	PARAMS["MetaBowlK"] = 0.0
+	PARAMS["MDThermostat"]="Langevin"
+	PARAMS["MDTemp"]=300.0
+	PARAMS["MDV0"]=None
+	traj = MetaDynamics(None, m,"MetaMD_050_01",F)
+	traj.Prop()
+
 #Eval()
 #TestBetaHairpin()
-TestUrey()
+#TestUrey()
+MetadynamicsStatistics()

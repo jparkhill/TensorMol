@@ -87,7 +87,7 @@ class TMParams(dict):
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		self["train_energy_gradients"] = True
 		# Opt Parameters
-		self["OptMaxCycles"]=20
+		self["OptMaxCycles"]=50
 		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.1
@@ -125,6 +125,7 @@ class TMParams(dict):
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
 		# Metadynamics parameters
+		self["MetaBumpTime"] = 15.0
 		self["MetaBowlK"] = 0.0
 		self["MetaMaxBumps"] = 500
 		self["MetaMDBumpHeight"] = 0.05

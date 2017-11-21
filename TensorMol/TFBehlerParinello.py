@@ -1200,7 +1200,13 @@ class BehlerParinelloDirectGauSH:
 			xyzs (np.float): numpy array of atomic coordinates
 			Zs (np.int32): numpy array of atomic numbers
 		"""
-		if not self.sess:
+		if (mol.NAtoms() > self.max_num_atoms):
+			self.max_num_atoms = mol.NAtoms()
+			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
+			self.assign_activation()
+			self.num_atoms = self.max_num_atoms
+			self.evaluate_prepare()
+		elif not self.sess:
 			print("loading the session..")
 			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
 			self.assign_activation()

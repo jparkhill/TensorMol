@@ -3240,7 +3240,6 @@ class ANISym:
 			print (np.array_equal(A[1][i], C[1][i]))
 		#print ("B:",B[0][:200])
 
-
 	def Generate_ANISYM(self):
 		xyzs = np.zeros((self.nmol, self.MaxAtoms, 3),dtype=np.float64)
 		qs = np.zeros((self.nmol, self.MaxAtoms),dtype=np.float64)

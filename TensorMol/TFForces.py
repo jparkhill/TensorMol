@@ -171,7 +171,7 @@ class BumpHolder(ForceHolder):
 			self.BowlKv = tf.Variable(self.BowlK,dtype = tf.float64)
 			init = tf.global_variables_initializer()
 			if (self.Type=="LR"):
-				self.BE = BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
+				self.BE = -1.0*BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 				self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
 			else:
 				self.BE = BumpEnergyMR(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)

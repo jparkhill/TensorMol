@@ -24,6 +24,7 @@ from __future__ import print_function
 __version__="0.1"
 from TensorMol.Util import *
 from TensorMol.PhysicalData import *
+from TensorMol.Statistics import *
 from TensorMol.Sets import *
 from TensorMol.MolFrag import *
 from TensorMol.Opt import *
