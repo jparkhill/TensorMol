@@ -2200,7 +2200,7 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		print( "testing...")
 		self.print_training(step, test_loss, test_energy_loss, test_grads_loss, num_of_mols, duration)
 		LOGGER.info("Element factors: %s", element_factors)
- 		LOGGER.info("Element pair factors: %s", element_pair_factors)
+		LOGGER.info("Element pair factors: %s", element_pair_factors)
 		return test_loss
 
 	def train(self, mxsteps, continue_training= False):
