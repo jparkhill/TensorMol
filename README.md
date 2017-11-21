@@ -47,9 +47,9 @@ python test.py
 ```
 
 ## Test example for TensorMol01:
- - Download our pretrained neural networks (network.tar.gz). [Networks for water and molecules that only contains CHON](https://drive.google.com/drive/folders/1IfWPs7i5kfmErIRyuhGv95dSVtNFo0e_?usp=sharing) (The file is about 6 Gigabyte. This may take a while)
+ - Download our pretrained neural networks (network.tar.gz). [Networks for water and molecules that only contains C, H, O, N](https://drive.google.com/drive/folders/1IfWPs7i5kfmErIRyuhGv95dSVtNFo0e_?usp=sharing) (The file is about 6 Gigabyte. This may take a while)
  - Copy the trained networks file into TensorMol folder. Unzip them. The networks should be in './networks' folder.
- - Copy the test script into the tensormol folder:```cp samples/test_tensormol01.py .```. Run the script: ```python test_tensormol01.py```. The test sample contains geometry optimization, molecular dynamic, harmonic IR spectrum and realtime IR spectrum.  
+ - Copy the test script into the tensormol folder:```cp samples/test_tensormol01.py .``` Run the script: ```python test_tensormol01.py``` The test sample contains geometry optimization, molecular dynamic, harmonic IR spectrum and realtime IR spectrum.  
 
 ## Timing Information
 TensorMol is robust and fast. You can get an BP+electrostatic energy and force of this monstrous cube of 24,000 atoms
