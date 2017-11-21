@@ -316,10 +316,7 @@ class TensorMolDataDirect:
 		self.elements = self.molecule_set.AtomTypes()
 		self.max_num_atoms = self.molecule_set.MaxNAtoms() #Used to pad data so that each molecule is the same size
 		self.num_molecules = len(self.molecule_set.mols)
-		# if embedding_type == "symmetry_functions":
-		# 	self.element_pairs = np.array([[self.elements[i], self.elements[j]] for i in range(len(self.elements)) for j in range(i, len(self.elements))])
-		# 	self.radial_grid_cutoff = PARAMS["AN1_r_Rc"]
-		# 	self.angular_grid_cutoff = PARAMS["AN1_a_Rc"]
+		self.Ree_cut = PARAMS["EECutoffOff"]
 		return
 
 	def clean_scratch(self):
@@ -356,17 +353,19 @@ class TensorMolDataDirect:
 		Zs = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
 		num_atoms = np.zeros((self.num_molecules), dtype = np.int32)
 		if self.learning_target == "atomization":
-			labels = np.zeros((self.num_molecules), dtype = np.float64)
+			energies = np.zeros((self.num_molecules), dtype = np.float64)
+			dipoles = np.zeros((self.num_molecules, 3), dtype = np.float64)
 		else:
 			raise Exception("TensorMolDataDirect currently only supports atomization energy for learning target")
 		gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float64)
 		for i, mol in enumerate(self.molecule_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
-			labels[i] = mol.properties["atomization"]
+			energies[i] = mol.properties["atomization"]
+			dipoles[i] = mol.properties["dipole"]
 			num_atoms[i] = mol.NAtoms()
 			gradients[i][:mol.NAtoms()] = mol.properties["gradients"]
-		return xyzs, Zs, labels, num_atoms, gradients
+		return xyzs, Zs, energies, dipoles, num_atoms, gradients
 
 	def load_data_to_scratch(self):
 		"""
@@ -382,7 +381,7 @@ class TensorMolDataDirect:
 		Note:
 			Also determines mean stoichiometry
 		"""
-		self.xyzs, self.Zs, self.labels, self.num_atoms, self.gradients = self.load_data()
+		self.xyzs, self.Zs, self.energies, self.dipoles, self.num_atoms, self.gradients = self.load_data()
 		self.num_test_cases = int(self.test_ratio * self.num_molecules)
 		self.last_train_case = int(self.num_molecules - self.num_test_cases)
 		self.num_train_cases = self.last_train_case
@@ -401,10 +400,13 @@ class TensorMolDataDirect:
 		self.train_scratch_pointer += batch_size
 		xyzs = self.xyzs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		Zs = self.Zs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		labels = self.labels[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		energies = self.energies[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		dipoles = self.dipoles[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		num_atoms = self.num_atoms[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		gradients = self.gradients[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		return [xyzs, Zs, labels, gradients, num_atoms]
+		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
+		rad_eep = NLEE.buildPairs(self.Ree_cut)
+		return [xyzs, Zs, energies, dipoles, gradients, num_atoms, rad_eep]
 
 	def get_test_batch(self, batch_size):
 		if batch_size > self.num_test_cases:
@@ -415,10 +417,13 @@ class TensorMolDataDirect:
 		self.test_scratch_pointer += batch_size
 		xyzs = self.xyzs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		Zs = self.Zs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		labels = self.labels[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		energies = self.energies[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		dipoles = self.dipoles[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		num_atoms = self.num_atoms[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		gradients = self.gradients[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		return [xyzs, Zs, labels, gradients, num_atoms]
+		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
+		rad_eep = NLEE.buildPairs(self.Ree_cut)
+		return [xyzs, Zs, energies, dipoles, gradients, num_atoms, rad_eep]
 
 	def save(self):
 		self.clean_scratch()

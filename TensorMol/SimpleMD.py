@@ -85,7 +85,6 @@ class Thermostat:
 			Teff = (2.0/(3.0*IDEALGASR))*pow(10.0,10.0)*(1./2.)*self.m[i]*np.einsum("i,i",v_[i],v_[i])
 			if (Teff != 0.0):
 				v_[i] *= np.sqrt(self.T/(Teff))
-		print("Initial velocities:", v_*BOHRPERA*FSPERAU)
 		return
 
 class NoseThermostat(Thermostat):
@@ -326,6 +325,8 @@ class VelocityVerlet:
 			np.random.seed()   # reset random seed
 			self.v = np.random.randn(*self.x.shape)
 			Tstat = Thermostat(self.m, self.v) # Will rescale self.v appropriately.
+		elif PARAMS["MDV0"]=="Thermal":
+			self.v = np.random.normal(size=self.x.shape) * np.sqrt(1.38064852e-23 * self.T / self.m)[:,None]
 		self.Tstat = None
 		if (PARAMS["MDThermostat"]=="Rescaling"):
 			self.Tstat = Thermostat(self.m,self.v)
@@ -423,7 +424,7 @@ class IRTrajectory(VelocityVerlet):
 			self.ChargeFunction = q_
 			self.q0 = self.ChargeFunction(self.x)
 			self.qs = self.q0.copy()
-			self.Mu0 = Dipole(self.x, self.ChargeFunction(self.x))
+			self.Mu0 = Dipole_Naive(self.x, self.ChargeFunction(self.x))
 		else:
 			self.UpdateCharges = False
 		# This can help in case you had a bad initial geometry
@@ -479,7 +480,7 @@ class IRTrajectory(VelocityVerlet):
 				self.qs = self.ChargeFunction(self.x)
 			else:
 				self.qs = self.q0
-			self.Mu = Dipole(self.x, self.qs) - self.Mu0
+			self.Mu = Dipole_Naive(self.x, self.qs) - self.Mu0
 			self.mu_his[step,0] = self.t
 			self.mu_his[step,1:4] = self.Mu.copy()
 			self.mu_his[step,4] = self.KE
@@ -499,7 +500,7 @@ class IRTrajectory(VelocityVerlet):
 				LOGGER.info(" -- You didn't start from the global minimum -- ")
 				LOGGER.info("   -- I'mma set you back to the beginning -- ")
 				print(self.x)
-				self.Mu0 = Dipole(self.x, self.qs)
+				self.Mu0 = Dipole_Naive(self.x, self.qs)
 				step=0
 
 			self.KE = KineticEnergy(self.v,self.m)

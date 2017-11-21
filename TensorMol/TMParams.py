@@ -76,6 +76,9 @@ class TMParams(dict):
 		self["ConvKernelSize"] = [[8,1],[4,1]]
 		self["ConvStrides"] = [[8,1],[4,1]]
 		self["sigmoid_alpha"] = 100.0
+		self["EnergyScalar"] = 1.0
+		self["GradScalar"] = 1.0/20.0
+		self["DipoleScaler"]=1.0
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None

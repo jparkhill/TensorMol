@@ -27,7 +27,7 @@ def ReadSmallMols(set_="SmallMols", dir_="/media/sdb2/jeherr/TensorMol/datasets/
 	print len(a.mols), " Molecules"
 	a.Save()
 
-def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "forces", "dipole"]):
+def read_unpacked_set(set_name="chemspider12", paths="/media/sdb2/jeherr/TensorMol/datasets/chemspider12/*/", properties=["name", "energy", "gradients", "dipole"]):
 	import glob
 	a=MSet(set_name)
 	for path in glob.iglob(paths):
@@ -162,12 +162,12 @@ def TestMetadynamics():
 	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
-	PARAMS["MDdt"] = 1.0
+	PARAMS["MDdt"] = 0.02
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 20
+	PARAMS["MDMaxStep"] = 100
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 300.0
-	# PARAMS["MDV0"] = None
+	PARAMS["MDV0"] = "Thermal"
 	meta = MetaDynamics(ForceField, m)
 	meta.Prop()
 
@@ -223,6 +223,7 @@ def TestTFGauSH():
 	# for i in range(a.mols[0].atoms.shape[0]):
 	# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
 	tmp2 = sess.run(tmp, options=options, run_metadata=run_metadata)
+	print tmp2
 	# print tmp2[1]
 	# print tmp2.shape
 	# print tmp3
@@ -268,148 +269,6 @@ def train_forces_GauSH_direct(set_ = "SmallMols"):
 	d = Digester(TreatedAtoms, name_="GauSH", OType_="Force")
 	tset = TensorDataDirect(a,d)
 	manager=TFManage("",tset,True,"fc_sqdiff_GauSH_direct")
-
-def TestTFSym():
-	t1 = time.time()
-	np.set_printoptions(threshold=1000000)
-	Ra_cut = PARAMS["AN1_a_Rc"]
-	Rr_cut = PARAMS["AN1_r_Rc"]
-	a=MSet("SmallMols_rand")
-	a.Load()
-	t1 = time.time()
-	maxnatoms = a.MaxNAtoms()
-	zlist = []
-	xyzlist = []
-	natom = np.zeros((1), dtype=np.int32)
-	for i, mol in enumerate(a.mols):
-		paddedxyz = np.zeros((maxnatoms,3), dtype=np.float64)
-		paddedxyz[:mol.atoms.shape[0]] = mol.coords
-		paddedz = np.zeros((maxnatoms), dtype=np.int32)
-		paddedz[:mol.atoms.shape[0]] = mol.atoms
-		xyzlist.append(paddedxyz)
-		zlist.append(paddedz)
-		natom[i] = mol.NAtoms()
-		if i == 0:
-			break
-	xyzstack = tf.stack(xyzlist)
-	zstack = tf.stack(zlist)
-	num_atoms = tf.stack(natom)
-	xyz_np = np.stack(xyzlist)
-	z_np = np.stack(zlist)
-	eles = [1,6,7,8]
-	n_eles = len(eles)
-	eles_np = np.asarray(eles)
-	eles_pairs = []
-	for i in range (len(eles)):
-		for j in range(i, len(eles)):
-			eles_pairs.append([eles[i], eles[j]])
-	eles_pairs_np = np.asarray(eles_pairs)
-	# NL = NeighborListSet(xyz_np, natom, True, True, ele_= z_np, sort_ = True)
-	# rad_p, ang_t, mil_jk, jk_max = NL.buildPairsAndTriplesWithEleIndex(Rr_cut, Ra_cut, ele = eles_np, elep = eles_pairs_np)
-	# Radp_pl=tf.Variable(rad_p, dtype=tf.int32,name="RadialPairs")
-	# Angt_pl=tf.Variable(ang_t, dtype=tf.int32,name="AngularTriples")
-	# mil_jkt = tf.Variable(mil_jk, dtype=tf.int32)
-	Ele = tf.Variable(eles_np, trainable=False, dtype = tf.int32)
-	Elep = tf.Variable(eles_pairs_np, trainable=False, dtype = tf.int32)
-
-	Ra_cut = PARAMS["AN1_a_Rc"]
-	Rr_cut = PARAMS["AN1_r_Rc"]
-	zetas = np.array([[PARAMS["AN1_zeta"]]], dtype = np.float64)
-	etas = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
-	AN1_num_a_As = PARAMS["AN1_num_a_As"]
-	AN1_num_a_Rs = PARAMS["AN1_num_a_Rs"]
-	thetas_np = np.array([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)])
-	thetas = tf.Variable([ 2.0*Pi*i/AN1_num_a_As for i in range (0, AN1_num_a_As)], dtype = tf.float64)
-	rs_np = np.array([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)])
-	rs =  tf.Variable([ Ra_cut*i/AN1_num_a_Rs for i in range (0, AN1_num_a_Rs)], dtype = tf.float64)
-
-	etas_R = np.array([[PARAMS["AN1_eta"]]], dtype = np.float64)
-	AN1_num_r_Rs = PARAMS["AN1_num_r_Rs"]
-	rs_R =  np.array([ Rr_cut*i/AN1_num_r_Rs for i in range (0, AN1_num_r_Rs)], dtype = np.float64)
-
-
-	# p1 = np.tile(np.reshape(thetas,[AN1_num_a_As,1,1]),[1,AN1_num_a_Rs,1])
-	# p2 = np.tile(np.reshape(rs,[1,AN1_num_a_Rs,1]),[AN1_num_a_As,1,1])
-
-	zeta = PARAMS["AN1_zeta"]
-	eta = PARAMS["AN1_eta"]
-	PARAMS["ANES"] = np.array([2.20, 2.55, 3.04, 3.44])
-
-	#Define radial grid parameters
-	SFPr2 = np.transpose(np.reshape(rs_R,[AN1_num_r_Rs,1]), [1,0])
-
-	p1 = np.tile(np.reshape(thetas_np,[AN1_num_a_Rs,1,1]),[1,AN1_num_a_Rs,1])
-	p2 = np.tile(np.reshape(rs_np,[1,AN1_num_a_Rs,1]),[AN1_num_a_Rs,1,1])
-	# SFPa2 = np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1])
-
-	# self.HasANI1PARAMS = True
-
-	SFPa2 = tf.Variable(np.transpose(np.concatenate([p1,p2],axis=2), [2,0,1]), trainable= False, dtype = tf.float64)
-	SFPr2 = tf.Variable(np.transpose(np.reshape(rs_R,[AN1_num_r_Rs,1]), [1,0]), trainable= False, dtype = tf.float64)
-	SFPr = tf.Variable(rs_R, trainable= False, dtype = tf.float64)
-	Rr_cut = tf.Variable(PARAMS["AN1_r_Rc"], trainable=False, dtype = tf.float64)
-	Ra_cut = tf.Variable(PARAMS["AN1_a_Rc"], trainable=False, dtype = tf.float64)
-	zeta = tf.Variable(PARAMS["AN1_zeta"], trainable=False, dtype = tf.float64)
-	eta = tf.Variable(PARAMS["AN1_eta"], trainable=False, dtype = tf.float64)
-	element_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float64)
-	element_pair_factors = tf.Variable([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], trainable=True, dtype=tf.float64)
-	# Scatter_Sym, Sym_Index = TFSymSet_Scattered_Linear(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl)
-	tmp1, tmp2, tmp3 = tf_symmetry_functions_2(xyzstack, zstack, Ele, Elep, Rr_cut, Ra_cut, SFPr, rs, thetas, zeta, eta)
-	# tmp2 = tf_symmetry_functions(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
-	# sym_tmp2, idx_tmp2 = TFSymSet_Scattered_Linear_tmp(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt)
-	# tmp = TFSymSet_Scattered_Linear_channel(xyzstack, zstack, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, Radp_pl, Angt_pl, mil_jkt, element_factors, element_pair_factors)
-
-	sess = tf.Session()
-	sess.run(tf.global_variables_initializer())
-	options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-	run_metadata = tf.RunMetadata()
-
-	# tmp, tmp2, tmp3, tmp4 = sess.run([sym_tmp, idx_tmp, sym_tmp2, idx_tmp2])
-	# print np.isclose(tmp[2], tmp3[2])
-	# print tmp[0][np.where(np.logical_not(np.isclose(tmp[0], tmp3[0])))][-20:]
-	# print tmp3[0][np.where(np.logical_not(np.isclose(tmp[0], tmp3[0])))][-20:]
-	# print np.isclose(tmp2[0], tmp4[0])
-	# tmp2 = sess.run([tmp])
-	# print tmp2[0].shape
-	# print tmp2[0][0].shape, tmp2[0][1].shape
-	# print np.allclose(tmp2[0][0], tmp2[0][1])
-	tmp4, tmp5, tmp6 = sess.run([tmp1, tmp2, tmp3], options=options, run_metadata=run_metadata)
-	fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-	chrome_trace = fetched_timeline.generate_chrome_trace_format()
-	with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-		f.write(chrome_trace)
-	print tmp6
-	# print tmp3.shape
-	# print np.isclose(tmp3[0][0], tmp4[0,0])
-	# print tmp3[0]
-	# print len(tmp3[0])
-	# print len(tmp3[1])
-	# print len(tmp3)
-	# print len(a.mols[0].atoms)
-	# print len(a.mols[1].atoms)
-	# print a.mols[0].atoms
-
-	# print tmp3[0]
-	# print tmp4[6]
-	# print tmp3[0] - tmp4[6]
-	# print np.isclose(tmp3[0], tmp4[6])
-	# print np.isclose(tmp3[0], tmp4[-1])
-	# tmp5, tmp6, tmp7, tmp8 = sess.run([tmp, tmp2, tmp3, tmp4], options=options, run_metadata=run_metadata)
-	# tmp5, tmp6, tmp7, tmp8 = sess.run([tmp, tmp2, tmp3, tmp4], options=options, run_metadata=run_metadata)
-	# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-	# chrome_trace = fetched_timeline.generate_chrome_trace_format()
-	# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-	# 	f.write(chrome_trace)
-	# # print ang_t[:,1:-1]
-	# print np.isclose(tmp5[0][0], tmp7[0][0])
-	# bad_indices = np.where(np.logical_not(np.isclose(tmp5[0][0], tmp7[0][0])))
-	# print bad_indices
-	# print np.sum(tmp5[0][0,bad_indices])
-	# print np.sum(tmp7[0][0,bad_indices])
-	# print tmp5[0][0,bad_indices] - tmp7[0][0,bad_indices]
-	# print len(bad_indices[0])
-	# for tensor in tmp2:
-	# 	print tensor.shape
 
 def train_forces_rotation_constraint(set_ = "SmallMols"):
 	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
@@ -506,7 +365,7 @@ def train_energy_symm_func(mset):
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.0001
+	PARAMS["learning_rate"] = 0.00001
 	PARAMS["max_steps"] = 2000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 100
@@ -522,24 +381,24 @@ def train_energy_symm_func(mset):
 	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.0, 5.0, 32), np.repeat(0.35, 32)), axis=1)
-	PARAMS["SH_NRAD"] = 32
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 14), np.repeat(0.35, 14)), axis=1)
+	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
+	PARAMS["EECutoffOn"] = 0.0
+	PARAMS["Elu_Width"] = 5.5
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.00001
+	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 100
+	PARAMS["batch_size"] = 400
 	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["Profiling"] = False
 	a=MSet("H2O_wb97xd_1to21_with_prontonated")
 	a.Load()
-	TreatedAtoms = a.AtomTypes()
-	print "Number of Mols: ", len(a.mols)
-	tensor_data = TensorMolDataDirect(a, "atomization")
-	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectGauSH")
+	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectGauSH")
 
 def geo_opt_tf_forces(mset, manager_name, mol_index):
 	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
@@ -657,34 +516,6 @@ def evaluate_BPSymFunc(mset):
 	print "MAE:", np.mean(np.abs(output-labels))*627.509
 	print "RMSE:",np.sqrt(np.mean(np.square(output-labels)))*627.509
 
-def SubSampledDimerPlot():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
-	PARAMS["SH_NRAD"] = 32
-	PARAMS["SH_LMAX"] = 4
-	PARAMS["NeuronType"] = 'elu'
-	PARAMS["tf_prec"] = 'tf.float32'
-	a = MSet("water_dimer")
-	a.ReadXYZ()
-	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Nov_13_11.35.07_2017", network_type = "BehlerParinelloDirectGauSH")
-	ens=[]
-	embs = []
-	for i in range(len(a.mols)-1):
-	#if (1):
-		A = a.mols[i]
-		B = a.mols[i+1]
-		for J in range(10):
-			m=Mol(A.atoms,A.coords*((9.-J)/9.)+B.coords*((J)/9.))
-			ens.append(manager.evaluate_mol(m, False))
-			#embs.append(manager.network.evaluate_embs(m)[0])
-	#print len(embs[0]),embs[0][0].shape
-	#print embs[0][0][:6]
-	#exit(0)
-	import matplotlib.pyplot as plt
-	plt.plot(ens)
-	plt.show()
-	exit(0)
-# SubSampledDimerPlot()
-
 def water_dimer_plot():
 	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 	PARAMS["SH_NRAD"] = 32
@@ -759,6 +590,17 @@ def water_dimer_plot():
 		bond_e = dimer - h2o1 - h2o2
 		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
 
+# PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
+# PARAMS["SH_NRAD"] = 32
+# PARAMS["SH_LMAX"] = 4
+# a = MSet("water_dimer")
+# a.ReadXYZ()
+# manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Nov_13_11.35.07_2017", network_type = "BehlerParinelloDirectGauSH")
+# print manager.evaluate_mol(a.mols[0], False).shape
+# for i in range(100):
+# 	mol = Mol(a.mols[0].atoms, rot_coords[0,i])
+#  	mol.WriteXYZfile()
+
 # InterpoleGeometries()
 # ReadSmallMols(set_="SmallMols", forces=True, energy=True)
 # ReadSmallMols(set_="chemspider3", dir_="/media/sdb2/jeherr/TensorMol/datasets/chemspider3_data/*/", energy=True, forces=True)
@@ -783,13 +625,13 @@ def water_dimer_plot():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("nicotine_aimd_2500")
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
 # evaluate_BPSymFunc("nicotine_aimd")
-water_dimer_plot()
+# water_dimer_plot()
 
 # a=MSet("water_dimer_cccbdb_opt")
 # a.ReadXYZ()
