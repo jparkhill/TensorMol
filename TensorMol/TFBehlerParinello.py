@@ -843,12 +843,12 @@ class BehlerParinelloDirectGauSH:
 		xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		energies = self.energy_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
 		rad_eep = NLEE.buildPairs(self.Ree_cut)
-		return [xyzs, Zs, energies, gradients, num_atoms, rad_eep]
+		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
 
 	def get_dipole_test_batch(self, batch_size):
 		if batch_size > self.num_test_cases:
@@ -875,12 +875,12 @@ class BehlerParinelloDirectGauSH:
 		xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		# dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
 		rad_eep = NLEE.buildPairs(self.Ree_cut)
-		return [xyzs, Zs, energies, gradients, num_atoms, rad_eep]
+		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
 
 	def variable_summaries(self, var):
 		"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -1103,7 +1103,7 @@ class BehlerParinelloDirectGauSH:
 		Returns:
 			Filled feed dictionary.
 		"""
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.labels_pl, self.gradients_pl, self.num_atoms_pl, self.Reep_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.labels_pl, self.gradients_pl, self.dipole_pl, self.num_atoms_pl, self.Reep_pl], batch_data)}
 		return feed_dict
 
 	def energy_inference(self, inp, indexs):
@@ -1444,7 +1444,7 @@ class BehlerParinelloDirectGauSH:
 		self.train_prepare()
 		test_freq = PARAMS["test_freq"]
 		mini_test_loss = 1e10
-		for step in range(1, 50):
+		for step in range(1, 101):
 			self.dipole_train_step(step)
 			if step%test_freq==0:
 				test_loss = self.dipole_test_step(step)
