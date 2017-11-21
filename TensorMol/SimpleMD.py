@@ -540,7 +540,7 @@ class Annealer(IRTrajectory):
 		self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
 		Teff = PARAMS["MDAnnealT0"]
 		print ("Teff", Teff, " MDAnnealTF:", PARAMS["MDAnnealTF"])
-		while(step < self.AnnealSteps or abs(Teff -  PARAMS["MDAnnealTF"])>0.1):
+		while(step < self.AnnealSteps):
 			self.t = step*self.dt
 			#self.KE = KineticEnergy(self.v,self.m)
 			#Teff = (2./3.)*self.KE/IDEALGASR
