@@ -55,7 +55,7 @@ def TestPeriodicLJVoxel():
 		m.coords = np.mod(m.coords, cellsize)
 		lat = cellsize*np.eye(3)
 		PF = TFPeriodicVoxelForce(15.0,lat)
-		
+
 		zp = np.zeros(m.NAtoms()*PF.tess.shape[0], dtype=np.int32)
 		xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
 		for i in range(0, PF.tess.shape[0]):
@@ -78,7 +78,7 @@ def TestPeriodicLJVoxel():
 			force = gradient[0]
 			print ("energy:", energy)
 			return energy, force
-		
+
 		ForceField = lambda x: EnAndForce(x)[-1]
 		EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
@@ -97,7 +97,7 @@ def TestPeriodicLJVoxel():
 		PARAMS["MDV0"] = None
 		PARAMS["MDAnnealTF"] = 1
 		PARAMS["MDAnnealT0"] = 300.0
-		PARAMS["MDAnnealSteps"] = 2000	
+		PARAMS["MDAnnealSteps"] = 2000
 		anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		anneal.Prop()
 		m.coords = anneal.Minx.copy()
@@ -107,14 +107,14 @@ def TestPeriodicLJVoxel():
 		#interface.md_run()
 		#
 		#return
-                PARAMS["MDThermostat"] = "Nose"
-                PARAMS["MDTemp"] = 300
-                PARAMS["MDdt"] = 0.1
-                PARAMS["RemoveInvariant"]=True
-                PARAMS["MDV0"] = None
-                PARAMS["MDMaxStep"] = 10000
-                md = VelocityVerlet(None, m, "water_peri_10cut",EnergyForceField)
-                md.Prop()
+		PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDTemp"] = 300
+		PARAMS["MDdt"] = 0.1
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDV0"] = None
+		PARAMS["MDMaxStep"] = 10000
+		md = VelocityVerlet(None, m, "water_peri_10cut",EnergyForceField)
+		md.Prop()
 		return
 
 	if (1):
@@ -163,8 +163,8 @@ def TestPeriodicLJVoxel():
 		m.coords = np.mod(m.coords, cellsize)
 		lat = cellsize*np.eye(3)
 		PF = TFPeriodicVoxelForce(15.0,lat)
-		#zp, xp = PF(m.atoms,m.coords,lat)  # tessilation in TFPeriodic seems broken   
-		
+		#zp, xp = PF(m.atoms,m.coords,lat)  # tessilation in TFPeriodic seems broken
+
 		#PF.tess = np.array([[0,0,0]])
 		zp = np.zeros(m.NAtoms()*PF.tess.shape[0], dtype=np.int32)
 		xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
@@ -188,7 +188,7 @@ def TestPeriodicLJVoxel():
 			force = gradient[0]
 			print ("energy:", energy)
 			return energy, force
-		
+
 		ForceField = lambda x: EnAndForce(x)[-1]
 		EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
@@ -205,7 +205,7 @@ def TestPeriodicLJVoxel():
 		#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 1.0
 		#PARAMS["MDAnnealT0"] = 300.0
-		#PARAMS["MDAnnealSteps"] = 2000	
+		#PARAMS["MDAnnealSteps"] = 2000
 		#anneal = Annealer(EnergyForceField, None, m, "Anneal")
 		#anneal.Prop()
 		#m.coords = anneal.Minx.copy()
@@ -234,14 +234,14 @@ def TestPeriodicLJVoxel():
 		cellsize = 9.3215
 		lat = cellsize*np.eye(3)
 		PF = TFPeriodicVoxelForce(15.0,lat)
-		#zp, xp = PF(m.atoms,m.coords,lat)  # tessilation in TFPeriodic seems broken   
-		
+		#zp, xp = PF(m.atoms,m.coords,lat)  # tessilation in TFPeriodic seems broken
+
 		zp = np.zeros(m.NAtoms()*PF.tess.shape[0], dtype=np.int32)
 		xp = np.zeros((m.NAtoms()*PF.tess.shape[0], 3))
 		for i in range(0, PF.tess.shape[0]):
 			zp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.atoms
 			xp[i*m.NAtoms():(i+1)*m.NAtoms()] = m.coords + cellsize*PF.tess[i]
-		
+
 
 		#print (zp, xp)
 		t0 = time.time()
@@ -320,7 +320,7 @@ def KickOutTrans():
 		contain_trans = False
 		if m.NAtoms() >= 27 and sampled < maxsample:
 			nmol = m.NAtoms()/3
-			Htodel = random.randint(0, nmol-1)	
+			Htodel = random.randint(0, nmol-1)
 			OHtodel = random.randint(0, nmol-1)
 			dist = np.sum(np.square(m.coords[OHtodel*3+2]-m.coords[Htodel*3]))**0.5
 			if Htodel == OHtodel or dist < 4.0:
@@ -372,21 +372,21 @@ def GetRDF_Update():
 	a.ReadXYZ("MDTrajectoryPeriodicWaterMD_Nose300_RigthAlpha_NoDropout_HalfEcc")
 
 	m = a.mols[-1]
-	m.properties["Lattice"] = np.eye(3)*12.42867	
+	m.properties["Lattice"] = np.eye(3)*12.42867
 	PF = PeriodicForce(m,m.properties["Lattice"])
 	gi = PF.RDF(m.coords,8,8,10.0,0.01)
 	gi2 = PF.RDF(m.coords,8,8,10.0,0.01)
 	av = 1
-	for i in range(len(a.mols)/2, len(a.mols)): 
+	for i in range(len(a.mols)/2, len(a.mols)):
 		#gi += PF.RDF(a.mols[i].coords,8,8,10.0,0.01)
 		gi2 += PF.RDF_inC(a.mols[i].coords,a.mols[i].atoms,12.42867,8,8,10.0, 0.01)
-		av += 1 
+		av += 1
 		#print(i," Gi: ",gi/av)
 		if (i%100==0):
 			print(i," Gi: ",gi2/av)
 			#np.savetxt("./results/rdf_64_sigmoid_"+str(i)+".txt",gi2/av)
 	np.savetxt("./results/rdf_OO_sigmoid100_rightalpha_nodropout_halfEcc_"+str(i)+"_longtime.txt",gi2/av)
-	return 
+	return
 
 	dr = 0.001
 	r_max = 10.0

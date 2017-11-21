@@ -12,7 +12,7 @@ if (0):
 	if (0):
 		a=MSet("H2O_cluster")
                 a.ReadXYZ("H2O_cluster")
-		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)	
+		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False)
 		dipole_manager= TFMolManage("Mol_H2O_agumented_more_squeeze_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False)
 		def EnAndForce(x_):
                         a.mols[0].coords = x_
@@ -28,7 +28,7 @@ if (0):
                         dipole, charge = dipole_manager.Eval_BPDipole_2(a.mols[0])
                         return np.asarray(charge[0])
 		optimizer = Optimizer(manager)
-		optimizer.OptANI1(a.mols[0])		
+		optimizer.OptANI1(a.mols[0])
 		PARAMS["MDdt"] = 0.2
        	 	PARAMS["RemoveInvariant"]=True
        	 	PARAMS["MDMaxStep"] = 10000
@@ -56,7 +56,7 @@ if (0):
                         return energy, force
                 ForceField = lambda x: EnAndForce(x)[1]
                 EnergyForceField = lambda x: EnAndForce(x)
-		
+
 		def ChargeField(x_):
                         a.mols[0].coords = x_
                         dipole, charge = dipole_manager.Eval_BPDipole_2(a.mols[0])
@@ -94,11 +94,11 @@ if (0):
 		a=FragableMSetBF("H2O_cluster")
 		a.ReadXYZ("H2O_cluster")
 		#a=FragableMSetBF("H2O_dimer")
-                #a.ReadXYZ("H2O_dimer")	
-	
+                #a.ReadXYZ("H2O_dimer")
+
 		print("Generate_All_MBE_term_General: ")
 		a.Generate_All_MBE_term_General([{"atom":"HOH", "charge":0}])
-		print("End of Generate_All_MBE_term_General")	
+		print("End of Generate_All_MBE_term_General")
 
 		manager= TFMolManage("Mol_H2O_augmented_more_squeeze_cutoff5_ANI1_Sym_fc_sqdiff_BP_1", None, False, Trainable_ = False)
 		dipole_manager= TFMolManage("Mol_H2O_agumented_more_cutoff5_multipole2_ANI1_Sym_Dipole_BP_2_1", None, False, Trainable_ = False)
@@ -124,7 +124,7 @@ if (0):
 		#	dipole_manager.Eval_BPDipoleGrad_2(mol)
 		print(dipole_manager.Eval_BPDipoleGrad_2(a))
 
-if (1): 
+if (1):
                 a=FragableMSetBF("H2O_cluster_larger")
                 a.ReadXYZ("H2O_cluster_larger")
 
@@ -144,12 +144,12 @@ if (1):
 			return mbe.NN_Energy_Force(a.mols[0], False)
 		ForceField = lambda x: EnAndForce(x)[1]
 		EnergyForceField = lambda x: EnAndForce(x)
-	
+
 		def ChargeField(x_):
                         a.mols[0].coords = x_
                         charge =  mbe.NN_Charge(a.mols[0])
                         return charge
-	
+
 		#PARAMS["MDThermostat"] = None
 		#PARAMS["MDTemp"] = 200.0
 		#PARAMS["MDdt"] = 0.2
@@ -224,14 +224,14 @@ if (0):
 									m = Mol(mol.atoms[[i,i+1,i+2, j, j+1, j+2, k,k+1, k+2]], mol.coords[[i,i+1,i+2, j, j+1, j+2, k, k+1, k+2]])
 		                                                        m.WriteXYZfile(fname="trimer")
 									#OO_dist_list_trimer.append(dist_mat[i][j]*dist_mat[i][k]*dist_mat[j][k])
-		#print "len of list per case trimer:", len(OO_dist_list_trimer)/100.0 
+		#print "len of list per case trimer:", len(OO_dist_list_trimer)/100.0
 		#print "len of list per case:", len(OO_dist_list)/100.0
 		#print "time per case:", (time.time() - t)/ 100.0
 		#OO_dist_list = np.asarray(OO_dist_list)
 		#OO_dist_list_trimer = np.asarray(OO_dist_list_trimer)
 		#np.savetxt("OO_dist.dat", OO_dist_list)
 		#np.savetxt("OO_dist_trimer.dat", OO_dist_list_trimer)
-		
+
 
 
 # steps to train a NN-MBE model
@@ -247,7 +247,7 @@ if (0):
                 a.Save() # Save the training set, by default it is saved in ./datasets.
 
 	if (1):
-                #a=MSet("NaCl_H2O_NaH2Ogroup") 
+                #a=MSet("NaCl_H2O_NaH2Ogroup")
                 a=FragableMSet("NaClH2O")
                 a.Load() # Load generated training set (.pdb file).
                 a.Calculate_All_Frag_Energy_General(method="qchem")  # Use PySCF or Qchem to calcuate the MP2 many-body energy of each order.
@@ -268,7 +268,7 @@ if (0):
 		a=MSet("H2O_tinker_amoeba")
                 a.Load()
 		TreatedAtoms = a.AtomTypes()
-		print("TreatedAtoms ", TreatedAtoms) 
+		print("TreatedAtoms ", TreatedAtoms)
 		d = MolDigester(TreatedAtoms, name_="SymFunc")  # Initialize a digester that apply descriptor for the fragments.
 		#tset = TensorMolData(a,d, order_=2, num_indis_=2) # Initialize TensorMolData that contain the training data for the neural network for certain order of many-body expansion.
 		#tset.BuildTrain("H2O_tinker_amoeba") # Genearte training data with the loaded molecule set and the chosen digester, by default it is saved in ./trainsets.
@@ -279,7 +279,7 @@ if (0):
 	if (0):
 		tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_GauInv_1") # Load the generated data for training the neural network.
 		tset.KRR()
-	
+
 	# testing the BP TensorMolData
 	if (0):
                 tset = TensorMolData_BP(MSet(),MolDigester([]),"H2O_tinker_amoeba_SymFunc_1")
@@ -293,8 +293,8 @@ if (0):
 
 	# Test the neural network.
 	if (0):
-		manager = TFMolManage("H2O_tinker_amoebaCoulomb_fc_sqdiff_2", None, False) # Load pre-trained network.	
-		manager.Test("nn_acc_pred.dat") # Save the test result of our trained network. 
+		manager = TFMolManage("H2O_tinker_amoebaCoulomb_fc_sqdiff_2", None, False) # Load pre-trained network.
+		manager.Test("nn_acc_pred.dat") # Save the test result of our trained network.
 
 
 # steps to evaluate the many-body energy using  NN-MBE model
@@ -304,21 +304,21 @@ if (0):
 	a.ReadGDB9Unpacked("./H2O_opt/")
 	# load pre-trained networks {many-body order: network name}
 	tfm = {1:"H2O_tinker_amoebaCoulomb_fc_sqdiff_1", 2:"H2O_tinker_amoebaCoulomb_fc_sqdiff_2"}
-	# launch NN-MBE model 
+	# launch NN-MBE model
 	nn_mbe = NN_MBE(tfm)
-	# evaluate using NN-MBE model 
+	# evaluate using NN-MBE model
 	for mol in a.mols:
-		#mol.Generate_All_MBE_term(atom_group=3, cutoff=5, center_atom=0)   
+		#mol.Generate_All_MBE_term(atom_group=3, cutoff=5, center_atom=0)
 		nn_mbe.NN_Energy(mol)
 
-# use NN-MBE model to optimize molecule. 
+# use NN-MBE model to optimize molecule.
 if (0):
 	# load molecule
         a=MSet("H2O_opt")
         a.ReadGDB9Unpacked("./H2O_opt/")
         # load pre-trained networks {many-body order: network name}
         tfm = {1:"H2O_tinker_amoebaCoulomb_fc_sqdiff_1", 2:"H2O_tinker_amoebaCoulomb_fc_sqdiff_2"}
-        # launch NN-MBE model 
+        # launch NN-MBE model
         nn_mbe = NN_MBE(tfm)
 	# launch Optimizer
         opt=MBE_Optimizer(nn_mbe)

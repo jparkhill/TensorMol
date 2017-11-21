@@ -15,53 +15,53 @@ def TrainPrepare():
 		WB97XDAtom[6]=-37.8387398698
 		WB97XDAtom[7]=-54.5806161811
 		WB97XDAtom[8]=-75.0586028656
-                a = MSet("chemspider12_clean")
-                dic_list = pickle.load(open("./datasets/chemspider12_wb97xd_goodones.dat", "rb"))
-                for mol_index, dic in enumerate(dic_list):
-                        atoms = []
+		a = MSet("chemspider12_clean")
+		dic_list = pickle.load(open("./datasets/chemspider12_wb97xd_goodones.dat", "rb"))
+		for mol_index, dic in enumerate(dic_list):
+			atoms = []
 			print ("mol_index:", mol_index)
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
-                        mol = Mol(atoms, dic['xyz'])
-                        mol.properties['charges'] = dic['charges']
-                        mol.properties['dipole'] = np.asarray(dic['dipole'])
-                        mol.properties['quadropole'] = dic['quad']
-                        mol.properties['energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
+			for atom in dic['atoms']:
+				atoms.append(AtomicNumber(atom))
+			atoms = np.asarray(atoms, dtype=np.uint8)
+			mol = Mol(atoms, dic['xyz'])
+			mol.properties['charges'] = dic['charges']
+			mol.properties['dipole'] = np.asarray(dic['dipole'])
+			mol.properties['quadropole'] = dic['quad']
+			mol.properties['energy'] = dic['scf_energy']
+			mol.properties['gradients'] = dic['gradients']
 			mol.properties['atomization'] = dic['scf_energy']
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= WB97XDAtom[mol.atoms[i]]
-                        a.mols.append(mol)
+			a.mols.append(mol)
 		a.mols[100].WriteXYZfile(fname="chemspider12_test")
 		print(a.mols[100].properties)
-                a.Save()
+		a.Save()
 
 	if (0):
-                a = MSet("chemspider12_clean")
+		a = MSet("chemspider12_clean")
 		a.Load()
 		b = MSet("chemspider12_clean_maxatom35")
 		hist = np.zeros((10))
 		for mol in a.mols:
 			if mol.NAtoms() <= 35:
 				b.mols.append(mol)
-                b.Save()
+		b.Save()
 
 	if (0):
-                a = MSet("chemspider12_clean_maxatom35")
+ 		a = MSet("chemspider12_clean_maxatom35")
 		a.Load()
 		random.shuffle(a.mols)
 
 		b = MSet("chemspider12_clean_maxatom35_mini")
 		for i in range(0, int(0.01*len(a.mols))):
 			b.mols.append(a.mols[i])
-                b.Save()
+		b.Save()
 
 		c = MSet("chemspider12_clean_maxatom35_small")
 		for i in range(0, int(0.05*len(a.mols))):
 			c.mols.append(a.mols[i])
-               	c.Save()
-		
+		c.Save()
+
 #H2O_wbxd_1to21_with_prontonated_with_ch4.dat
 	if (1):
 		WB97XDAtom={}
@@ -69,26 +69,24 @@ def TrainPrepare():
 		WB97XDAtom[6]=-37.8387398698
 		WB97XDAtom[7]=-54.5806161811
 		WB97XDAtom[8]=-75.0586028656
-                a = MSet("chemspider12_maxatom35_H2O_with_CH4")
-                dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated_with_ch4.dat", "rb"))
-                for mol_index, dic in enumerate(dic_list):
-                        atoms = []
+		a = MSet("chemspider12_maxatom35_H2O_with_CH4")
+		dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated_with_ch4.dat", "rb"))
+		for mol_index, dic in enumerate(dic_list):
+			atoms = []
 			print ("mol_index:", mol_index)
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
-                        mol = Mol(atoms, dic['xyz'])
+			for atom in dic['atoms']:
+				atoms.append(AtomicNumber(atom))
+			atoms = np.asarray(atoms, dtype=np.uint8)
+			mol = Mol(atoms, dic['xyz'])
 			if mol.NAtoms() <= 35:
-                        	mol.properties['dipole'] = np.asarray(dic['dipole'])
-                        	mol.properties['energy'] = dic['scf_energy']
-                        	mol.properties['gradients'] = dic['gradients']
+				mol.properties['dipole'] = np.asarray(dic['dipole'])
+				mol.properties['energy'] = dic['scf_energy']
+				mol.properties['gradients'] = dic['gradients']
 				mol.properties['atomization'] = dic['scf_energy']
 				for i in range (0, mol.NAtoms()):
 					mol.properties['atomization'] -= WB97XDAtom[mol.atoms[i]]
-                        	a.mols.append(mol)
-		
-		
-                b = MSet("chemspider12_clean_maxatom35")
+					a.mols.append(mol)
+		b = MSet("chemspider12_clean_maxatom35")
 		b.Load()
 		print ("nmol in water/ch4:", len(a.mols))
 		print ("nmol in chemspider12:", len(b.mols))
@@ -474,7 +472,7 @@ def Eval():
 				else:
 					return energy
 			return EnAndForce
-	
+
 		def EnForceCharge(x_):
 			m.coords = x_
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
@@ -504,7 +502,7 @@ def Eval():
 			return dipole
 
 		DFTForceField = lambda x: np.asarray([QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='sp', threads=12)])[0]
-		DFTDipoleField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='dipole', threads=12)	
+		DFTDipoleField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='dipole', threads=12)
 		#ForceField = lambda x: EnAndForce(x)[-1]
 		#EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)

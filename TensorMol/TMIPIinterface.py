@@ -31,7 +31,7 @@ class TMIPIManger():
 					buf_ = self.s.recv(9*8) # cellh np.float64
 					cellh = np.fromstring(buf_, np.float64)/BOHRPERA
 					buf_ = self.s.recv(9*8) # cellih np.float64
-        		                cellih = np.fromstring(buf_, np.float64)*BOHRPERA
+					cellih = np.fromstring(buf_, np.float64)*BOHRPERA
 					buf_ = self.s.recv(4) # natom
 					natom = np.fromstring(buf_, np.int32)[0]
 					buf_ = self.s.recv(3*natom*8) # position

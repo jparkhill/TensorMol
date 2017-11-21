@@ -10,22 +10,22 @@ from TensorMol.NN_MBE import *
 def TrainPrepare():
 
 	if (0):
-                a = MSet("chemspider9_force")
-                dic_list = pickle.load(open("./datasets/chemspider9_force.dat", "rb"))
-                for dic in dic_list:
-                        atoms = []
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
-                        mol = Mol(atoms, dic['xyz'])
-                        mol.properties['charges'] = dic['charges']
-                        mol.properties['dipole'] = dic['dipole']
-                        mol.properties['quadropole'] = dic['quad']
-                        mol.properties['energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
-                        mol.CalculateAtomization()
-                        a.mols.append(mol)
-                a.Save()
+		a = MSet("chemspider9_force")
+		dic_list = pickle.load(open("./datasets/chemspider9_force.dat", "rb"))
+		for dic in dic_list:
+			atoms = []
+			for atom in dic['atoms']:
+				atoms.append(AtomicNumber(atom))
+			atoms = np.asarray(atoms, dtype=np.uint8)
+			mol = Mol(atoms, dic['xyz'])
+			mol.properties['charges'] = dic['charges']
+			mol.properties['dipole'] = dic['dipole']
+			mol.properties['quadropole'] = dic['quad']
+			mol.properties['energy'] = dic['scf_energy']
+			mol.properties['gradients'] = dic['gradients']
+			mol.CalculateAtomization()
+			a.mols.append(mol)
+		a.Save()
 
 
 	if (1):
@@ -34,78 +34,78 @@ def TrainPrepare():
 		B3LYP631GstarAtom[6]=-37.8462793509
 		B3LYP631GstarAtom[7]=-54.5844908554
 		B3LYP631GstarAtom[8]=-75.0606111011
-                a = MSet("chemspider9_metady_force")
-                dic_list = pickle.load(open("./datasets/chemspider9_metady_force.dat", "rb"))
-                for dic in dic_list:
-                        atoms = []
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
-                        mol = Mol(atoms, dic['xyz'])
-                        mol.properties['charges'] = dic['charges']
-                        mol.properties['dipole'] = np.asarray(dic['dipole'])
-                        mol.properties['quadropole'] = dic['quad']
-                        mol.properties['energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
+		a = MSet("chemspider9_metady_force")
+		dic_list = pickle.load(open("./datasets/chemspider9_metady_force.dat", "rb"))
+		for dic in dic_list:
+			atoms = []
+			for atom in dic['atoms']:
+				atoms.append(AtomicNumber(atom))
+			atoms = np.asarray(atoms, dtype=np.uint8)
+			mol = Mol(atoms, dic['xyz'])
+			mol.properties['charges'] = dic['charges']
+			mol.properties['dipole'] = np.asarray(dic['dipole'])
+			mol.properties['quadropole'] = dic['quad']
+			mol.properties['energy'] = dic['scf_energy']
+			mol.properties['gradients'] = dic['gradients']
 			mol.properties['atomization'] = dic['scf_energy']
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= B3LYP631GstarAtom[mol.atoms[i]]
-                        a.mols.append(mol)
+				a.mols.append(mol)
 		a.mols[100].WriteXYZfile(fname="metady_test")
 		print(a.mols[100].properties)
-                a.Save()
+		a.Save()
 
 
-        if (0):
-		RIMP2Atom={}
-		RIMP2Atom[1]=-0.4998098112
-		RIMP2Atom[8]=-74.9659650581
-                a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
-                dic_list = pickle.load(open("./datasets/H2O_augmented_more_cutoff5_rimp2_force_dipole.dat", "rb"))
-                for dic in dic_list:
-                        atoms = []
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
-                        mol = Mol(atoms, dic['xyz'])
-                        mol.properties['mul_charges'] = dic['mul_charges']
-                        mol.properties['dipole'] = dic['dipole']
-			mol.properties['scf_dipole'] = dic['scf_dipole']
-                        mol.properties['energy'] = dic['energy']
-			mol.properties['scf_energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
-			mol.properties['atomization'] = dic['energy']
-			for i in range (0, mol.NAtoms()):
-				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
-                        a.mols.append(mol)
-                a.Save()
+		if (0):
+			RIMP2Atom={}
+			RIMP2Atom[1]=-0.4998098112
+			RIMP2Atom[8]=-74.9659650581
+			a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
+			dic_list = pickle.load(open("./datasets/H2O_augmented_more_cutoff5_rimp2_force_dipole.dat", "rb"))
+			for dic in dic_list:
+				atoms = []
+				for atom in dic['atoms']:
+					atoms.append(AtomicNumber(atom))
+				atoms = np.asarray(atoms, dtype=np.uint8)
+				mol = Mol(atoms, dic['xyz'])
+				mol.properties['mul_charges'] = dic['mul_charges']
+				mol.properties['dipole'] = dic['dipole']
+				mol.properties['scf_dipole'] = dic['scf_dipole']
+				mol.properties['energy'] = dic['energy']
+				mol.properties['scf_energy'] = dic['scf_energy']
+				mol.properties['gradients'] = dic['gradients']
+				mol.properties['atomization'] = dic['energy']
+				for i in range (0, mol.NAtoms()):
+					mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
+					a.mols.append(mol)
+			a.Save()
 
 	if (1):
 		RIMP2Atom={}
 		RIMP2Atom[1]=-0.4998098112
 		RIMP2Atom[8]=-74.9659650581
-                a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
-                dic_list_1 = pickle.load(open("./datasets/H2O_augmented_more_cutoff5_rimp2_force_dipole.dat", "rb"))
+		a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
+		dic_list_1 = pickle.load(open("./datasets/H2O_augmented_more_cutoff5_rimp2_force_dipole.dat", "rb"))
 		dic_list_2 = pickle.load(open("./datasets/H2O_long_dist_pair.dat", "rb"))
 		dic_list_3 = pickle.load(open("./datasets/H2O_metady_bowl02.dat", "rb"))
 		dic_list = dic_list_1 + dic_list_2 + dic_list_3
 		random.shuffle(dic_list)
-                for dic in dic_list:
-                        atoms = []
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
-                        mol = Mol(atoms, dic['xyz'])
-                        mol.properties['mul_charges'] = dic['mul_charges']
-                        mol.properties['dipole'] = dic['dipole']
-			mol.properties['scf_dipole'] = dic['scf_dipole']
-                        mol.properties['energy'] = dic['energy']
-			mol.properties['scf_energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
-			mol.properties['atomization'] = dic['energy']
-			for i in range (0, mol.NAtoms()):
-				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
-                        a.mols.append(mol)
+            for dic in dic_list:
+                    atoms = []
+                    for atom in dic['atoms']:
+                            atoms.append(AtomicNumber(atom))
+                    atoms = np.asarray(atoms, dtype=np.uint8)
+                    mol = Mol(atoms, dic['xyz'])
+                    mol.properties['mul_charges'] = dic['mul_charges']
+                    mol.properties['dipole'] = dic['dipole']
+		mol.properties['scf_dipole'] = dic['scf_dipole']
+                    mol.properties['energy'] = dic['energy']
+		mol.properties['scf_energy'] = dic['scf_energy']
+                    mol.properties['gradients'] = dic['gradients']
+		mol.properties['atomization'] = dic['energy']
+		for i in range (0, mol.NAtoms()):
+			mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
+                    a.mols.append(mol)
 
 		b = MSet("H2O_bowl02_rimp2_force_dipole")
                 for dic in dic_list_3:
@@ -128,7 +128,7 @@ def TrainPrepare():
 		print("number of b mols:", len(b.mols))
                 a.Save()
 		b.Save()
-		
+
 
 	if (0):
 		a = MSet("chemspider9_force")
@@ -565,7 +565,7 @@ def EvalForceField():
 	        PARAMS["MDMaxStep"] = 100000
 	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
 	        md.Prop()
-		WriteDerDipoleCorrelationFunction(md.mu_his)		
+		WriteDerDipoleCorrelationFunction(md.mu_his)
 
 
 
@@ -607,7 +607,7 @@ def EvalForceField():
         	#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 0.0
                 #PARAMS["MDAnnealT0"] = 300.0
-		#PARAMS["MDAnnealSteps"] = 2000	
+		#PARAMS["MDAnnealSteps"] = 2000
        	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	#anneal.Prop()
        	 	#m.coords = anneal.Minx.copy()
@@ -638,12 +638,12 @@ def EvalForceField():
         	#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 0.0
                 #PARAMS["MDAnnealT0"] = 100.0
-		#PARAMS["MDAnnealSteps"] = 200	
+		#PARAMS["MDAnnealSteps"] = 200
        	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
        	 	#anneal.Prop()
        	 	#m.coords = anneal.Minx.copy()
        	 	#m.WriteXYZfile("./results/", "Anneal_opt")
-	
+
 		def ChargeField(x_):
 			m.coords = x_
                         MBEterms.Update(m.coords, 20.0, 20.0)
@@ -666,7 +666,7 @@ def EvalForceField():
 		#anneal.Prop()
 		#m.coords = anneal.x.copy()
 
-	
+
                 PARAMS["MDThermostat"] = "Nose"
 		PARAMS["MDTemp"] = 30
                 PARAMS["MDdt"] = 0.1
