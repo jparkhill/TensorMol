@@ -46,7 +46,7 @@ def KineticEnergy(v_, m_):
 		v_: Velocities (A/fs)
 		m_: the mass vector. (kg/mol)
 	Returns:
-		The kinetic energy per atom (kJ/mol)
+		The kinetic energy per atom (J/mol)
 	"""
 	return (1./2.)*np.dot(np.einsum("ia,ia->i",v_,v_)*pow(10.0,10.0),m_)/len(m_)
 
@@ -128,7 +128,7 @@ class NoseThermostat(Thermostat):
 		else:
 			return x,v,a,e
 
-class LangevinThermostat(Thermostat):
+class AndersenThermostat(Thermostat):
 	def __init__(self,m_,v_):
 		"""
 		Velocity Verlet step with a Langevin Thermostat
@@ -136,30 +136,90 @@ class LangevinThermostat(Thermostat):
 		self.m = m_.copy()
 		self.N = len(m_)
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
-		self.gamma = 1.0 # friction of the thermostat.
-		self.name = "Langevin"
+		self.gamma = 1/2.0 # Collision frequency (fs**-1)
+		self.name = "Andersen"
 		self.Rescale(v_)
 		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
 		return
-
 	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_ = True):
-		"""
-		http://www2.ph.ed.ac.uk/~dmarendu/MVP/MVP03.pdf
-		"""
-		# Recompute these stepwise in case of variable T.
-		x = x_ + v_*dt_ + (1./2.)*(a_)*dt_*dt_
+		x = x_ + v_*dt_ + (1./2.)*a_*dt_*dt_
 		e, f_x_ = 0.0, None
 		if (fande_==None):
 			f_x_ = f_(x)
 		else:
 			e, f_x_ = fande_(x)
 		a = pow(10.0,-10.0)*np.einsum("ax,a->ax", f_x_, 1.0/m_) # m^2/s^2 => A^2/Fs^2
+		v = v_ + (1./2.)*(a_+a)*dt_
+
+		# Andersen velocity randomization.
 		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
-		sigmas = np.sqrt(2.0*self.gamma*self.m*self.kT) # Mass is in kg,
-		print(sigmas)
-		dps = np.array([[np.random.normal(0.0,s) for i in range(3)] for s in sigmas])
-		print(dps)
-		v = v_ + 0.5*(a+a_)*dt_ - self.gamma*v_*dt_ + dps*dt_
+		s = np.sqrt(2.0*self.gamma*self.kT/self.m) # Mass is in kg,
+		for i in range(x_.shape[0]):
+			if (np.random.random() < self.gamma*dt_):
+				v[i] = np.random.normal(0.0,s[i],size = (3))
+		if frc_:
+			return x,v,a,e,f_x_
+		else:
+			return x,v,a,e
+
+		"""
+		arXiv:1212.1244v4
+		"""
+		m = np.tile(self.m[:,np.newaxis],(1,3))
+		print("M shape: ",m.shape)
+		a = (1.0-self.gamma*dt_/(2.0*m))/(1.0+self.gamma*dt_/(2.0*m))
+		b = 1.0/(1.0+self.gamma*dt_/(2.0*m))
+		print("a,b:",a,b)
+		x = x_ + b*dt_*v_ + (b*dt_*dt_)/(2.0*m)*(a_*m)  + (b*dt_)/(2.0*m)*beta
+		e, f_x_ = 0.0, None
+		if (fande_==None):
+			f_x_ = f_(x)
+		else:
+			e, f_x_ = fande_(x)
+		v = a*v_ + dt_/(2.0*m)*(a*(a_*m)+f_x_) + (b/m)*beta
+		a = f_x_/m
+		if frc_:
+			return x,v,a,e,f_x_
+		else:
+			return x,v,a,e
+
+
+class LangevinThermostat(Thermostat):
+	"""
+	Not Working.
+	"""
+	def __init__(self,m_,v_):
+		"""
+		Velocity Verlet step with a Langevin Thermostat
+		"""
+		self.m = m_.copy()
+		self.N = len(m_)
+		self.T = PARAMS["MDTemp"]  # Length of NH chain.
+		self.gamma = 0.05 # friction of the thermostat.
+		self.name = "Langevin"
+		self.Rescale(v_)
+		print("Using ", self.name, " thermostat at ",self.T, " degrees Kelvin")
+		return
+	def step(self,f_, a_, x_, v_, m_, dt_ , fande_=None, frc_ = True):
+		"""
+		arXiv:1212.1244v4
+		"""
+		self.kT = IDEALGASR*pow(10.0,-10.0)*self.T # energy units here are kg (A/fs)^2
+		s = np.sqrt(2.0*self.gamma*self.kT/dt_) # Mass is in kg,
+		beta = np.random.normal(0.0,s,size = x_.shape)
+		m = np.tile(self.m[:,np.newaxis],(1,3))
+		print("M shape: ",m.shape)
+		a = (1.0-self.gamma*dt_/(2.0*m))/(1.0+self.gamma*dt_/(2.0*m))
+		b = 1.0/(1.0+self.gamma*dt_/(2.0*m))
+		print("a,b:",a,b)
+		x = x_ + b*dt_*v_ + (b*dt_*dt_)/(2.0*m)*(a_*m)  + (b*dt_)/(2.0*m)*beta
+		e, f_x_ = 0.0, None
+		if (fande_==None):
+			f_x_ = f_(x)
+		else:
+			e, f_x_ = fande_(x)
+		v = a*v_ + dt_/(2.0*m)*(a*(a_*m)+f_x_) + (b/m)*beta
+		a = f_x_/m
 		if frc_:
 			return x,v,a,e,f_x_
 		else:
@@ -332,6 +392,8 @@ class VelocityVerlet:
 			self.Tstat = Thermostat(self.m,self.v)
 		elif (PARAMS["MDThermostat"]=="Nose"):
 			self.Tstat = NoseThermostat(self.m,self.v)
+		elif (PARAMS["MDThermostat"]=="Andersen"):
+			self.Tstat = AndersenThermostat(self.m,self.v)
 		elif (PARAMS["MDThermostat"]=="Langevin"):
 			self.Tstat = LangevinThermostat(self.m,self.v)
 		elif (PARAMS["MDThermostat"]=="NoseHooverChain"):
