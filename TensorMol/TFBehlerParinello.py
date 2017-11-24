@@ -17,7 +17,7 @@ class BehlerParinelloDirectSymFunc:
 	"""
 	Behler-Parinello network using embedding from RawEmbeddings.py
 	"""
-	def __init__(self, tensor_data=None, embedding_type=None, name=None):
+	def __init__(self, molecule_set=None, embedding_type=None, name=None):
 		"""
 		Args:
 			tensor_data (TensorMol.TensorMolData object): a class which holds the training data
@@ -39,6 +39,8 @@ class BehlerParinelloDirectSymFunc:
 		self.train_energy_gradients = PARAMS["train_energy_gradients"]
 		self.profiling = PARAMS["Profiling"]
 		self.activation_function_type = PARAMS["NeuronType"]
+		self.randomize_data = PARAMS["RandomizeData"]
+		self.test_ratio = PARAMS["TestRatio"]
 		self.assign_activation()
 		self.embedding_type = embedding_type
 		self.path = PARAMS["networks_directory"]
@@ -51,15 +53,16 @@ class BehlerParinelloDirectSymFunc:
 			return
 
 		#Data parameters
-		self.tensor_data = tensor_data
-		self.elements = self.tensor_data.elements
-		self.max_num_atoms = self.tensor_data.max_num_atoms
-		self.network_type = "BehlerParinelloDirect"
-		self.name = self.network_type+"_"+self.tensor_data.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.molecule_set = molecule_set
+		self.molecule_set_name = self.molecule_set.name
+		self.elements = self.molecule_set.AtomTypes()
+		self.max_num_atoms = self.molecule_set.MaxNAtoms()
+		self.num_molecules = len(self.molecule_set.mols)
+		self.network_type = "BehlerParinelloDirectSymFunc"
+		self.name = self.network_type+"_"+self.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 		self.network_directory = './networks/'+self.name
 
-		if self.embedding_type == "symmetry_functions":
-			self.set_symmetry_function_params()
+		self.set_symmetry_function_params()
 
 		LOGGER.info("self.learning_rate: %d", self.learning_rate)
 		LOGGER.info("self.batch_size: %d", self.batch_size)
@@ -103,8 +106,7 @@ class BehlerParinelloDirectSymFunc:
 
 	def save_network(self):
 		print("Saving TFInstance")
-		if (self.tensor_data != None):
-			self.tensor_data.clean_scratch()
+		self.clean_scratch()
 		self.clean()
 		f = open(self.network_directory+".tfn","wb")
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -126,6 +128,102 @@ class BehlerParinelloDirectSymFunc:
 			LOGGER.error("Network not found in directory: %s", self.network_directory)
 			LOGGER.error("Network directory contents: %s", str(os.listdir(self.network_directory)))
 		return
+
+	def clean_scratch(self):
+		self.scratch_state = None
+		self.scratch_pointer = 0 # for non random batch iteration.
+		self.scratch_train_inputs = None
+		self.scratch_train_outputs = None
+		self.scratch_test_inputs = None # These should be partitioned out by LoadElementToScratch
+		self.scratch_test_outputs = None
+		self.molecule_set = None
+		self.xyz_data = None
+		self.Z_data = None
+		self.energy_data = None
+		self.gradient_data = None
+		self.num_atoms_data = None
+		return
+
+	def reload_set(self):
+		"""
+		Recalls the MSet to build training data etc.
+		"""
+		self.molecule_set = MSet(self.molecule_set_name)
+		self.molecule_set.Load()
+		return
+
+	def load_data(self):
+		if (self.molecule_set == None):
+			try:
+				self.reload_set()
+			except Exception as Ex:
+				print("TensorData object has no molecule set.", Ex)
+		if self.randomize_data:
+			random.shuffle(self.molecule_set.mols)
+		xyzs = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float32)
+		Zs = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
+		num_atoms = np.zeros((self.num_molecules), dtype = np.int32)
+		energies = np.zeros((self.num_molecules), dtype = np.float32)
+		gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float32)
+		for i, mol in enumerate(self.molecule_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			energies[i] = mol.properties["atomization"]
+			num_atoms[i] = mol.NAtoms()
+			gradients[i][:mol.NAtoms()] = mol.properties["gradients"]
+		return xyzs, Zs, energies, num_atoms, gradients
+
+	def load_data_to_scratch(self):
+		"""
+		Reads built training data off disk into scratch space.
+		Divides training and test data.
+		Normalizes inputs and outputs.
+		note that modifies my MolDigester to incorporate the normalization
+		Initializes pointers used to provide training batches.
+
+		Args:
+			random: Not yet implemented randomization of the read data.
+
+		Note:
+			Also determines mean stoichiometry
+		"""
+		self.xyz_data, self.Z_data, self.energy_data, self.num_atoms_data, self.gradient_data = self.load_data()
+		self.num_test_cases = int(self.test_ratio * self.num_molecules)
+		self.last_train_case = int(self.num_molecules - self.num_test_cases)
+		self.num_train_cases = self.last_train_case
+		self.test_scratch_pointer = self.last_train_case
+		self.train_scratch_pointer = 0
+		LOGGER.debug("Number of training cases: %i", self.num_train_cases)
+		LOGGER.debug("Number of test cases: %i", self.num_test_cases)
+		return
+
+	def get_energy_train_batch(self, batch_size):
+		if batch_size > self.num_train_cases:
+			raise Exception("Insufficent training data to fill a training batch.\n"\
+					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(batch_size))
+		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
+			self.train_scratch_pointer = 0
+		self.train_scratch_pointer += batch_size
+		xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		energies = self.energy_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		return [xyzs, Zs, energies, gradients, num_atoms]
+
+	def get_energy_test_batch(self, batch_size):
+		if batch_size > self.num_test_cases:
+			raise Exception("Insufficent training data to fill a test batch.\n"\
+					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
+		if self.test_scratch_pointer + batch_size >= self.num_train_cases:
+			self.test_scratch_pointer = self.last_train_case
+		self.test_scratch_pointer += batch_size
+		xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		return [xyzs, Zs, energies, gradients, num_atoms]
 
 	def variable_summaries(self, var):
 		"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -184,8 +282,8 @@ class BehlerParinelloDirectSymFunc:
 		self.embeddings_max = []
 		sess = tf.Session()
 		sess.run(tf.global_variables_initializer())
-		for ministep in range (0, max(2, int(0.1 * self.tensor_data.num_train_cases/self.batch_size))):
-			batch_data = self.tensor_data.get_train_batch(self.batch_size)
+		for ministep in range (0, max(2, int(0.1 * self.num_train_cases/self.batch_size))):
+			batch_data = self.get_energy_train_batch(self.batch_size)
 			num_atoms = batch_data[4]
 			labels_list.append(batch_data[2])
 			for molecule in range(self.batch_size):
@@ -202,7 +300,7 @@ class BehlerParinelloDirectSymFunc:
 		gradients = np.concatenate(gradients_list)
 		self.gradients_mean = np.mean(gradients)
 		self.gradients_stddev = np.std(gradients)
-		self.tensor_data.train_scratch_pointer = 0
+		self.train_scratch_pointer = 0
 
 		#Set the embedding and label shape
 		self.embedding_shape = embedding[0].shape[1]
@@ -401,14 +499,14 @@ class BehlerParinelloDirectSymFunc:
 		Args:
 			step: the index of this step.
 		"""
-		Ncase_train = self.tensor_data.num_train_cases
+		Ncase_train = self.num_train_cases
 		start_time = time.time()
 		train_loss =  0.0
 		train_energy_loss = 0.0
 		train_gradient_loss = 0.0
 		num_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
-			batch_data = self.tensor_data.get_train_batch(self.batch_size)
+			batch_data = self.get_energy_train_batch(self.batch_size)
 			if self.train_energy_gradients:
 				_, total_loss_value, energy_loss, gradient_loss, mol_output, n_atoms, gradients, gradient_labels = self.sess.run([self.train_op,
 						self.total_loss, self.energy_loss, self.gradient_loss, self.output, self.num_atoms_pl, self.gradients,
@@ -437,7 +535,7 @@ class BehlerParinelloDirectSymFunc:
 		print( "testing...")
 		test_loss =  0.0
 		start_time = time.time()
-		Ncase_test = self.tensor_data.num_test_cases
+		Ncase_test = self.num_test_cases
 		num_mols = 0
 		test_energy_loss = 0.0
 		test_gradient_loss = 0.0
@@ -445,7 +543,7 @@ class BehlerParinelloDirectSymFunc:
 		test_epoch_force_labels, test_epoch_force_outputs = [], []
 		num_atoms_epoch = 0.0
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
-			batch_data = self.tensor_data.get_test_batch(self.batch_size)
+			batch_data = self.get_energy_test_batch(self.batch_size)
 			feed_dict = self.fill_feed_dict(batch_data)
 			if self.train_energy_gradients:
 				output, labels, gradients, gradient_labels, total_loss_value, energy_loss, gradient_loss, num_atoms_batch = self.sess.run([self.output,
@@ -485,7 +583,7 @@ class BehlerParinelloDirectSymFunc:
 		return test_loss
 
 	def train(self):
-		self.tensor_data.load_data_to_scratch()
+		self.load_data_to_scratch()
 		self.compute_normalization()
 		self.train_prepare()
 		test_freq = PARAMS["test_freq"]

@@ -365,20 +365,16 @@ def train_energy_symm_func(mset):
 	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.00001
-	PARAMS["max_steps"] = 2000
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 100
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
 	PARAMS["tf_prec"] = "tf.float32"
 	a=MSet(mset)
 	a.Load()
-	for mol in a.mols:
-		mol.properties["gradients"] = -mol.properties["forces"]
-	TreatedAtoms = a.AtomTypes()
 	print "Number of Mols: ", len(a.mols)
-	tensor_data = TensorMolDataDirect(a, "atomization")
-	manager = TFMolManageDirect(tensor_data, network_type = "BehlerParinelloDirectSymFunc")
+	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
 	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 14), np.repeat(0.35, 14)), axis=1)
@@ -624,8 +620,8 @@ def water_dimer_plot():
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func("nicotine_aimd_2500")
-train_energy_GauSH()
+train_energy_symm_func("nicotine_full")
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
