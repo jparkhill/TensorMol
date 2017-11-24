@@ -147,16 +147,16 @@ def TFSymASet(R, Zs, eleps_, SFPs_, R_cut, prec=tf.float64):
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eleps_: a nelepairs X 2 tensor of element pairs present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
-	    is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
-	    R_cut: Radial Cutoff
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
+		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
+		R_cut: Radial Cutoff
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -263,16 +263,16 @@ def TFSymASet_Update(R, Zs, eleps_, SFPs_, R_cut, prec=tf.float64):
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eleps_: a nelepairs X 2 tensor of element pairs present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
-	    is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
-	    R_cut: Radial Cutoff
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
+		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
+		R_cut: Radial Cutoff
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -391,15 +391,15 @@ def TFSymRSet(R, Zs, eles_, SFPs_, R_cut, prec=tf.float64):
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -477,15 +477,15 @@ def TFSymRSet_Update(R, Zs, eles_, SFPs_, R_cut, prec=tf.float64):
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -571,16 +571,16 @@ def TFSymASet_Update2(R, Zs, eleps_, SFPs_, zeta, eta, R_cut, prec=tf.float64):
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eleps_: a nelepairs X 2 tensor of element pairs present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
-	    is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
-	    R_cut: Radial Cutoff
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eleps_: a nelepairs X 2 tensor of element pairs present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 4 X nzeta X neta X thetas X nRs. For example, SFPs_[0,0,0,0,0]
+		is the first zeta parameter. SFPs_[3,0,0,0,1] is the second R parameter.
+		R_cut: Radial Cutoff
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -696,15 +696,15 @@ def TFSymRSet_Update2(R, Zs, eles_, SFPs_, eta, R_cut, prec=tf.float64):
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1182,13 +1182,13 @@ def TFCoulombCosLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	Madelung energy build.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Qs : nmol X maxnatom X 1 tensor of atomic charges.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Qs : nmol X maxnatom X 1 tensor of atomic charges.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1222,13 +1222,13 @@ def TFCoulombPolyLR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Qs : nmol X maxnatom X 1 tensor of atomic charges.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Qs : nmol X maxnatom X 1 tensor of atomic charges.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	R_width = PARAMS["Poly_Width"]*BOHRPERA
 	R_begin = R_cut
@@ -1266,13 +1266,13 @@ def TFCoulombPolyLRSR(R, Qs, R_cut, Radpair, prec=tf.float64):
 	Madelung energy build. Using switch function 1+x^2(2x-3) in http://pubs.acs.org/doi/ipdf/10.1021/ct501131j
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Qs : nmol X maxnatom X 1 tensor of atomic charges.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Qs : nmol X maxnatom X 1 tensor of atomic charges.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	R_width = PARAMS["Poly_Width"]*BOHRPERA
 	R_begin = R_cut
@@ -1369,14 +1369,14 @@ def TFVdwPolyLR(R, Zs, eles, c6, R_vdw, R_cut, Radpair, prec=tf.float64):
 	damping function in http://pubs.rsc.org/en/content/articlepdf/2008/cp/b810189b is used.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    c6 : nele. Grimmer C6 coff in a.u.
-	    R_vdw: nele. Grimmer vdw radius in a.u.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		c6 : nele. Grimmer C6 coff in a.u.
+		R_vdw: nele. Grimmer vdw radius in a.u.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	R = tf.multiply(R, BOHRPERA)
 	R_width = PARAMS["Poly_Width"]*BOHRPERA
@@ -1424,14 +1424,14 @@ def TFVdwPolyLRWithEle(R, Zs, eles, c6, R_vdw, R_cut, Radpair_E1E2, prec=tf.floa
 	damping function in http://pubs.rsc.org/en/content/articlepdf/2008/cp/b810189b is used.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    c6 : nele. Grimmer C6 coff in a.u.
-	    R_vdw: nele. Grimmer vdw radius in a.u.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		c6 : nele. Grimmer C6 coff in a.u.
+		R_vdw: nele. Grimmer vdw radius in a.u.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	Radpair = Radpair_E1E2[:,:3]
 	R = tf.multiply(R, BOHRPERA)
@@ -1569,16 +1569,16 @@ def TFSymRSet_Linear(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, prec=tf.float64):
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1632,16 +1632,16 @@ def TFSymRSet_Linear_WithEle(R, Zs, eles_, SFPs_, eta, R_cut, RadpairEle, prec=t
 	This version appends the element type (by its index in eles_) in RadpairEle, and it is sorted by m,i,l,j
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    RadpairEle: None zero pairs X 4 tensor (mol, i, j, l)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		RadpairEle: None zero pairs X 4 tensor (mol, i, j, l)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1693,16 +1693,16 @@ def TFSymRSet_Linear_WithElePeriodic(R, Zs, eles_, SFPs_, eta, R_cut, RadpairEle
 	This version appends the element type (by its index in eles_) in RadpairEle, and it is sorted by m,i,l,j
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    RadpairEle: None zero pairs X 4 tensor (mol, i, j, l)
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		RadpairEle: None zero pairs X 4 tensor (mol, i, j, l)
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1747,17 +1747,17 @@ def TFSymRSet_Linear_Qs(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, Qs, prec=tf.fl
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    Qs: charge of each atom. nmol X maxnatom
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		Qs: charge of each atom. nmol X maxnatom
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -1821,17 +1821,17 @@ def TFSymRSet_Linear_Qs_Periodic(R, Zs, eles_, SFPs_, eta, R_cut, Radpair, Qs, m
 	heavy tiles.
 
 	Args:
-	    R: a nmol X maxnatom X 3 tensor of coordinates.
-	    Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	    eles_: a nelepairs X 1 tensor of elements present in the data.
-	    SFP: A symmetry function parameter tensor having the number of elements
-	    as the SF output. 2 X neta  X nRs.
-	    R_cut: Radial Cutoff
-	    Radpair: None zero pairs X 3 tensor (mol, i, j)
-	    Qs: charge of each atom. nmol X maxnatom
-	    prec: a precision.
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a nelepairs X 1 tensor of elements present in the data.
+		SFP: A symmetry function parameter tensor having the number of elements
+		as the SF output. 2 X neta  X nRs.
+		R_cut: Radial Cutoff
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		Qs: charge of each atom. nmol X maxnatom
+		prec: a precision.
 	Returns:
-	    Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
+		Digested Mol. In the shape nmol X maxnatom X nelepairs X nZeta X nEta X nThetas X nRs
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]
@@ -2015,17 +2015,17 @@ def TFSymSet_Scattered_Update_Scatter(R, Zs, eles_, SFPsR_, Rr_cut,  eleps_, SFP
 	according to kun? (Trusted source?)
 
 	Args:
-	        R: a nmol X maxnatom X 3 tensor of coordinates.
-	        Zs : nmol X maxnatom X 1 tensor of atomic numbers.
-	        eles_: a neles X 1 tensor of elements present in the data.
-	        SFPsR_: A symmetry function parameter of radius part
-	        Rr_cut: Radial Cutoff of radius part
-	        eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
-	        SFPsA_: A symmetry function parameter of angular part
-	        RA_cut: Radial Cutoff of angular part
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Zs : nmol X maxnatom X 1 tensor of atomic numbers.
+		eles_: a neles X 1 tensor of elements present in the data.
+		SFPsR_: A symmetry function parameter of radius part
+		Rr_cut: Radial Cutoff of radius part
+		eleps_: a nelepairs X 2 X 12tensor of elements pairs present in the data.
+		SFPsA_: A symmetry function parameter of angular part
+		RA_cut: Radial Cutoff of angular part
 
 	Returns:
-	        Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
+		Digested Mol. In the shape nmol X maxnatom X (Dimension of radius part + Dimension of angular part)
 	"""
 	inp_shp = tf.shape(R)
 	nmol = inp_shp[0]

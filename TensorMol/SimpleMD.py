@@ -441,7 +441,7 @@ class VelocityVerlet:
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
 
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) KE(kJ): %.5f PotE(Eh): %.5f ETot(kJ/mol): %.5f Teff(K): %.5f", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot)*KJPERHARTREE, Teff)
+			LOGGER.info("%s Step: %i time: %.1f(fs) KE(kJ): %.5f PotE(Eh): %.5f ETot(kJ/mol): %.5f Teff(K): %.5f", self.name, step, self.t, self.KE*len(self.m)/1000.0, self.EPot, self.KE*len(self.m)/1000.0+(self.EPot)*KJPERHARTREE, Teff)
 			#LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
 			print(("per step cost:", time.time() -t ))
 		return
@@ -573,7 +573,7 @@ class IRTrajectory(VelocityVerlet):
 			step+=1
 			if (step%1000==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.mu_his)
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f Teff(K): %.5f Mu: (%f,%f,%f)", self.name, step, self.t, self.KE*len(self.m)/1000.0, self.EPot, self.KE*len(self.m)/1000.0+(self.EPot-self.EPot0)*KJPERHARTREE, Teff, self.Mu[0], self.Mu[1], self.Mu[2])
 		#WriteVelocityAutocorrelations(self.mu_his,vhis)
 		return
 
@@ -602,7 +602,7 @@ class Annealer(IRTrajectory):
 		self.Tstat.T = self.AnnealT0*float(self.AnnealSteps - step)/self.AnnealSteps + pow(10.0,-10.0)
 		Teff = PARAMS["MDAnnealT0"]
 		print ("Teff", Teff, " MDAnnealTF:", PARAMS["MDAnnealTF"])
-		while(step < self.AnnealSteps or abs(Teff -  PARAMS["MDAnnealTF"])>0.1):
+		while(step < self.AnnealSteps):
 			self.t = step*self.dt
 			#self.KE = KineticEnergy(self.v,self.m)
 			#Teff = (2./3.)*self.KE/IDEALGASR
@@ -635,7 +635,7 @@ class Annealer(IRTrajectory):
 			if (step%7==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			step+=1
-			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE*len(self.m), self.EPot, self.KE*len(self.m)/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
+			LOGGER.info("%s Step: %i time: %.1f(fs) <KE>(kJ): %.5f <PotE>(Eh): %.5f <ETot>(kJ/mol): %.5f T_eff(K): %.5f T_target(K): %.5f", self.name, step, self.t, self.KE*len(self.m)/1000.0, self.EPot, self.KE*len(self.m)/1000.0+(self.EPot-self.EPot)*2625.5, Teff, self.Tstat.T)
 		#self.x = self.Minx.copy()
 		print("Achieved Minimum energy ", self.MinE, " at step ", step)
 		return

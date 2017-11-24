@@ -255,7 +255,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
 
 		Args:
-		        step: the index of this step.
+			step: the index of this step.
 		"""
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()
@@ -649,8 +649,8 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		#	print("I was fed shit4")
 		#	raise Exception("DontEatShit")
 		if (not np.all(np.isfinite(batch_data[4]),axis=(0,1))):
-                        print("I was fed shit5")
-                        raise Exception("DontEatShit")
+			print("I was fed shit5")
+			raise Exception("DontEatShit")
 		#feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl + self.coords_pl, batch_data[0]+batch_data[1] +  batch_data[2])}
 		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+self.coords_pl+[self.natom_pl]+[self.label_pl], batch_data[0]+batch_data[1]+ batch_data[2] + [batch_data[3]] + [batch_data[4]])}
 		#print ("batch_data", batch_data)
@@ -662,7 +662,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		Perform a single training step (complete processing of all input), using minibatches of size self.batch_size
 
 		Args:
-		        step: the index of this step.
+			step: the index of this step.
 		"""
 		Ncase_train = self.TData.NTrain
 		start_time = time.time()

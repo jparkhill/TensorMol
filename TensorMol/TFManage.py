@@ -134,8 +134,8 @@ class TFManage:
 		return
 
 	def SampleAtomGrid(self, mol, atom, maxstep, ngrid):
-	    # use TF instances for each atom.
-	    return  self.TData.dig.UniformDigest(mol,atom,maxstep,ngrid)
+		# use TF instances for each atom.
+		return  self.TData.dig.UniformDigest(mol,atom,maxstep,ngrid)
 
 	def SmoothPOneAtom(self, mol_, atom_):
 		"""

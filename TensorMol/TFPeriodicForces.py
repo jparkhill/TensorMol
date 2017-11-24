@@ -310,10 +310,10 @@ class TFPeriodic():
 		the remainder are images.
 
 		Args:
-		    z_: vector of atomic numbers
-		    xyz_: nprimitive atoms X 3 coordinates.
-		    lat_: 3x3 lattice matrix.
-		    tess_: an ntess X 3 matrix of tesselations to perform. The identity is the assumed initial state.
+			z_: vector of atomic numbers
+			xyz_: nprimitive atoms X 3 coordinates.
+			lat_: 3x3 lattice matrix.
+			tess_: an ntess X 3 matrix of tesselations to perform. The identity is the assumed initial state.
 		"""
 		# Move into the lattice frame and tesselate there.
 		x_lat = self.InLat(xyz_,lat_)
