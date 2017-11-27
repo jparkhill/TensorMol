@@ -381,12 +381,12 @@ def train_energy_GauSH():
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["EECutoffOn"] = 0.0
-	PARAMS["Elu_Width"] = 5.5
-	PARAMS["train_energy_gradients"] = False
+	PARAMS["Elu_Width"] = 4.5
+	PARAMS["train_energy_gradients"] = True
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 500
+	PARAMS["max_steps"] = 250
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 400
 	PARAMS["NeuronType"] = "elu"
@@ -620,8 +620,8 @@ def water_dimer_plot():
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-train_energy_symm_func("nicotine_full")
-# train_energy_GauSH()
+# train_energy_symm_func("nicotine_full")
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
