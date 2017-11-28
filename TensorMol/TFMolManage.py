@@ -1431,7 +1431,7 @@ class TFMolManageDirect:
 
 	def save(self):
 		print("Saving TFManager:",self.path+self.name+".tfm")
-		self.molecule_set == None
+		self.molecule_set = None
 		f = open(self.path+self.name+".tfm","wb")
 		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
