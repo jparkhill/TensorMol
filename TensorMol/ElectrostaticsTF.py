@@ -126,7 +126,7 @@ def BumpEnergy(h,w,xyz,x,nbump):
 	Ds = TFDistances(Nzxyz) # nbump X MaxNAtom X MaxNAtom Distance tensor.
 	Dx = TFDistance(x) # MaxNAtom X MaxNAtom Distance tensor.	#sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
 	w2 = w*w
-	rij = Ds - tf.tile(tf.reshape(Dx,[1,nx,nx]),[nbump,1,1])
+	rij = (Ds - tf.tile(tf.reshape(Dx,[1,nx,nx]),[nbump,1,1]))
 	ToExp = tf.einsum('ijk,ijk->i',rij,rij)
 	ToSum = -1.0*h*tf.exp(-0.5*ToExp/w2)
 	return tf.reduce_sum(ToSum,axis=0)
@@ -155,12 +155,10 @@ def BumpEnergyMR(h,w,xyz,x,nbump):
 	w2 = w*w
 	rij = Ds - Dx[tf.newaxis,:,:]
 	ToExp = rij*rij
-	CenterOfVision=9.0
 	sigma = 5.0
 	# The bump is larger in real space the further apart the atoms are.
-	# Screen local structure, so only long range changes contribute to the difference
-	#Screen = tf.exp(-0.5*(Dx - CenterOfVision)*(Dx - CenterOfVision)/(sigma*sigma))[tf.newaxis,:,:] # Make 5 angstrom distances most important.
-	Screen = w2+(Dx*Dx)[tf.newaxis,:,:]
+	# Screen local structure, so only long range changes contribute to the difference most important.
+	Screen = w2*(1e0+(Dx*Dx)[tf.newaxis,:,:])
 	ToProd = tf.exp(-0.5*ToExp/Screen)
 	# We want the product of the gaussians for each bump within the sensory radius.
 	# then we want to sum between bumps.
