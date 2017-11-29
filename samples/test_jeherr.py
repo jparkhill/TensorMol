@@ -381,15 +381,15 @@ def train_energy_GauSH():
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["EECutoffOn"] = 0.0
-	PARAMS["Elu_Width"] = 4.5
-	PARAMS["train_energy_gradients"] = True
+	PARAMS["Elu_Width"] = 8.0
+	PARAMS["train_energy_gradients"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 250
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 400
-	PARAMS["NeuronType"] = "elu"
+	PARAMS["NeuronType"] = "shifted_softplus"
 	PARAMS["tf_prec"] = "tf.float32"
 	PARAMS["Profiling"] = False
 	a=MSet("H2O_wb97xd_1to21_with_prontonated")
@@ -498,7 +498,7 @@ def evaluate_BPSymFunc(mset):
 	a=MSet(mset)
 	a.Load()
 	output, labels = [], []
-	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_aimd_40000_Fri_Nov_10_17.36.01_2017", network_type = "BehlerParinelloDirectSymFunc")
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_10000_Tue_Nov_07_22.35.07_2017", network_type = "BehlerParinelloDirectSymFunc")
 	random.shuffle(a.mols)
 	batch = []
 	for i in range(len(a.mols) / 100):
@@ -626,7 +626,7 @@ train_energy_GauSH()
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
-# evaluate_BPSymFunc("nicotine_aimd")
+# evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
 
 # a=MSet("water_dimer_cccbdb_opt")
