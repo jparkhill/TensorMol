@@ -158,8 +158,8 @@ def MetadynamicsStatistics():
 	Gather statistics about the metadynamics exploration process varying bump depth, and width.
 	"""
 	sugarXYZ="""23
-	Comment: ;;;Step 47;;;Energy -3.59697287065
-	C   0.469801362563  -0.186971976654  -0.917684108862
+
+ 	C   0.469801362563  -0.186971976654  -0.917684108862
 	O   -0.859493679862  0.107094904765  -0.545217785597
 	C   -1.33087192983  -0.507316368828  0.650893179939
 	C   -0.438298062157  -0.0755659372548  1.80797104148
@@ -185,6 +185,7 @@ def MetadynamicsStatistics():
 	"""
 	m = Mol()
 	m.FromXYZString(sugarXYZ)
+
 	def GetEnergyForceForMol(m):
 		s = MSet()
 		s.mols.append(m)
@@ -203,18 +204,45 @@ def MetadynamicsStatistics():
 
 	Opt = GeomOptimizer(F)
 	m = Opt.Opt(m)
-	PARAMS["MDdt"] = 0.2 # In fs.
-	PARAMS["MDMaxStep"] = 4000
+	PARAMS["MDdt"] = 0.5 # In fs.
+	PARAMS["MDMaxStep"] = 8000
 	PARAMS["MetaBumpTime"] = 10.0
 	PARAMS["MetaMaxBumps"] = 500
-	PARAMS["MetaMDBumpHeight"] = 0.000
-	PARAMS["MetaMDBumpWidth"] = 0.5
 	PARAMS["MetaBowlK"] = 0.0
 	PARAMS["MDThermostat"]="Andersen"
 	PARAMS["MDTemp"]=300.0
 	PARAMS["MDV0"]=None
-	traj = MetaDynamics(None, m,"MetaMD_050_01",F)
+	if 0:
+		PARAMS["MetaMDBumpHeight"] = 0.000
+		PARAMS["MetaMDBumpWidth"] = 0.5
+		traj = MetaDynamics(None, m,"MetaMD_000_05",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 0.500
+		PARAMS["MetaMDBumpWidth"] = 0.5
+		traj = MetaDynamics(None, m,"MetaMD_050_05",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 0.500
+		PARAMS["MetaMDBumpWidth"] = 1.0
+		traj = MetaDynamics(None, m,"MetaMD_050_10",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 0.500
+		PARAMS["MetaMDBumpWidth"] = 2.0
+		traj = MetaDynamics(None, m,"MetaMD_050_20",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 1.000
+		PARAMS["MetaMDBumpWidth"] = 1.0
+		traj = MetaDynamics(None, m,"MetaMD_100_10",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 1.000
+		PARAMS["MetaMDBumpWidth"] = 2.0
+		traj = MetaDynamics(None, m,"MetaMD_100_20",F)
+		traj.Prop()
+	PARAMS["MetaBumpTime"] = 10.0
+	PARAMS["MetaMDBumpHeight"] = 3.000
+	PARAMS["MetaMDBumpWidth"] = 1.0
+	traj = MetaDynamics(None, m,"MetaMD_100_10_X",F)
 	traj.Prop()
+
 
 #Eval()
 #TestBetaHairpin()

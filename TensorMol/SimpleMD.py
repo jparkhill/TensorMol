@@ -162,28 +162,6 @@ class AndersenThermostat(Thermostat):
 		else:
 			return x,v,a,e
 
-		"""
-		arXiv:1212.1244v4
-		"""
-		m = np.tile(self.m[:,np.newaxis],(1,3))
-		print("M shape: ",m.shape)
-		a = (1.0-self.gamma*dt_/(2.0*m))/(1.0+self.gamma*dt_/(2.0*m))
-		b = 1.0/(1.0+self.gamma*dt_/(2.0*m))
-		print("a,b:",a,b)
-		x = x_ + b*dt_*v_ + (b*dt_*dt_)/(2.0*m)*(a_*m)  + (b*dt_)/(2.0*m)*beta
-		e, f_x_ = 0.0, None
-		if (fande_==None):
-			f_x_ = f_(x)
-		else:
-			e, f_x_ = fande_(x)
-		v = a*v_ + dt_/(2.0*m)*(a*(a_*m)+f_x_) + (b/m)*beta
-		a = f_x_/m
-		if frc_:
-			return x,v,a,e,f_x_
-		else:
-			return x,v,a,e
-
-
 class LangevinThermostat(Thermostat):
 	"""
 	Not Working.

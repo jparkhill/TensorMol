@@ -207,14 +207,18 @@ class MSet:
 		return
 
 	def ReadXYZ(self,filename = None, xyz_type = 'mol'):
-		""" Reads XYZs concatenated into a single file separated by \n\n as a molset """
+		"""
+		Reads XYZs concatenated into a single file separated by \n\n as a molset
+
+		"""
 		if filename == None:
 			filename = self.name
 		f = open(self.path+filename+".xyz","r")
 		txts = f.readlines()
 		for line in range(len(txts)):
-			if (txts[line].count('Comment:')>0):
-				line0=line-1
+			if (txts[line].strip() and
+					all([x.isdigit() for x in txts[line].split()])):
+				line0=line
 				nlines=int(txts[line0])
 				if xyz_type == 'mol':
 					self.mols.append(Mol())
