@@ -216,7 +216,8 @@ class MSet:
 		f = open(self.path+filename+".xyz","r")
 		txts = f.readlines()
 		for line in range(len(txts)):
-			if (all([x.isdigit() for x in txts[line].split()])):
+			if (txts[line].strip() and
+					all([x.isdigit() for x in txts[line].split()])):
 				line0=line
 				nlines=int(txts[line0])
 				if xyz_type == 'mol':
