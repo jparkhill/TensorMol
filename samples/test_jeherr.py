@@ -155,20 +155,24 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	return
 
 def TestMetadynamics():
-	a = MSet("nicotine_opt")
+	a = MSet("nicotine_stretch")
 	# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	a.ReadXYZ()
-	m = a.mols[0]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
+	m = a.mols[-1]
+	# ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_Fri_Nov_10_16.19.55_2017", network_type = "BehlerParinelloDirectSymFunc")
+	def force_field(coords):
+		energy, forces = manager.evaluate_mol(Mol(m.atoms, coords), True)
+		return energy, forces * JOULEPERHARTREE
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 0.02
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 100
+	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 300.0
 	PARAMS["MDV0"] = "Thermal"
-	meta = MetaDynamics(ForceField, m)
+	meta = MetaDynamics(force_field, m)
 	meta.Prop()
 
 def TestTFBond():
@@ -586,6 +590,70 @@ def water_dimer_plot():
 		bond_e = dimer - h2o1 - h2o2
 		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
 
+def nicotine_cc_stretch_plot():
+	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
+		istring = '$molecule\n0 1 \n'
+		crds = m_.coords.copy()
+		crds[abs(crds)<0.0000] *=0.0
+		for j in range(len(m_.atoms)):
+			if j in ghostatoms:
+				istring=istring+"@"+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+			else:
+				istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+		if jobtype_ == "dipole":
+			istring =istring + '$end\n\n$rem\njobtype sp\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		else:
+			istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		with open(path_+filename_+'.in','w') as fin:
+			fin.write(istring)
+		with open(path_+filename_+'.out','a') as fout:
+			if threads:
+				proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			else:
+				proc = subprocess.Popen(['qchem', path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			out, err = proc.communicate()
+			fout.write(out)
+		lines = out.split('\n')
+		if jobtype_ == 'force':
+			Forces = np.zeros((m_.atoms.shape[0],3))
+			for i, line in enumerate(lines):
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+				if line.count("Gradient of SCF Energy") > 0:
+					k = 0
+					l = 0
+					for j in range(1, m_.atoms.shape[0]+1):
+						Forces[j-1,:] = float(lines[i+k+2].split()[l+1]), float(lines[i+k+3].split()[l+1]), float(lines[i+k+4].split()[l+1])
+						l += 1
+						if (j % 6) == 0:
+							k += 4
+							l = 0
+			# return Energy, Forces
+			return Energy, -Forces*JOULEPERHARTREE/BOHRPERA
+		elif jobtype_ == 'sp':
+			for line in lines:
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+			return Energy
+		else:
+			raise Exception("jobtype needs formatted for return variables")
+
+	a = MSet("nicotine_metamd_collision")
+	a.ReadXYZ()
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_Fri_Nov_10_16.19.55_2017", network_type = "BehlerParinelloDirectSymFunc")
+	qchemff = lambda x, y: qchemdft(x, y, basis_ = '6-311g**',xc_='wb97x-d', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=8)
+	for i, mol in enumerate(a.mols):
+		# energy = qchemff(mol, [])
+		energy = manager.evaluate_mol(mol, eval_forces=False)
+		print "%.10f %.10f" % (i * 0.02, energy * 627.509)
+	# print "TensorMol evaluation"
+	# for i, mol in enumerate(a.mols):
+	# 	h2o1 = manager.evaluate_mol(Mol(mol.atoms[:3], mol.coords[:3]), False)
+	# 	h2o2 = manager.evaluate_mol(Mol(mol.atoms[3:], mol.coords[3:]), False)
+	# 	dimer = manager.evaluate_mol(mol, False)
+	# 	bond_e = dimer - h2o1 - h2o2
+	# 	print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
+
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 # PARAMS["SH_NRAD"] = 32
 # PARAMS["SH_LMAX"] = 4
@@ -620,24 +688,25 @@ def water_dimer_plot():
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func("nicotine_full")
-train_energy_GauSH()
+# train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
+nicotine_cc_stretch_plot()
 
-# a=MSet("water_dimer_cccbdb_opt")
+# a=MSet("nicotine_opt")
 # a.ReadXYZ()
-# b = MSet("water_dimer")
+# b = MSet("nicotine_stretch")
 # mol = a.mols[0]
-# oovec = mol.coords[1] - mol.coords[3]
-# for i in range(-80, 30):
+# ccvec = mol.coords[1] - mol.coords[17]
+# for i in range(-40, 80):
 # 	coords = mol.coords.copy()
-# 	coords[3:] += 0.01 * i * oovec
+# 	coords[16:] += 0.01 * i * ccvec
 # 	new_mol = Mol(mol.atoms, coords)
 # 	b.mols.append(new_mol)
-# 	print np.linalg.norm(b.mols[-1].coords[1] - b.mols[-1].coords[3])
+# 	print np.linalg.norm(b.mols[-1].coords[1] - b.mols[-1].coords[17])
 # b.WriteXYZ()
