@@ -125,7 +125,8 @@ def BumpEnergy(h,w,xyz,x,nbump):
 	Nzxyz = tf.slice(xyz,[0,0,0],[nbump,nx,3])
 	Ds = TFDistances(Nzxyz) # nbump X MaxNAtom X MaxNAtom Distance tensor.
 	Dx = TFDistance(x) # MaxNAtom X MaxNAtom Distance tensor.	#sqrt2pi = tf.constant(2.50662827463100,dtype = tf.float64)
-	w2 = w*w
+	#w2 = w*w
+	w2 = w*w*nx*nx
 	rij = Ds - tf.tile(tf.reshape(Dx,[1,nx,nx]),[nbump,1,1])
 	ToExp = tf.einsum('ijk,ijk->i',rij,rij)
 	ToSum = -1.0*h*tf.exp(-0.5*ToExp/w2)
