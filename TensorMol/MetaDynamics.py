@@ -33,7 +33,9 @@ class MetaDynamics(VelocityVerlet):
 		self.NBump = 0
 		self.DStat = OnlineEstimator(MolEmb.Make_DistMat(self.x))
 		self.BowlK = PARAMS["MetaBowlK"]
-		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, self.bump_height, self.bump_width, "MR")
+		if (self.Tstat.name != "Andersen"):
+			LOGGER.info("I really recommend you use Andersen Thermostat with Meta-Dynamics.")
+		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, self.bump_height, self.bump_width)#,"MR")
 
 	def BumpForce(self,x_):
 		BE = 0.0
@@ -43,7 +45,7 @@ class MetaDynamics(VelocityVerlet):
 		if (self.EnergyAndForce != None):
 			self.RealPot, PF = self.EnergyAndForce(x_)
 		else:
-			PF = self.ForceFunction(x_)
+			PE, PF = self.ForceFunction(x_)
 		if self.NBump > 0:
 			BF[0] *= self.m[:,None]
 		PF += JOULEPERHARTREE*BF[0]

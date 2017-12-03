@@ -174,7 +174,7 @@ class BumpHolder(ForceHolder):
 				self.BE = -1.0*BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 				self.BF = tf.gradients(BumpEnergy(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
 			else:
-				self.BE = BumpEnergyMR(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
+				self.BE = -1.0*BumpEnergyMR(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl)
 				self.BF = tf.gradients(BumpEnergyMR(self.h, self.w, self.xyzs_pl, self.x_pl, self.nb_pl), self.x_pl)
 			self.BowlE = BowlEnergy(self.BowlKv, self.x_pl)
 			self.BowlF = tf.gradients(BowlEnergy(self.BowlKv, self.x_pl), self.x_pl)

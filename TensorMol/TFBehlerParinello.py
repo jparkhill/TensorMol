@@ -652,7 +652,7 @@ class BehlerParinelloDirectSymFunc:
 				element_embeddings[element] /= embeddings_max[element]
 			self.normalized_output = self.inference(element_embeddings, mol_indices)
 			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
-			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0] / self.batch_size
+			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0]
 
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -691,11 +691,19 @@ class BehlerParinelloDirectSymFunc:
 			self.num_atoms = mol.NAtoms()
 			self.assign_activation()
 			self.evaluate_prepare()
+		atomization_energy = 0.0
+		for atom in mol.atoms:
+			if atom in ele_U:
+				atomization_energy += ele_U[atom]
 		xyzs = np.expand_dims(mol.coords, axis=0)
 		Zs = np.expand_dims(mol.atoms, axis=0)
 		feed_dict=self.evaluate_fill_feed_dict(xyzs, Zs)
-		energy = self.sess.run(self.output, feed_dict=feed_dict)
-		return energy
+		if eval_forces:
+			energy, gradients = self.sess.run([self.output, self.gradients], feed_dict=feed_dict)
+			return energy + atomization_energy, -gradients[0]
+		else:
+			energy = self.sess.run(self.output, feed_dict=feed_dict)
+			return energy + atomization_energy
 
 	def evaluate_batch(self, mols, eval_forces=True):
 		"""
@@ -760,13 +768,9 @@ class BehlerParinelloDirectGauSH:
 		self.assign_activation()
 		self.embedding_type = embedding_type
 		self.path = PARAMS["networks_directory"]
-		self.Ree_on = PARAMS["EECutoffOn"]
-		self.Ree_off = PARAMS["EECutoffOff"]
-		self.Ree_cut = PARAMS["EECutoffOff"]
-		self.damp_shifted_alpha = PARAMS["DSFAlpha"]
+		self.coulomb_cutoff = PARAMS["EECutoffOff"]
+		self.dsf_alpha = PARAMS["DSFAlpha"]
 		self.elu_width = PARAMS["Elu_Width"]
-		self.elu_shift = DSF(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.damp_shifted_alpha/BOHRPERA)
-		self.elu_alpha = DSF_Gradient(self.elu_width*BOHRPERA, self.Ree_off*BOHRPERA, self.damp_shifted_alpha/BOHRPERA)
 
 		#Reloads a previous network if name variable is not None
 		if name !=  None:
@@ -801,6 +805,8 @@ class BehlerParinelloDirectGauSH:
 				self.activation_function = self.selu
 			elif self.activation_function_type == "softplus":
 				self.activation_function = tf.nn.softplus
+			elif self.activation_function_type == "shifted_softplus":
+				self.activation_function = self.shifted_softplus
 			elif self.activation_function_type == "tanh":
 				self.activation_function = tf.tanh
 			elif self.activation_function_type == "sigmoid":
@@ -815,6 +821,10 @@ class BehlerParinelloDirectGauSH:
 			print ("activation function not assigned, set to relu")
 			self.activation_function = tf.nn.relu
 		return
+
+	def shifted_softplus(self, x):
+		return tf.nn.softplus(x) - tf.log(2.0)
+
 
 	def save_checkpoint(self, step):
 		checkpoint_file = os.path.join(self.network_directory,self.name+'-checkpoint-'+str(step))
@@ -945,7 +955,7 @@ class BehlerParinelloDirectGauSH:
 		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
-		rad_eep = NLEE.buildPairs(self.Ree_cut)
+		rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
 		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
 
 	def get_dipole_test_batch(self, batch_size):
@@ -977,7 +987,7 @@ class BehlerParinelloDirectGauSH:
 		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
-		rad_eep = NLEE.buildPairs(self.Ree_cut)
+		rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
 		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
 
 	def variable_summaries(self, var):
@@ -1120,13 +1130,12 @@ class BehlerParinelloDirectGauSH:
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
 			elu_width = tf.Variable(self.elu_width * BOHRPERA, trainable=False, dtype = self.tf_precision)
-			elu_alpha = tf.Variable(self.elu_alpha, trainable=False, dtype = self.tf_precision)
-			elu_shift = tf.Variable(self.elu_shift, trainable=False, dtype = self.tf_precision)
-			damp_shifted_alpha = tf.Variable(self.damp_shifted_alpha, trainable=False, dtype = self.tf_precision)
+			dsf_alpha = tf.Variable(self.dsf_alpha, trainable=False, dtype = self.tf_precision)
+			coulomb_cutoff = tf.Variable(self.coulomb_cutoff, trainable=False, dtype = self.tf_precision)
 
 			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
-					tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1)
+					tf.random_uniform([self.batch_size], minval=0.1, maxval=1.9, dtype=self.tf_precision)], axis=-1)
 			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
 			self.dipole_labels = tf.squeeze(tf_random_rotate(tf.expand_dims(self.dipole_pl, axis=1), rotation_params))
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
@@ -1137,8 +1146,7 @@ class BehlerParinelloDirectGauSH:
 
 			self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
 			# dipole_variables.append(self.gaussian_params)
-			self.coulomb_energy = tf_coulomb_damp_shifted_force(rotated_xyzs * BOHRPERA, self.charges, elu_width, self.Reep_pl,
-									damp_shifted_alpha, elu_alpha, elu_shift)
+			self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
 			norm_output, energy_variables = self.energy_inference(embeddings, molecule_indices)
 			self.output = (norm_output * labels_stddev) + labels_mean
 			self.total_energy = self.output + self.coulomb_energy
@@ -1591,9 +1599,9 @@ class BehlerParinelloDirectGauSH:
 
 			self.tiled_xyzs = tf.tile(tf.expand_dims(self.xyzs_pl, axis=1), [1, 100, 1, 1])
 			self.tiled_Zs = tf.tile(tf.expand_dims(self.Zs_pl, axis=1), [1, 100, 1])
-			self.rotation_params = tf.tile(tf.expand_dims(tf.concat([tf.expand_dims(tf.tile(tf.linspace(0.001, 1.999, 5), [20]), axis=1),
-					tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.001, 1.999, 5), axis=1), [1,20]), [100,1]),
-					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.001, 1.999, 4), axis=1),
+			self.rotation_params = tf.tile(tf.expand_dims(tf.concat([np.pi * tf.expand_dims(tf.tile(tf.linspace(0.0, 2.0, 5), [20]), axis=1),
+					np.pi * tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.0, 2.0, 5), axis=1), [1,20]), [100,1]),
+					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.1, 1.9, 4), axis=1),
 					axis=2), [5,1,5]), [100,1])], axis=1), axis=0), [self.batch_size, 1, 1])
 			self.rotated_xyzs = tf_random_rotate(self.tiled_xyzs, self.rotation_params)
 			self.rotated_xyzs = tf.reshape(self.rotated_xyzs, [-1, self.num_atoms, 3])
