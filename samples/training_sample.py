@@ -79,12 +79,10 @@ def Eval():
 		Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, force = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
 		print ("Unit of energy: a.u")
 		print ("Etotal: %8.6f  Ebp: %8.6f  Ecc: %8.6f  Evdw: %8.6f" %(Etotal, Ebp, Ecc, Evdw))
-		print ("Unit of diple: a.u")
+		print ("Unit of dipole: a.u")
 		print ("Dipole: ", mol_dipole)
-		print ("Unit of diple: Joules/Angstrom")
+		print ("Unit of force: Joules/Angstrom")
 		print ("force:", force)
-		total_e.append(Etotal)
-	np.savetxt("tmp.dat", np.asarray(total_e))
 
 Train()  # Training should be finished in about an hour depends on your computer
 Eval() # Evaluate the network that you trained
