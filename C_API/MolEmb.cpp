@@ -2266,6 +2266,7 @@ static PyMethodDef EmbMethods[] =
 			Py_DECREF(m);
 			INITERROR;
 		}
+		import_array();
 		return m;
 	}
 #else

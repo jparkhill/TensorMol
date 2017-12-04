@@ -78,17 +78,6 @@ class Digester:
 		grids[:,2] = disps*np.sin(theta)*np.sin(phi)
 		return grids + point
 
-	def Blurs(self, diffs):
-		dists=np.array(map(np.linalg.norm,diffs))
-		return np.exp(dists*dists/(-1.0*self.BlurRadius*self.BlurRadius))/(np.power(2.0*Pi*self.BlurRadius*self.BlurRadius,3.0/2.0))
-
-	def HardCut(self, diffs, cutoff=0.05):
-		# 0, 1 output
-		dists=np.array(map(np.linalg.norm,diffs))
-		labels = np.clip(-(dists - cutoff), 0, (-(dists - cutoff)).max())
-		labels[np.where(labels > 0)]=1
-		return labels
-
 #
 #  Embedding functions, called by batch digests. Use outside of Digester() is discouraged.
 #  Instead call a batch digest routine.

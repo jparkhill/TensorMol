@@ -134,7 +134,7 @@ class AndersenThermostat(Thermostat):
 		Velocity Verlet step with a Langevin Thermostat
 		"""
 		self.m = m_.copy()
-		self.N = len(m_)
+		self.N = len(list(m_))
 		self.T = PARAMS["MDTemp"]  # Length of NH chain.
 		self.gamma = 1/2.0 # Collision frequency (fs**-1)
 		self.name = "Andersen"
@@ -352,7 +352,7 @@ class VelocityVerlet:
 		self.t = 0.0
 		self.KE = 0.0
 		self.atoms = g0_.atoms.copy()
-		self.m = np.array(map(lambda x: ATOMICMASSES[x-1], self.atoms))
+		self.m = np.array(list(map(lambda x: ATOMICMASSES[x-1], self.atoms)))
 		self.natoms = len(self.atoms)
 		self.x = g0_.coords.copy()
 		self.v = np.zeros(self.x.shape)
@@ -665,7 +665,7 @@ class AnnealerDirect:
 		"""
 		step = 0
 
-		mol.properties["masses"] = np.array(map(lambda x: ATOMICMASSES[x-1], mol.atoms))
+		mol.properties["masses"] = np.array(list(map(lambda x: ATOMICMASSES[x-1], mol.atoms)))
 		mol.properties["velocity"] = np.zeros((mol.NAtoms(), 3))
 		mol.properties["acceleration"] = np.zeros((mol.NAtoms(), 3))
 		mol.properties["kinetic_energy"] = KineticEnergy(mol.properties["velocity"], mol.properties["masses"])

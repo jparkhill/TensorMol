@@ -188,12 +188,12 @@ def MetadynamicsStatistics():
 
 	print("READ MOL XFOIUDOFIUDFO")
 
-	from MolEmb import EmptyInterfacedFunction, Make_NListNaive, Make_NListLinear
-	EmptyInterfacedFunction()
-	print("READ MOL XFOIUDOFIUDFO")
-	print(m.coords,15.0,m.NAtoms(),True)
-	Make_NListNaive(m.coords,15.0,m.NAtoms(),True)
-	print("Passed test")
+	#from MolEmb import EmptyInterfacedFunction, Make_NListNaive, Make_NListLinear
+	#print("READ MOL XFOIUDOFIUDFO")
+	#print(m.coords,15.0,m.NAtoms(),True)
+	#EmptyInterfacedFunction(np.zeros((10,3)),13)
+	#print("Passed test")
+	#return
 
 	def GetEnergyForceForMol(m):
 		s = MSet()

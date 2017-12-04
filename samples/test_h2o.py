@@ -1866,7 +1866,7 @@ def TestSmoothIR():
 	m = Opt.Opt(m)
 	return
 	#m = a.mols[-1]
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms)
 	return
 	PYSCFFIELD = lambda x: PyscfDft(Mol(m.atoms,x))

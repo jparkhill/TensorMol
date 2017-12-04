@@ -6,7 +6,7 @@ a = MSet("david_test.xyz")
 a.ReadXYZ("david_test")
 manager= TFMolManage("Mol_uneq_chemspider_ANI1_Sym_fc_sqdiff_BP_1" , None, False, RandomTData_=False, Trainable_=False)
 m = a.mols[7]
-masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 resized_masses = np.transpose(np.resize(masses,(3,masses.shape[0]))).reshape((-1))
 print "resized_masses:", resized_masses
 nm = nm.reshape((33,-1))
