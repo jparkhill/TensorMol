@@ -186,6 +186,15 @@ def MetadynamicsStatistics():
 	m = Mol()
 	m.FromXYZString(sugarXYZ)
 
+	print("READ MOL XFOIUDOFIUDFO")
+
+	from MolEmb import EmptyInterfacedFunction, Make_NListNaive, Make_NListLinear
+	EmptyInterfacedFunction()
+	print("READ MOL XFOIUDOFIUDFO")
+	print(m.coords,15.0,m.NAtoms(),True)
+	Make_NListNaive(m.coords,15.0,m.NAtoms(),True)
+	print("Passed test")
+
 	def GetEnergyForceForMol(m):
 		s = MSet()
 		s.mols.append(m)
@@ -238,8 +247,9 @@ def MetadynamicsStatistics():
 		traj = MetaDynamics(None, m,"MetaMD_100_20",F)
 		traj.Prop()
 	PARAMS["MetaBumpTime"] = 10.0
-	PARAMS["MetaMDBumpHeight"] = 3.000
+	PARAMS["MetaMDBumpHeight"] = 2.00
 	PARAMS["MetaMDBumpWidth"] = 1.0
+	PARAMS["MetaBowlK"] = 0.1
 	traj = MetaDynamics(None, m,"MetaMD_100_10_X",F)
 	traj.Prop()
 

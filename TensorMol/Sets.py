@@ -209,7 +209,6 @@ class MSet:
 	def ReadXYZ(self,filename = None, xyz_type = 'mol'):
 		"""
 		Reads XYZs concatenated into a single file separated by \n\n as a molset
-
 		"""
 		if filename == None:
 			filename = self.name

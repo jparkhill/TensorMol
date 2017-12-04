@@ -438,6 +438,26 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 }
 
 //
+//   Everything below here is exposed to python
+//
+
+// To check all your python library is linked correctly.
+static PyObject* EmptyInterfacedFunction(PyObject *self, PyObject  *args)
+{
+	int To;
+	PyArrayObject *xyz;
+	std::cout << "Parsing..." << endl;
+	try {if (!PyArg_ParseTuple(args, "O!i", &PyArray_Type, &xyz, &To))
+		return NULL;}
+		catch(const std::exception &exc)
+	{
+		std::cout << exc.what();
+	}
+	std::cout << "Parsed..." << endl;
+		return Py_BuildValue("i", To);
+	}
+
+//
 // This isn't an embedding; it's fast code to make a go-model potential for a molecule.
 //
 static PyObject* Make_Go(PyObject *self, PyObject  *args) {
@@ -1163,8 +1183,14 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	double rng;
 	int nreal;
 	int DoPerms;
-	if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &rng, &nreal, &DoPerms))
-		return NULL;
+	std::cout << "Parsing..." << endl;
+	try {if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &rng, &nreal, &DoPerms))
+		return NULL;}
+		catch(const std::exception &exc)
+	{
+		std::cout << exc.what();
+	}
+	std::cout << "Parsed..." << endl;
 	double *xyz_data;
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
@@ -1174,8 +1200,8 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	XX.assign(xyz_data,xyz_data+3*nat);
 	std::vector<int> y(nat);
 	std::size_t n(0);
-	std::generate(std::begin(y), std::end(y), [&]{ return n++; });
-	std::sort(std::begin(y),std::end(y), [&](int i1, int i2) { return XX[i1*3] < XX[i2*3]; } );
+	std::generate(y.begin(), y.end(), [&]{ return n++; });
+	std::sort(y.begin(),y.end(), [&](int i1, int i2) { return XX[i1*3] < XX[i2*3]; } );
 	// So y now contains sorted x indices, do the skipping Neighbor list.
 	std::vector< std::vector<int> > tmp(nreal);
 	for (int i=0; i< nat; ++i)
@@ -1212,30 +1238,6 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 				}
 			}
 	}
-  /*
-	std::vector< std::vector<int> > tmp2(nreal);
-	for (int i=0; i < nreal; ++i)
-	{
-		for (int j=i+1; j < nat; ++j)
-		{
-			double dx = (xyz_data[i*3+0]-xyz_data[j*3+0]);
-			double dy = (xyz_data[i*3+1]-xyz_data[j*3+1]);
-			double dz = (xyz_data[i*3+2]-xyz_data[j*3+2]);
-			double dij = sqrt(dx*dx+dy*dy+dz*dz) + 0.0000000000001;
-			if (dij < rng)
-			{
-				tmp2[i].push_back(j);
-				if (j<nreal && DoPerms==1) {
-					tmp2[j].push_back(i);
-				}
-			}
-		}
-	}
-	for (int i=0; i < nreal; ++i)
-		std::cout << tmp[i].size() << "HHHH" << tmp2[i].size() << DoPerms << endl;
-	// Check the two implementations are equal.
-	*/
-
 	PyObject* Tore = PyList_New(nreal);
 	for (int i=0; i < nreal; ++i)
 	{
@@ -1845,76 +1847,6 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 	return  nlist;
 }
 
-
-static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
-
-	PyArrayObject   *xyz, *grids, *atoms_, *elements;
-	PyObject    *eta_py;
-	double   dist_cut;
-	int theatom;
-	if (!PyArg_ParseTuple(args, "O!O!O!O!idO!",
-	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom, &dist_cut,   &PyList_Type, &eta_py))  return NULL;
-	PyObject* PGaussian_all = PyList_New(0);
-	int dim_eta = PyList_Size(eta_py);
-	double  eta[dim_eta];
-	const int nele = (elements->dimensions)[0];
-	npy_intp  gdim[2] = { 3, dim_eta };
-	PyObject* g;
-	double *g_data, *xyz_data, *grids_data;
-	uint8_t* ele=(uint8_t*)elements->data;
-	uint8_t* atoms=(uint8_t*)atoms_->data;
-	double center[3]; // x y z of the center
-	int natom, num_PGaussian;
-	std::array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
-	std::array<std::vector<double>, 100> ele_dist;  //  hold max 100 elements most
-
-
-	npy_intp* Nxyz = xyz->dimensions;
-	natom = Nxyz[0];
-	npy_intp* Ngrids = grids->dimensions;
-	num_PGaussian = Ngrids[0];
-	xyz_data = (double*) xyz->data;
-	grids_data = (double*) grids -> data;
-
-
-	for (int i = 0; i < dim_eta; i++)
-	eta[i] = PyFloat_AsDouble(PyList_GetItem(eta_py, i));
-
-	for (int j = 0; j < natom; j++) {
-		if (j==theatom)
-		continue;
-		for (int k=0; k < nele; k++) {
-			if (atoms[j] == ele[k])
-			ele_index[k].push_back(j);
-		}
-	}
-
-	for  (int i= 0; i < num_PGaussian; i++) {
-		center[0] = grids_data[i*Ngrids[1]+0];
-		center[1] = grids_data[i*Ngrids[1]+1];
-		center[2] = grids_data[i*Ngrids[1]+2];
-		for (int m =0; m < nele; m++) {
-			g = PyArray_SimpleNew(2, gdim, NPY_DOUBLE);
-			g_data = (double*) ((PyArrayObject*) g)->data;
-			for (int k = 0; k < gdim[0]*gdim[1]; k++)
-			g_data[k] = 0.0;
-			if (ele_index[m].size() > 0 ) {
-				PGaussian(g_data,  eta,   dim_eta,  ele_index,  m, center, xyz_data,  dist_cut);
-			}
-			PyList_Append(PGaussian_all, g);
-		}
-	}
-
-	for (int j = 0; j < nele; j++)
-	ele_index[j].clear();
-
-	PyObject* nlist = PyList_New(0);
-	PyList_Append(nlist, PGaussian_all);
-	//         PyList_Append(nlist, AM_all);
-
-	return  nlist;
-}
-
 static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args)
 {
 	PyArrayObject   *xyz, *atoms_, *elements;
@@ -2223,8 +2155,27 @@ static PyObject*  Make_Sym(PyObject *self, PyObject  *args) {
 	return  nlist;
 }
 
+struct module_state {
+	PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+	#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+	#define GETSTATE(m) (&_state)
+	static struct module_state _state;
+#endif
+
+static PyObject * error_out(PyObject *m) {
+		struct module_state *st = GETSTATE(m);
+		PyErr_SetString(st->error, "something bad happened");
+		return NULL;
+}
+
 static PyMethodDef EmbMethods[] =
 {
+	{"EmptyInterfacedFunction", EmptyInterfacedFunction, METH_VARARGS,
+	"EmptyInterfacedFunction method"},
 	{"Make_NListLinear", Make_NListLinear, METH_VARARGS,
 	"Make_NListLinear method"},
 	{"Make_NListNaive", Make_NListNaive, METH_VARARGS,
@@ -2271,8 +2222,6 @@ static PyMethodDef EmbMethods[] =
 	"Overlap_RBFS method"},
 	{"Project_SH", Project_SH, METH_VARARGS,
 	"Project_SH method"},
-	{"Make_PGaussian", Make_PGaussian, METH_VARARGS,
-	"Make_PGaussian method"},
 	{"Make_Sym", Make_Sym, METH_VARARGS,
 	"Make_Sym method"},
 	{"Make_Sym_Update", Make_Sym_Update, METH_VARARGS,
@@ -2286,56 +2235,52 @@ static PyMethodDef EmbMethods[] =
 	{NULL, NULL, 0, NULL}
 };
 
-struct module_state {
-    PyObject *error;
-};
 #if PY_MAJOR_VERSION >= 3
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+
+	static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+	    Py_VISIT(GETSTATE(m)->error);
+	    return 0;
+	}
+
+	static int myextension_clear(PyObject *m) {
+	    Py_CLEAR(GETSTATE(m)->error);
+	    return 0;
+	}
+
+  static struct PyModuleDef moduledef = {
+		PyModuleDef_HEAD_INIT,
+		"MolEmb",     /* m_name */
+		"A CAPI for TensorMol",  /* m_doc */
+		sizeof(struct module_state),
+		EmbMethods,    /* m_methods */
+		NULL,                /* m_reload */
+		myextension_traverse,                /* m_traverse */
+		myextension_clear,                /* m_clear */
+		NULL                /* m_free */
+		};
+	#pragma message("Compiling MolEmb for Python3x")
+	#define INITERROR return NULL
+	PyMODINIT_FUNC
+	PyInit_MolEmb(void)
+	{
+		PyObject *m = PyModule_Create(&moduledef);
+		if (m == NULL)
+			INITERROR;
+		struct module_state *st = GETSTATE(m);
+		st->error = PyErr_NewException("MolEmb.Error", NULL, NULL);
+		if (st->error == NULL) {
+			Py_DECREF(m);
+			INITERROR;
+		}
+		return m;
+	}
 #else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
-
-static PyObject *
-error_out(PyObject *m) {
-    struct module_state *st = GETSTATE(m);
-    PyErr_SetString(st->error, "something bad happened");
-    return NULL;
-}
-
-#if PY_MAJOR_VERSION >= 3
-    static struct PyModuleDef moduledef = {
-        PyModuleDef_HEAD_INIT,
-        "MolEmb",     /* m_name */
-        "A CAPI for TensorMol",  /* m_doc */
-        -1,                  /* m_size */
-        EmbMethods,    /* m_methods */
-        NULL,                /* m_reload */
-        NULL,                /* m_traverse */
-        NULL,                /* m_clear */
-        NULL,                /* m_free */
-    };
-
-#pragma message("Compiling MolEmb for Python3x")
-#define INITERROR return NULL
-
-PyMODINIT_FUNC
-PyInit_MolEmb(void)
-{
-PyObject *m = PyModule_Create(&moduledef);
-if (m == NULL)
-		return NULL;
-
-return m;
-}
-#else
-
-PyMODINIT_FUNC
-initMolEmb(void)
-{
-	(void) Py_InitModule("MolEmb", EmbMethods);
-	/* IMPORTANT: this must be called */
-	import_array();
-	return;
-}
+	PyMODINIT_FUNC
+	initMolEmb(void)
+	{
+		(void) Py_InitModule("MolEmb", EmbMethods);
+		/* IMPORTANT: this must be called */
+		import_array();
+		return;
+	}
 #endif

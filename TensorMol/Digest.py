@@ -132,8 +132,6 @@ class Digester:
 			Ins= mol_.OverlapEmbeddings(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif (self.name=="SymFunc"):
 			Ins= self.make_sym(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
-		elif (self.name=="PGaussian"):
-			Ins= self.make_pgaussian(mol_.coords, xyz_, mol_.atoms , self.eles ,  self.SensRadius, self.ngrid, at_, 0.0)
 		elif(self.name == "ANI1_Sym"):
 			Ins = MolEmb.Make_ANI1_Sym(PARAMS, mol_.coords,  mol_.atoms, self.eles, at_)
 		else:
@@ -315,15 +313,3 @@ class Digester:
 		SYM = np.asarray(SYM[0], dtype=np.float64)
 		SYM = SYM.reshape((SYM.shape[0]/self.nsym, self.nsym,  SYM.shape[1] *  SYM.shape[2]))
 		return SYM
-
-	def make_pgaussian (self, coords_, xyz_, ats_, eles_, SensRadius, ngrid, at_, dummy):
-		eta = []
-		eta_max = 12  # hard code
-		eta_min = 0.5 #	hard code
-		for i in range (0, ngrid):
-			tmp=math.log(eta_max/eta_min)/(ngrid-1)*i
-			eta.append(pow(math.e, tmp)*eta_min)
-		PGaussian = MolEmb.Make_PGaussian(coords_, xyz_, ats_, eles_, at_, SensRadius, eta)
-		PGaussian = np.asarray(PGaussian[0], dtype=np.float64)
-		PGaussian = PGaussian.reshape((PGaussian.shape[0]/self.npgaussian, self.npgaussian,  PGaussian.shape[1] *  PGaussian.shape[2]))
-		return PGaussian

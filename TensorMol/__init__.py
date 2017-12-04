@@ -22,7 +22,7 @@ Violators are subject to having their code and reproductive fitness mocked publi
 from __future__ import absolute_import
 from __future__ import print_function
 __version__="0.1"
-from TensorMol.Util import *
+from TensorMol.Util import * # Populates the PARAMS and LOGGER.
 from TensorMol.PhysicalData import *
 from TensorMol.Statistics import *
 from TensorMol.Sets import *
@@ -61,3 +61,4 @@ from TensorMol.LinearOperations import *
 from TensorMol.AbInitio import *
 from TensorMol.Mol import *
 from TensorMol.TFBehlerParinello import *
+LOGGER.debug("TensorMol import complete.")
