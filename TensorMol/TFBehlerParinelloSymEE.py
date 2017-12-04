@@ -515,7 +515,7 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 			print_grads_loss += grads_loss
 			print_dipole_loss += dipole_loss
 			if (ministep%print_per_mini == 0 and ministep!=0):
-				print ("time:", (time.time() - time_print_mini)/print_per_mini ,  " loss_value: ",  print_loss/print_per_mini, " energy_loss:", print_energy_loss/print_per_mini, " grads_loss:", print_grads_loss/print_per_mini, " dipole_loss:", print_dipole_loss/print_per_mini)
+				print ("ministep... time:", (time.time() - time_print_mini)/print_per_mini ,  " loss_value: ",  print_loss/print_per_mini, " energy_loss:", print_energy_loss/print_per_mini, " grads_loss:", print_grads_loss/print_per_mini, " dipole_loss:", print_dipole_loss/print_per_mini)
 				print_loss = 0.0
 				print_energy_loss = 0.0
 				print_dipole_loss = 0.0
@@ -566,7 +566,7 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 			print_grads_loss += grads_loss
 			print_dipole_loss += dipole_loss
 			if (ministep%print_per_mini == 0 and ministep!=0):
-				print ("time:", (time.time() - time_print_mini)/print_per_mini ,  " loss_value: ",  print_loss/print_per_mini, " energy_loss:", print_energy_loss/print_per_mini, " grads_loss:", print_grads_loss/print_per_mini, " dipole_loss:", print_dipole_loss/print_per_mini)
+				print ("ministep... time:", (time.time() - time_print_mini)/print_per_mini ,  " loss_value: ",  print_loss/print_per_mini, " energy_loss:", print_energy_loss/print_per_mini, " grads_loss:", print_grads_loss/print_per_mini, " dipole_loss:", print_dipole_loss/print_per_mini)
 				print_loss = 0.0
 				print_energy_loss = 0.0
 				print_dipole_loss = 0.0

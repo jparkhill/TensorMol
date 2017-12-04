@@ -45,6 +45,8 @@ sudo pip install -e .
 sudo pip3 install -e .
 python test.py
 ```
+## Demo of training a neural network force field using TensorMol:
+ - Copy the training script into the tensormol folder:```cp samples/training_sample.py  .``` Run the script: ```python training_sample.py ``` This will a training a network for water cluster.  
 
 ## Test example for TensorMol01:
  - Download our pretrained neural networks (network.tar.gz). [Networks for water and molecules that only contains C, H, O, N](https://drive.google.com/drive/folders/1IfWPs7i5kfmErIRyuhGv95dSVtNFo0e_?usp=sharing) (The file is about 6 Gigabyte. This may take a while)
