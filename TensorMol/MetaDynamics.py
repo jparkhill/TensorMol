@@ -45,10 +45,9 @@ class MetaDynamics(VelocityVerlet):
 		if (self.EnergyAndForce != None):
 			self.RealPot, PF = self.EnergyAndForce(x_)
 		else:
-			PF = self.ForceFunction(x_)
+			PE, PF = self.ForceFunction(x_)
 		if self.NBump > 0:
 			BF[0] *= self.m[:,None]
-		print(JOULEPERHARTREE*BF[0],PF)
 		PF += JOULEPERHARTREE*BF[0]
 		PF = RemoveInvariantForce(x_,PF,self.m)
 		return BE+self.RealPot, PF
@@ -94,7 +93,7 @@ class MetaDynamics(VelocityVerlet):
 				self.Bump()
 				bumptimer = self.BumpTime
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%10==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
@@ -166,7 +165,7 @@ class BoxingDynamics(VelocityVerlet):
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%10==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)

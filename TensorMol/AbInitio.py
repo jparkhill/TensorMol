@@ -39,7 +39,7 @@ def QchemDFT(m_,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp'
 	if jobtype_ == "dipole":
 		istring =istring + '$end\n\n$rem\njobtype sp\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
 	else:
-		istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nUNRESTRICTED   true\nsymmetry false\nsym_ignore true\n$end\n'
 	with open(path_+filename_+'.in','w') as fin:
 		fin.write(istring)
 	with open(path_+filename_+'.out','a') as fout:

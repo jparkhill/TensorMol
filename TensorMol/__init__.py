@@ -61,4 +61,5 @@ from TensorMol.LinearOperations import *
 from TensorMol.AbInitio import *
 from TensorMol.Mol import *
 from TensorMol.TFBehlerParinello import *
+from TensorMol.TFBehlerParinelloSymEE import *
 LOGGER.debug("TensorMol import complete.")
