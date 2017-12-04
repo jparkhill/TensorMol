@@ -1183,14 +1183,8 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	double rng;
 	int nreal;
 	int DoPerms;
-	std::cout << "Parsing..." << endl;
-	try {if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &rng, &nreal, &DoPerms))
-		return NULL;}
-		catch(const std::exception &exc)
-	{
-		std::cout << exc.what();
-	}
-	std::cout << "Parsed..." << endl;
+	if (!PyArg_ParseTuple(args, "O!dii", &PyArray_Type, &xyz, &rng, &nreal, &DoPerms))
+		return NULL;
 	double *xyz_data;
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
