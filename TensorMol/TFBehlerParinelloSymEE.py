@@ -1,7 +1,13 @@
 """
-	These instances work directly on raw coordinate, atomic number data.
-	They either generate their own descriptor or physical model.
-	They are also simplified relative to the usual MolInstance.
+These instances are re-writes of the convoluted instances found in TFMolInstanceDirect.
+
+I would still like the following changes:
+- Independence from any manager.
+- Inheritance from a re-written instance base class.
+- Removal of any dependence on TensorMolData
+- Removal of any dependence on TFInstance.
+
+But at least these are a first step.  JAP 12/2017.
 """
 
 from __future__ import absolute_import
@@ -21,6 +27,7 @@ import threading
 class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 	"""
 	Behler Parinello Scheme with energy and gradient training.
+	NO Electrostatic embedding.
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
 		"""
@@ -28,7 +35,7 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
 			Trainable_: True for training, False for evalution
-			ForceType_: Deprecated 
+			ForceType_: Deprecated
 		"""
 		self.SFPa = None
 		self.SFPr = None
@@ -82,7 +89,7 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 
 	def SetANI1Param(self, prec=np.float64):
 		"""
-		Generate ANI1 symmetry function paramter tensor.
+		Generate ANI1 symmetry function parameter tensor.
 		"""
 		self.Ra_cut = PARAMS["AN1_a_Rc"]
 		self.Rr_cut = PARAMS["AN1_r_Rc"]
@@ -133,7 +140,7 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 		self.energy_loss = None
 		self.Scatter_Sym, self.Sym_Index = None, None
 		self.Radp_pl, self.Angt_pl = None, None
-		self.Elabel_pl = None 
+		self.Elabel_pl = None
 		self.Etotal, self.Ebp, self.Ebp_atom = None, None, None
 		self.gradient = None
 		self.total_loss_dipole, self.energy_loss, self.grads_loss = None, None, None
@@ -346,7 +353,7 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 
 	def train(self, mxsteps, continue_training= False):
 		"""
-		This the training loop for the united model. 
+		This the training loop for the united model.
 		"""
 		LOGGER.info("running the TFMolInstance.train()")
 		self.TrainPrepare(continue_training)
@@ -381,7 +388,7 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 		time_print_mini = time.time()
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			t_mini = time.time()
-			batch_data = self.TData.GetTrainBatch(self.batch_size) + [np.ones(self.nlayer+1)] 
+			batch_data = self.TData.GetTrainBatch(self.batch_size) + [np.ones(self.nlayer+1)]
 			actual_mols  = self.batch_size
 			t = time.time()
 			dump_2, Etotal = self.sess.run([self.train_op, self.Etotal], feed_dict=self.fill_feed_dict(batch_data), options=self.options, run_metadata=self.run_metadata)
@@ -509,7 +516,7 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 
 	def energy_inference_periodic(self, inp, indexs, xyzs, keep_prob):
 		"""
-		Builds a Behler-Parinello graph for calculating the energy of periodic system 
+		Builds a Behler-Parinello graph for calculating the energy of periodic system
 
 		Args:
 			inp: a list of (num_of atom type X flattened input shape) matrix of input cases.
@@ -655,7 +662,7 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 			TData_: A TensorMolData instance.
 			Name_: A name for this instance.
 			Trainable_: True for training, False for evalution
-			ForceType_: Deprecated 
+			ForceType_: Deprecated
 		"""
 		self.SFPa = None
 		self.SFPr = None
@@ -883,11 +890,11 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 			cc_energy: System Coulomb energy.
 			xyzs: xyz coordinates of atoms.
 			Zs: atomic number of atoms.
-			eles: list of element type. 
+			eles: list of element type.
 			c6: Grimmer C6 coefficient.
 			R_vdw: Van der waals cutoff.
 			Reep: Atom index of vdw pairs.
-			EE_cuton: Where Coulomb is turned on. 
+			EE_cuton: Where Coulomb is turned on.
 			EE_cutoff: Where Coulomb is turned off.
 			keep_prob: dropout prob of each layer.
 		Returns:
@@ -1298,7 +1305,7 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 
 	def train(self, mxsteps, continue_training= False):
 		"""
-		This the training loop for the united model. 
+		This the training loop for the united model.
 		"""
 		LOGGER.info("running the TFMolInstance.train()")
 		self.TrainPrepare(continue_training)
@@ -1495,7 +1502,7 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 
 	def energy_inference_periodic(self, inp, indexs, cc_energy, xyzs, Zs, eles, c6, R_vdw, Reep_e1e2, EE_cuton, EE_cutoff, keep_prob):
 		"""
-		Builds a Behler-Parinello graph for calculating the energy of periodic system 
+		Builds a Behler-Parinello graph for calculating the energy of periodic system
 
 		Args:
 			inp: a list of (num_of atom type X flattened input shape) matrix of input cases.

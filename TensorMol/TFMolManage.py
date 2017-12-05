@@ -1,7 +1,10 @@
-#
-# These work Moleculewise the versions without the mol prefix work atomwise.
-# but otherwise the behavior of these is the same as TFManage etc.
-#
+'''
+ These work Moleculewise the versions without the mol prefix work atomwise.
+ but otherwise the behavior of these is the same as TFManage etc.
+
+TODO: The interface to evaluation needs to be completely re-done or done away with.
+Actually I think the better thing is to eliminate any dependence on TFManage whatsoever.
+'''
 from __future__ import absolute_import
 from __future__ import print_function
 from .TFManage import *
@@ -53,6 +56,7 @@ class TFMolManage(TFManage):
 	def Train(self, maxstep=3000):
 		"""
 		Instantiates and trains a Molecular network.
+		This routine is an abomination. (JAP 12/2017)
 
 		Args:
 			maxstep: The number of training steps.
