@@ -1,6 +1,5 @@
 .DS_Store
 *.npy
-datasets
 *.dat
 *.tdt
 *.tfn
@@ -10,18 +9,19 @@ datasets
 *checkpoint*
 *.tfevents.*
 *events.out*
+*.pdb
+*_NEQ.pdb* # don't save random distortions.
+*.raw
 datasets/*.pdb
-results/*.log 
+results/*.log
 logs/*.log
 qchem/*
 results/*.xyz
-timeline_step* 
-*.pdb
-*_NEQ.pdb* # don't save random distortions. 
-*.raw
+timeline_step*
 __pycache__/
 *.py[cod]
 *$py.class
+datasets
 networks
 results
 
@@ -76,4 +76,3 @@ celerybeat-schedule
 .venv/
 venv/
 ENV/
-

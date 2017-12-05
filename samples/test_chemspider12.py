@@ -512,7 +512,7 @@ def Eval():
 		m=Opt.Opt(a.mols[1])
 		#return
 		##return
- 		#masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+ 		#masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 		#w,v = HarmonicSpectra(DFTForceField, m.coords, m.atoms, WriteNM_=False)
 		#w,v = HarmonicSpectra(DFTForceField, m.coords, m.atoms,  WriteNM_=True, Mu_ = DFTDipoleField)
 		#w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DFTDipoleField)

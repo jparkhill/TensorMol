@@ -309,7 +309,7 @@ def TestBPDirect():
 	m = a.mols[0]
 	#print manager.Eval_BPEnergy_Direct_Grad(m)
 	#print manager.EvalBPDirectSingleEnergyWGrad(m)
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	EnergyForceField = lambda x: manager.Eval_BPEnergy_Direct_Grad(Mol(m.atoms,x))
 	EnergyField = lambda x: manager.Eval_BPEnergy_Direct_Grad(Mol(m.atoms,x), Grad=False)
 	def ChargeField(x_):
@@ -537,7 +537,7 @@ def TestMetadynamics():
 	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),False)
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	print("Masses:", masses)
 	PARAMS["MDdt"] = 0.2
 	PARAMS["RemoveInvariant"]=True
@@ -563,7 +563,7 @@ def TestJohnson():
 	EnergyField = lambda x: manager.Eval_BPEnergySingle(Mol(m.atoms,x))
 	ForceField = lambda x: manager.Eval_BPForceSingle(Mol(m.atoms,x),True)
 	ChargeField = lambda x: qmanager.Eval_BPDipole(Mol(m.atoms,x),False)[2][0]
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	print("Masses:", masses)
 
 	if (0):
@@ -757,7 +757,7 @@ def david_testIR():
 	# Perform a Harmonic analysis
 	m=indo
 	print("Harmonic Analysis")
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
 	v = v.real
 	print(np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT)
@@ -832,7 +832,7 @@ def david_HarmonicAnalysis():
 	# # Perform a Harmonic analysis
 	m=indo
 	print("Harmonic Analysis")
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	w,v = HarmonicSpectra(EnergyField, m.coords, masses)
 	v = v.real
 	wave = np.sign(w)*np.sqrt(KCONVERT*abs(w))*CMCONVERT

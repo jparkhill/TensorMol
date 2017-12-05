@@ -35,7 +35,7 @@ class MetaDynamics(VelocityVerlet):
 		self.BowlK = PARAMS["MetaBowlK"]
 		if (self.Tstat.name != "Andersen"):
 			LOGGER.info("I really recommend you use Andersen Thermostat with Meta-Dynamics.")
-		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, self.bump_height, self.bump_width)#,"MR")
+		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, self.bump_height, self.bump_width,"MR")
 
 	def BumpForce(self,x_):
 		BE = 0.0

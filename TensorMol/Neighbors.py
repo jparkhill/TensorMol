@@ -146,7 +146,7 @@ class NeighborList:
 		npair = sum(npairi)
 		npairi = map(len,tpair)
 		#ntrip = sum(map(lambda x: x*x if x>0 else 0, npairi))
-		ntrip = sum(map(lambda x: x*(x-1)/2 if x>0 else 0, npairi))
+		ntrip = sum(map(lambda x: int(x*(x-1)/2) if x>0 else 0, npairi))
 		#print ("npair:", npair, " ntrip:", ntrip, " rcut_triples:", rcut_triples, " tpair", tpair, " ntodo:", int(ntodo), " self.DoPerms", int(self.DoPerms), " x:", self.x[:int(ntodo)], " pair:", pair)
 		p = None
 		t = None
