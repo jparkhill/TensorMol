@@ -459,6 +459,10 @@ class NeighborListSet:
 		#print ("trpE_sorted, trtE_sorted",trpE_sorted.shape, trtE_sorted.shape)
 		return trpE_sorted, trtE_sorted, mil_j, mil_jk
 
+	def buildPairsAndTriplesWithEleIndexLinear(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
+		return self.buildPairsAndTriplesWithEleIndexPeriodic(rcut_pairs, rcut_triples, ele, elep)
+
+
 class NeighborListSetWithImages(NeighborListSet):
 	def __init__(self, x_, nnz_, nreal_,  DoTriples_=False, DoPerms_=False, ele_=None, alg_ = None, sort_ = False):
 		"""
