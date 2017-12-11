@@ -381,17 +381,17 @@ def train_energy_symm_func(mset):
 	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 14), np.repeat(0.35, 14)), axis=1)
-	PARAMS["SH_NRAD"] = 14
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+	PARAMS["SH_NRAD"] = 16
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["EECutoffOn"] = 0.0
-	PARAMS["Elu_Width"] = 8.0
+	PARAMS["Elu_Width"] = 6.0
 	PARAMS["train_gradients"] = True
 	PARAMS["train_dipole"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 250
+	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 400
 	PARAMS["NeuronType"] = "shifted_softplus"

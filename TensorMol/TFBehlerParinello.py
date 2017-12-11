@@ -1164,7 +1164,17 @@ class BehlerParinelloDirectGauSH:
 			# self.charge_loss = self.charge_loss_op(self.net_charge)
 			if self.train_gradients:
 				self.gradient_loss = self.gradient_loss_op(self.gradients, self.gradient_labels, num_atoms_batch)
+
+			barrier_function = 1.e5 * tf.concat([tf.pow((0.15 - self.gaussian_params), 3.0), tf.expand_dims(tf.pow((self.gaussian_params[:,0] - 6.1), 3.0), axis=-1),
+						tf.expand_dims(tf.pow((self.gaussian_params[:,1] - 3.6), 3.0), axis=-1)], axis=1)
+			truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0),
+								barrier_function, tf.zeros_like(barrier_function)))
+			gaussian_overlap_loss = tf.square(0.001 / tf.reduce_min(tf.self_adjoint_eig(tf_gaussian_overlap(self.gaussian_params))[0]))
+			tf.add_to_collection('dipole_losses', truncated_barrier_function)
+			tf.add_to_collection('dipole_losses', gaussian_overlap_loss)
+			self.dipole_losses = tf.add_n(tf.get_collection('dipole_losses'))
 			self.energy_losses = tf.add_n(tf.get_collection('energy_losses'))
+			#loss_and_constraint = self.total_loss + truncated_barrier_function + gaussian_overlap_loss
 
 			self.dipole_train_op = self.optimizer(self.dipole_losses, self.learning_rate, self.momentum, dipole_variables)
 			self.energy_train_op = self.optimizer(self.energy_losses, self.learning_rate, self.momentum, energy_variables)
