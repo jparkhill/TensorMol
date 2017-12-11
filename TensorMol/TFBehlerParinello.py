@@ -1,5 +1,6 @@
 """
-Behler-Parinello network classes
+This version of the Behler-Parinello is aperiodic,non-sparse.
+It's being developed to explore alternatives to symmetry functions. It's not for production use.
 """
 
 from __future__ import absolute_import

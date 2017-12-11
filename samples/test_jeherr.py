@@ -164,7 +164,7 @@ def TestMetadynamics():
 	def force_field(coords):
 		energy, forces = manager.evaluate_mol(Mol(m.atoms, coords), True)
 		return energy, forces * JOULEPERHARTREE
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 0.02
 	PARAMS["RemoveInvariant"]=True

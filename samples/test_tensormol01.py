@@ -106,7 +106,7 @@ if (0):
 
 #Perform Harmonic frequency analysis
 if (0):
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
 
 # Generate Realtime IR spectrum

@@ -7,10 +7,12 @@
 # And of course also be me. 
 # 
 
-from __future__ import absolute_import
+from __future__ import absolute_import,print_function
 from distutils.core import setup, Extension
 import numpy
 import os
+
+print("Numpy Include Dir: ",numpy.get_include())
 
 LLVM=os.popen('cc --version | grep clang').read().count("LLVM")
 if (not LLVM):

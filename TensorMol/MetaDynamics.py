@@ -35,7 +35,7 @@ class MetaDynamics(VelocityVerlet):
 		self.BowlK = PARAMS["MetaBowlK"]
 		if (self.Tstat.name != "Andersen"):
 			LOGGER.info("I really recommend you use Andersen Thermostat with Meta-Dynamics.")
-		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, self.bump_height, self.bump_width)#,"MR")
+		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, self.bump_height, self.bump_width,"MR")
 
 	def BumpForce(self,x_):
 		BE = 0.0
@@ -93,7 +93,7 @@ class MetaDynamics(VelocityVerlet):
 				self.Bump()
 				bumptimer = self.BumpTime
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%10==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
@@ -166,7 +166,7 @@ class BoxingDynamics(VelocityVerlet):
 			self.md_log[step,5] = self.EPot
 			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
 
-			if (step%3==0 and PARAMS["MDLogTrajectory"]):
+			if (step%10==0 and PARAMS["MDLogTrajectory"]):
 				self.WriteTrajectory()
 			if (step%500==0):
 				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)

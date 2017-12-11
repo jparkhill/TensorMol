@@ -4,6 +4,7 @@
 
 [![PyPI version](https://badge.fury.io/py/TensorMol.svg)](https://badge.fury.io/py/TensorMol)
 ![](https://img.shields.io/badge/Python-2.7-brightgreen.svg)
+![](https://img.shields.io/badge/Python-3.6-brightgreen.svg)
 [![Documentation Status](https://readthedocs.org/projects/tensormol/badge/?version=latest)](http://tensormol.readthedocs.io/en/latest/?badge=latest)
 
 
@@ -45,6 +46,9 @@ sudo pip install -e .
 sudo pip3 install -e .
 python test.py
 ```
+
+## Demo of training a neural network force field using TensorMol:
+ - Copy the training script into the tensormol folder:```cp samples/training_sample.py  .``` Run the script: ```python training_sample.py ``` This will train a network force field for water.  
 
 ## Test example for TensorMol01:
  - Download our pretrained neural networks (network.tar.gz). [Networks for water and molecules that only contains C, H, O, N](https://drive.google.com/drive/folders/1IfWPs7i5kfmErIRyuhGv95dSVtNFo0e_?usp=sharing) (The file is about 6 Gigabyte. This may take a while)
@@ -101,8 +105,8 @@ The associated energy surface is shown below.
  - Kun Yao, John Parkhill. The Kinetic Energy of Hydrocarbons as a Function of Electron Density and  Convolutional Neural Networks. Journal of Chemical Theory and Computation (2016). DOI: [10.1021/acs.jctc.5b01011](http://pubs.acs.org/doi/abs/10.1021/acs.jctc.5b01011)
 
 ## Requirements:
-- Minimum Pre-Requisites: Python2.7x, TensorFlow
-- Python3x support coming soon.
+- Minimum Pre-Requisites: Python2.7x, TensorFlow  ```sudo pip install tensorflow ```
+- Also now works in Python3.6.    
 - Useful Pre-Requisites: CUDA7.5, PySCF
 - To Train Minimally: ~100GB Disk 20GB memory
 - To Train Realistically: 1TB Disk, GTX1070++
