@@ -2459,10 +2459,10 @@ def tf_gaussians_cutoff(distance_tensor, Zs, gaussian_params):
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
 	gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
 						tf.zeros_like(distance_tensor)), axis=-1)
-	xi = (distance_tensor - 4.5) / (5.5 - 4.5)
+	xi = (distance_tensor - 5.5) / (6.5 - 5.5)
 	cutoff_factor = 1 - 3 * tf.square(xi) + 2 * tf.pow(xi, 3.0)
-	cutoff_factor = tf.where(tf.greater(distance_tensor, 5.5), tf.zeros_like(cutoff_factor), cutoff_factor)
-	cutoff_factor = tf.where(tf.less(distance_tensor, 4.5), tf.ones_like(cutoff_factor), cutoff_factor)
+	cutoff_factor = tf.where(tf.greater(distance_tensor, 6.5), tf.zeros_like(cutoff_factor), cutoff_factor)
+	cutoff_factor = tf.where(tf.less(distance_tensor, 5.5), tf.ones_like(cutoff_factor), cutoff_factor)
 	return gaussian_embed * tf.expand_dims(cutoff_factor, axis=-1)
 
 def tf_spherical_harmonics_0(inverse_distance_tensor):
