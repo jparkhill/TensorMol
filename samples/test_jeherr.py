@@ -387,7 +387,7 @@ def train_energy_GauSH():
 	PARAMS["EECutoffOn"] = 0.0
 	PARAMS["Elu_Width"] = 6.0
 	PARAMS["train_gradients"] = True
-	PARAMS["train_dipole"] = False
+	PARAMS["train_dipole"] = True
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
@@ -794,7 +794,7 @@ def harmonic_freq():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
@@ -804,7 +804,7 @@ def harmonic_freq():
 # nicotine_cc_stretch_plot()
 # meta_statistics()
 # meta_stat_plot()
-harmonic_freq()
+# harmonic_freq()
 
 # a=MSet("nicotine_opt")
 # a.ReadXYZ()
