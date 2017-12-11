@@ -1,7 +1,10 @@
-#
-# These work Moleculewise the versions without the mol prefix work atomwise.
-# but otherwise the behavior of these is the same as TFManage etc.
-#
+'''
+ These work Moleculewise the versions without the mol prefix work atomwise.
+ but otherwise the behavior of these is the same as TFManage etc.
+
+TODO: The interface to evaluation needs to be completely re-done or done away with.
+Actually I think the better thing is to eliminate any dependence on TFManage whatsoever.
+'''
 from __future__ import absolute_import
 from __future__ import print_function
 from .TFManage import *
@@ -9,6 +12,7 @@ from .TensorMolData import *
 from .TFMolInstance import *
 from .TFMolInstanceDirect import *
 from .TFBehlerParinello import *
+from .TFBehlerParinelloSymEE import *
 from .TFMolInstanceEE import *
 from .TFMolInstanceDirect import *
 from .QuasiNewtonTools import *
@@ -52,6 +56,7 @@ class TFMolManage(TFManage):
 	def Train(self, maxstep=3000):
 		"""
 		Instantiates and trains a Molecular network.
+		This routine is an abomination. (JAP 12/2017)
 
 		Args:
 			maxstep: The number of training steps.
@@ -111,6 +116,10 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_InputNorm(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_SymFunction"):
+			self.Instances = MolInstance_DirectBP_EE_SymFunction(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EandG_SymFunction"):
+			self.Instances = MolInstance_DirectBP_EandG_SymFunction(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1307,6 +1316,90 @@ class TFMolManage(TFManage):
 			Etotal = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom], nreal, False)
 			return Etotal
 
+	def EvalBPDirectEandGLinearSingle(self, mol, Rr_cut, Ra_cut):
+		"""
+		The energy, force and dipole routine for BPs_EE.
+		"""
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		self.TData.MaxNAtoms = mol.NAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexLinear(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		Etotal, Ebp, Ebp_atom, gradient = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_grads, rad_p_ele, ang_t_elep,  mil_j, mil_jk, 1.0/natom])
+		return Etotal, Ebp, Ebp_atom, -JOULEPERHARTREE*gradient[0]
+
+	def EvalBPDirectEandGLinearSinglePeriodic(self, mol, Rr_cut, Ra_cut, nreal, DoForce=True):
+		"""
+		The energy, force and dipole routine for BPs_EE.
+		"""
+		t = time.time()
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		self.TData.MaxNAtoms = mol.NAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = nreal   # this is hacky.. K.Y.
+		NL = NeighborListSetWithImages(xyzs, np.array([mol.NAtoms()]), np.array([nreal]),True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexPeriodic(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		t = time.time()
+		if (DoForce):
+			Etotal, Ebp, Ebp_atom, gradient  = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_grads, rad_p_ele, ang_t_elep, mil_j, mil_jk, 1.0/natom], nreal)
+			#print ("tf code time:", time.time() - t)
+		else:
+			Etotal = self.Instances.evaluate_periodic([xyzs, Zs, dummy_energy, dummy_grads, rad_p_ele, ang_t_elep,  mil_j, mil_jk, 1.0/natom], nreal, False)
+			return Etotal
+
+	def EvalBPDirectEELinearSingle(self, mol, Rr_cut, Ra_cut, Ree_cut, HasVdw = False):
+		"""
+		The energy, force and dipole routine for BPs_EE.
+		"""
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_energy = np.zeros((nmols))
+		dummy_dipole = np.zeros((nmols, 3))
+		self.TData.MaxNAtoms = mol.NAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		dummy_grads = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexLinear(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  None)
+		rad_eep = NLEE.buildPairs(Ree_cut)
+		if not HasVdw:
+			Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_j, mil_jk, 1.0/natom])
+			return Etotal, Ebp, Ecc, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
+		else:
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_j, mil_jk, 1.0/natom])
+			#print ("Etotal:", Etotal)
+			#Etotal, Ebp, Ebp_atom, Ecc, Evdw,  mol_dipole, atom_charge, gradient, bp_gradient, syms  = self.Instances.evaluate([xyzs, Zs, dummy_energy, dummy_dipole, dummy_grads, rad_p_ele, ang_t_elep, rad_eep, mil_jk, 1.0/natom])
+			return Etotal, Ebp, Ebp_atom ,Ecc, Evdw, mol_dipole, atom_charge, -JOULEPERHARTREE*gradient[0]
+
+	def EvalBPDirectEELinearSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True, DoForce=True, DoCharge=False):
+		return self.EvalBPDirectEEUpdateSinglePeriodic( mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw, DoForce, DoCharge)
+
 	@TMTiming("TFMolMangePrepare")
 	def Prepare(self):
 		self.Load()
@@ -1357,6 +1450,10 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_InputNorm(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv"):
 			self.Instances = MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EE_SymFunction"):
+			self.Instances = MolInstance_DirectBP_EE_SymFunction(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_EandG_SymFunction"):
+			self.Instances = MolInstance_DirectBP_EandG_SymFunction(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):

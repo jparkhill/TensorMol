@@ -155,20 +155,24 @@ def TestNeb(dig_ = "GauSH", net_ = "fc_sqdiff"):
 	return
 
 def TestMetadynamics():
-	a = MSet("nicotine_opt")
+	a = MSet("nicotine_stretch")
 	# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 	a.ReadXYZ()
-	m = a.mols[0]
-	ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
-	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	m = a.mols[-1]
+	# ForceField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-311g**',xc_='wB97X-D', jobtype_='force', filename_='jmols2', path_='./qchem/', threads=8)
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_Fri_Nov_10_16.19.55_2017", network_type = "BehlerParinelloDirectSymFunc")
+	def force_field(coords):
+		energy, forces = manager.evaluate_mol(Mol(m.atoms, coords), True)
+		return energy, forces * JOULEPERHARTREE
+	masses = np.array(list(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms)))
 	print "Masses:", masses
 	PARAMS["MDdt"] = 0.02
 	PARAMS["RemoveInvariant"]=True
-	PARAMS["MDMaxStep"] = 100
+	PARAMS["MDMaxStep"] = 10000
 	PARAMS["MDThermostat"] = "Nose"
 	PARAMS["MDTemp"]= 300.0
 	PARAMS["MDV0"] = "Thermal"
-	meta = MetaDynamics(ForceField, m)
+	meta = MetaDynamics(force_field, m)
 	meta.Prop()
 
 def TestTFBond():
@@ -366,11 +370,11 @@ def train_energy_symm_func(mset):
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 500
+	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(mset)
 	a.Load()
 	print "Number of Mols: ", len(a.mols)
@@ -586,6 +590,174 @@ def water_dimer_plot():
 		bond_e = dimer - h2o1 - h2o2
 		print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
 
+def nicotine_cc_stretch_plot():
+	def qchemdft(m_,ghostatoms,basis_ = '6-31g*',xc_='b3lyp', jobtype_='force', filename_='tmp', path_='./qchem/', threads=False):
+		istring = '$molecule\n0 1 \n'
+		crds = m_.coords.copy()
+		crds[abs(crds)<0.0000] *=0.0
+		for j in range(len(m_.atoms)):
+			if j in ghostatoms:
+				istring=istring+"@"+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+			else:
+				istring=istring+itoa[m_.atoms[j]]+' '+str(crds[j,0])+' '+str(crds[j,1])+' '+str(crds[j,2])+'\n'
+		if jobtype_ == "dipole":
+			istring =istring + '$end\n\n$rem\njobtype sp\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		else:
+			istring =istring + '$end\n\n$rem\njobtype '+jobtype_+'\nbasis '+basis_+'\nmethod '+xc_+'\nthresh 11\nsymmetry false\nsym_ignore true\n$end\n'
+		with open(path_+filename_+'.in','w') as fin:
+			fin.write(istring)
+		with open(path_+filename_+'.out','a') as fout:
+			if threads:
+				proc = subprocess.Popen(['qchem', '-nt', str(threads), path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			else:
+				proc = subprocess.Popen(['qchem', path_+filename_+'.in'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+			out, err = proc.communicate()
+			fout.write(out)
+		lines = out.split('\n')
+		if jobtype_ == 'force':
+			Forces = np.zeros((m_.atoms.shape[0],3))
+			for i, line in enumerate(lines):
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+				if line.count("Gradient of SCF Energy") > 0:
+					k = 0
+					l = 0
+					for j in range(1, m_.atoms.shape[0]+1):
+						Forces[j-1,:] = float(lines[i+k+2].split()[l+1]), float(lines[i+k+3].split()[l+1]), float(lines[i+k+4].split()[l+1])
+						l += 1
+						if (j % 6) == 0:
+							k += 4
+							l = 0
+			# return Energy, Forces
+			return Energy, -Forces*JOULEPERHARTREE/BOHRPERA
+		elif jobtype_ == 'sp':
+			for line in lines:
+				if line.count('Convergence criterion met')>0:
+					Energy = float(line.split()[1])
+			return Energy
+		else:
+			raise Exception("jobtype needs formatted for return variables")
+
+	a = MSet("nicotine_metamd_collision")
+	a.ReadXYZ()
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_Fri_Nov_10_16.19.55_2017", network_type = "BehlerParinelloDirectSymFunc")
+	qchemff = lambda x, y: qchemdft(x, y, basis_ = '6-311g**',xc_='wb97x-d', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=8)
+	for i, mol in enumerate(a.mols):
+		# energy = qchemff(mol, [])
+		energy = manager.evaluate_mol(mol, eval_forces=False)
+		print "%.10f %.10f" % (i * 0.02, energy * 627.509)
+	# print "TensorMol evaluation"
+	# for i, mol in enumerate(a.mols):
+	# 	h2o1 = manager.evaluate_mol(Mol(mol.atoms[:3], mol.coords[:3]), False)
+	# 	h2o2 = manager.evaluate_mol(Mol(mol.atoms[3:], mol.coords[3:]), False)
+	# 	dimer = manager.evaluate_mol(mol, False)
+	# 	bond_e = dimer - h2o1 - h2o2
+	# 	print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
+
+def meta_statistics():
+	PARAMS["MDdt"] = 0.5 # In fs.
+	PARAMS["MDMaxStep"] = 20000
+	PARAMS["MetaBumpTime"] = 10.0
+	PARAMS["MetaMaxBumps"] = 1000
+	PARAMS["MetaBowlK"] = 0.0
+	PARAMS["MDThermostat"]="Andersen"
+	PARAMS["MDTemp"]=300.0
+	PARAMS["MDV0"]=None
+	a=MSet("nicotine_opt")
+	a.ReadXYZ()
+	m=a.mols[0]
+	manager=TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_full_Fri_Nov_24_15.52.20_2017", network_type = "BehlerParinelloDirectSymFunc")
+	def force_field(coords):
+		energy, forces = manager.evaluate_mol(Mol(m.atoms, coords), True)
+		return energy, forces * JOULEPERHARTREE
+	# for metap in [[0.5, 0.5], [1.0, 0.5], [0.5, 1.0], [1.0, 1.0], [0.5, 1.5], [1.5, 0.5], [1.5, 1.5], [1.0, 2.0], [2.0, 1.0], [2.0, 2.0], [3.0, 3.0]]:
+	for metap in [[0.0, 0.01]]:
+		PARAMS["MetaMDBumpHeight"] = metap[0]
+		PARAMS["MetaMDBumpWidth"] = metap[1]
+		traj = MetaDynamics(None, m,"MetaMD_nicotine_aimd_sample"+str(metap[0])+"_"+str(metap[1]), force_field)
+		traj.Prop()
+
+def meta_stat_plot():
+	for metap in [[0.0, 0.01], [0.5, 2.0], [0.5, 0.5], [1.0, 1.0], [0.5, 1.5], [1.5, 0.5], [1.5, 1.5], [1.0, 2.0], [2.0, 1.0]]:
+		f1=open("nicotine_metastat_ehist_"+str(metap[0])+"_"+str(metap[1])+".dat", "w")
+		# f2=open("nicotine_metastat_evar_"+str(metap[0])+"_"+str(metap[1])+".dat", "w")
+		f3=open("nicotine_metastat_dvar_"+str(metap[0])+"_"+str(metap[1])+".dat", "w")
+		f=open("./results/MDLogMetaMD_nicotine_"+str(metap[0])+"_"+str(metap[1])+".txt", "r")
+		lines = f.readlines()
+		for i, line in enumerate(lines):
+			if i == 19501:
+				break
+			sline = line.split()
+			f1.write(str(sline[7])+"\n")
+			# f2.write(str(sline[0])+" "+str(sline[9])+"\n")
+			f3.write(str(sline[0])+" "+str(sline[10])+"\n")
+		f.close()
+		f1.close()
+		# f2.close()
+		f3.close()
+
+def harmonic_freq():
+
+	def GetChemSpiderNetwork(a, Solvation_=False):
+		TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
+		PARAMS["tf_prec"] = "tf.float64"
+		PARAMS["NeuronType"] = "sigmoid_with_param"
+		PARAMS["sigmoid_alpha"] = 100.0
+		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+		PARAMS["EECutoff"] = 15.0
+		PARAMS["EECutoffOn"] = 0
+		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+		PARAMS["EECutoffOff"] = 15.0
+		PARAMS["AddEcc"] = True
+		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+		if Solvation_:
+			PARAMS["DSFAlpha"] = 0.18
+			manager=TFMolManage("chemspider12_solvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+		else:
+			PARAMS["DSFAlpha"] = 0.18*BOHRPERA
+			manager=TFMolManage("chemspider12_nosolvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+		return manager
+
+	PARAMS["OptMaxCycles"]= 2000
+	PARAMS["OptThresh"] =0.00002
+	a=MSet("nicotine_opt_qcorder")
+	a.ReadXYZ()
+	# m=a.mols[0]
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_Fri_Nov_10_16.19.55_2017", network_type = "BehlerParinelloDirectSymFunc")
+	dipole_manager = GetChemSpiderNetwork(a, False)
+	def force_field(coords, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), True)
+			return energy, forces * JOULEPERHARTREE
+		else:
+			energy = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), False)
+			return energy
+	def energy_field(coords):
+		energy = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), False)
+		return energy
+	def ChargeField(x_):
+		mtmp = Mol(m.atoms,x_)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = dipole_manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		energy = Etotal[0]
+		force = gradient[0]
+		return atom_charge[0]
+	def dipole_field(coords):
+		# q = np.array([-0.355885, -0.306275, -0.138541, -0.129072, -0.199879,  0.092443, -0.073758,  0.004807, -0.280214,
+		# 			-0.207116, -0.201989,  0.060910,  0.142512,  0.138947,  0.136766,  0.118485
+		# 			, 0.101182,  0.127422, 0.123743,  0.136352, 0.126561,  0.111861,  0.118059, 0.121731,  0.107663, 0.123283])
+		q = np.asarray(ChargeField(coords))
+		dipole = np.zeros(3)
+		for i in range(0, q.shape[0]):
+			dipole += q[i]*coords[i]*BOHRPERA
+		return dipole
+	Opt = GeomOptimizer(force_field)
+	m=Opt.Opt(a.mols[0],"nicotine_nn_opt")
+	m.WriteXYZfile("./results/", "optimized_nicotine")
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	w,v = HarmonicSpectra(energy_field, m.coords, m.atoms, WriteNM_=True, Mu_ = dipole_field)
+
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 # PARAMS["SH_NRAD"] = 32
 # PARAMS["SH_LMAX"] = 4
@@ -620,24 +792,28 @@ def water_dimer_plot():
 # read_unpacked_set()
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func("nicotine_full")
-train_energy_GauSH()
+# train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
 # test_h2o_anneal()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
+# nicotine_cc_stretch_plot()
+# meta_statistics()
+# meta_stat_plot()
+harmonic_freq()
 
-# a=MSet("water_dimer_cccbdb_opt")
+# a=MSet("nicotine_opt")
 # a.ReadXYZ()
-# b = MSet("water_dimer")
+# b = MSet("nicotine_stretch")
 # mol = a.mols[0]
-# oovec = mol.coords[1] - mol.coords[3]
-# for i in range(-80, 30):
+# ccvec = mol.coords[1] - mol.coords[17]
+# for i in range(-40, 80):
 # 	coords = mol.coords.copy()
-# 	coords[3:] += 0.01 * i * oovec
+# 	coords[16:] += 0.01 * i * ccvec
 # 	new_mol = Mol(mol.atoms, coords)
 # 	b.mols.append(new_mol)
-# 	print np.linalg.norm(b.mols[-1].coords[1] - b.mols[-1].coords[3])
+# 	print np.linalg.norm(b.mols[-1].coords[1] - b.mols[-1].coords[17])
 # b.WriteXYZ()

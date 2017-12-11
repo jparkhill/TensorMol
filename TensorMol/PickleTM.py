@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-import pickle
+import pickle,sys
 
 def PickleMapName(name):
 	"""
@@ -21,9 +21,19 @@ def mapped_load_global(self):
 	self.append(klass)
 
 def UnPickleTM(file):
-	unpickler = pickle.Unpickler(file)
-	unpickler.dispatch[pickle.GLOBAL] = mapped_load_global
-	tmp = unpickler.load()
+	"""
+	Eventually we need to figure out how the mechanics of dispatch tables changed.
+	Since we only use this as a hack anyways, I'll just comment out what changed
+	between python2.7x and python3x.
+	"""
+	tmp = None
+	if sys.version_info[0] < 3:
+		unpickler = pickle.Unpickler(file)
+		unpickler.dispatch[pickle.GLOBAL] = mapped_load_global
+		tmp = unpickler.load()
+	else:
+		unpickler = pickle.Unpickler(file,encoding='latin1')
+		tmp = unpickler.load()
 	tmp.pop('evaluate',None)
 	tmp.pop('MolInstance_fc_sqdiff_BP',None)
 	tmp.pop('Eval_BPForceSingle',None)

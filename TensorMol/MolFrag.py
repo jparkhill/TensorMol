@@ -617,7 +617,7 @@ class Frag(Mol):
 					qchemstring+="@"+str(self.AtomName(pointer+k))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+"\n"
 			qchemstring += "$end\n"
 			qchemstring += "!"+LtoS(real_frag_index[i])+"\n"
-			qchemstring += Qchem_RIMP2_Block
+			qchemstring += PARAMS["Qchem_RIMP2_Block"]
 			qchem_input=open(str(i+1)+".in","w+")
 			qchem_input.write(qchemstring)
 			qchem_input.close()

@@ -33,7 +33,6 @@ HAS_EMB = False
 HAS_TF = False
 GRIDS = None
 HAS_GRIDS=False
-Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 #
 # -- begin Environment set up.
 #
@@ -53,16 +52,7 @@ except Exception as Ex:
 try:
 	import MolEmb
 	HAS_EMB = True
-	LOGGER.debug("MolEmb has been found, Orthogonalizing Radial Basis.")
-	# S = MolEmb.Overlap_SH(PARAMS)
-	# from TensorMol.LinearOperations import MatrixPower
-	# SOrth = MatrixPower(S,-1./2)
-	# PARAMS["GauSHSm12"] = SOrth
-	# S_Rad = MolEmb.Overlap_RBF(PARAMS)
-	# S_RadOrth = MatrixPower(S_Rad,-1./2)
-	# PARAMS["SRBF"] = S_RadOrth
-	# THIS SHOULD BE IMPLEMENTED TOO.
-	#PARAMS["GauInvSm12"] = MatrixPower(S,-1./2)
+	LOGGER.debug("MolEmb has been found.")
 except Exception as Ex:
 	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install",Ex)
 	pass
@@ -88,8 +78,6 @@ LOGGER.debug("TMPARAMS----------")
 LOGGER.debug(PARAMS)
 LOGGER.debug("TMPARAMS~~~~~~~~~~")
 
-TOTAL_SENSORY_BASIS=None
-SENSORY_BASIS=None
 if (HAS_PYSCF and HAS_GRIDS):
 	from TensorMol.Grids import *
 	GRIDS = Grids()

@@ -1,5 +1,6 @@
 """
-Behler-Parinello network classes
+This version of the Behler-Parinello is aperiodic,non-sparse.
+It's being developed to explore alternatives to symmetry functions. It's not for production use.
 """
 
 from __future__ import absolute_import
@@ -115,7 +116,7 @@ class BehlerParinelloDirectSymFunc:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+"/BehlerParinelloDirect_nicotine_metamd_10000_Tue_Nov_07_22.35.07_2017.tfn","rb")
+		f = open(self.path+"/"+self.name+".tfn","rb")
 		import TensorMol.PickleTM
 		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
 		self.clean()
@@ -652,7 +653,7 @@ class BehlerParinelloDirectSymFunc:
 				element_embeddings[element] /= embeddings_max[element]
 			self.normalized_output = self.inference(element_embeddings, mol_indices)
 			self.output = (self.normalized_output * self.labels_stddev) + self.labels_mean
-			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0] / self.batch_size
+			self.gradients = tf.gradients(self.output, self.xyzs_pl)[0]
 
 			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -691,11 +692,19 @@ class BehlerParinelloDirectSymFunc:
 			self.num_atoms = mol.NAtoms()
 			self.assign_activation()
 			self.evaluate_prepare()
+		atomization_energy = 0.0
+		for atom in mol.atoms:
+			if atom in ele_U:
+				atomization_energy += ele_U[atom]
 		xyzs = np.expand_dims(mol.coords, axis=0)
 		Zs = np.expand_dims(mol.atoms, axis=0)
 		feed_dict=self.evaluate_fill_feed_dict(xyzs, Zs)
-		energy = self.sess.run(self.output, feed_dict=feed_dict)
-		return energy
+		if eval_forces:
+			energy, gradients = self.sess.run([self.output, self.gradients], feed_dict=feed_dict)
+			return energy + atomization_energy, -gradients[0]
+		else:
+			energy = self.sess.run(self.output, feed_dict=feed_dict)
+			return energy + atomization_energy
 
 	def evaluate_batch(self, mols, eval_forces=True):
 		"""

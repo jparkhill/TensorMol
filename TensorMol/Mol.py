@@ -319,7 +319,7 @@ class Mol:
 		else:
 			lines = lines+(str(natom)+"\nComment: \n")
 		for i in range (0, natom):
-			atom_name =  atoi.keys()[atoi.values().index(self.atoms[i])]
+			atom_name =  list(atoi.keys())[list(atoi.values()).index(self.atoms[i])]
 			lines = lines+(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
 		return lines
 

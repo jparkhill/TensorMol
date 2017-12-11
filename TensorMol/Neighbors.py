@@ -146,7 +146,7 @@ class NeighborList:
 		npair = sum(npairi)
 		npairi = map(len,tpair)
 		#ntrip = sum(map(lambda x: x*x if x>0 else 0, npairi))
-		ntrip = sum(map(lambda x: x*(x-1)/2 if x>0 else 0, npairi))
+		ntrip = sum(map(lambda x: int(x*(x-1)/2) if x>0 else 0, npairi))
 		#print ("npair:", npair, " ntrip:", ntrip, " rcut_triples:", rcut_triples, " tpair", tpair, " ntodo:", int(ntodo), " self.DoPerms", int(self.DoPerms), " x:", self.x[:int(ntodo)], " pair:", pair)
 		p = None
 		t = None
@@ -458,6 +458,10 @@ class NeighborListSet:
 		mil_j[:,3] = pair_pair
 		#print ("trpE_sorted, trtE_sorted",trpE_sorted.shape, trtE_sorted.shape)
 		return trpE_sorted, trtE_sorted, mil_j, mil_jk
+
+	def buildPairsAndTriplesWithEleIndexLinear(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
+		return self.buildPairsAndTriplesWithEleIndexPeriodic(rcut_pairs, rcut_triples, ele, elep)
+
 
 class NeighborListSetWithImages(NeighborListSet):
 	def __init__(self, x_, nnz_, nreal_,  DoTriples_=False, DoPerms_=False, ele_=None, alg_ = None, sort_ = False):
