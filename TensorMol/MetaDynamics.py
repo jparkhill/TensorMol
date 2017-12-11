@@ -45,7 +45,7 @@ class MetaDynamics(VelocityVerlet):
 		if (self.EnergyAndForce != None):
 			self.RealPot, PF = self.EnergyAndForce(x_)
 		else:
-			PE, PF = self.ForceFunction(x_)
+			PF = self.ForceFunction(x_)
 		if self.NBump > 0:
 			BF[0] *= self.m[:,None]
 		PF += JOULEPERHARTREE*BF[0]
@@ -102,6 +102,7 @@ class MetaDynamics(VelocityVerlet):
 					step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, Eav, self.md_log[step,6]/1000.0, self.md_log[step,10], Teff)
 			print(("per step cost:", time.time() -t ))
 			step+=1
+		np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
 		return
 
 class BoxingDynamics(VelocityVerlet):
