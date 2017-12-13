@@ -699,28 +699,36 @@ def meta_stat_plot():
 		f3.close()
 
 def harmonic_freq():
-
-	def GetChemSpiderNetwork(a, Solvation_=False):
-		TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
-		PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["NeuronType"] = "sigmoid_with_param"
-		PARAMS["sigmoid_alpha"] = 100.0
-		PARAMS["HiddenLayers"] = [2000, 2000, 2000]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 0
-		PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["AddEcc"] = True
-		PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
-		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-		tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
-		if Solvation_:
-			PARAMS["DSFAlpha"] = 0.18
-			manager=TFMolManage("chemspider12_solvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
-		else:
-			PARAMS["DSFAlpha"] = 0.18*BOHRPERA
-			manager=TFMolManage("chemspider12_nosolvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
-		return manager
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+	PARAMS["SH_NRAD"] = 16
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["EECutoffOn"] = 0.0
+	PARAMS["Elu_Width"] = 6.0
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["NeuronType"] = "shifted_softplus"
+	PARAMS["tf_prec"] = "tf.float32"
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Dec_11_11.43.09_2017", network_type = "BehlerParinelloDirectGauSH")
+	# def GetChemSpiderNetwork(a, Solvation_=False):
+	# 	TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
+	# 	PARAMS["tf_prec"] = "tf.float64"
+	# 	PARAMS["NeuronType"] = "sigmoid_with_param"
+	# 	PARAMS["sigmoid_alpha"] = 100.0
+	# 	PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+	# 	PARAMS["EECutoff"] = 15.0
+	# 	PARAMS["EECutoffOn"] = 0
+	# 	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	# 	PARAMS["EECutoffOff"] = 15.0
+	# 	PARAMS["AddEcc"] = True
+	# 	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+	# 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+	# 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	# 	if Solvation_:
+	# 		PARAMS["DSFAlpha"] = 0.18
+	# 		manager=TFMolManage("chemspider12_solvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	# 	else:
+	# 		PARAMS["DSFAlpha"] = 0.18*BOHRPERA
+	# 		manager=TFMolManage("chemspider12_nosolvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	# 	return manager
 
 	PARAMS["OptMaxCycles"]= 2000
 	PARAMS["OptThresh"] =0.00002
@@ -760,6 +768,55 @@ def harmonic_freq():
 	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
 	w,v = HarmonicSpectra(energy_field, m.coords, m.atoms, WriteNM_=True, Mu_ = dipole_field)
 
+def water_ir():
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+	PARAMS["SH_NRAD"] = 16
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["EECutoffOn"] = 0.0
+	PARAMS["Elu_Width"] = 6.0
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["NeuronType"] = "shifted_softplus"
+	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["OptMaxCycles"]= 2000
+	PARAMS["OptThresh"] =0.001
+
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[1.02068516794,-0.0953531498283,-0.117982957286],[0.697763661362,0.883054985795,0.981867638617],[0.282216817502,0.305964294644,0.341190303806]])))
+	# m = a.mols[0]
+
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Dec_11_11.43.09_2017",
+	network_type = "BehlerParinelloDirectGauSH")
+	# def force_field(coords, eval_forces=True):
+	# 	if eval_forces:
+	# 		energy, forces = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), True)
+	# 		return energy, forces * JOULEPERHARTREE
+	# 	else:
+	# 		energy = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), False)
+	# 		return energy
+	#
+	# Opt = GeomOptimizer(force_field)
+	# mo = Opt.Opt(m)
+
+	# Tesselate that water to create a box
+	ntess = 4
+	latv = 2.8*np.eye(3)
+	# Start with a water in a ten angstrom box.
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(a.mols[-1])
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+	print mt.NAtoms()
+	nreal = mt.NAtoms()
+	mt.Distort(0.01)
+	def force_field(coords, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate_mol(Mol(mt.atoms, coords), True)
+			return energy, forces * JOULEPERHARTREE
+		else:
+			energy = manager.evaluate_mol(Mol(mt.atoms, coords), False)
+			return energy
+	Opt = GeomOptimizer(force_field)
+	mt = Opt.Opt(mt,"UCopt")
+
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 # PARAMS["SH_NRAD"] = 32
 # PARAMS["SH_LMAX"] = 4
@@ -795,7 +852,7 @@ def harmonic_freq():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-train_energy_GauSH()
+# train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
@@ -806,6 +863,7 @@ train_energy_GauSH()
 # meta_statistics()
 # meta_stat_plot()
 # harmonic_freq()
+water_ir()
 
 # a=MSet("nicotine_opt")
 # a.ReadXYZ()

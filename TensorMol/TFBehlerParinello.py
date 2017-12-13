@@ -1263,7 +1263,7 @@ class BehlerParinelloDirectGauSH:
 					weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
 							stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
 					biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
-					branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
+					branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases, axis=1))
 					variables.append(weights)
 					variables.append(biases)
 					output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
@@ -1311,7 +1311,7 @@ class BehlerParinelloDirectGauSH:
 					weights = self.variable_with_weight_decay(shape=[self.hidden_layers[-1], 1],
 							stddev=math.sqrt(2.0 / float(self.hidden_layers[-1])), weight_decay=self.weight_decay, name="weights")
 					biases = tf.Variable(tf.zeros([1], dtype=self.tf_precision), name='biases')
-					branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases))
+					branches[-1].append(tf.squeeze(tf.matmul(branches[-1][-1], weights) + biases, axis=1))
 					variables.append(weights)
 					variables.append(biases)
 					output += tf.scatter_nd(index, branches[-1][-1], [self.batch_size, self.max_num_atoms])
@@ -1613,8 +1613,10 @@ class BehlerParinelloDirectGauSH:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.num_atoms, 3]))
-			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.num_atoms]))
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.max_num_atoms, 3]))
+			self.Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.max_num_atoms]))
+			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[None])
+			self.Reep_pl = tf.placeholder(tf.int32, shape=[None,3])
 
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
 			elements = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
@@ -1622,17 +1624,20 @@ class BehlerParinelloDirectGauSH:
 			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
+			elu_width = tf.Variable(self.elu_width * BOHRPERA, trainable=False, dtype = self.tf_precision)
+			dsf_alpha = tf.Variable(self.dsf_alpha, trainable=False, dtype = self.tf_precision)
+			coulomb_cutoff = tf.Variable(self.coulomb_cutoff, trainable=False, dtype = self.tf_precision)
 
-			self.tiled_xyzs = tf.tile(tf.expand_dims(self.xyzs_pl, axis=1), [1, 100, 1, 1])
-			self.tiled_Zs = tf.tile(tf.expand_dims(self.Zs_pl, axis=1), [1, 100, 1])
-			self.rotation_params = tf.tile(tf.expand_dims(tf.concat([np.pi * tf.expand_dims(tf.tile(tf.linspace(0.0, 2.0, 5), [20]), axis=1),
-					np.pi * tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.0, 2.0, 5), axis=1), [1,20]), [100,1]),
-					tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.1, 1.9, 4), axis=1),
-					axis=2), [5,1,5]), [100,1])], axis=1), axis=0), [self.batch_size, 1, 1])
-			self.rotated_xyzs = tf_random_rotate(self.tiled_xyzs, self.rotation_params)
-			self.rotated_xyzs = tf.reshape(self.rotated_xyzs, [-1, self.num_atoms, 3])
-			# self.rotated_gradients = tf.reshape(rotated_gradients, [-1, self.max_num_atoms, 3])
-			self.tiled_Zs = tf.reshape(self.tiled_Zs, [-1, self.num_atoms])
+			# self.tiled_xyzs = tf.tile(tf.expand_dims(self.xyzs_pl, axis=1), [1, 100, 1, 1])
+			# self.tiled_Zs = tf.tile(tf.expand_dims(self.Zs_pl, axis=1), [1, 100, 1])
+			# self.rotation_params = tf.tile(tf.expand_dims(tf.concat([np.pi * tf.expand_dims(tf.tile(tf.linspace(0.0, 2.0, 5), [20]), axis=1),
+			# 		np.pi * tf.reshape(tf.tile(tf.expand_dims(tf.linspace(0.0, 2.0, 5), axis=1), [1,20]), [100,1]),
+			# 		tf.reshape(tf.tile(tf.expand_dims(tf.expand_dims(tf.linspace(0.1, 1.9, 4), axis=1),
+			# 		axis=2), [5,1,5]), [100,1])], axis=1), axis=0), [self.batch_size, 1, 1])
+			# self.rotated_xyzs = tf_random_rotate(self.tiled_xyzs, self.rotation_params)
+			# self.rotated_xyzs = tf.reshape(self.rotated_xyzs, [-1, self.num_atoms, 3])
+			# # self.rotated_gradients = tf.reshape(rotated_gradients, [-1, self.max_num_atoms, 3])
+			# self.tiled_Zs = tf.reshape(self.tiled_Zs, [-1, self.num_atoms])
 
 			# tiled_xyzs = tf.tile(self.xyzs_pl, [self.batch_size, 1, 1])
 			# tiled_Zs = tf.tile(self.Zs_pl, [self.batch_size, 1])
@@ -1644,25 +1649,24 @@ class BehlerParinelloDirectGauSH:
 			# 		np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 			# 		tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 			# rotated_xyzs = tf_random_rotate(tiled_xyzs, rotation_params)
-			# embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
-			# 								tiled_Zs, elements, self.gaussian_params, self.l_max)
-			# for element in range(len(self.elements)):
-			# 	embeddings[element] -= embeddings_mean[element]
-			# 	embeddings[element] /= embeddings_stddev[element]
-			#
-			# norm_output = self.inference(embeddings, molecule_indices)
-			# self.output = (norm_output * labels_stddev) + labels_mean
-			#
-			# self.gradients = tf.gradients(self.output, self.xyzs_pl)[0] / self.batch_size
+			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(self.xyzs_pl,
+											self.Zs_pl, elements, self.gaussian_params, self.l_max)
+			for element in range(len(self.elements)):
+				embeddings[element] -= embeddings_mean[element]
+				embeddings[element] /= embeddings_stddev[element]
+			self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, self.xyzs_pl, self.num_atoms_pl)
+			self.coulomb_energy = tf_coulomb_dsf_elu(self.xyzs_pl, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
+			norm_bp_energy, energy_variables = self.energy_inference(embeddings, molecule_indices)
+			self.bp_energy = (norm_bp_energy * labels_stddev) + labels_mean
+			self.total_energy = self.bp_energy + self.coulomb_energy
+			self.gradients = tf.gradients(self.total_energy, self.xyzs_pl)[0]
 
-			self.summary_op = tf.summary.merge_all()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver()
 			self.saver.restore(self.sess, tf.train.latest_checkpoint(self.network_directory))
-			# self.summary_writer = tf.summary.FileWriter(self.network_directory, self.sess.graph)
 		return
 
-	def evaluate_fill_feed_dict(self, xyzs, Zs):
+	def evaluate_fill_feed_dict(self, xyzs, Zs, num_atoms, Reep):
 		"""
 		Fill the tensorflow feed dictionary.
 
@@ -1673,7 +1677,7 @@ class BehlerParinelloDirectGauSH:
 		Returns:
 			Filled feed dictionary.
 		"""
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl], [xyzs, Zs])}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.num_atoms_pl, self.Reep_pl], [xyzs, Zs, num_atoms, Reep])}
 		return feed_dict
 
 	def evaluate_mol(self, mol, eval_forces=True):
@@ -1685,34 +1689,36 @@ class BehlerParinelloDirectGauSH:
 			xyzs (np.float): numpy array of atomic coordinates
 			Zs (np.int32): numpy array of atomic numbers
 		"""
-		if (mol.NAtoms() > self.max_num_atoms):
-			self.max_num_atoms = mol.NAtoms()
-			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
-			self.assign_activation()
-			self.num_atoms = self.max_num_atoms
-			self.evaluate_prepare()
-		elif not self.sess:
+		if not self.sess:
 			print("loading the session..")
 			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
 			self.assign_activation()
-			self.num_atoms = mol.NAtoms()
+			self.max_num_atoms = mol.NAtoms()
 			self.batch_size = 1
 			self.evaluate_prepare()
-		xyzs_feed = np.zeros((1,self.num_atoms, 3))
-		Zs_feed = np.zeros((1,self.num_atoms))
+		if mol.NAtoms() > self.max_num_atoms:
+			print("Atoms and max atoms", mol.NAtoms(), self.max_num_atoms)
+			self.sess.close()
+			tf.reset_default_graph()
+			self.max_num_atoms = mol.NAtoms()
+			self.evaluate_prepare()
+		xyzs_feed = np.zeros((1,self.max_num_atoms, 3))
 		xyzs_feed[0,:mol.NAtoms()] = mol.coords
+		Zs_feed = np.zeros((1,self.max_num_atoms), dtype=np.int32)
 		Zs_feed[0,:mol.NAtoms()] = mol.atoms
-		feed_dict=self.evaluate_fill_feed_dict(xyzs_feed, Zs_feed)
-		energy = self.sess.run(self.rotated_xyzs, feed_dict=feed_dict)
-		return energy
-		# atomization_energy = 0.0
-		# for atom in mol.atoms:
-		# 	if atom in ele_U:
-		# 		atomization_energy += ele_U[atom]
-		# if eval_forces:
-		# 	energy, gradients = self.sess.run([self.output, self.gradients], feed_dict=feed_dict)
-		# 	forces = -gradients[0,:mol.NAtoms()]
-		# 	return np.mean(energy) + atomization_energy, forces
-		# else:
-		# 	energy = self.sess.run(self.output, feed_dict=feed_dict)
-		# 	return np.mean(energy) + atomization_energy
+		num_atoms_feed = np.zeros((1), dtype=np.int32)
+		num_atoms_feed[0] = mol.NAtoms()
+		NLEE = NeighborListSet(xyzs_feed, num_atoms_feed, False, False, None)
+		rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
+		feed_dict=self.evaluate_fill_feed_dict(xyzs_feed, Zs_feed, num_atoms_feed, rad_eep)
+		atomization_energy = 0.0
+		for atom in mol.atoms:
+			if atom in ele_U:
+				atomization_energy += ele_U[atom]
+		if eval_forces:
+			energy, gradients = self.sess.run([self.total_energy, self.gradients], feed_dict=feed_dict)
+			forces = -gradients[0,:mol.NAtoms()]
+			return energy + atomization_energy, forces
+		else:
+			energy = self.sess.run(self.total_energy, feed_dict=feed_dict)
+			return energy + atomization_energy
