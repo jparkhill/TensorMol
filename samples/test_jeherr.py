@@ -386,8 +386,9 @@ def train_energy_GauSH():
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["EECutoffOn"] = 0.0
 	PARAMS["Elu_Width"] = 6.0
-	PARAMS["train_gradients"] = True
-	PARAMS["train_dipole"] = True
+	PARAMS["train_gradients"] = False
+	PARAMS["train_dipole"] = False
+	PARAMS["train_rotation"] = True
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
