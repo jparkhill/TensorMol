@@ -318,9 +318,12 @@ class Mol:
 			lines = lines+(str(natom)+"\nComment: "+self.PropertyString()+"\n")
 		else:
 			lines = lines+(str(natom)+"\nComment: \n")
-		for i in range (0, natom):
+		for i in range (natom):
 			atom_name =  list(atoi.keys())[list(atoi.values()).index(self.atoms[i])]
-			lines = lines+(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+			if (i<natom-1):
+				lines = lines+(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2])+"\n")
+			else:
+				lines = lines+(atom_name+"   "+str(self.coords[i][0])+ "  "+str(self.coords[i][1])+ "  "+str(self.coords[i][2]))
 		return lines
 
 	def __repr__(self):
