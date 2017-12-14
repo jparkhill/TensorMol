@@ -370,27 +370,29 @@ def train_energy_symm_func(mset):
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 500
+	PARAMS["max_steps"] = 1000
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "elu"
-	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["tf_prec"] = "tf.float64"
 	a=MSet(mset)
 	a.Load()
 	print "Number of Mols: ", len(a.mols)
 	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectSymFunc")
 
 def train_energy_GauSH():
-	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 14), np.repeat(0.35, 14)), axis=1)
-	PARAMS["SH_NRAD"] = 14
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+	PARAMS["SH_NRAD"] = 16
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["EECutoffOn"] = 0.0
-	PARAMS["Elu_Width"] = 8.0
-	PARAMS["train_energy_gradients"] = False
+	PARAMS["Elu_Width"] = 6.0
+	PARAMS["train_gradients"] = False
+	PARAMS["train_dipole"] = False
+	PARAMS["train_rotation"] = True
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 250
+	PARAMS["max_steps"] = 500
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 400
 	PARAMS["NeuronType"] = "shifted_softplus"
@@ -654,6 +656,167 @@ def nicotine_cc_stretch_plot():
 	# 	bond_e = dimer - h2o1 - h2o2
 	# 	print "{%.10f, %.10f}," % (np.linalg.norm(mol.coords[1] - mol.coords[3]), bond_e * 627.509)
 
+def meta_statistics():
+	PARAMS["MDdt"] = 0.5 # In fs.
+	PARAMS["MDMaxStep"] = 20000
+	PARAMS["MetaBumpTime"] = 10.0
+	PARAMS["MetaMaxBumps"] = 1000
+	PARAMS["MetaBowlK"] = 0.0
+	PARAMS["MDThermostat"]="Andersen"
+	PARAMS["MDTemp"]=300.0
+	PARAMS["MDV0"]=None
+	a=MSet("nicotine_opt")
+	a.ReadXYZ()
+	m=a.mols[0]
+	manager=TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_full_Fri_Nov_24_15.52.20_2017", network_type = "BehlerParinelloDirectSymFunc")
+	def force_field(coords):
+		energy, forces = manager.evaluate_mol(Mol(m.atoms, coords), True)
+		return energy, forces * JOULEPERHARTREE
+	# for metap in [[0.5, 0.5], [1.0, 0.5], [0.5, 1.0], [1.0, 1.0], [0.5, 1.5], [1.5, 0.5], [1.5, 1.5], [1.0, 2.0], [2.0, 1.0], [2.0, 2.0], [3.0, 3.0]]:
+	for metap in [[0.0, 0.01]]:
+		PARAMS["MetaMDBumpHeight"] = metap[0]
+		PARAMS["MetaMDBumpWidth"] = metap[1]
+		traj = MetaDynamics(None, m,"MetaMD_nicotine_aimd_sample"+str(metap[0])+"_"+str(metap[1]), force_field)
+		traj.Prop()
+
+def meta_stat_plot():
+	for metap in [[0.0, 0.01], [0.5, 2.0], [0.5, 0.5], [1.0, 1.0], [0.5, 1.5], [1.5, 0.5], [1.5, 1.5], [1.0, 2.0], [2.0, 1.0]]:
+		f1=open("nicotine_metastat_ehist_"+str(metap[0])+"_"+str(metap[1])+".dat", "w")
+		# f2=open("nicotine_metastat_evar_"+str(metap[0])+"_"+str(metap[1])+".dat", "w")
+		f3=open("nicotine_metastat_dvar_"+str(metap[0])+"_"+str(metap[1])+".dat", "w")
+		f=open("./results/MDLogMetaMD_nicotine_"+str(metap[0])+"_"+str(metap[1])+".txt", "r")
+		lines = f.readlines()
+		for i, line in enumerate(lines):
+			if i == 19501:
+				break
+			sline = line.split()
+			f1.write(str(sline[7])+"\n")
+			# f2.write(str(sline[0])+" "+str(sline[9])+"\n")
+			f3.write(str(sline[0])+" "+str(sline[10])+"\n")
+		f.close()
+		f1.close()
+		# f2.close()
+		f3.close()
+
+def harmonic_freq():
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+	PARAMS["SH_NRAD"] = 16
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["EECutoffOn"] = 0.0
+	PARAMS["Elu_Width"] = 6.0
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["NeuronType"] = "shifted_softplus"
+	PARAMS["tf_prec"] = "tf.float32"
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Dec_11_11.43.09_2017", network_type = "BehlerParinelloDirectGauSH")
+	# def GetChemSpiderNetwork(a, Solvation_=False):
+	# 	TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
+	# 	PARAMS["tf_prec"] = "tf.float64"
+	# 	PARAMS["NeuronType"] = "sigmoid_with_param"
+	# 	PARAMS["sigmoid_alpha"] = 100.0
+	# 	PARAMS["HiddenLayers"] = [2000, 2000, 2000]
+	# 	PARAMS["EECutoff"] = 15.0
+	# 	PARAMS["EECutoffOn"] = 0
+	# 	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	# 	PARAMS["EECutoffOff"] = 15.0
+	# 	PARAMS["AddEcc"] = True
+	# 	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 0.7]
+	# 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+	# 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	# 	if Solvation_:
+	# 		PARAMS["DSFAlpha"] = 0.18
+	# 		manager=TFMolManage("chemspider12_solvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	# 	else:
+	# 		PARAMS["DSFAlpha"] = 0.18*BOHRPERA
+	# 		manager=TFMolManage("chemspider12_nosolvation", tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	# 	return manager
+
+	PARAMS["OptMaxCycles"]= 2000
+	PARAMS["OptThresh"] =0.00002
+	a=MSet("nicotine_opt_qcorder")
+	a.ReadXYZ()
+	# m=a.mols[0]
+	manager = TFMolManageDirect(name="BehlerParinelloDirectSymFunc_nicotine_metamd_Fri_Nov_10_16.19.55_2017", network_type = "BehlerParinelloDirectSymFunc")
+	dipole_manager = GetChemSpiderNetwork(a, False)
+	def force_field(coords, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), True)
+			return energy, forces * JOULEPERHARTREE
+		else:
+			energy = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), False)
+			return energy
+	def energy_field(coords):
+		energy = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), False)
+		return energy
+	def ChargeField(x_):
+		mtmp = Mol(m.atoms,x_)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = dipole_manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		energy = Etotal[0]
+		force = gradient[0]
+		return atom_charge[0]
+	def dipole_field(coords):
+		# q = np.array([-0.355885, -0.306275, -0.138541, -0.129072, -0.199879,  0.092443, -0.073758,  0.004807, -0.280214,
+		# 			-0.207116, -0.201989,  0.060910,  0.142512,  0.138947,  0.136766,  0.118485
+		# 			, 0.101182,  0.127422, 0.123743,  0.136352, 0.126561,  0.111861,  0.118059, 0.121731,  0.107663, 0.123283])
+		q = np.asarray(ChargeField(coords))
+		dipole = np.zeros(3)
+		for i in range(0, q.shape[0]):
+			dipole += q[i]*coords[i]*BOHRPERA
+		return dipole
+	Opt = GeomOptimizer(force_field)
+	m=Opt.Opt(a.mols[0],"nicotine_nn_opt")
+	m.WriteXYZfile("./results/", "optimized_nicotine")
+	masses = np.array(map(lambda x: ATOMICMASSESAMU[x-1],m.atoms))
+	w,v = HarmonicSpectra(energy_field, m.coords, m.atoms, WriteNM_=True, Mu_ = dipole_field)
+
+def water_ir():
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+	PARAMS["SH_NRAD"] = 16
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["EECutoffOn"] = 0.0
+	PARAMS["Elu_Width"] = 6.0
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["NeuronType"] = "shifted_softplus"
+	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["OptMaxCycles"]= 2000
+	PARAMS["OptThresh"] =0.001
+
+	a = MSet()
+	a.mols.append(Mol(np.array([1,1,8]),np.array([[1.02068516794,-0.0953531498283,-0.117982957286],[0.697763661362,0.883054985795,0.981867638617],[0.282216817502,0.305964294644,0.341190303806]])))
+	# m = a.mols[0]
+
+	manager = TFMolManageDirect(name="BehlerParinelloDirectGauSH_H2O_wb97xd_1to21_with_prontonated_Mon_Dec_11_11.43.09_2017",
+	network_type = "BehlerParinelloDirectGauSH")
+	# def force_field(coords, eval_forces=True):
+	# 	if eval_forces:
+	# 		energy, forces = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), True)
+	# 		return energy, forces * JOULEPERHARTREE
+	# 	else:
+	# 		energy = manager.evaluate_mol(Mol(a.mols[0].atoms, coords), False)
+	# 		return energy
+	#
+	# Opt = GeomOptimizer(force_field)
+	# mo = Opt.Opt(m)
+
+	# Tesselate that water to create a box
+	ntess = 4
+	latv = 2.8*np.eye(3)
+	# Start with a water in a ten angstrom box.
+	lat = Lattice(latv)
+	mc = lat.CenteredInLattice(a.mols[-1])
+	mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+	print mt.NAtoms()
+	nreal = mt.NAtoms()
+	mt.Distort(0.01)
+	def force_field(coords, eval_forces=True):
+		if eval_forces:
+			energy, forces = manager.evaluate_mol(Mol(mt.atoms, coords), True)
+			return energy, forces * JOULEPERHARTREE
+		else:
+			energy = manager.evaluate_mol(Mol(mt.atoms, coords), False)
+			return energy
+	Opt = GeomOptimizer(force_field)
+	mt = Opt.Opt(mt,"UCopt")
+
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 # PARAMS["SH_NRAD"] = 32
 # PARAMS["SH_LMAX"] = 4
@@ -696,7 +859,11 @@ def nicotine_cc_stretch_plot():
 # test_h2o_anneal()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
-nicotine_cc_stretch_plot()
+# nicotine_cc_stretch_plot()
+# meta_statistics()
+# meta_stat_plot()
+# harmonic_freq()
+water_ir()
 
 # a=MSet("nicotine_opt")
 # a.ReadXYZ()

@@ -159,7 +159,7 @@ def TrainPrepare():
 		a = MSet("H2O_wb97xd_1to21_with_prontonated")
 		dic_list = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated.dat", "rb"))
 		for mol_index, dic in enumerate(dic_list):
-		    atoms = []
+			atoms = []
 			print ("mol_index:", mol_index)
 			for atom in dic['atoms']:
 				atoms.append(AtomicNumber(atom))
