@@ -386,13 +386,13 @@ def train_energy_GauSH():
 	PARAMS["SH_LMAX"] = 4
 	PARAMS["EECutoffOn"] = 0.0
 	PARAMS["Elu_Width"] = 6.0
-	PARAMS["train_gradients"] = False
+	PARAMS["train_gradients"] = True
 	PARAMS["train_dipole"] = False
 	PARAMS["train_rotation"] = True
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 500
+	PARAMS["max_steps"] = 200
 	PARAMS["test_freq"] = 5
 	PARAMS["batch_size"] = 400
 	PARAMS["NeuronType"] = "shifted_softplus"
@@ -852,7 +852,7 @@ def water_ir():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-# train_energy_GauSH()
+train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
@@ -863,7 +863,7 @@ def water_ir():
 # meta_statistics()
 # meta_stat_plot()
 # harmonic_freq()
-water_ir()
+# water_ir()
 
 # a=MSet("nicotine_opt")
 # a.ReadXYZ()

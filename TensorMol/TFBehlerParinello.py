@@ -1105,6 +1105,7 @@ class BehlerParinelloDirectGauSH:
 		self.options = None
 		self.run_metadata = None
 		self.gaussian_params = None
+		self.rotation_loss = None
 		return
 
 	def train_prepare(self,  continue_training =False):
@@ -1116,7 +1117,6 @@ class BehlerParinelloDirectGauSH:
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			#Define the placeholders to be fed in for each batch
 			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
 			self.Zs_pl = tf.placeholder(tf.int32, shape=[None, self.max_num_atoms])
 			self.labels_pl = tf.placeholder(self.tf_precision, shape=[None])
@@ -1124,9 +1124,7 @@ class BehlerParinelloDirectGauSH:
 			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
 			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[None])
 			self.Reep_pl = tf.placeholder(tf.int32, shape=[None,3])
-			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
-			#Define the embedding parameters and normalization constants
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_precision)
 			elements = tf.Variable(self.elements, trainable=False, dtype = tf.int32)
 			embeddings_mean = tf.Variable(self.embeddings_mean, trainable=False, dtype = self.tf_precision)
@@ -1153,7 +1151,8 @@ class BehlerParinelloDirectGauSH:
 				self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
 				self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
 				self.total_energy = self.bp_energy + self.coulomb_energy
-				self.dipole_loss = self.dipole_loss_op(self.dipoles, self.dipole_labels)
+				self.dipole_loss = self.loss_op(self.dipoles - self.dipole_labels)
+				tf.add_to_collection('dipole_losses', self.dipole_loss)
 				self.dipole_losses = tf.add_n(tf.get_collection('dipole_losses'))
 				tf.summary.scalar("dipole losses", self.dipole_losses)
 				self.dipole_train_op = self.optimizer(self.dipole_losses, self.learning_rate, self.momentum, dipole_variables)
@@ -1162,16 +1161,18 @@ class BehlerParinelloDirectGauSH:
 
 			self.gradients = tf.gather_nd(tf.gradients(self.total_energy, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
 			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
-			self.rotation_loss = tf.reduce_sum(tf.square(tf.gradients(self.total_energy, rotation_params))) / 1000.0
 
-			self.energy_loss = self.energy_loss_op(self.total_energy, self.labels_pl)
+			self.energy_loss = self.loss_op(self.total_energy - self.labels_pl)
 			tf.summary.scalar("energy loss", self.energy_loss)
+			tf.add_to_collection('energy_losses', self.energy_loss)
+			self.gradient_loss = self.loss_op(self.gradients - self.gradient_labels) / tf.cast(tf.reduce_sum(self.num_atoms_pl), self.tf_precision)
+			self.rotation_loss = self.loss_op(tf.gradients(self.total_energy, rotation_params)) / 500.0
 			if self.train_gradients:
-				self.gradient_loss = self.gradient_loss_op(self.gradients, self.gradient_labels, num_atoms_batch)
+				tf.add_to_collection('energy_losses', self.gradient_loss)
 				tf.summary.scalar("gradient loss", self.gradient_loss)
 			if self.train_rotation:
-				tf.summary.scalar("rotational loss", self.rotation_loss)
 				tf.add_to_collection('energy_losses', self.rotation_loss)
+				tf.summary.scalar("rotational loss", self.rotation_loss)
 
 			# barrier_function = 1.e5 * tf.concat([tf.pow((0.15 - self.gaussian_params), 3.0), tf.expand_dims(tf.pow((self.gaussian_params[:,0] - 6.1), 3.0), axis=-1),
 			# 			tf.expand_dims(tf.pow((self.gaussian_params[:,1] - 3.6), 3.0), axis=-1)], axis=1)
@@ -1343,30 +1344,9 @@ class BehlerParinelloDirectGauSH:
 		train_op = optimizer.minimize(loss, global_step=global_step, var_list=variables)
 		return train_op
 
-	def energy_loss_op(self, total_energies, total_energy_labels):
-		energy_loss = tf.nn.l2_loss(total_energies - total_energy_labels)
-		tf.add_to_collection('energy_losses', energy_loss)
-		return energy_loss
-
-	def gradient_loss_op(self, gradients, gradient_labels, num_atoms):
-		gradient_loss = tf.nn.l2_loss(gradients - gradient_labels) / tf.cast(num_atoms, self.tf_precision)
-		tf.add_to_collection('energy_losses', gradient_loss)
-		return gradient_loss
-
-	def rotation_loss_op(self, rotation_grads):
-		rotation_loss = tf.nn.l2_loss(rotation_grads)
-		tf.add_to_collection('energy_losses', energy_loss)
-		return energy_loss
-
-	def dipole_loss_op(self, dipoles, dipole_labels):
-		dipole_loss = tf.nn.l2_loss(dipoles - dipole_labels)
-		tf.add_to_collection('dipole_losses', dipole_loss)
-		return dipole_loss
-
-	def charge_loss_op(self, net_charge):
-		charge_loss = tf.nn.l2_loss(net_charge)
-		tf.add_to_collection('dipole_losses', charge_loss)
-		return charge_loss
+	def loss_op(self, error):
+		loss = tf.nn.l2_loss(error)
+		return loss
 
 	def dipole_train_step(self, step):
 		"""
@@ -1413,24 +1393,28 @@ class BehlerParinelloDirectGauSH:
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.get_energy_train_batch(self.batch_size)
 			feed_dict = self.fill_energy_feed_dict(batch_data)
-			if self.train_gradients:
+			if self.train_gradients and self.train_rotation:
 				_, summaries, total_loss, energy_loss, gradient_loss, rotation_loss = self.sess.run([self.energy_train_op,
 				self.summary_op, self.energy_losses, self.energy_loss, self.gradient_loss, self.rotation_loss], feed_dict=feed_dict)
 				train_gradient_loss += gradient_loss
-			else:
+				train_rotation_loss += rotation_loss
+			elif self.train_gradients:
+				_, summaries, total_loss, energy_loss, gradient_loss = self.sess.run([self.energy_train_op,
+				self.summary_op, self.energy_losses, self.energy_loss, self.gradient_loss], feed_dict=feed_dict)
+				train_gradient_loss += gradient_loss
+			elif self.train_rotation:
 				_, summaries, total_loss, energy_loss, rotation_loss = self.sess.run([self.energy_train_op,
 				self.summary_op, self.energy_losses, self.energy_loss, self.rotation_loss], feed_dict=feed_dict)
+				train_rotation_loss += rotation_loss
+			else:
+				_, summaries, total_loss, energy_loss = self.sess.run([self.energy_train_op,
+				self.summary_op, self.energy_losses, self.energy_loss], feed_dict=feed_dict)
 			train_loss += total_loss
 			train_energy_loss += energy_loss
-			train_rotation_loss += rotation_loss
 			num_mols += self.batch_size
 			self.summary_writer.add_summary(summaries, step * int(Ncase_train/self.batch_size) + ministep)
 		duration = time.time() - start_time
-		if self.train_gradients:
-			self.print_training(step, train_loss, train_energy_loss, num_mols, duration, train_gradient_loss)
-		else:
-			self.print_training(step, train_loss, train_energy_loss, num_mols, duration)
-		LOGGER.info("rotation loss: %.10f", train_rotation_loss / num_mols)
+		self.print_epoch(step, duration, train_loss, train_energy_loss, train_gradient_loss, train_rotation_loss, num_mols)
 		return
 
 	def dipole_test_step(self, step):
@@ -1504,18 +1488,13 @@ class BehlerParinelloDirectGauSH:
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data = self.get_energy_test_batch(self.batch_size)
 			feed_dict = self.fill_energy_feed_dict(batch_data)
-			if self.train_gradients:
-				total_energies, energy_labels, gradients, gradient_labels, total_loss, energy_loss, gradient_loss, rotation_loss, num_atoms, gaussian_params = self.sess.run([self.total_energy,
-				self.labels_pl, self.gradients, self.gradient_labels, self.energy_losses, self.energy_loss,
-				self.gradient_loss, self.rotation_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
-				test_gradient_loss += gradient_loss
-			else:
-				total_energies, energy_labels, gradients, gradient_labels, total_loss, energy_loss, rotation_loss, num_atoms, gaussian_params = self.sess.run([self.total_energy,
-				self.labels_pl, self.gradients, self.gradient_labels, self.energy_losses, self.energy_loss,
-				self.rotation_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
+			total_energies, energy_labels, gradients, gradient_labels, total_loss, energy_loss, gradient_loss, rotation_loss, num_atoms, gaussian_params = self.sess.run([self.total_energy,
+			self.labels_pl, self.gradients, self.gradient_labels, self.energy_losses, self.energy_loss,
+			self.gradient_loss, self.rotation_loss, self.num_atoms_pl, self.gaussian_params],  feed_dict=feed_dict)
 			test_loss += total_loss
 			num_mols += self.batch_size
 			test_energy_loss += energy_loss
+			test_gradient_loss += gradient_loss
 			test_rotation_loss += rotation_loss
 			test_epoch_energy_labels.append(energy_labels)
 			test_epoch_energy_outputs.append(total_energies)
@@ -1541,11 +1520,7 @@ class BehlerParinelloDirectGauSH:
 		LOGGER.info("RMSE Energy: %11.8f  Forces: %11.8f", np.sqrt(np.mean(np.square(test_epoch_energy_errors))),
 		np.sqrt(np.mean(np.square(test_epoch_force_errors))))
 		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
-		if self.train_gradients:
-			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration, test_gradient_loss)
-		else:
-			self.print_testing(step, test_loss, test_energy_loss, num_mols, duration)
-		LOGGER.info("rotation loss: %.10f", test_rotation_loss / num_mols)
+		self.print_epoch(step, duration, test_loss, test_energy_loss, test_gradient_loss, test_rotation_loss, num_mols, testing=True)
 		return test_loss
 
 	def train(self):
@@ -1586,22 +1561,9 @@ class BehlerParinelloDirectGauSH:
 		self.save_network()
 		return
 
-	def print_training(self, step, loss, energy_loss, num_mols, duration, gradient_loss=None):
-		if self.train_gradients:
-			LOGGER.info("step: %5d    duration: %.5f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
-			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
-		else:
-			LOGGER.info("step: %5d    duration: %.5f  train loss: %.10f energy loss: %.10f",
-			step, duration, loss / num_mols, energy_loss / num_mols)
-		return
-
-	def print_testing(self, step, loss, energy_loss, num_mols, duration, gradient_loss=None):
-		if self.train_gradients:
-			LOGGER.info("step: %5d    duration: %.5f  test loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
-			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
-		else:
-			LOGGER.info("step: %5d    duration: %.5f  test loss: %.10f energy loss: %.10f",
-			step, duration, loss / num_mols, energy_loss / num_mols)
+	def print_epoch(self, step, duration, loss, energy_loss, gradient_loss, rotation_loss, num_mols, testing=False):
+		LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f  rotation loss: %.10f",
+		step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols, rotation_loss / num_mols)
 		return
 
 	def evaluate_prepare(self):
