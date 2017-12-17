@@ -1494,17 +1494,12 @@ def PolynomialRangeSepCoulomb(R,Qs,Radpair,SRRc,LRRc,dx):
 	nnz = tf.shape(Radpair)[0]
 	Rij = DifferenceVectorsLinear(R, Radpair)
 	Ds = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
-
 	twooversqrtpi = tf.constant(1.1283791671,dtype=tf.float64)
 	Qii = tf.slice(Radpair,[0,0],[-1,2])
 	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
 	Qi = tf.gather_nd(Qs,Qii)
 	Qj = tf.gather_nd(Qs,Qji)
-	# Gather desired LJ parameters.
 	Qij = tf.cast(Qi*Qj,dtype=tf.float64)
-
-	# Kun: I don't think this loop borrowed from your old code
-	# is acutally sparse or linear scaling. It needs to use NZP.
 	D2 = Ds*Ds
 	D3 = D2*Ds
 	D4 = D3*Ds
@@ -1533,8 +1528,8 @@ def PolynomialRangeSepCoulomb(R,Qs,Radpair,SRRc,LRRc,dx):
 	flr = -((dx2-3.*dx*x0+6.*x02)/(dx5*x03))
 
 	CK = (Qij/Ds)
-	SRK = (asr*D3+csr*D4+dsr)
-	LRK = (alr*D3 + blr*D2 + dlr*Ds + clr*D4 + elr + flr*D5)
+	SRK = Qij*(asr*D3+csr*D4+dsr)
+	LRK = Qij*(alr*D3 + blr*D2 + dlr*Ds + clr*D4 + elr + flr*D5)
 	ZK = tf.zeros_like(Ds)
 
 	K0 = tf.where(tf.less_equal(Ds,SRRc),SRK,CK)
