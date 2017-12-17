@@ -1008,7 +1008,6 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 			scaled_charge =  tf.subtract(output_charge, delta_charge_tile)
 			flat_dipole = tf.multiply(tf.reshape(xyzsInBohr,[self.batch_size*self.MaxNAtoms, 3]), tf.reshape(scaled_charge,[self.batch_size*self.MaxNAtoms, 1]))
 			dipole = tf.reduce_sum(tf.reshape(flat_dipole,[self.batch_size, self.MaxNAtoms, 3]), axis=1)
-
 		def f1(): return TFCoulombEluSRDSFLR(xyzsInBohr, scaled_charge, Elu_Width*BOHRPERA, Reep, tf.cast(self.DSFAlpha, self.tf_prec), tf.cast(self.elu_alpha,self.tf_prec), tf.cast(self.elu_shift,self.tf_prec))
 		def f2(): return  tf.zeros([self.batch_size], dtype=self.tf_prec)
 		cc_energy = tf.cond(AddEcc, f1, f2)

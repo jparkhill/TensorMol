@@ -67,7 +67,7 @@ def TFDistances(r_):
 	rmtt = tf.transpose(rmt,perm=[0,2,1])
 	# Tensorflow can only reverse mode grad of sqrt if all these elements
 	# are nonzero
-	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + tf.cast(1e-26,tf.float64)
+	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + tf.cast(1e-28,tf.float64)
 	return tf.sqrt(D)
 
 def TFDistanceLinear(B,NZP):

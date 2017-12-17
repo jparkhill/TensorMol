@@ -1468,6 +1468,86 @@ def TFVdwPolyLRWithEle(R, Zs, eles, c6, R_vdw, R_cut, Radpair_E1E2, prec=tf.floa
 	E_vdw = tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
 	return E_vdw
 
+def PolynomialRangeSepCoulomb(R,Qs,Radpair,SRRc,LRRc,dx):
+	"""
+	A tensorflow linear scaling implementation of a short-range and long range cutoff
+	coulomb kernel. The cutoff functions are polynomials subject to the constraint
+	that 1/r is brought to 0 twice-differentiably at SR and LR+dx cutoffs.
+
+	The SR cutoff polynomial is 4th order, and the LR is fifth.
+
+	Args:
+		R: a nmol X maxnatom X 3 tensor of coordinates.
+		Qs : nmol X maxnatom X 1 tensor of atomic charges.
+		Radpair: None zero pairs X 3 tensor (mol, i, j)
+		SRRc: Distance where SR polynomial ends.
+		LRRc: Distance where LR polynomial begins.
+		dx: Small interval after which the kernel is zero.
+	Returns
+		A #Mols X MaxNAtoms X MaxNAtoms matrix of LJ kernel contributions.
+	"""
+	inp_shp = tf.shape(R)
+	nmol = inp_shp[0]
+	natom = inp_shp[1]
+	natom2 = natom*natom
+	infinitesimal = 0.000000000000000000000000001
+	nnz = tf.shape(Radpair)[0]
+	Rij = DifferenceVectorsLinear(R, Radpair)
+	Ds = tf.sqrt(tf.reduce_sum(Rij*Rij,axis=1)+infinitesimal)
+
+	twooversqrtpi = tf.constant(1.1283791671,dtype=tf.float64)
+	Qii = tf.slice(Radpair,[0,0],[-1,2])
+	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
+	Qi = tf.gather_nd(Qs,Qii)
+	Qj = tf.gather_nd(Qs,Qji)
+	# Gather desired LJ parameters.
+	Qij = tf.cast(Qi*Qj,dtype=tf.float64)
+
+	# Kun: I don't think this loop borrowed from your old code
+	# is acutally sparse or linear scaling. It needs to use NZP.
+	D2 = Ds*Ds
+	D3 = D2*Ds
+	D4 = D3*Ds
+	D5 = D4*Ds
+
+	asr = -5./(3.*tf.pow(SRRc,4.0))
+	dsr = 5./(3.*SRRc)
+	csr = 1./(tf.pow(SRRc,5.0))
+
+	x0 = LRRc
+	x02 = x0*x0
+	x03 = x02*x0
+	x04 = x03*x0
+	x05 = x04*x0
+
+	dx2 = dx*dx
+	dx3 = dx2*dx
+	dx4 = dx3*dx
+	dx5 = dx4*dx
+
+	alr = -((3.*(dx4+2.*dx3*x0-4.*dx2*x02+10.*dx*x03+20.*x04))/(dx5*x03))
+	blr = -((-dx5-9*dx4*x0+8.*dx2*x03-60.0*dx*x04-60.0*x05)/(dx5*x03))
+	clr = (3.*(dx3-dx2*x0+10.*x03))/(dx5*x03)
+	dlr = -((3.*(dx5+3.*dx4*x0-2.*dx3*x02+dx2*x03+15.*dx*x04+10.*x05))/(dx5*x02))
+	elr = (3.*(dx5+dx4*x0-dx3*x02+dx2*x03+4.*dx*x04+2.*x05))/(dx5*x0)
+	flr = -((dx2-3.*dx*x0+6.*x02)/(dx5*x03))
+
+	CK = (Qij/Ds)
+	SRK = (asr*D3+csr*D4+dsr)
+	LRK = (alr*D3 + blr*D2 + dlr*Ds + clr*D4 + elr + flr*D5)
+	ZK = tf.zeros_like(Ds)
+
+	K0 = tf.where(tf.less_equal(Ds,SRRc),SRK,CK)
+	K1 = tf.where(tf.greater_equal(Ds,LRRc),LRK,K0)
+	K = tf.where(tf.greater_equal(Ds,LRRc+dx),ZK,K1)
+
+	range_index = tf.range(tf.cast(nnz, tf.int64), dtype=tf.int64)
+	mol_index = tf.cast(tf.reshape(tf.slice(Radpair,[0,0],[-1,1]),[nnz]), dtype=tf.int64)
+	sparse_index = tf.stack([mol_index, range_index], axis=1)
+	sp_atomoutputs = tf.SparseTensor(sparse_index, K, dense_shape=[tf.cast(nmol, tf.int64), tf.cast(nnz, tf.int64)])
+	# Now use the sparse reduce sum trick to scatter this into mols.
+	return tf.sparse_reduce_sum(sp_atomoutputs, axis=1)
+
 def TFCoulombErfLR(R, Qs, R_cut,  Radpair, prec=tf.float64):
 	"""
 	Tensorflow implementation of long range cutoff sparse-Erf
