@@ -1499,7 +1499,7 @@ def PolynomialRangeSepCoulomb(R,Qs,Radpair,SRRc,LRRc,dx):
 	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
 	Qi = tf.gather_nd(Qs,Qii)
 	Qj = tf.gather_nd(Qs,Qji)
-	Qij = tf.cast(Qi*Qj,dtype=tf.float64)
+	Qij = Qi*Qj
 	D2 = Ds*Ds
 	D3 = D2*Ds
 	D4 = D3*Ds
