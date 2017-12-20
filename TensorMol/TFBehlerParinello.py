@@ -37,7 +37,7 @@ class BehlerParinelloDirectSymFunc:
 		self.max_steps = PARAMS["max_steps"]
 		self.batch_size = PARAMS["batch_size"]
 		self.max_checkpoints = PARAMS["max_checkpoints"]
-		self.train_gradients = PARAMS["train_energy_gradients"]
+		self.train_gradients = PARAMS["train_gradients"]
 		self.profiling = PARAMS["Profiling"]
 		self.activation_function_type = PARAMS["NeuronType"]
 		self.randomize_data = PARAMS["RandomizeData"]
