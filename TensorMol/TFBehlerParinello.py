@@ -1,6 +1,10 @@
 """
 This version of the Behler-Parinello is aperiodic,non-sparse.
 It's being developed to explore alternatives to symmetry functions. It's not for production use.
+
+John: Do you think they really have to be kept separate?
+Cant the descriptor just be conditionally switched in Prepare?
+That would seem to make more sense to me.
 """
 
 from __future__ import absolute_import
@@ -738,6 +742,8 @@ class BehlerParinelloDirectSymFunc:
 class BehlerParinelloDirectGauSH:
 	"""
 	Behler-Parinello network using embedding from RawEmbeddings.py
+	also has sparse evaluation using an updated version of the
+	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
 	def __init__(self, molecule_set=None, embedding_type=None, name=None):
 		"""
@@ -748,6 +754,7 @@ class BehlerParinelloDirectGauSH:
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
+		# Comment: why do this John, why not just repeatedly use the PARAMS?
 		self.tf_precision = eval(PARAMS["tf_prec"])
 		TensorMol.RawEmbeddings.data_precision = self.tf_precision
 		self.hidden_layers = PARAMS["HiddenLayers"]
@@ -957,7 +964,7 @@ class BehlerParinelloDirectGauSH:
 		dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
+		NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
 		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
 
@@ -989,7 +996,7 @@ class BehlerParinelloDirectGauSH:
 		dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		NLEE = NeighborListSet(xyzs, num_atoms, False, False,  None)
+		NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
 		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
 
@@ -1149,7 +1156,10 @@ class BehlerParinelloDirectGauSH:
 			self.bp_energy = (norm_output * labels_stddev) + labels_mean
 			if self.train_dipole:
 				self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
-				self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
+				if (PARAMS["OPR12"]=="DSF"):
+					self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
+				elif (PARAMS["OPR12"]=="Poly"):
+					self.coulomb_energy = PolynomialRangeSepCoulomb(rotated_xyzs, self.charges, self.Reep_pl, 5.0, 12.0, 5.0)
 				self.total_energy = self.bp_energy + self.coulomb_energy
 				self.dipole_loss = self.loss_op(self.dipoles - self.dipole_labels)
 				tf.add_to_collection('dipole_losses', self.dipole_loss)
@@ -1322,6 +1332,11 @@ class BehlerParinelloDirectGauSH:
 			delta_charge = net_charge / tf.cast(natom, self.tf_precision)
 			charges = output - tf.expand_dims(delta_charge, axis=1)
 			dipole = tf.reduce_sum(xyzs * tf.expand_dims(charges, axis=-1), axis=1)
+
+			quadrupole_coords = 3 * tf.stack([tf.stack([tf.square(xyzs[...,0]), xyzs[...,0] * xyzs[...,1], tf.square(xyzs[...,1])], axis=-1),
+								tf.stack([xyzs[...,0] * xyzs[...,2], xyzs[...,1] * xyzs[...,2], tf.square(xyzs[...,2])], axis=-1)], axis=-2)
+			quadrupole_coords -= tf.norm(xyzs + 1e-24, axis=-1, keep_dims=True)
+			quadrupole = tf.reduce_sum(quadrupole_coords * tf.expand_dims(tf.expand_dims(charges, axis=-1), axis=-1), axis=1)
 		return dipole, charges, net_charge, variables
 
 	def optimizer(self, loss, learning_rate, momentum, variables):
@@ -1530,7 +1545,7 @@ class BehlerParinelloDirectGauSH:
 		test_freq = PARAMS["test_freq"]
 		if self.train_dipole:
 			mini_test_loss = 1e10
-			for step in range(1, 251):
+			for step in range(1, 51):
 				self.dipole_train_step(step)
 				if step%test_freq==0:
 					test_loss = self.dipole_test_step(step)

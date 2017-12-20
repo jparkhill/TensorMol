@@ -137,6 +137,7 @@ class TMParams(dict):
 		self["MetaMDBumpWidth"] = 0.1
 		# parameters of electrostatic embedding
 		self["AddEcc"] = True
+		self["OPR12"] = "Poly" # Poly = Polynomial cutoff or Damped-Shifted-Force
 		self["Poly_Width"] = 4.6
 		self["Elu_Width"] = 4.6
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...

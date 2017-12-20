@@ -1929,6 +1929,22 @@ def TestNeb():
 	Beads = neb.Opt()
 	exit(0)
 
+def TestEE():
+	a = MSet("a")
+	a.ReadXYZ()
+	manager =GetKunsSmoothNoDropout(a)
+	m = a.mols[0]
+	def EnAndForceAPeriodic(x_, DoForce = True):
+		"""
+		This is the primitive form of force routine required by PeriodicForce.
+		"""
+		mtmp = Mol(m.atoms,x_)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		energy = Etotal[0]
+		force = gradient[0]
+		return energy, force
+	e1 = QchemDFT(a.mols[0],basis_ = '6-311g**',xc_='wB97X-D', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=False):
+
 #TrainPrepare()
 #Train()
 #Eval()
@@ -1937,4 +1953,5 @@ def TestNeb():
 #BoxAndDensity()
 #TestSmoothIR()
 #TestNeb()
-TestJohnWater()
+#TestJohnWater()
+TestEE()

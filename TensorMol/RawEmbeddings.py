@@ -1499,7 +1499,7 @@ def PolynomialRangeSepCoulomb(R,Qs,Radpair,SRRc,LRRc,dx):
 	Qji = tf.concat([tf.slice(Radpair,[0,0],[-1,1]),tf.slice(Radpair,[0,2],[-1,1])], axis=-1)
 	Qi = tf.gather_nd(Qs,Qii)
 	Qj = tf.gather_nd(Qs,Qji)
-	Qij = tf.cast(Qi*Qj,dtype=tf.float64)
+	Qij = Qi*Qj
 	D2 = Ds*Ds
 	D3 = D2*Ds
 	D4 = D3*Ds
@@ -2990,9 +2990,14 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
+#
+# John, we still need a sparse version of this.
+#
 def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, l_max):
 	"""
-	Encodes atoms into a gaussians and spherical harmonics embedding
+	Encodes atoms into a gaussians * spherical harmonics embedding
+	Works on a batch of molecules. This is the embedding routine used
+	in BehlerParinelloDirectGauSH.
 
 	Args:
 		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
@@ -3004,7 +3009,7 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 
 	Returns:
 		embedding (tf.float): atom embeddings for element
-		labels (tf.float): atom labels for element
+		molecule_indices (tf.float): mapping between atoms and molecules.
 	"""
 	num_elements = elements.get_shape().as_list()[0]
 	num_molecules = Zs.get_shape().as_list()[0]
@@ -3015,14 +3020,17 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 	gaussians = tf_gaussians_cutoff(distance_tensor, Zs, gaussian_params)
 	spherical_harmonics = tf_spherical_harmonics(delta_xyzs, distance_tensor, l_max)
 	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, num_elements, 1])), mol_atom_indices[:,0])
-	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=data_precision),
-			tf.zeros_like(channel_scatter_bool, dtype=data_precision))
+
+	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=data_precision),tf.zeros_like(channel_scatter_bool, dtype=data_precision))
+
 	element_channel_gaussians = tf.expand_dims(gaussians, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
 	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
+
 	embeddings = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', element_channel_gaussians, element_channel_harmonics),
-					[tf.shape(mol_atom_indices)[0], -1])
-	partition_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, mol_atom_indices), axis=-1),
-						tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+	[tf.shape(mol_atom_indices)[0], -1])
+
+	partition_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, mol_atom_indices), axis=-1), tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+
 	element_embeddings = tf.dynamic_partition(embeddings, partition_indices, num_elements)
 	molecule_indices = tf.dynamic_partition(mol_atom_indices, partition_indices, num_elements)
 	return element_embeddings, molecule_indices

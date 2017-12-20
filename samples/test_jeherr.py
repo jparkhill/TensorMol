@@ -166,8 +166,7 @@ def test_gaussian_overlap():
 	print tmp2
 
 def train_forces_GauSH_direct(set_ = "SmallMols"):
-	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
-								[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+	PARAMS["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
 	PARAMS["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 	PARAMS["SH_NRAD"] = 14
 	PARAMS["SH_LMAX"] = 4
@@ -276,14 +275,18 @@ def train_energy_GauSH():
 	PARAMS["EECutoffOn"] = 0.0
 	PARAMS["Elu_Width"] = 6.0
 	PARAMS["train_gradients"] = False
+<<<<<<< HEAD
 	PARAMS["train_dipole"] = False
+=======
+	PARAMS["train_dipole"] = True
+>>>>>>> 31bbd9b80329eff8c4d5f5d4a8d647cc5151bd41
 	PARAMS["train_rotation"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 200
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 400
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "shifted_softplus"
 	PARAMS["tf_prec"] = "tf.float32"
 	PARAMS["Profiling"] = False
@@ -632,6 +635,28 @@ def water_ir():
 	Opt = GeomOptimizer(force_field)
 	mt = Opt.Opt(mt,"UCopt")
 
+def train_Poly_GauSH():
+	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+	PARAMS["SH_NRAD"] = 16
+	PARAMS["SH_LMAX"] = 4
+	PARAMS["EECutoffOn"] = 0.0
+	PARAMS["Elu_Width"] = 6.0
+	PARAMS["train_gradients"] = False
+	PARAMS["train_dipole"] = False
+	PARAMS["train_rotation"] = True
+	PARAMS["weight_decay"] = None
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 500
+	PARAMS["test_freq"] = 5
+	PARAMS["batch_size"] = 400
+	PARAMS["NeuronType"] = "shifted_softplus"
+	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["Profiling"] = False
+	a=MSet("H2O_augmented_more_cutoff5_b3lyp_force")
+	a.Load()
+	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectGauSH")
+
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 # PARAMS["SH_NRAD"] = 32
 # PARAMS["SH_LMAX"] = 4
@@ -656,7 +681,13 @@ def water_ir():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
+<<<<<<< HEAD
 # train_energy_GauSH()
+=======
+#train_energy_GauSH()
+# geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
+# test_md()
+>>>>>>> 31bbd9b80329eff8c4d5f5d4a8d647cc5151bd41
 # test_h2o()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
@@ -664,8 +695,8 @@ def water_ir():
 # meta_statistics()
 # meta_stat_plot()
 # harmonic_freq()
-# water_ir()
-
+train_Poly_GauSH()
+#water_ir()
 # a=MSet("nicotine_opt")
 # a.ReadXYZ()
 # b = MSet("nicotine_stretch")
