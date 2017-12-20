@@ -275,11 +275,7 @@ def train_energy_GauSH():
 	PARAMS["EECutoffOn"] = 0.0
 	PARAMS["Elu_Width"] = 6.0
 	PARAMS["train_gradients"] = False
-<<<<<<< HEAD
 	PARAMS["train_dipole"] = False
-=======
-	PARAMS["train_dipole"] = True
->>>>>>> 31bbd9b80329eff8c4d5f5d4a8d647cc5151bd41
 	PARAMS["train_rotation"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
@@ -681,13 +677,7 @@ def train_Poly_GauSH():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-<<<<<<< HEAD
 # train_energy_GauSH()
-=======
-#train_energy_GauSH()
-# geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
-# test_md()
->>>>>>> 31bbd9b80329eff8c4d5f5d4a8d647cc5151bd41
 # test_h2o()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
