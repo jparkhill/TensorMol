@@ -1,6 +1,10 @@
 """
 This version of the Behler-Parinello is aperiodic,non-sparse.
 It's being developed to explore alternatives to symmetry functions. It's not for production use.
+
+John: Do you think they really have to be kept separate?
+Cant the descriptor just be conditionally switched in Prepare?
+That would seem to make more sense to me.
 """
 
 from __future__ import absolute_import
@@ -738,6 +742,8 @@ class BehlerParinelloDirectSymFunc:
 class BehlerParinelloDirectGauSH:
 	"""
 	Behler-Parinello network using embedding from RawEmbeddings.py
+	also has sparse evaluation using an updated version of the
+	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
 	def __init__(self, molecule_set=None, embedding_type=None, name=None):
 		"""
@@ -748,6 +754,7 @@ class BehlerParinelloDirectGauSH:
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
+		# Comment: why do this John, why not just repeatedly use the PARAMS?
 		self.tf_precision = eval(PARAMS["tf_prec"])
 		TensorMol.RawEmbeddings.data_precision = self.tf_precision
 		self.hidden_layers = PARAMS["HiddenLayers"]
@@ -1151,7 +1158,10 @@ class BehlerParinelloDirectGauSH:
 			self.bp_energy = (norm_output * labels_stddev) + labels_mean
 			if self.train_dipole:
 				self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
-				self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
+				if (PARAMS["OPR12"]=="DSF"):
+					self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
+				elif (PARAMS["OPR12"]=="Poly"):
+					self.coulomb_energy = PolynomialRangeSepCoulomb(rotated_xyzs, self.charges, self.Reep_pl, 2.0, 12.0, 5.0)
 				self.total_energy = self.bp_energy + self.coulomb_energy
 				self.dipole_loss = self.dipole_loss_op(self.dipoles, self.dipole_labels)
 				self.dipole_losses = tf.add_n(tf.get_collection('dipole_losses'))
