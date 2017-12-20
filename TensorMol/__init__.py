@@ -1,5 +1,6 @@
 """Code Conventions and Style Guide:
 
+- Write code modularly. In proper directories, with minimal imports.
 - USE HARD TABS. configure whatever editor you are using to use hard tabs.
 - UseCapitalizationToSeparateWords in names.
 - Prefer long interperable words to ambiguous abbreviations. MakesDipoleTensor() >> mdt123()
@@ -21,45 +22,52 @@ Violators are subject to having their code and reproductive fitness mocked publi
 
 from __future__ import absolute_import
 from __future__ import print_function
-__version__="0.1"
+__version__="0.2"
+
 from TensorMol.Util import * # Populates the PARAMS and LOGGER.
 from TensorMol.PhysicalData import *
-from TensorMol.Statistics import *
-from TensorMol.Sets import *
-from TensorMol.MolFrag import *
-from TensorMol.Opt import *
-from TensorMol.Neb import *
-from TensorMol.Digest import *
-from TensorMol.DigestMol import *
-from TensorMol.TensorData import *
-from TensorMol.TensorMolData import *
-from TensorMol.TensorMolDataEE import *
-from TensorMol.TFInstance import *
-from TensorMol.TFMolInstance import *
-from TensorMol.TFMolInstanceDirect import *
-from TensorMol.TFForces import *
-from TensorMol.TFManage import *
-from TensorMol.TFMolManage import *
-from TensorMol.Ipecac import *
-from TensorMol.EmbOpt import *
-from TensorMol.Basis import *
-from TensorMol.AbInitio import *
-from TensorMol.DIIS import *
-from TensorMol.BFGS import *
-from TensorMol.NeighborsMB import *
-from TensorMol.Electrostatics import *
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.TFPeriodicForces import *
-from TensorMol.SimpleMD import *
-from TensorMol.InfraredMD import *
-from TensorMol.MetaDynamics import *
-from TensorMol.Periodic import *
-from TensorMol.OptPeriodic import *
-from TensorMol.PeriodicMD import *
-from TensorMol.PeriodicMC import *
-from TensorMol.LinearOperations import *
-from TensorMol.AbInitio import *
-from TensorMol.Mol import *
-from TensorMol.TFBehlerParinello import *
-from TensorMol.TFBehlerParinelloSymEE import *
+
+from TensorMol.Math.Statistics import *
+from TensorMol.Math.LinearOperations import *
+from TensorMol.Math.Ipecac import *
+from TensorMol.Math.EmbOpt import *
+from TensorMol.Math.Basis import *
+from TensorMol.Math.DIIS import *
+from TensorMol.Math.BFGS import *
+
+from TensorMol.Containers.Mol import *
+from TensorMol.Containers.Sets import *
+from TensorMol.Containers.MolFrag import *
+from TensorMol.Containers.Digest import *
+from TensorMol.Containers.DigestMol import *
+from TensorMol.Containers.TensorData import *
+from TensorMol.Containers.TensorMolData import *
+from TensorMol.Containers.TensorMolDataEE import *
+
+from TensorMol.TFNetworks.TFInstance import *
+from TensorMol.TFNetworks.TFMolInstance import *
+from TensorMol.TFNetworks.TFMolInstanceDirect import *
+from TensorMol.TFNetworks.TFForces import *
+from TensorMol.TFNetworks.TFManage import *
+from TensorMol.TFNetworks.TFMolManage import *
+
+from TensorMol.Interfaces.AbInitio import *
+
+from TensorMol.ForceModifiers.NeighborsMB import *
+from TensorMol.ForceModifiers.Periodic import *
+from TensorMol.ForcesModels.Electrostatics import *
+from TensorMol.ForcesModels.ElectrostaticsTF import *
+from TensorMol.ForcesModels.TFPeriodicForces import *
+
+from TensorMol.Simulations.Opt import *
+from TensorMol.Simulations.Neb import *
+from TensorMol.Simulations.SimpleMD import *
+from TensorMol.Simulations.InfraredMD import *
+from TensorMol.Simulations.MetaDynamics import *
+from TensorMol.Simulations.OptPeriodic import *
+from TensorMol.Simulations.PeriodicMD import *
+from TensorMol.Simulations.PeriodicMC import *
+
+from TensorMol.TFNetworks.TFBehlerParinello import *
+from TensorMol.TFNetworks.TFBehlerParinelloSymEE import *
 LOGGER.debug("TensorMol import complete.")

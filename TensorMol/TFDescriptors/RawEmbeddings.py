@@ -2606,13 +2606,13 @@ def matrix_power2(matrix, power):
 def tf_gaussian_overlap(gaussian_params):
 	r_nought = gaussian_params[:,0]
 	sigma = gaussian_params[:,1]
-	scaling_factor = tf.cast(tf.sqrt(np.pi / 2), data_precision)
+	scaling_factor = tf.cast(tf.sqrt(np.pi / 2), PARAMS["tf_prec"])
 	exponential_factor = tf.exp(-tf.square(tf.expand_dims(r_nought, axis=0) - tf.expand_dims(r_nought, axis=1))
 	/ (2.0 * (tf.square(tf.expand_dims(sigma, axis=0)) + tf.square(tf.expand_dims(sigma, axis=1)))))
 	root_inverse_sigma_sum = tf.sqrt((1.0 / tf.expand_dims(tf.square(sigma), axis=0)) + (1.0 / tf.expand_dims(tf.square(sigma), axis=1)))
 	erf_numerator = (tf.expand_dims(r_nought, axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
 				+ tf.expand_dims(r_nought, axis=1) * tf.expand_dims(tf.square(sigma), axis=0))
-	erf_denominator = (tf.sqrt(tf.cast(2.0, data_precision)) * tf.expand_dims(tf.square(sigma), axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
+	erf_denominator = (tf.sqrt(tf.cast(2.0, PARAMS["tf_prec"])) * tf.expand_dims(tf.square(sigma), axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
 				* root_inverse_sigma_sum)
 	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
@@ -2990,9 +2990,49 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gaussian_params, atomic_
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
-#
-# John, we still need a sparse version of this.
-#
+def tf_gaussian_spherical_harmonics_channel_sparse(xyzs, Zs, elements, gaussian_params, l_max, RadNeighbors):
+	"""
+	Encodes atoms into a gaussians * spherical harmonics embedding
+	Works on a batch of molecules. This is the embedding routine used
+	in BehlerParinelloDirectGauSH.
+
+	Args:
+		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
+		Zs (tf.int32): NMol x MaxNAtoms atomic number tensor
+		element (int): element to return embedding/labels for
+		gaussian_params (tf.float): NGaussians x 2 tensor of gaussian parameters
+		l_max (tf.int32): Scalar for the highest order spherical harmonics to use (needs implemented)
+		RadNeighbors: NMol x MaxNAtoms x MaxNeighbors tensor of neighbors within cutoff.
+
+	Returns:
+		embedding (tf.float): atom embeddings for element
+		molecule_indices (tf.float): mapping between atoms and molecules.
+	"""
+	num_elements = elements.get_shape().as_list()[0]
+	num_molecules = Zs.get_shape().as_list()[0]
+	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
+	mol_atom_indices = tf.where(tf.not_equal(Zs, 0))
+	delta_xyzs = tf.gather_nd(delta_xyzs, mol_atom_indices)
+	distance_tensor = tf.norm(delta_xyzs+1.e-16,axis=2)
+	gaussians = tf_gaussians_cutoff(distance_tensor, Zs, gaussian_params)
+	spherical_harmonics = tf_spherical_harmonics(delta_xyzs, distance_tensor, l_max)
+	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, num_elements, 1])), mol_atom_indices[:,0])
+
+	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=PARAMS["tf_prec"]),tf.zeros_like(channel_scatter_bool, dtype=PARAMS["tf_prec"]))
+
+	element_channel_gaussians = tf.expand_dims(gaussians, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
+	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
+
+	embeddings = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', element_channel_gaussians, element_channel_harmonics),
+	[tf.shape(mol_atom_indices)[0], -1])
+
+	partition_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, mol_atom_indices), axis=-1), tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+
+	element_embeddings = tf.dynamic_partition(embeddings, partition_indices, num_elements)
+	molecule_indices = tf.dynamic_partition(mol_atom_indices, partition_indices, num_elements)
+	return element_embeddings, molecule_indices
+
+
 def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, l_max):
 	"""
 	Encodes atoms into a gaussians * spherical harmonics embedding
@@ -3021,7 +3061,7 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 	spherical_harmonics = tf_spherical_harmonics(delta_xyzs, distance_tensor, l_max)
 	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, num_elements, 1])), mol_atom_indices[:,0])
 
-	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=data_precision),tf.zeros_like(channel_scatter_bool, dtype=data_precision))
+	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=PARAMS["tf_prec"]),tf.zeros_like(channel_scatter_bool, dtype=PARAMS["tf_prec"]))
 
 	element_channel_gaussians = tf.expand_dims(gaussians, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
 	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
@@ -3225,7 +3265,7 @@ def tf_symmetry_function_angular_grid(xyzs, Zs, angular_cutoff, angular_rs, thet
 	cos_factor = tf.pow((1 + tf.cos(theta_ijk_s)), zeta)
 
 	cutoff_factor = 0.5 * (tf.cos(3.14159265359 * triples_distances / angular_cutoff) + 1.0)
-	scalar_factor = tf.pow(tf.cast(2.0, data_precision), 1.0-zeta)
+	scalar_factor = tf.pow(tf.cast(2.0, PARAMS["tf_prec"]), 1.0-zeta)
 
 	angular_embedding = tf.reshape(scalar_factor * tf.expand_dims(cos_factor * tf.expand_dims(cutoff_factor[:,0] * cutoff_factor[:,1], axis=-1), axis=-1) \
 						* tf.expand_dims(exponential_factor, axis=-2), [tf.shape(triples_indices)[0], tf.shape(theta_s)[0] * tf.shape(angular_rs)[0]])
