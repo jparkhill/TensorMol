@@ -386,14 +386,14 @@ def train_energy_GauSH():
 	PARAMS["EECutoffOn"] = 0.0
 	PARAMS["Elu_Width"] = 6.0
 	PARAMS["train_gradients"] = False
-	PARAMS["train_dipole"] = False
-	PARAMS["train_rotation"] = True
+	PARAMS["train_dipole"] = True
+	PARAMS["train_rotation"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 500
+	PARAMS["max_steps"] = 200
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 400
+	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "shifted_softplus"
 	PARAMS["tf_prec"] = "tf.float32"
 	PARAMS["Profiling"] = False
@@ -873,7 +873,7 @@ def train_Poly_GauSH():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-# train_energy_GauSH()
+#train_energy_GauSH()
 # geo_opt_tf_forces("dialanine", "SmallMols_GauSH_fc_sqdiff_GauSH_direct", 0)
 # test_md()
 # test_h2o()
