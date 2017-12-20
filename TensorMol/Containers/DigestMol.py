@@ -6,7 +6,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from .Mol import *
-from .Util import *
+from ..Util import *
 
 class MolDigester:
 	def __init__(self, eles_, name_="Coulomb", OType_="FragEnergy", SensRadius_=6):

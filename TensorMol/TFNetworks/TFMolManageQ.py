@@ -7,7 +7,7 @@ and manage a random queue to accept those batches.
 from __future__ import absolute_import
 from __future__ import print_function
 from .TFManage import *
-from .TensorMolData import *
+from ..Containers.TensorMolData import *
 from .TFMolInstance import *
 import numpy as np
 import gc

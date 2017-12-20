@@ -5,7 +5,7 @@
 """
 from __future__ import absolute_import
 from __future__ import print_function
-from .TensorData import *
+from ..Containers.TensorData import *
 from .TFInstance import *
 import numpy as np
 import gc

@@ -10,9 +10,9 @@ https://www.youtube.com/watch?v=h2zgB93KANE
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from TensorMol.Neighbors import *
-from TensorMol.TensorData import *
-from TensorMol.ElectrostaticsTF import *
+from ..ForceModifiers.Neighbors import *
+from ..Containers.TensorData import *
+from ..TFForces.ElectrostaticsTF import * # Why is this imported here? 
 from tensorflow.python.client import timeline
 import numpy as np
 import math, time, os, sys, os.path

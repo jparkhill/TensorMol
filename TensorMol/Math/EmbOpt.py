@@ -5,10 +5,10 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
-from .Mol import *
-from .Util import *
-from .TensorData import *
-from .TFInstance import *
+from ..Mol import *
+from ..Util import *
+from ..Containers.TensorData import *
+from ..TFNetworks.TFInstance import *
 from scipy import optimize
 import os, sys, re, random, math, copy
 import numpy as np
@@ -16,11 +16,11 @@ if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
 	import _pickle as pickle
-from .LinearOperations import *
-from .DigestMol import *
-from .Digest import *
-from .Opt import *
-from .Ipecac import *
+from ..Math.LinearOperations import *
+from ..Containers.DigestMol import *
+from ..Containers.Digest import *
+from ..Simulations.Opt import *
+from ..Math.Ipecac import *
 
 class EmbeddingOptimizer:
 	"""

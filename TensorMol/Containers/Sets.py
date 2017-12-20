@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from .Mol import *
 from .MolGraph import *
-from .Util import *
+from ..Util import *
 from .MolFrag import *
 import numpy as np
 import os,sys,re,copy,time

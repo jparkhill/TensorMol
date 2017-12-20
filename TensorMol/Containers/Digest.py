@@ -1,14 +1,14 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from .Mol import *
-from .Util import *
+from ..Util import *
 import os,sys,re
 import numpy as np
 if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
 	import _pickle as pickle
-from . import LinearOperations
+from ..Math import LinearOperations
 if (HAS_EMB):
 	import MolEmb
 

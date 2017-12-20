@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 from __future__ import print_function
-from .Util import *
+from ..Util import *
 import numpy as np
 import random, math
 from .Mol import *
-from .PhysicalData import *
+from ..PhysicalData import *
 
 def AtomName_From_List(atom_list):
 	name = ""
@@ -159,7 +159,7 @@ class MolGraph(Mol):
 					if len(first.intersection(set(r)))>0:
 						first |= set(r)
 					else:
-						rest2.append(r)    
+						rest2.append(r)
 				rest = rest2
 			out.append(first)
 			l = rest

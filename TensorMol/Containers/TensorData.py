@@ -7,7 +7,7 @@ from __future__ import print_function
 import os, gc
 from .Sets import *
 from .Digest import *
-from .Transformer import *
+from ..ForceModifiers.Transformer import *
 #import tables should go to hdf5 soon...
 
 class TensorData():

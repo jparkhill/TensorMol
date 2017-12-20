@@ -12,7 +12,7 @@ import os, gc
 from .Sets import *
 from .DigestMol import *
 from .TensorData import *
-from .Neighbors import *
+from ..ForceModifiers.Neighbors import *
 #import tables should go to hdf5 soon...
 
 class TensorMolData(TensorData):

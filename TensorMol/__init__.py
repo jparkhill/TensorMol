@@ -26,48 +26,13 @@ __version__="0.2"
 
 from TensorMol.Util import * # Populates the PARAMS and LOGGER.
 from TensorMol.PhysicalData import *
+from .Math import *
+from .Containers import *
+from .TFNetworks import *
+from .Interfaces import *
+from .ForceModels import *
+from .ForceModifiers import *
+from .Simulations import *
 
-from TensorMol.Math.Statistics import *
-from TensorMol.Math.LinearOperations import *
-from TensorMol.Math.Ipecac import *
-from TensorMol.Math.EmbOpt import *
-from TensorMol.Math.Basis import *
-from TensorMol.Math.DIIS import *
-from TensorMol.Math.BFGS import *
-
-from TensorMol.Containers.Mol import *
-from TensorMol.Containers.Sets import *
-from TensorMol.Containers.MolFrag import *
-from TensorMol.Containers.Digest import *
-from TensorMol.Containers.DigestMol import *
-from TensorMol.Containers.TensorData import *
-from TensorMol.Containers.TensorMolData import *
-from TensorMol.Containers.TensorMolDataEE import *
-
-from TensorMol.TFNetworks.TFInstance import *
-from TensorMol.TFNetworks.TFMolInstance import *
-from TensorMol.TFNetworks.TFMolInstanceDirect import *
-from TensorMol.TFNetworks.TFForces import *
-from TensorMol.TFNetworks.TFManage import *
-from TensorMol.TFNetworks.TFMolManage import *
-
-from TensorMol.Interfaces.AbInitio import *
-
-from TensorMol.ForceModifiers.NeighborsMB import *
-from TensorMol.ForceModifiers.Periodic import *
-from TensorMol.ForcesModels.Electrostatics import *
-from TensorMol.ForcesModels.ElectrostaticsTF import *
-from TensorMol.ForcesModels.TFPeriodicForces import *
-
-from TensorMol.Simulations.Opt import *
-from TensorMol.Simulations.Neb import *
-from TensorMol.Simulations.SimpleMD import *
-from TensorMol.Simulations.InfraredMD import *
-from TensorMol.Simulations.MetaDynamics import *
-from TensorMol.Simulations.OptPeriodic import *
-from TensorMol.Simulations.PeriodicMD import *
-from TensorMol.Simulations.PeriodicMC import *
-
-from TensorMol.TFNetworks.TFBehlerParinello import *
-from TensorMol.TFNetworks.TFBehlerParinelloSymEE import *
+#__all__ = ["Util", "PhysicalData", "Math" , "Containers" ,"Containers.Mol" ,"Containers.Sets" ,"TFNetworks","Interfaces","ForceModels","ForceModifiers","Simulations"]
 LOGGER.debug("TensorMol import complete.")

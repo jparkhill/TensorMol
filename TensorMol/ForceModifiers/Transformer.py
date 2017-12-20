@@ -1,12 +1,12 @@
 from __future__ import absolute_import
-from .Mol import *
-from .Util import *
+from ..Containers.Mol import *
+from ..Util import *
 import os,sys,re
 if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
 	import _pickle as pickle
-from . import LinearOperations
+from ..Math import LinearOperations
 
 class Transformer:
 	"""

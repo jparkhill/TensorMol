@@ -8,12 +8,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from TensorMol.TFInstance import *
-from TensorMol.TensorMolData import *
-from TensorMol.TFMolInstance import *
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.Neighbors import *
-from TensorMol.RawEmbeddings import *
+from .TFInstance import *
+from ..Containers.TensorMolData import *
+from .TFMolInstance import *
+from ..TFForces.ElectrostaticsTF import *
+from ..ForceModifiers.Neighbors import *
+from ..TFDescriptors.RawEmbeddings import *
 from tensorflow.python.client import timeline
 import time
 import threading

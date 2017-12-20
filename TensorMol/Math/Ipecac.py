@@ -7,7 +7,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from .Mol import *
-from .Util import *
+from ..Util import *
 import os, sys, re, random, math, copy, itertools
 import numpy as np
 if sys.version_info[0] < 3:

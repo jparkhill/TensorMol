@@ -1,12 +1,9 @@
 """
 Routines which help do differential analysis and Newtonian Mechanics
 """
-
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFManage import *
-from .PhysicalData import *
+from ..PhysicalData import *
 
 def RmsForce(f_):
 	return np.mean(np.linalg.norm(f_,axis=1))

@@ -11,7 +11,7 @@ if sys.version_info[0] < 3:
 	import cPickle as pickle
 else:
 	import _pickle as pickle
-from . import LinearOperations, DigestMol, Digest, Opt, Ipecac
+from ..Math import LinearOperations, DigestMol, Digest, Opt, Ipecac
 
 class Basis:
 	def __init__(self, Name_ = None):

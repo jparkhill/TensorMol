@@ -246,8 +246,6 @@ def TestTFGauSH():
 
 def test_gaussian_overlap():
 	gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
-	tf_precision = eval(PARAMS["tf_prec"])
-	TensorMol.RawEmbeddings.data_precision = tf_precision
 	tmp = tf_gaussian_overlap(gaussian_params)
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())

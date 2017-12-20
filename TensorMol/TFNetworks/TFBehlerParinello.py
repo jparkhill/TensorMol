@@ -14,8 +14,8 @@ from __future__ import print_function
 import time
 import random
 
-from TensorMol.TensorMolData import *
-from TensorMol.RawEmbeddings import *
+from ..Containers.TensorMolData import *
+from ..TFDescriptors.RawEmbeddings import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirectSymFunc:
@@ -1138,7 +1138,7 @@ class BehlerParinelloDirectGauSH:
 			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel_sparse(rotated_xyzs,
 											self.Zs_pl, elements, self.gaussian_params, self.l_max, self.Reep_pl)
 			#embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
-											self.Zs_pl, elements, self.gaussian_params, self.l_max)
+			#								self.Zs_pl, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
@@ -1388,7 +1388,7 @@ class BehlerParinelloDirectGauSH:
 			batch_data = self.get_energy_train_batch(self.batch_size)
 			feed_dict = self.fill_energy_feed_dict(batch_data)
 			_, summaries, total_loss, energy_loss, gradient_loss, dipole_loss, rotation_loss = self.sess.run([self.all_train_op,
-			self.summary_op, self.energy_losses, self.energy_loss, self.gradient_loss, ,self.dipole_loss, self.rotation_loss], feed_dict=feed_dict)
+			self.summary_op, self.energy_losses, self.energy_loss, self.gradient_loss ,self.dipole_loss, self.rotation_loss], feed_dict=feed_dict)
 			train_gradient_loss += gradient_loss
 			train_dipole_loss += dipole_loss
 			train_rotation_loss += rotation_loss

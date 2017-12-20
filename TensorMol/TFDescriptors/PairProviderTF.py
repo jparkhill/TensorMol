@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 from TensorMol.ElectrostaticsTF import *
-from TensorMol.RawEmbeddings import *
+from .RawEmbeddings import *
 
 class PairProvider:
 	def __init__(self,nmol_,natom_):

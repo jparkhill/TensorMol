@@ -5,10 +5,10 @@ See also: ElectrostaticsTF for tensorflow implementations of electrostatics.
 
 from __future__ import absolute_import
 from __future__ import print_function
-from .Util import *
+from ..Util import *
 import numpy as np
 import random, math
-import TensorMol.PhysicalData, MolEmb
+import MolEmb
 
 def WeightedCoordAverage(x_, q_, center_=None):
 	""" Dipole relative to center of x_ """

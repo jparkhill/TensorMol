@@ -2,11 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from TensorMol.TFInstance import *
-from TensorMol.TensorMolData import *
-from TensorMol.TFMolInstance import *
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.TFMolInstanceDirect import *
+from .TFInstance import *
+from ..Containers.TensorMolData import *
+from .TFMolInstance import *
+from ..TFForces.ElectrostaticsTF import *
+from .TFMolInstanceDirect import *
 
 class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 	"""

@@ -3,10 +3,8 @@ Routines for running external Ab-Initio packages to get shit out of mol.py
 """
 from __future__ import absolute_import
 from __future__ import print_function
-from .Util import *
 import numpy as np
 import random, math, subprocess
-from . import Mol
 
 def PyscfDft(m_,basis_ = '6-31g*',xc_='b3lyp'):
 	if (not HAS_PYSCF):
@@ -184,28 +182,28 @@ def PullFreqData():
 	np.save("morphine_nm.npy", nm)
 	f.close()
 
-	def PySCFMP2Energy(m, basis_='cc-pvqz'):
-		mol = gto.Mole()
-		pyscfatomstring=""
-		for j in range(len(m.atoms)):
-			s = m.coords[j]
-			pyscfatomstring=pyscfatomstring+str(m.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(m.atoms)-1 else "")
-		mol.atom = pyscfatomstring
-		mol.basis = basis_
-		mol.verbose = 0
-		try:
-			mol.build()
-			mf=scf.RHF(mol)
-			hf_en = mf.kernel()
-			mp2 = mp.MP2(mf)
-			mp2_en = mp2.kernel()
-			en = hf_en + mp2_en[0]
-			m.properties["energy"] = en
-			return en
-		except Exception as Ex:
-			print("PYSCF Calculation error... :",Ex)
-			print("Mol.atom:", mol.atom)
-			print("Pyscf string:", pyscfatomstring)
-			return 0.0
-			#raise Ex
-		return
+def PySCFMP2Energy(m, basis_='cc-pvqz'):
+	mol = gto.Mole()
+	pyscfatomstring=""
+	for j in range(len(m.atoms)):
+		s = m.coords[j]
+		pyscfatomstring=pyscfatomstring+str(m.AtomName(j))+" "+str(s[0])+" "+str(s[1])+" "+str(s[2])+(";" if j!= len(m.atoms)-1 else "")
+	mol.atom = pyscfatomstring
+	mol.basis = basis_
+	mol.verbose = 0
+	try:
+		mol.build()
+		mf=scf.RHF(mol)
+		hf_en = mf.kernel()
+		mp2 = mp.MP2(mf)
+		mp2_en = mp2.kernel()
+		en = hf_en + mp2_en[0]
+		m.properties["energy"] = en
+		return en
+	except Exception as Ex:
+		print("PYSCF Calculation error... :",Ex)
+		print("Mol.atom:", mol.atom)
+		print("Pyscf string:", pyscfatomstring)
+		return 0.0
+		#raise Ex
+	return

@@ -8,14 +8,14 @@ Actually I think the better thing is to eliminate any dependence on TFManage wha
 from __future__ import absolute_import
 from __future__ import print_function
 from .TFManage import *
-from .TensorMolData import *
+from ..Containers.TensorMolData import *
 from .TFMolInstance import *
 from .TFMolInstanceDirect import *
 from .TFBehlerParinello import *
 from .TFBehlerParinelloSymEE import *
 from .TFMolInstanceEE import *
 from .TFMolInstanceDirect import *
-from .QuasiNewtonTools import *
+from ..Math.QuasiNewtonTools import *
 
 import numpy as np
 import gc

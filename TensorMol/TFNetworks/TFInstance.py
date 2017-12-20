@@ -6,9 +6,9 @@ needs to be phased out...
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from TensorMol.TensorData import *
-from TensorMol.RawEmbeddings import *
-from TensorMol.Util import *
+from ..Containers.TensorData import *
+from ..TFDescriptors.RawEmbeddings import *
+from ..Util import *
 import numpy as np
 import math
 import time

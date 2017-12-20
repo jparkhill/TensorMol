@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from TensorMol import *
-from TensorMol.ElectrostaticsTF import *
+print(dir())
+import os,sys
 os.environ["CUDA_VISIBLE_DEVICES"]="" # set to use CPU
 
 # Functions that load pretrained network
@@ -23,7 +24,7 @@ def GetWaterNetwork(a):
 	manager=TFMolManage("water_network",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
 	return manager
 
-def GetChemSpiderNetwork(a, Solvation_=False): 
+def GetChemSpiderNetwork(a, Solvation_=False):
 	TreatedAtoms = np.array([1,6,7,8], dtype=np.uint8)
 	PARAMS["tf_prec"] = "tf.float64"
 	PARAMS["NeuronType"] = "sigmoid_with_param"
@@ -49,8 +50,8 @@ a=MSet("morphine", center_=False)
 a.ReadXYZ("morphine")
 manager = GetChemSpiderNetwork(a, False) # load chemspider network
 
-#Use this for testing water network 
-#a=MSet("water10", center_=False)  
+#Use this for testing water network
+#a=MSet("water10", center_=False)
 #a.ReadXYZ("water10")
 #manager = GetWaterNetwork(a)  # load water network
 
@@ -86,16 +87,16 @@ def DipoleField(x_):
 	return dipole
 
 # Perform geometry optimization
-if (0): 
+if (0):
 	PARAMS["OptMaxCycles"]= 2000
 	PARAMS["OptThresh"] =0.00002
 	Opt = GeomOptimizer(EnAndForce)
 	m=Opt.Opt(a.mols[0],"morphine_tm_opt")
-	m.WriteXYZfile("./results/", "optimized_morphine")	
+	m.WriteXYZfile("./results/", "optimized_morphine")
 
 # Run molecular dynamic
 if (0):
-	PARAMS["MDThermostat"] = "Nose" # use None for 
+	PARAMS["MDThermostat"] = "Nose" # use None for
 	PARAMS["MDTemp"] = 300
 	PARAMS["MDdt"] = 0.1 # fs
 	PARAMS["RemoveInvariant"]=True
@@ -110,8 +111,8 @@ if (0):
 	w,v = HarmonicSpectra(EnergyField, m.coords, m.atoms, WriteNM_=True, Mu_ = DipoleField)
 
 # Generate Realtime IR spectrum
-if (0): 
-	# run an annealer to warm system to the target T 
+if (0):
+	# run an annealer to warm system to the target T
 	PARAMS["MDdt"] = 0.1 #fs
 	PARAMS["RemoveInvariant"]=True
 	PARAMS["MDThermostat"] = "Nose"
@@ -123,7 +124,7 @@ if (0):
 	anneal = Annealer(EnAndForce, None, m, "morphine_aneal")
 	anneal.Prop()
 	m.coords = anneal.x.copy()
-	
+
 	# run an energy conserved MD trajectory for realtime IR
 	PARAMS["MDThermostat"] = None
 	PARAMS["MDTemp"] = 0
@@ -133,4 +134,3 @@ if (0):
 	md = IRTrajectory(EnAndForce, ChargeField, m, "morphine_IR_300K", anneal.v)
 	md.Prop()
 	WriteDerDipoleCorrelationFunction(md.mu_his) # CorrelationFunction is stored in "./results/MutMu0.txt" by default
-

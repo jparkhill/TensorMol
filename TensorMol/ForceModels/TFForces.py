@@ -9,11 +9,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from TensorMol.TFInstance import *
-from TensorMol.TensorMolData import *
-from TensorMol.TFMolInstance import *
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.Neighbors import *
+from ..TFNetworks.TFInstance import *
+from ..Containers.TensorMolData import *
+from ..TFNetworks.TFMolInstance import *
+from ..TFForces.ElectrostaticsTF import *
+from ..ForceModifiers.Neighbors import *
 from tensorflow.python.client import timeline
 import threading
 
