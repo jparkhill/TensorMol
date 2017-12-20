@@ -268,7 +268,7 @@ def train_energy_symm_func(mset):
 	print "Number of Mols: ", len(a.mols)
 	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectSymFunc")
 
-def train_energy_GauSH():
+def train_energy_GauSH(mset):
 	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
 	PARAMS["SH_NRAD"] = 16
 	PARAMS["SH_LMAX"] = 4
@@ -280,13 +280,13 @@ def train_energy_GauSH():
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
 	PARAMS["learning_rate"] = 0.0001
-	PARAMS["max_steps"] = 200
-	PARAMS["test_freq"] = 5
+	PARAMS["max_steps"] = 1
+	PARAMS["test_freq"] = 1
 	PARAMS["batch_size"] = 200
 	PARAMS["NeuronType"] = "shifted_softplus"
 	PARAMS["tf_prec"] = "tf.float32"
 	PARAMS["Profiling"] = False
-	a=MSet("H2O_wb97xd_1to21_with_prontonated")
+	a=MSet(mset)
 	a.Load()
 	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectGauSH")
 
@@ -677,7 +677,7 @@ def train_Poly_GauSH():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-# train_energy_GauSH()
+train_energy_GauSH("H2O_wb97xd_1to21_with_prontonated")
 # test_h2o()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
@@ -685,7 +685,7 @@ def train_Poly_GauSH():
 # meta_statistics()
 # meta_stat_plot()
 # harmonic_freq()
-train_Poly_GauSH()
+# train_Poly_GauSH()
 #water_ir()
 # a=MSet("nicotine_opt")
 # a.ReadXYZ()
@@ -708,20 +708,20 @@ train_Poly_GauSH()
 # f.close()
 # f2.close()
 
-import pickle
-water_data = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated.dat","rb"))
-a=MSet("water_clusters")
-for i, mol in enumerate(water_data):
-	a.mols.append(Mol(np.array(mol["atoms"]), mol["xyz"]))
-	a.mols[-1].properties["name"] = mol["name"]
-	a.mols[-1].properties["energy"] = mol["scf_energy"]
-	a.mols[-1].properties["dipole"] = np.array(mol["dipole"])
-	a.mols[-1].properties["gradients"] = mol["gradients"]
-	try:
-		a.mols[-1].properties["quadrupole"] = np.array(mol["quad"])
-		a.mols[-1].properties["mulliken_charges"] = np.array(mol["charges"])
-	except Exception as Ex:
-		print Ex
-		print i
-		pass
-a.Save()
+# import pickle
+# water_data = pickle.load(open("./datasets/H2O_wbxd_1to21_with_prontonated.dat","rb"))
+# a=MSet("water_clusters")
+# for i, mol in enumerate(water_data):
+# 	a.mols.append(Mol(np.array(mol["atoms"]), mol["xyz"]))
+# 	a.mols[-1].properties["name"] = mol["name"]
+# 	a.mols[-1].properties["energy"] = mol["scf_energy"]
+# 	a.mols[-1].properties["dipole"] = np.array(mol["dipole"])
+# 	a.mols[-1].properties["gradients"] = mol["gradients"]
+# 	try:
+# 		a.mols[-1].properties["quadrupole"] = np.array(mol["quad"])
+# 		a.mols[-1].properties["mulliken_charges"] = np.array(mol["charges"])
+# 	except Exception as Ex:
+# 		print Ex
+# 		print i
+# 		pass
+# a.Save()

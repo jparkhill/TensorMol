@@ -1516,9 +1516,9 @@ class TFMolManageDirect:
 			maxstep: The number of training steps.
 		"""
 		if self.network_type == "BehlerParinelloDirectSymFunc":
-			self.network = BehlerParinelloDirectSymFunc(self.molecule_set, "symmetry_functions")
+			self.network = BehlerParinelloDirectSymFunc(self.molecule_set)
 		elif self.network_type == "BehlerParinelloDirectGauSH":
-			self.network = BehlerParinelloDirectGauSH(self.molecule_set, "GauSH")
+			self.network = BehlerParinelloDirectGauSH(self.molecule_set)
 		else:
 			raise Exception("Unknown Network Type!")
 		self.network.train()

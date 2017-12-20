@@ -2606,13 +2606,13 @@ def matrix_power2(matrix, power):
 def tf_gaussian_overlap(gaussian_params):
 	r_nought = gaussian_params[:,0]
 	sigma = gaussian_params[:,1]
-	scaling_factor = tf.cast(tf.sqrt(np.pi / 2), data_precision)
+	scaling_factor = tf.cast(tf.sqrt(np.pi / 2), eval(PARAMS["tf_prec"]))
 	exponential_factor = tf.exp(-tf.square(tf.expand_dims(r_nought, axis=0) - tf.expand_dims(r_nought, axis=1))
 	/ (2.0 * (tf.square(tf.expand_dims(sigma, axis=0)) + tf.square(tf.expand_dims(sigma, axis=1)))))
 	root_inverse_sigma_sum = tf.sqrt((1.0 / tf.expand_dims(tf.square(sigma), axis=0)) + (1.0 / tf.expand_dims(tf.square(sigma), axis=1)))
 	erf_numerator = (tf.expand_dims(r_nought, axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
 				+ tf.expand_dims(r_nought, axis=1) * tf.expand_dims(tf.square(sigma), axis=0))
-	erf_denominator = (tf.sqrt(tf.cast(2.0, data_precision)) * tf.expand_dims(tf.square(sigma), axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
+	erf_denominator = (tf.sqrt(tf.cast(2.0, eval(PARAMS["tf_prec"]))) * tf.expand_dims(tf.square(sigma), axis=0) * tf.expand_dims(tf.square(sigma), axis=1)
 				* root_inverse_sigma_sum)
 	erf_factor = 1 + tf.erf(erf_numerator / erf_denominator)
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
@@ -3021,7 +3021,7 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 	spherical_harmonics = tf_spherical_harmonics(delta_xyzs, distance_tensor, l_max)
 	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, num_elements, 1])), mol_atom_indices[:,0])
 
-	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=data_precision),tf.zeros_like(channel_scatter_bool, dtype=data_precision))
+	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=eval(PARAMS["tf_prec"])),tf.zeros_like(channel_scatter_bool, dtype=eval(PARAMS["tf_prec"])))
 
 	element_channel_gaussians = tf.expand_dims(gaussians, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
 	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
@@ -3225,7 +3225,7 @@ def tf_symmetry_function_angular_grid(xyzs, Zs, angular_cutoff, angular_rs, thet
 	cos_factor = tf.pow((1 + tf.cos(theta_ijk_s)), zeta)
 
 	cutoff_factor = 0.5 * (tf.cos(3.14159265359 * triples_distances / angular_cutoff) + 1.0)
-	scalar_factor = tf.pow(tf.cast(2.0, data_precision), 1.0-zeta)
+	scalar_factor = tf.pow(tf.cast(2.0, eval(PARAMS["tf_prec"])), 1.0-zeta)
 
 	angular_embedding = tf.reshape(scalar_factor * tf.expand_dims(cos_factor * tf.expand_dims(cutoff_factor[:,0] * cutoff_factor[:,1], axis=-1), axis=-1) \
 						* tf.expand_dims(exponential_factor, axis=-2), [tf.shape(triples_indices)[0], tf.shape(theta_s)[0] * tf.shape(angular_rs)[0]])
