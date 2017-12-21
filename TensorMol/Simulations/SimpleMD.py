@@ -5,11 +5,11 @@ I convert the force outside from kcal/(mol angstrom) to Joules/(mol angstrom)
 
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFManage import *
-from .Electrostatics import *
-from .QuasiNewtonTools import *
-from .Statistics import *
+from ..Containers.Sets import *
+from ..TFNetworks.TFManage import *
+from ..ForceModels.Electrostatics import *
+from ..Math.QuasiNewtonTools import *
+from ..Math.Statistics import *
 
 def VelocityVerletStep(f_, a_, x_, v_, m_, dt_, fande_=None):
 	"""

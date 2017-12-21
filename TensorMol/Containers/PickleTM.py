@@ -8,15 +8,25 @@ def PickleMapName(name):
 	renametable = {
 		'TensorMol.TensorMolData_EE': 'TensorMol.TensorMolDataEE',
 		'TensorMol.TFMolInstance_EE': 'TensorMol.TFMolInstanceEE',
+		'TensorMol.TensorMolData': 'TensorMol.Containers.TensorMolData',
+		'TensorMol.Mol': 'TensorMol.Containers.Mol',
+		'DigestMol': 'TensorMol.Containers.DigestMol',
+		'TensorMol.DigestMol': 'TensorMol.Containers.DigestMol',
+		'TensorMol.TFMolInstanceDirect': 'TensorMol.TFNetworks.TFMolInstanceDirect',
+		'TensorMol.Transformer': 'TensorMol.ForceModifiers.Transformer',
 		'TensorMolData_EE': 'TensorMolDataEE'
 		}
 	if name in renametable:
+		#print("REMAPPING PICKLE LOAD:",name,"TO",renametable[name])
 		return renametable[name]
+	#else:
+		#print("NOT REMAPPING PICKLE LOAD:",name)
 	return name
 
 def mapped_load_global(self):
 	module = PickleMapName(self.readline()[:-1])
 	name = PickleMapName(self.readline()[:-1])
+	print("Finding ", module,name)
 	klass = self.find_class(module, name)
 	self.append(klass)
 

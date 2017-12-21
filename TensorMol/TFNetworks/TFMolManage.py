@@ -7,6 +7,7 @@ Actually I think the better thing is to eliminate any dependence on TFManage wha
 '''
 from __future__ import absolute_import
 from __future__ import print_function
+from ..Containers.Sets import *
 from .TFManage import *
 from ..Containers.TensorMolData import *
 from .TFMolInstance import *
@@ -20,6 +21,8 @@ from ..Math.QuasiNewtonTools import *
 import numpy as np
 import gc
 import time
+
+mol_set=MSet()
 
 class TFMolManage(TFManage):
 	"""
@@ -1537,8 +1540,8 @@ class TFMolManageDirect:
 	def load(self):
 		print("Loading TFManager...")
 		f = open(self.path+self.name+".tfm","rb")
-		import TensorMol.PickleTM
-		tmp = TensorMol.PickleTM.UnPickleTM(f)
+		from ..Containers.PickleTM import *
+		tmp = UnPickleTM(f)
 		self.__dict__.update(tmp)
 		f.close()
 		print("TFManager Loaded, Reviving Networks.")

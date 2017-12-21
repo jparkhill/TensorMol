@@ -5,9 +5,9 @@ Only linear scaling forces with energy are supported.
 """
 from __future__ import absolute_import
 from __future__ import print_function
-from .Neighbors import *
-from .Electrostatics import *
-from .SimpleMD import *
+from ..ForceModifiers.Neighbors import *
+from ..ForceModels.Electrostatics import *
+from ..Simulations.SimpleMD import *
 from MolEmb import GetRDF_Bin, CountInRange
 
 class Lattice:

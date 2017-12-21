@@ -40,7 +40,8 @@ class MSet:
 		if filename == None:
 			filename = self.name
 		f = open(self.path+filename+self.suffix,"rb")
-		tmp=pickle.load(f)
+		from ..Containers.PickleTM import *
+		tmp = UnPickleTM(f)
 		self.__dict__.update(tmp)
 		f.close()
 		LOGGER.info("Loaded, "+str(len(self.mols))+" molecules "+str(self.NAtoms())+" Atoms total "+str(self.AtomTypes())+" Types ")

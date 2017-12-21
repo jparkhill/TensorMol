@@ -4,13 +4,13 @@ Periodic Monte Carlo.
 
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFManage import *
-from .Neighbors import *
-from .Electrostatics import *
-from .QuasiNewtonTools import *
-from .Statistics import *
-from .Periodic import *
+from ..Math.QuasiNewtonTools import *
+from ..Math.Statistics import *
+from ..Containers.Sets import *
+from ..TFNetworks.TFManage import *
+from ..ForceModifiers.Neighbors import *
+from ..ForceModels.Electrostatics import *
+from ..ForceModifiers.Periodic import *
 from .SimpleMD import *
 from .PeriodicMD import *
 

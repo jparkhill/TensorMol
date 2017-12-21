@@ -23,7 +23,6 @@ Violators are subject to having their code and reproductive fitness mocked publi
 from __future__ import absolute_import
 from __future__ import print_function
 __version__="0.2"
-
 from TensorMol.Util import * # Populates the PARAMS and LOGGER.
 from TensorMol.PhysicalData import *
 from .Math import *
@@ -33,6 +32,5 @@ from .Interfaces import *
 from .ForceModels import *
 from .ForceModifiers import *
 from .Simulations import *
-
 #__all__ = ["Util", "PhysicalData", "Math" , "Containers" ,"Containers.Mol" ,"Containers.Sets" ,"TFNetworks","Interfaces","ForceModels","ForceModifiers","Simulations"]
 LOGGER.debug("TensorMol import complete.")

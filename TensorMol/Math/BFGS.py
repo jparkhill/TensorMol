@@ -4,9 +4,7 @@ TODO:
 	Consistent solver organization & interface. (CG,BFGS,DIIS etc. )
 """
 from __future__ import absolute_import
-from .Sets import *
-from .TFManage import *
-from .PhysicalData import *
+from ..PhysicalData import *
 
 class SteepestDescent:
 	def __init__(self, ForceAndEnergy_,x0_):

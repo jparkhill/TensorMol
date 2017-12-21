@@ -4,13 +4,13 @@ and just pass a EnergyAndForce Field function.
 """
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFManage import *
-from .QuasiNewtonTools import *
-from .DIIS import *
-from .BFGS import *
-from .LinearOperations import *
-from . import TFForces
+from ..Containers.Sets import *
+from ..TFNetworks.TFManage import *
+from ..Math.QuasiNewtonTools import *
+from ..Math.DIIS import *
+from ..Math.BFGS import *
+from ..Math.LinearOperations import *
+from ..TFForces import *
 import random
 import time
 

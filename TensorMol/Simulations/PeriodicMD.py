@@ -10,12 +10,12 @@ TODO: Barostat...
 
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFManage import *
-from .Neighbors import *
-from .Electrostatics import *
-from .QuasiNewtonTools import *
-from .Periodic import *
+from ..Containers.Sets import *
+from ..TFNetworks.TFManage import *
+from ..ForceModifiers.Neighbors import *
+from ..ForceModels.Electrostatics import *
+from ..Math.QuasiNewtonTools import *
+from ..ForceModifiers.Periodic import *
 from .SimpleMD import *
 
 def PeriodicVelocityVerletStep(pf_, a_, x_, v_, m_, dt_):

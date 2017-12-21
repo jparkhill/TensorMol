@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from .Opt import *
-from .Periodic import *
+from ..ForceModifiers.Periodic import *
 import random
 import time
 

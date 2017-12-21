@@ -104,8 +104,8 @@ class MolInstance(Instance):
 	def Load(self):
 		print ("Unpickling TFInstance...")
 		f = open(self.path+self.name+".tfn","rb")
-		import TensorMol.PickleTM
-		tmp = TensorMol.PickleTM.UnPickleTM(f)
+		from ..Containers.PickleTM import *
+		tmp = UnPickleTM(f)
 		self.Clean()
 		self.__dict__.update(tmp)
 		f.close()

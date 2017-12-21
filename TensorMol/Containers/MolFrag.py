@@ -4,7 +4,7 @@ from ..Util import *
 import numpy as np
 import random, math
 from .Mol import *
-from ..ForceModels.Electrostatics import *
+#from ..ForceModels.Electrostatics import *
 
 def Submit_Script_Lines(order=str(3), sub_order =str(1), index=str(1), mincase = str(0), maxcase = str(1000), name = "MBE", ncore = str(4), queue="long"):
 	lines = "#!/bin/csh\n"+"# Submit a job for 8  processors\n"+"#$ -N "+name+"\n#$ -t "+mincase+"-"+maxcase+":1\n"+"#$ -pe smp "+ncore+"\n"+"#$ -r n\n"+"#$ -q "+queue+"\n\n\n"

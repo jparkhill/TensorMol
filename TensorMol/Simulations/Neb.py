@@ -6,12 +6,12 @@ Changes that need to be made:
 
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFManage import *
-from .DIIS import *
-from .QuasiNewtonTools import *
-from .BFGS import *
-from .DIIS import *
+from ..Containers.Sets import *
+from ..TFNetworks.TFManage import *
+from ..Math.DIIS import *
+from ..Math.QuasiNewtonTools import *
+from ..Math.BFGS import *
+from ..Math.DIIS import *
 import random
 import time
 

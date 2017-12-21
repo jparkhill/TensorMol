@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFManage import *
 
 class DIIS:
 	def __init__(self, ForceAndEnergy_, x0_=None):
