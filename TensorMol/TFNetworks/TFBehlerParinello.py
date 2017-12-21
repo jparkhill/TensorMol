@@ -118,12 +118,10 @@ class BehlerParinelloDirectSymFunc:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+"/"+self.name+".tfn","rb")
 		import TensorMol.PickleTM
-		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
+		network_member_variables = TensorMol.PickleTM.UnPickleTM(self.path+"/"+self.name+".tfn")
 		self.clean()
 		self.__dict__.update(network_member_variables)
-		f.close()
 		checkpoint_files = [x for x in os.listdir(self.network_directory) if (x.count('checkpoint')>0 and x.count('meta')==0)]
 		if (len(checkpoint_files)>0):
 			self.latest_checkpoint_file = checkpoint_files[0]
@@ -846,12 +844,10 @@ class BehlerParinelloDirectGauSH:
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+"/"+self.name+".tfn","rb")
 		import TensorMol.PickleTM
-		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
+		network_member_variables = TensorMol.PickleTM.UnPickleTM(self.path+"/"+self.name+".tfn")
 		# self.clean()
 		self.__dict__.update(network_member_variables)
-		f.close()
 		checkpoint_files = [x for x in os.listdir(self.network_directory) if (x.count('checkpoint')>0 and x.count('meta')==0)]
 		if (len(checkpoint_files)>0):
 			self.latest_checkpoint_file = checkpoint_files[0]

@@ -1539,11 +1539,9 @@ class TFMolManageDirect:
 
 	def load(self):
 		print("Loading TFManager...")
-		f = open(self.path+self.name+".tfm","rb")
-		from ..Containers.PickleTM import *
-		tmp = UnPickleTM(f)
+		from ..Containers.PickleTM import UnPickleTM as UnPickleTM
+		tmp = UnPickleTM(self.path+self.name+".tfm")
 		self.__dict__.update(tmp)
-		f.close()
 		print("TFManager Loaded, Reviving Networks.")
 		return
 

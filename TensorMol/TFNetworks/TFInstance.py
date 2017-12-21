@@ -264,12 +264,10 @@ class Instance:
 	# only the local class members (not any TF objects should be unpickled.)
 	def Load(self):
 		LOGGER.info("Unpickling TFInstance...")
-		f = open(self.path+self.name+".tfn","rb")
-		from ..Containers.PickleTM import *
-		tmp = UnPickleTM(f)
+		from ..Containers.PickleTM import UnPickleTM as UnPickleTM
+		tmp = UnPickleTM(self.path+self.name+".tfn")
 		# All this shit should be deleteable after re-training.
 		self.__dict__.update(tmp)
-		f.close()
 		chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 		# if (len(chkfiles)>0):
 		# 	self.chk_file = chkfiles[0]

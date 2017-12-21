@@ -71,11 +71,9 @@ class TFManage:
 
 	def Load(self):
 		print("Unpickling TFManager...")
-		f = open(self.path+self.name+".tfm","rb")
 		from ..Containers import PickleTM
-		tmp = PickleTM.UnPickleTM(f)
+		tmp = PickleTM.UnPickleTM(self.path+self.name+".tfm")
 		self.__dict__.update(tmp)
-		f.close()
 		print("TFManager Metadata Loaded, Reviving Networks.")
 		self.Print()
 		return

@@ -103,12 +103,10 @@ class MolInstance(Instance):
 
 	def Load(self):
 		print ("Unpickling TFInstance...")
-		f = open(self.path+self.name+".tfn","rb")
-		from ..Containers.PickleTM import *
-		tmp = UnPickleTM(f)
+		from ..Containers.PickleTM import UnPickleTM as UnPickleTM
+		tmp = UnPickleTM(self.path+self.name+".tfn")
 		self.Clean()
 		self.__dict__.update(tmp)
-		f.close()
 		print("self.chk_file:", self.chk_file)
 		return
 

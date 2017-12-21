@@ -39,11 +39,9 @@ class MSet:
 	def Load(self, filename=None):
 		if filename == None:
 			filename = self.name
-		f = open(self.path+filename+self.suffix,"rb")
-		from ..Containers.PickleTM import *
-		tmp = UnPickleTM(f)
+		from ..Containers.PickleTM import UnPickleTM as UnPickleTM
+		tmp = UnPickleTM(self.path+filename+self.suffix)
 		self.__dict__.update(tmp)
-		f.close()
 		LOGGER.info("Loaded, "+str(len(self.mols))+" molecules "+str(self.NAtoms())+" Atoms total "+str(self.AtomTypes())+" Types ")
 		return
 
