@@ -33,7 +33,7 @@ else:
 
 # run the setup
 setup(name='TensorMol',
-      version='0.1',
+      version='0.2',
       description='TensorFlow+Molecules = TensorMol',
       url='http://github.com/jparkhill/TensorMol',
       author='john parkhill',
