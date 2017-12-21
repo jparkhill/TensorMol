@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from TensorMol.ElectrostaticsTF import *
+from ..ForceModels.ElectrostaticsTF import *
 from .RawEmbeddings import *
 
 class PairProvider:
