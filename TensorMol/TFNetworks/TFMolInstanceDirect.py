@@ -13,7 +13,7 @@ from ..Containers.TensorMolData import *
 from .TFMolInstance import *
 from ..ForceModels.ElectrostaticsTF import *
 from ..ForceModifiers.Neighbors import *
-from ..TFDescriptors.RawEmbeddings import *
+from ..TFDescriptors.RawSymFunc import *
 from tensorflow.python.client import timeline
 import time
 import threading
@@ -117,7 +117,6 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 class MolInstance_DirectBP(MolInstance_fc_sqdiff_BP):
 	"""
 	An Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True, ForceType_="LJ"):
 		"""
@@ -286,7 +285,6 @@ class MolInstance_DirectBP(MolInstance_fc_sqdiff_BP):
 class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 	"""
 	An Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
@@ -662,7 +660,6 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 	"""
 	An Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True):
@@ -954,7 +951,6 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 class MolPairsTriples(MolInstance):
 	"""
 	An Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True):
@@ -1243,7 +1239,6 @@ class MolPairsTriples(MolInstance):
 class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 	"""
 	An Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True, ForceType_="LJ"):
@@ -1638,7 +1633,6 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 class MolInstance_DirectBP_Grad_noGradTrain(MolInstance_DirectBP_Grad):
 	"""
 	An Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	Do not use gradient in training
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
@@ -1666,7 +1660,6 @@ class MolInstance_DirectBP_Grad_noGradTrain(MolInstance_DirectBP_Grad):
 class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 	"""
 	An Update version of Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	index_pl holds both the index of molecule and the index of each atom
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
@@ -1788,7 +1781,6 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 	"""
 	An Update version of Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	index_pl holds both the index of molecule and the index of each atom
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):
@@ -1983,7 +1975,6 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 	"""
 	An Update version of Instance which does a direct Behler Parinello
-	Using Output from RawEmbeddings.py
 	index_pl holds both the index of molecule and the index of each atom
 	"""
 	def __init__(self, TData_, Name_=None, Trainable_=True,ForceType_="LJ"):

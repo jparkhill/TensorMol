@@ -19,7 +19,7 @@ from ..Containers.TensorMolData import *
 from .TFMolInstance import *
 from ..ForceModels.ElectrostaticsTF import *
 from ..ForceModifiers.Neighbors import *
-from ..TFDescriptors.RawEmbeddings import *
+from ..TFDescriptors.RawSymFunc import *
 from tensorflow.python.client import timeline
 import time
 import threading

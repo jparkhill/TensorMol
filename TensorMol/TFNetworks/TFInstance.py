@@ -8,7 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from ..Containers.TensorData import *
 from ..ForceModifiers.Transformer import *
-from ..TFDescriptors.RawEmbeddings import *
+from ..TFDescriptors.RawSymFunc import *
 from ..Util import *
 import numpy as np
 import math
@@ -754,7 +754,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.MaxNAtoms = self.TData.MaxNAtoms
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3
-		TensorMol.RawEmbeddings.data_precision = self.tf_prec
+		TensorMol.TFDescriptors.RawSH.data_precision = self.tf_prec
 		if name != None:
 			self.path = './networks/'
 			self.name = name
@@ -1106,7 +1106,6 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		forces, atom_indices = self.sess.run([self.output, self.atom_indices], feed_dict=feed_dict)
 		return -forces, atom_indices
 
-
 class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 	def __init__(self, TData_, elements_ , Trainable_ = True, Name_ = None):
 		Instance.__init__(self, TData_, elements_, Name_)
@@ -1117,7 +1116,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		self.l_max = PARAMS["SH_LMAX"]
 		self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
 		self.atomic_embed_factors = PARAMS["ANES"]
-		TensorMol.RawEmbeddings.data_precision = self.tf_prec
+		TensorMol.TFDescriptors.RawSH.data_precision = self.tf_prec
 		self.MaxNAtoms = self.TData.MaxNAtoms
 		self.inshape =  self.number_radial * (self.l_max + 1) ** 2
 		self.outshape = 3

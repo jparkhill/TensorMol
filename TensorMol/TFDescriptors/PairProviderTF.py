@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 from ..ForceModels.ElectrostaticsTF import *
-from .RawEmbeddings import *
+from .RawSH import *
+from .RawSymFunc import *
 
 class PairProvider:
 	def __init__(self,nmol_,natom_):

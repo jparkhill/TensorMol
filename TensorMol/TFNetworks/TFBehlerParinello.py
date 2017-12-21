@@ -15,12 +15,13 @@ import time
 import random
 
 from ..Containers.TensorMolData import *
-from ..TFDescriptors.RawEmbeddings import *
+from ..TFDescriptors.RawSH import *
+from ..TFDescriptors.RawSymFunc import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirect(object):
 	"""
-	Base class for Behler-Parinello network using embedding from RawEmbeddings.py
+	Base class for Behler-Parinello network 
 	Do not use directly, only for inheritance to derived classes
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
@@ -714,7 +715,7 @@ class BehlerParinelloDirect(object):
 
 class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 	"""
-	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
+	Behler-Parinello network using symmetry function embedding
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
@@ -1010,7 +1011,7 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 
 class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 	"""
-	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
+	Behler-Parinello network
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
