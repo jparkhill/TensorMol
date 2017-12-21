@@ -3,7 +3,7 @@ from __future__ import print_function
 from TensorMol import *
 from TensorMol.NN_MBE import *
 from TensorMol.MBE_Opt import *
-from TensorMol.RawEmbeddings import *
+from ..TFDescriptors.RawEmbeddings import *
 from TensorMol.Neighbors import *
 from TensorMol import *
 import os

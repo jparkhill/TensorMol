@@ -54,7 +54,7 @@ class TMParams(dict):
 		self["MonitorSet"] = None
 		self["NetNameSuffix"] = ""
 		self["NeuronType"] = "relu"
-		self["tf_prec"] = "tf.float32"
+		self["tf_prec"] = "tf.float64" # Do not change this to 32.
 		self["learning_rate"] = 0.001
 		self["learning_rate_dipole"] = 0.0001
 		self["learning_rate_energy"] = 0.00001

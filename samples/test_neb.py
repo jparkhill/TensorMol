@@ -186,8 +186,6 @@ def MetadynamicsStatistics():
 	m = Mol()
 	m.FromXYZString(sugarXYZ)
 
-	print("READ MOL XFOIUDOFIUDFO")
-
 	#from MolEmb import EmptyInterfacedFunction, Make_NListNaive, Make_NListLinear
 	#print("READ MOL XFOIUDOFIUDFO")
 	#print(m.coords,15.0,m.NAtoms(),True)
