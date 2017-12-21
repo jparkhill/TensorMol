@@ -10,7 +10,7 @@ from ..Math.QuasiNewtonTools import *
 from ..Math.DIIS import *
 from ..Math.BFGS import *
 from ..Math.LinearOperations import *
-from ..TFForces import *
+from ..ForceModels import *
 import random
 import time
 

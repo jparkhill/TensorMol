@@ -12,7 +12,7 @@ from __future__ import print_function
 from ..TFNetworks.TFInstance import *
 from ..Containers.TensorMolData import *
 from ..TFNetworks.TFMolInstance import *
-from ..TFForces.ElectrostaticsTF import *
+from ..ForceModels.ElectrostaticsTF import *
 from ..ForceModifiers.Neighbors import *
 from tensorflow.python.client import timeline
 import threading

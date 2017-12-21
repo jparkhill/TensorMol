@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from ..ForceModifiers.Neighbors import *
 from ..Containers.TensorData import *
-from ..TFForces.ElectrostaticsTF import * # Why is this imported here? 
+from ..ForceModels.ElectrostaticsTF import * # Why is this imported here? 
 from tensorflow.python.client import timeline
 import numpy as np
 import math, time, os, sys, os.path

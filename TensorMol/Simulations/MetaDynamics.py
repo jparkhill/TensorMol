@@ -5,8 +5,8 @@ We could even use poorly trained networks for this.
 from __future__ import absolute_import
 from __future__ import print_function
 from .SimpleMD import *
-from ..TFForces.ElectrostaticsTF import *
-from ..Math.Statistics import * 
+from ..ForceModels import TFForces # Note this is actually the RIGHT way to do this.
+from ..Math.Statistics import *
 
 class MetaDynamics(VelocityVerlet):
 	def __init__(self,f_,g0_,name_="MetaMD",EandF_=None):
