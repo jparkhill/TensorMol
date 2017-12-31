@@ -771,17 +771,13 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 										angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
 		embeddings_list = [[], [], [], []]
 		labels_list = []
-		gradients_list = []
 
 		self.embeddings_max = []
 		sess = tf.Session()
 		sess.run(tf.global_variables_initializer())
 		for ministep in range (0, max(2, int(0.1 * self.num_train_cases/self.batch_size))):
 			batch_data = self.get_energy_train_batch(self.batch_size)
-			num_atoms = batch_data[4]
 			labels_list.append(batch_data[2])
-			for molecule in range(self.batch_size):
-				gradients_list.append(batch_data[3][molecule,:num_atoms[molecule]])
 			embedding, molecule_index = sess.run([embeddings, molecule_indices], feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1]})
 			for element in range(len(self.elements)):
 				embeddings_list[element].append(embedding[element])
@@ -791,9 +787,6 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 		labels = np.concatenate(labels_list)
 		self.labels_mean = np.mean(labels)
 		self.labels_stddev = np.std(labels)
-		gradients = np.concatenate(gradients_list)
-		self.gradients_mean = np.mean(gradients)
-		self.gradients_stddev = np.std(gradients)
 		self.train_scratch_pointer = 0
 
 		#Set the embedding and label shape
