@@ -19,9 +19,6 @@ from tensorflow.python.framework import function
 if (HAS_TF):
 	import tensorflow as tf
 
-# John H. this is horrible/awful.
-data_precision = eval(PARAMS["tf_prec"])
-
 def tf_pairs_list(xyzs, Zs, r_cutoff, element_pairs):
 	delta_xyzs = tf.expand_dims(xyzs, axis=2) - tf.expand_dims(xyzs, axis=1)
 	distance_tensor = tf.norm(delta_xyzs,axis=3)
@@ -127,12 +124,12 @@ def tf_gaussian_overlap(gaussian_params):
 	overlap_matrix = scaling_factor * exponential_factor * erf_factor / root_inverse_sigma_sum
 	return overlap_matrix
 
-def tf_gaussians(distance_tensor, Zs, gaussian_params):
+def tf_gaussians(distance_tensor, gaussian_params):
 	exponent = (tf.square(tf.expand_dims(distance_tensor, axis=-1) - tf.expand_dims(tf.expand_dims(gaussian_params[:,0], axis=0), axis=1))) \
 				/ (-2.0 * (gaussian_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
-						tf.zeros_like(distance_tensor)), axis=-1)
+	# gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(distance_tensor, 0), tf.ones_like(distance_tensor),
+	# 					tf.zeros_like(distance_tensor)), axis=-1)
 	return gaussian_embed
 
 def tf_gaussians_cutoff(distance_tensor, Zs, gaussian_params):
@@ -584,6 +581,73 @@ def tf_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params,
 	molecule_indices = tf.dynamic_partition(mol_atom_indices, partition_indices, num_elements)
 	return element_embeddings, molecule_indices
 
+def tf_sparse_gaussian_spherical_harmonics_channel(xyzs, Zs, elements, gaussian_params, l_max, r_cutoff, max_atoms):
+	"""
+	Encodes atoms into a gaussians * spherical harmonics embedding
+	Works on a batch of molecules. This is the embedding routine used
+	in BehlerParinelloDirectGauSH.
+
+	Args:
+		xyzs (tf.float): NMol x MaxNAtoms x 3 coordinates tensor
+		Zs (tf.int32): NMol x MaxNAtoms atomic number tensor
+		element (int): element to return embedding/labels for
+		gaussian_params (tf.float): NGaussians x 2 tensor of gaussian parameters
+		l_max (tf.int32): Scalar for the highest order spherical harmonics to use (needs implemented)
+		labels (tf.Tensor): NMol x MaxNAtoms x label shape tensor of learning targets
+
+	Returns:
+		embedding (tf.float): atom embeddings for element
+		molecule_indices (tf.float): mapping between atoms and molecules.
+	"""
+	num_elements = elements.get_shape().as_list()[0]
+	num_mols = Zs.get_shape().as_list()[0]
+	pair_idx, pair_dist, pair_dxyz = tf_neighbor_list(xyzs, Zs, r_cutoff)
+	pair_element = tf.gather_nd(Zs, pair_idx[:,::2])
+	element_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, pair_idx[:,:2]), axis=-1),
+				tf.expand_dims(elements, axis=-2)))[:,1], tf.int32)
+
+	gaussians = tf_gaussians(pair_dist, gaussian_params)
+	spherical_harmonics = tf_spherical_harmonics(pair_dxyz, pair_dist, l_max)
+	pair_embed = tf.reshape(tf.einsum('ij,ik->ijk', gaussians, spherical_harmonics),
+				[-1, tf.shape(gaussian_params)[0] * tf.square(l_max + 1)])
+	channel_scatter = tf.where(tf.equal(tf.expand_dims(pair_element, axis=1), tf.expand_dims(elements, axis=0)),
+					tf.ones([tf.shape(pair_dist)[0], num_elements]), tf.zeros([tf.shape(pair_dist)[0], num_elements]))
+	pair_channel_embed = tf.reshape(tf.expand_dims(pair_embed, axis=-1) * tf.expand_dims(channel_scatter, axis=-2),
+						[tf.shape(pair_dist)[0], tf.shape(gaussian_params)[0] * tf.square(l_max + 1) * num_elements])
+
+	mol_embed = tf.dynamic_partition(pair_channel_embed, pair_idx[:,0], num_mols)
+	mol_idx = tf.dynamic_partition(pair_idx[:,1], pair_idx[:,0], num_mols)
+	mols = []
+	for i in range(num_mols):
+		atom_embed = tf.dynamic_partition(mol_embed[i], mol_idx[i], max_atoms)
+		atoms = []
+		for j in range(max_atoms):
+			atoms.append(tf.reduce_sum(atom_embed[j], axis=0))
+		mols.append(tf.stack(atoms, axis=0))
+	embeds = tf.concat(mols, axis=0)
+	element_part_idx = tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, tf.where(tf.not_equal(Zs, 0))), axis=1),
+					tf.expand_dims(elements, axis=0)))[:,1]
+	element_embed = tf.dynamic_partition(embeds, tf.cast(element_part_idx, tf.int32), num_elements)
+	return element_embed
+
+
+	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1), tf.reshape(elements, [1, num_elements, 1])), mol_atom_indices[:,0])
+
+	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=eval(PARAMS["tf_prec"])),tf.zeros_like(channel_scatter_bool, dtype=eval(PARAMS["tf_prec"])))
+
+	element_channel_gaussians = tf.expand_dims(gaussians, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
+	element_channel_harmonics = tf.expand_dims(spherical_harmonics, axis=1) * tf.expand_dims(channel_scatter, axis=-1)
+
+	embeddings = tf.reshape(tf.einsum('ijkg,ijkl->ijgl', element_channel_gaussians, element_channel_harmonics),
+	[tf.shape(mol_atom_indices)[0], -1])
+
+	partition_indices = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, mol_atom_indices), axis=-1), tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+
+	element_embeddings = tf.dynamic_partition(embeddings, partition_indices, num_elements)
+	molecule_indices = tf.dynamic_partition(mol_atom_indices, partition_indices, num_elements)
+	return element_embeddings, molecule_indices
+
+
 def tf_random_rotate(xyzs, rotation_params, labels = None, return_matrix = False):
 	"""
 	Rotates molecules and optionally labels in a uniformly random fashion
@@ -830,3 +894,27 @@ def tf_dsf_potential(dists, cutoff_dist, dsf_alpha, return_grad=False):
 		return dsf_potential, dsf_gradient
 	else:
 		return dsf_potential
+
+def tf_neighbor_list(xyzs, Zs, cutoff):
+	with tf.device("/cpu:0"):
+		num_mols = Zs.get_shape().as_list()[0]
+		padding_mask = tf.cast(tf.where(tf.not_equal(Zs, 0)), tf.int32)
+		mol_coords = tf.dynamic_partition(tf.gather_nd(xyzs, padding_mask), padding_mask[:,0], num_mols)
+		pair_idx = []
+		pair_dist = []
+		pair_dxyz = []
+		for i, mol in enumerate(mol_coords):
+			dx = tf.abs(tf.expand_dims(mol[...,0], axis=-1) - tf.expand_dims(mol[...,0], axis=-2))
+			mol_pair_idx = tf.where(tf.less(dx, cutoff))
+			identity_mask = tf.where(tf.not_equal(mol_pair_idx[:,0], mol_pair_idx[:,1]))
+			mol_pair_idx = tf.gather_nd(mol_pair_idx, identity_mask)
+			mol_pair_dxyz = tf.gather(mol, mol_pair_idx[:,0]) - tf.gather(mol, mol_pair_idx[:,1])
+			mol_pair_dist = tf.norm(mol_pair_dxyz + 1.e-16, axis=1)
+			cutoff_pairs = tf.where(tf.less(mol_pair_dist, cutoff))
+			mol_pair_idx = tf.gather_nd(mol_pair_idx, cutoff_pairs)
+			mol_pair_dist = tf.gather_nd(mol_pair_dist, cutoff_pairs)
+			mol_pair_dxyz = tf.gather_nd(mol_pair_dxyz, cutoff_pairs)
+			pair_idx.append(tf.concat([tf.fill([tf.shape(mol_pair_idx)[0], 1], i), tf.cast(mol_pair_idx, tf.int32)], axis=-1))
+			pair_dist.append(mol_pair_dist)
+			pair_dxyz.append(mol_pair_dxyz)
+		return tf.concat(pair_idx, axis=0), tf.concat(pair_dist, axis=0), tf.concat(pair_dxyz, axis=0)
