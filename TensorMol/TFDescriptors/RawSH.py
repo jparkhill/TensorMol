@@ -15,7 +15,6 @@ from ..Containers.TensorData import *
 from ..ForceModels.ElectrostaticsTF import * # Why is this imported here?
 from tensorflow.python.client import timeline
 import numpy as np
-import math, time
 from tensorflow.python.framework import function
 if (HAS_TF):
 	import tensorflow as tf

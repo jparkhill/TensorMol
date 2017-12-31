@@ -2,9 +2,11 @@
 This version of the Behler-Parinello is aperiodic,non-sparse.
 It's being developed to explore alternatives to symmetry functions. It's not for production use.
 
-John: Do you think they really have to be kept separate?
+John: Do you think These instances really have to be kept separate?
 Cant the descriptor just be conditionally switched in Prepare?
 That would seem to make more sense to me.
+
+Also: we should have a new way to control the network instance name.
 """
 
 from __future__ import absolute_import
@@ -21,7 +23,7 @@ from tensorflow.python.client import timeline
 
 class BehlerParinelloDirect(object):
 	"""
-	Base class for Behler-Parinello network 
+	Base class for Behler-Parinello network
 	Do not use directly, only for inheritance to derived classes
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
@@ -179,6 +181,8 @@ class BehlerParinelloDirect(object):
 		for i, mol in enumerate(self.molecule_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
+			if (not "atomization" in mol.properties):
+				mol.CalculateAtomization()
 			energies[i] = mol.properties["atomization"]
 			dipoles[i] = mol.properties["dipole"]
 			num_atoms[i] = mol.NAtoms()

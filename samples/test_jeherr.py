@@ -101,7 +101,7 @@ def TestTFBond():
 
 def TestTFGauSH():
 	tf_precision = eval(PARAMS["tf_prec"])
-	TensorMol.RawEmbeddings.data_precision = tf_precision
+	TensorMol.TFDescriptors.RawSH.data_precision = tf_precision
 	np.set_printoptions(threshold=100000)
 	a=MSet("SmallMols_rand")
 	a.Load()

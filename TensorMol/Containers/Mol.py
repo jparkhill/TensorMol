@@ -69,7 +69,7 @@ class Mol:
 					AE = AE - ele_U[self.atoms[i]]
 			self.properties["atomization"] = AE
 		else:
-			raise Exception("Missing data... ")
+			raise Exception("Missing energy to calculate atomization... ")
 		return
 
 	def Calculate_vdw(self):
