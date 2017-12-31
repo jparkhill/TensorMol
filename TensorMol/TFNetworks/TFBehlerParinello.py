@@ -2,11 +2,9 @@
 This version of the Behler-Parinello is aperiodic,non-sparse.
 It's being developed to explore alternatives to symmetry functions. It's not for production use.
 
-John: Do you think These instances really have to be kept separate?
+John: Do you think they really have to be kept separate?
 Cant the descriptor just be conditionally switched in Prepare?
 That would seem to make more sense to me.
-
-Also: we should have a new way to control the network instance name.
 """
 
 from __future__ import absolute_import
@@ -16,14 +14,13 @@ from __future__ import print_function
 import time
 import random
 
-from ..Containers.TensorMolData import *
-from ..TFDescriptors.RawSH import *
-from ..TFDescriptors.RawSymFunc import *
+from TensorMol.TensorMolData import *
+from TensorMol.RawEmbeddings import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirect(object):
 	"""
-	Base class for Behler-Parinello network
+	Base class for Behler-Parinello network using embedding from RawEmbeddings.py
 	Do not use directly, only for inheritance to derived classes
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
@@ -129,10 +126,12 @@ class BehlerParinelloDirect(object):
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
+		f = open(self.path+"/"+self.name+".tfn","rb")
 		import TensorMol.PickleTM
-		network_member_variables = TensorMol.PickleTM.UnPickleTM(self.path+"/"+self.name+".tfn")
-		self.clean()
+		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
+		# self.clean()
 		self.__dict__.update(network_member_variables)
+		f.close()
 		checkpoint_files = [x for x in os.listdir(self.network_directory) if (x.count('checkpoint')>0 and x.count('meta')==0)]
 		if (len(checkpoint_files)>0):
 			self.latest_checkpoint_file = checkpoint_files[0]
@@ -181,8 +180,6 @@ class BehlerParinelloDirect(object):
 		for i, mol in enumerate(self.molecule_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
-			if (not "atomization" in mol.properties):
-				mol.CalculateAtomization()
 			energies[i] = mol.properties["atomization"]
 			dipoles[i] = mol.properties["dipole"]
 			num_atoms[i] = mol.NAtoms()
@@ -719,7 +716,7 @@ class BehlerParinelloDirect(object):
 
 class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 	"""
-	Behler-Parinello network using symmetry function embedding
+	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
@@ -1015,7 +1012,7 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 
 class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 	"""
-	Behler-Parinello network
+	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
@@ -1111,15 +1108,17 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 			embeddings_stddev = tf.Variable(self.embeddings_stddev, trainable=False, dtype = self.tf_precision)
 			labels_mean = tf.Variable(self.labels_mean, trainable=False, dtype = self.tf_precision)
 			labels_stddev = tf.Variable(self.labels_stddev, trainable=False, dtype = self.tf_precision)
+			elu_width = tf.Variable(self.elu_width * BOHRPERA, trainable=False, dtype = self.tf_precision)
+			dsf_alpha = tf.Variable(self.dsf_alpha, trainable=False, dtype = self.tf_precision)
 			coulomb_cutoff = tf.Variable(self.coulomb_cutoff, trainable=False, dtype = self.tf_precision)
 
-			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision), np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision), tf.random_uniform([self.batch_size], minval=0.1, maxval=1.9, dtype=self.tf_precision)], axis=-1)
+			rotation_params = tf.stack([np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
+					tf.random_uniform([self.batch_size], minval=0.1, maxval=1.9, dtype=self.tf_precision)], axis=-1)
 			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
 			self.dipole_labels = tf.squeeze(tf_random_rotate(tf.expand_dims(self.dipole_pl, axis=1), rotation_params))
-			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel_sparse(rotated_xyzs,
-											self.Zs_pl, elements, self.gaussian_params, self.l_max, self.Reep_pl)
-			#embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
-			#								self.Zs_pl, elements, self.gaussian_params, self.l_max)
+			embeddings, molecule_indices = tf_gaussian_spherical_harmonics_channel(rotated_xyzs,
+											self.Zs_pl, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
@@ -1148,16 +1147,25 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 			tf.add_to_collection('energy_losses', self.energy_loss)
 			self.gradient_loss = self.loss_op(self.gradients - self.gradient_labels) / tf.cast(tf.reduce_sum(self.num_atoms_pl), self.tf_precision)
 			self.rotation_loss = self.loss_op(tf.gradients(self.total_energy, rotation_params)) / 500.0
-			tf.add_to_collection('energy_losses', self.gradient_loss)
-			tf.summary.scalar("gradient loss", self.gradient_loss)
-			tf.add_to_collection('energy_losses', self.rotation_loss)
-			tf.summary.scalar("rotational loss", self.rotation_loss)
+			if self.train_gradients:
+				tf.add_to_collection('energy_losses', self.gradient_loss)
+				tf.summary.scalar("gradient loss", self.gradient_loss)
+			if self.train_rotation:
+				tf.add_to_collection('energy_losses', self.rotation_loss)
+				tf.summary.scalar("rotational loss", self.rotation_loss)
 
-			self.all_losses = tf.add_n(tf.get_collection('dipole_losses')+tf.get_collection('energy_losses'))
-			tf.summary.scalar("all_losses", self.all_losses)
+			# barrier_function = 1.e5 * tf.concat([tf.pow((0.15 - self.gaussian_params), 3.0), tf.expand_dims(tf.pow((self.gaussian_params[:,0] - 6.1), 3.0), axis=-1),
+			# 			tf.expand_dims(tf.pow((self.gaussian_params[:,1] - 3.6), 3.0), axis=-1)], axis=1)
+			# truncated_barrier_function = tf.reduce_sum(tf.where(tf.greater(barrier_function, 0.0),
+			# 					barrier_function, tf.zeros_like(barrier_function)))
+			# gaussian_overlap_loss = tf.square(0.001 / tf.reduce_min(tf.self_adjoint_eig(tf_gaussian_overlap(self.gaussian_params))[0]))
+			# tf.add_to_collection('dipole_losses', truncated_barrier_function)
+			# tf.add_to_collection('dipole_losses', gaussian_overlap_loss)
 
-			self.all_train_op = self.optimizer(self.all_losses, self.learning_rate, self.momentum, energy_variables)
+			self.energy_losses = tf.add_n(tf.get_collection('energy_losses'))
+			tf.summary.scalar("energy losses", self.energy_losses)
 
+			self.energy_train_op = self.optimizer(self.energy_losses, self.learning_rate, self.momentum, energy_variables)
 			self.summary_op = tf.summary.merge_all()
 			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
