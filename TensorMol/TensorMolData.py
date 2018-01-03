@@ -2080,3 +2080,55 @@ class TensorMolData_BP_Direct_WithEle(TensorMolData_BP_Direct_EE):
 			return [xyzs, Zs, labels, self.grads[self.test_ScratchPointer-ncases:self.test_ScratchPointer], natom, rad_p_ele, ang_t_elep, mil_jk]
 		else:
 			return [xyzs, Zs, labels, natom, rad_p_ele, ang_t_elep, mil_jk]
+
+
+
+class TensorMolData_BP_Direct_Charge_WithEle_Release(TensorMolData_BP_Direct_EE):
+	"""
+	This tensordata serves up batches digested within TensorMol.
+	"""
+	def __init__(self, MSet_=None,  Dig_=None, Name_=None, order_=3, num_indis_=1, type_="mol", WithGrad_ = False):
+		TensorMolData_BP_Direct_EE.__init__(self, MSet_, Dig_, Name_, order_, num_indis_, type_, WithGrad_)
+		self.Ree_cut = PARAMS["EECutoffOff"]
+		self.ele = None #  determine later
+		self.elep = None # determine later
+		return
+
+	def GetTrainBatch(self, ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTrain):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTrain)+" vs "+str(ncases))
+		if (self.ScratchPointer+ncases >= self.NTrain):
+			self.ScratchPointer = 0
+		self.ScratchPointer += ncases
+		xyzs = self.xyzs[self.ScratchPointer-ncases:self.ScratchPointer]
+		Zs = self.Zs[self.ScratchPointer-ncases:self.ScratchPointer]
+		Dlabels = self.Dlabels[self.ScratchPointer-ncases:self.ScratchPointer]
+		natom = self.natom[self.ScratchPointer-ncases:self.ScratchPointer]
+		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexLinear(self.Rr_cut, self.Ra_cut, self.ele, self.elep)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  Zs)
+		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(self.Ree_cut, self.ele)
+		return [xyzs, Zs, Dlabels, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom]
+
+	def GetTestBatch(self,ncases):
+		if (self.ScratchState == 0):
+			self.LoadDataToScratch()
+		reset = False
+		if (ncases > self.NTest):
+			raise Exception("Insufficent training data to fill a batch"+str(self.NTest)+" vs "+str(ncases))
+		if (self.test_ScratchPointer+ncases > self.Zs.shape[0]):
+			self.test_ScratchPointer = self.LastTrainMol
+		self.test_ScratchPointer += ncases
+		xyzs = self.xyzs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Zs = self.Zs[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Elabels = self.Elabels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		Dlabels = self.Dlabels[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		natom = self.natom[self.test_ScratchPointer-ncases:self.test_ScratchPointer]
+		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexLinear(self.Rr_cut, self.Ra_cut, self.ele, self.elep)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  Zs)
+		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(self.Ree_cut, self.ele)
+		return [xyzs, Zs, Dlabels, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom]
