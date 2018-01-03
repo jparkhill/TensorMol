@@ -46,10 +46,10 @@ class PorterKarplus(ForceHolder):
 
 def GenerateData():
 	"""
-	Generate 10,000 random configurations in a reasonable range.
+	Generate random configurations in a reasonable range.
 	and calculate their energies and forces.
 	"""
-	nsamp = 5000
+	nsamp = 10000
 	crds = np.random.uniform(4.0,size = (nsamp,3,3))
 	st = MSet()
 	PK = PorterKarplus()
@@ -63,11 +63,34 @@ def GenerateData():
 		st.mols[-1].CalculateAtomization()
 	return st
 
-def TestTraining():
+def TestTraining_John():
+	PARAMS["train_dipole"] = False
 	tset = GenerateData()
-	net = BehlerParinelloDirectSymFunc(tset)
+	net = BehlerParinelloDirectGauSH(tset)
 	net.train()
 	return
+
+def TestTraining():
+	a = GenerateData()
+	TreatedAtoms = a.AtomTypes()
+	PARAMS["NetNameSuffix"] = "training_sample"
+	PARAMS["learning_rate"] = 0.00001
+	PARAMS["momentum"] = 0.95
+	PARAMS["max_steps"] = 15 # Train for 5 epochs in total
+	PARAMS["batch_size"] =  100
+	PARAMS["test_freq"] = 5 # Test for every epoch
+	PARAMS["tf_prec"] = "tf.float64" # double precsion
+	PARAMS["EnergyScalar"] = 1.0
+	PARAMS["GradScalar"] = 1.0/20.0
+	PARAMS["NeuronType"] = "sigmoid_with_param" # choose activation function
+	PARAMS["sigmoid_alpha"] = 100.0  # activation params
+	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 1.0] # each layer's keep probability for dropout
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
+	tset = TensorMolData_BP_Direct_EandG_Release(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EandG_SymFunction")
+	PARAMS['Profiling']=0
+	manager.Train(1)
+
 
 def TestOpt():
 	return
@@ -75,4 +98,4 @@ def TestOpt():
 def TestMD():
 	return
 
-TestTraining()
+TestTraining_John()

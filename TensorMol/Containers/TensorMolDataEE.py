@@ -13,7 +13,6 @@ from .Sets import *
 from .DigestMol import *
 from .TensorMolData import *
 
-
 class TensorMolData_BP_Multipole(TensorMolData_BP):
 	"""
 			A tensordata for learning the multipole of molecules using Behler-Parinello scheme.

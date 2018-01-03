@@ -14,8 +14,8 @@ from __future__ import print_function
 import time
 import random
 
-from TensorMol.TensorMolData import *
-from TensorMol.RawEmbeddings import *
+from ..Containers.TensorMolData import *
+from ..TFDescriptors.RawEmbeddings import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirect(object):
@@ -274,7 +274,10 @@ class BehlerParinelloDirect(object):
 		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
 
 	def variable_summaries(self, var):
-		"""Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+		"""
+		OPTIONALLY --- Attach a lot of summaries to a Tensor (for TensorBoard visualization).
+		These actually take dozens of seconds to initialize.
+		"""
 		with tf.name_scope('summaries'):
 			mean = tf.reduce_mean(var)
 			tf.summary.scalar('mean', mean)
