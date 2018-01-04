@@ -8,7 +8,6 @@ from __future__ import print_function
 from ..ForceModifiers.Neighbors import *
 from ..ForceModels.Electrostatics import *
 from ..Simulations.SimpleMD import *
-from MolEmb import GetRDF_Bin, CountInRange
 
 class Lattice:
 	def __init__(self, latvec_):

@@ -6,7 +6,6 @@ TODO: extend to triples.
 
 from __future__ import absolute_import
 import numpy as np
-from MolEmb import Make_NListNaive, Make_NListLinear, Make_DistMat
 
 class MBNeighbors:
 	"""

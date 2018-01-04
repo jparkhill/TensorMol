@@ -15,8 +15,9 @@ TODO:
 
 from __future__ import absolute_import
 from __future__ import print_function
-from ..Util import * 
+from ..Util import *
 import numpy as np
+from MolEmb import *
 import time
 
 class NeighborList:
