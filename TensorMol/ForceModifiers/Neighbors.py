@@ -18,7 +18,7 @@ from __future__ import print_function
 import numpy as np
 #from PairProviderTF import *
 from ..Util import *
-from MolEmb import Make_NListNaive, Make_NListLinear
+from MolEmb import * 
 import time
 
 class NeighborList:

@@ -15,7 +15,8 @@ import time
 import random
 
 from ..Containers.TensorMolData import *
-from ..TFDescriptors.RawEmbeddings import *
+from ..TFDescriptors.RawSH import *
+from ..TFDescriptors.RawSymFunc import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirect(object):

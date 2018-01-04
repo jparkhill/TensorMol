@@ -158,4 +158,4 @@ def TestOpt():
 def TestMD():
 	return
 
-TestTraining_John()
+TestTraining()
