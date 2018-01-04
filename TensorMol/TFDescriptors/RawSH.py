@@ -499,7 +499,7 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gauss_params, atomic_emb
 #
 # John, we still need a sparse version of this.
 #
-def tf_gauss_harmonics_echannel(xyzs, Zs, elements, gauss_params, l_max):
+def tf_gauss_harmonics_channel(xyzs, Zs, elements, gauss_params, l_max):
 	"""
 	Encodes atoms into a gaussians * spherical harmonics embedding
 	Works on a batch of molecules. This is the embedding routine used

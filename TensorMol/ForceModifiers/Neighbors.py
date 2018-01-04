@@ -15,10 +15,8 @@ TODO:
 
 from __future__ import absolute_import
 from __future__ import print_function
+from ..Util import * 
 import numpy as np
-#from PairProviderTF import *
-from ..Util import *
-from MolEmb import Make_NListNaive, Make_NListLinear
 import time
 
 class NeighborList:

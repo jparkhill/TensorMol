@@ -15,7 +15,8 @@ import time
 import random
 
 from ..Containers.TensorMolData import *
-from ..TFDescriptors.RawEmbeddings import *
+from ..TFDescriptors.RawSH import *
+from ..TFDescriptors.RawSymFunc import *
 from tensorflow.python.client import timeline
 
 class BehlerParinelloDirect(object):
@@ -472,11 +473,11 @@ class BehlerParinelloDirect(object):
 			delta_charge = net_charge / tf.cast(natom, self.tf_precision)
 			charges = output - tf.expand_dims(delta_charge, axis=1)
 			dipole = tf.reduce_sum(xyzs * tf.expand_dims(charges, axis=-1), axis=1)
-
-			quadrupole_coords = 3 * tf.stack([tf.stack([tf.square(xyzs[...,0]), xyzs[...,0] * xyzs[...,1], tf.square(xyzs[...,1])], axis=-1),
-								tf.stack([xyzs[...,0] * xyzs[...,2], xyzs[...,1] * xyzs[...,2], tf.square(xyzs[...,2])], axis=-1)], axis=-2)
-			quadrupole_coords -= tf.norm(xyzs + 1e-24, axis=-1, keep_dims=True)
-			quadrupole = tf.reduce_sum(quadrupole_coords * tf.expand_dims(tf.expand_dims(charges, axis=-1), axis=-1), axis=1)
+			if (PARAMS["train_quadropole"]):
+				quadrupole_coords = 3 * tf.stack([tf.stack([tf.square(xyzs[...,0]), xyzs[...,0] * xyzs[...,1], tf.square(xyzs[...,1])], axis=-1),
+									tf.stack([xyzs[...,0] * xyzs[...,2], xyzs[...,1] * xyzs[...,2], tf.square(xyzs[...,2])], axis=-1)], axis=-2)
+				quadrupole_coords -= tf.norm(xyzs + 1e-24, axis=-1, keep_dims=True)
+				quadrupole = tf.reduce_sum(quadrupole_coords * tf.expand_dims(tf.expand_dims(charges, axis=-1), axis=-1), axis=1)
 		return dipole, charges, net_charge, variables
 
 	def optimizer(self, loss, learning_rate, momentum, variables):
