@@ -123,6 +123,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_SymFunction(self.TData)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EandG_SymFunction"):
 			self.Instances = MolInstance_DirectBP_EandG_SymFunction(self.TData)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Charge_SymFunction"):
+			self.Instances = MolInstance_DirectBP_Charge_SymFunction(self.TData)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(self.TData)
 		elif (self.NetType == "Dipole_BP_2"):
@@ -1457,6 +1459,8 @@ class TFMolManage(TFManage):
 			self.Instances = MolInstance_DirectBP_EE_SymFunction(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "fc_sqdiff_BP_Direct_EandG_SymFunction"):
 			self.Instances = MolInstance_DirectBP_EandG_SymFunction(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
+		elif (self.NetType == "fc_sqdiff_BP_Direct_Charge_SymFunction"):
+			self.Instances = MolInstance_DirectBP_Charge_SymFunction(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP"):
 			self.Instances = MolInstance_BP_Dipole(None,self.TrainedNetworks[0], Trainable_ = self.Trainable)
 		elif (self.NetType == "Dipole_BP_2"):
