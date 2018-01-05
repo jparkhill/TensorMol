@@ -1779,6 +1779,9 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 		self.keep_prob = np.asarray(PARAMS["KeepProb"])
 		self.nlayer = len(PARAMS["KeepProb"]) - 1
 		self.monitor_mset =  PARAMS["MonitorSet"]
+	
+		print ("self.eles_pairs:",self.eles_pairs)
+		
 
 	def SetANI1Param(self, prec=np.float64):
 		"""
@@ -1842,6 +1845,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 		self.Radp_Ele_pl, self.Angt_Elep_pl = None, None
 		self.mil_jk_pl, self.mil_j_pl = None, None
 		self.keep_prob_pl = None
+		self.eleneg  = None
 		return
 
 
@@ -1871,6 +1875,9 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear_WithEle_Release(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_j_pl, self.mil_jk_pl)
 			self.dipole, self.charge = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.Reep_e1e2_pl,  self.keep_prob_pl)
+			self.eleneg = self.eleneg_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.keep_prob_pl)
+			self.charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
+			self.debug1, self.debug2 = self.pairwise_charge_exchange(self.Sym_Index, self.xyzs_pl, self.Zs_pl, self.eleneg, self.charge, Ele, Elep, self.Reep_e1e2_pl, self.keep_prob_pl)
 			self.total_loss, self.dipole_loss = self.loss_op(self.dipole, self.Dlabel_pl, self.natom_pl)
 			tf.summary.scalar("loss", self.total_loss)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -1988,7 +1995,6 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 		# convert the index matrix from bool to float
 		xyzsInBohr = tf.multiply(xyzs,BOHRPERA)
 		Dbranches=[]
-		atom_outputs_eleneg = []
 		output_eleneg = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
 		with tf.name_scope("EleNegNet"):
 			for e in range(len(self.eles)):
@@ -2015,7 +2021,6 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 					shp_out = tf.shape(Dbranches[-1][-1])
 					cut = tf.slice(Dbranches[-1][-1],[0,0],[shp_out[0],1])
 					rshp = tf.reshape(cut,[1,shp_out[0]])
-					atom_outputs_eleneg.append(rshp)
 					rshpflat = tf.reshape(cut,[shp_out[0]])
 					atom_indice = tf.slice(eleneg_index, [0,1], [shp_out[0],1])
 					ToAdd = tf.reshape(tf.scatter_nd(atom_indice, rshpflat, [self.batch_size*self.MaxNAtoms]),[self.batch_size, self.MaxNAtoms])
@@ -2024,7 +2029,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 		return  output_eleneg
 
 
-	def pairwise_charge_exchange(self, inp, indexs, ini_charge, eleneg, Reep_e1e2,  keep_prob):
+	def pairwise_charge_exchange(self, indexs, xyzs, Zs, eleneg, charge, Ele, Elep, Reep_e1e2, keep_prob):
 		"""
 		Pairwise charge exchange model.
 
@@ -2038,9 +2043,50 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 		Returns:
 			The BP graph electronic negativity  output
 		"""
-			
-
-
+		xyzsInBohr = tf.multiply(xyzs,BOHRPERA)
+		Cbranches = []
+		pair_indexs = []
+		npair, pair_dim = Reep_e1e2.get_shape().as_list()
+		ele1 = tf.gather_nd(tf.reshape(Ele,[2]), tf.reshape(Reep_e1e2[:,3],[-1,1]))
+		ele2 = tf.gather_nd(tf.reshape(Ele,[2]), tf.reshape(Reep_e1e2[:,4],[-1,1]))
+		ele12 = tf.transpose(tf.stack([ele1, ele2]))
+		with tf.name_scope("ChargeNet"):
+			delta_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
+			for pair in range(len(self.eles_pairs)):
+				mask = tf.reduce_all(tf.equal(Elep[pair], ele12), 1)
+				masked  = tf.boolean_mask(Reep_e1e2, mask)
+				neg1 = tf.gather_nd(eleneg, masked[:,:2])
+				neg2 = tf.gather_nd(eleneg, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
+				charge1 = tf.gather_nd(charge, masked[:,:2])
+				charge2 = tf.gather_nd(charge, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
+				dist = TFDistancesLinear(xyzs, masked[:,:3])
+				pair_indexs.append(masked)
+				charge_inputs = tf.transpose(tf.stack([neg1, charge1, neg2, charge2, dist]))
+				Cbranches.append([])
+				charge_shp_in = tf.shape(charge_inputs)
+					
+				for i in range(len(self.HiddenLayers)):
+					if i == 0:
+						with tf.name_scope(str(pair)+'_hidden1_charge'):
+							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[5, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(5.0)), var_wd=0.001)
+							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
+					else:
+						with tf.name_scope(str(pair)+'_hidden'+str(i+1)+"_charge"):
+							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[i]), weights) + biases))
+				with tf.name_scope(str(pair)+'_regression_linear_charge'):
+					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+					biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
+					Cbranches[-1].append(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[-1]), weights) + biases)
+					shp_out = tf.shape(Cbranches[-1][-1])
+					rshp = tf.reshape(Cbranches[-1][-1],[-1])
+					delta_charge += tf.scatter_nd(masked[:,:2], rshp, [self.batch_size, self.MaxNAtoms])
+					delta_charge -= tf.scatter_nd(tf.transpose(tf.stack([masked[:,0], masked[:,2]])), rshp, [self.batch_size, self.MaxNAtoms])	
+			charge += delta_charge
+			dipole = tf.reduce_sum(tf.multiply(xyzsInBohr, tf.reshape(charge,[self.batch_size,self.MaxNAtoms,1])), axis=1)	
+		return  dipole, delta_charge
 
 
 	def loss_op(self, dipole, Dlabels, natom):
@@ -2089,10 +2135,12 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			batch_data = self.TData.GetTrainBatch(self.batch_size)+ [self.keep_prob]
 			actual_mols  = self.batch_size
 			t = time.time()
-			dump_2, total_loss_value, dipole_loss, mol_dipole, atom_charge = self.sess.run([self.train_op, self.total_loss, self.dipole_loss, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
+			dump_2, total_loss_value, dipole_loss, mol_dipole, atom_charge, debug1, debug2 = self.sess.run([self.train_op, self.total_loss, self.dipole_loss, self.dipole, self.charge, self.debug1, self.debug2], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + dipole_loss
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
+			print ("debug1:", debug1, debug1.shape, debug1[0], np.sum(debug1[0]))
+			print ("debug2:", debug2, debug2.shape, debug2[0], np.sum(debug2[0]))
 		self.print_training(step, train_loss, num_of_mols, duration)
 		return
 
