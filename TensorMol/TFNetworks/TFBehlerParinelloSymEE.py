@@ -1874,10 +1874,10 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			zeta = tf.Variable(self.zeta, trainable=False, dtype = self.tf_prec)
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear_WithEle_Release(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_j_pl, self.mil_jk_pl)
-			self.dipole, self.charge = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.Reep_e1e2_pl,  self.keep_prob_pl)
+			#self.dipole, self.charge = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.Reep_e1e2_pl,  self.keep_prob_pl)
 			self.eleneg = self.eleneg_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.keep_prob_pl)
-			self.charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
-			self.debug1, self.debug2 = self.pairwise_charge_exchange(self.Sym_Index, self.xyzs_pl, self.Zs_pl, self.eleneg, self.charge, Ele, Elep, self.Reep_e1e2_pl, self.keep_prob_pl)
+			self.ini_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
+			self.dipole, self.charge = self.pairwise_charge_exchange(self.Sym_Index, self.xyzs_pl, self.Zs_pl, self.eleneg, self.ini_charge, Ele, Elep, self.Reep_e1e2_pl, self.keep_prob_pl)
 			self.total_loss, self.dipole_loss = self.loss_op(self.dipole, self.Dlabel_pl, self.natom_pl)
 			tf.summary.scalar("loss", self.total_loss)
 			self.train_op = self.training(self.total_loss, self.learning_rate, self.momentum)
@@ -2061,7 +2061,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 				charge2 = tf.gather_nd(charge, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
 				dist = TFDistancesLinear(xyzs, masked[:,:3])
 				pair_indexs.append(masked)
-				charge_inputs = tf.transpose(tf.stack([neg1, charge1, neg2, charge2, dist]))
+				charge_inputs = tf.transpose(tf.stack([neg1, charge1, neg2, charge2, 1.0/dist]))
 				Cbranches.append([])
 				charge_shp_in = tf.shape(charge_inputs)
 					
@@ -2086,7 +2086,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 					delta_charge -= tf.scatter_nd(tf.transpose(tf.stack([masked[:,0], masked[:,2]])), rshp, [self.batch_size, self.MaxNAtoms])	
 			charge += delta_charge
 			dipole = tf.reduce_sum(tf.multiply(xyzsInBohr, tf.reshape(charge,[self.batch_size,self.MaxNAtoms,1])), axis=1)	
-		return  dipole, delta_charge
+		return  dipole, charge
 
 
 	def loss_op(self, dipole, Dlabels, natom):
@@ -2135,12 +2135,12 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			batch_data = self.TData.GetTrainBatch(self.batch_size)+ [self.keep_prob]
 			actual_mols  = self.batch_size
 			t = time.time()
-			dump_2, total_loss_value, dipole_loss, mol_dipole, atom_charge, debug1, debug2 = self.sess.run([self.train_op, self.total_loss, self.dipole_loss, self.dipole, self.charge, self.debug1, self.debug2], feed_dict=self.fill_feed_dict(batch_data))
+			dump_2, total_loss_value, dipole_loss, dipole, charge = self.sess.run([self.train_op, self.total_loss, self.dipole_loss, self.dipole, self.charge], feed_dict=self.fill_feed_dict(batch_data))
 			train_loss = train_loss + dipole_loss
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
-			print ("debug1:", debug1, debug1.shape, debug1[0], np.sum(debug1[0]))
-			print ("debug2:", debug2, debug2.shape, debug2[0], np.sum(debug2[0]))
+			#print ("dipole:", dipole, dipole.shape, dipole[0], np.sum(dipole[0]))
+			#print ("charge:", charge, charge.shape, charge[0], np.sum(charge[0]))
 		self.print_training(step, train_loss, num_of_mols, duration)
 		return
 
@@ -2165,6 +2165,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			duration = time.time() - start_time
 			num_of_mols += actual_mols
 		print ("testing...")
+		print ("charge:", atom_charge, atom_charge.shape, atom_charge[0], np.sum(atom_charge[0]))
 		self.print_training(step, test_loss, num_of_mols, duration, False)
 		return test_loss
 
