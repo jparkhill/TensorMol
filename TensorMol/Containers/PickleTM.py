@@ -1,5 +1,9 @@
 from __future__ import absolute_import
-import pickle,sys,copyreg
+import pickle,sys
+if sys.version_info > (3, 0):
+	import copyreg
+else:
+	import copy_reg
 
 renametable = {
 	'TensorMol.TensorMolData_EE': 'TensorMol.TensorMolDataEE',
