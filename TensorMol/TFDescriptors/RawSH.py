@@ -496,9 +496,6 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gauss_params, atomic_emb
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
-#
-# John, we still need a sparse version of this.
-#
 def tf_gauss_harmonics_channel(xyzs, Zs, elements, gauss_params, l_max):
 	"""
 	Encodes atoms into a gaussians * spherical harmonics embedding

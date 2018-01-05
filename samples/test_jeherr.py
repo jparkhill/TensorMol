@@ -677,7 +677,7 @@ def train_Poly_GauSH():
 # test_tf_neighbor()
 # train_energy_pairs_triples()
 # train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-# train_energy_GauSH("H2O_wb97xd_1to21_with_prontonated")
+train_energy_GauSH("H2O_wb97xd_1to21_with_prontonated")
 # test_h2o()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
@@ -726,63 +726,63 @@ def train_Poly_GauSH():
 # 		pass
 # a.Save()
 
-a = MSet()
-a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
-# Tesselate that water to create a box
-ntess = 1
-latv = 2.8*np.eye(3)
-# Start with a water in a ten angstrom box.
-lat = Lattice(latv)
-mc = lat.CenteredInLattice(a.mols[0])
-mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
-mt.WriteXYZfile()
-b=MSet()
-for i in range(2):
-	b.mols.append(mt)
-# a=MSet("SmallMols_rand")
-# a.Load()
-maxnatoms = b.MaxNAtoms()
-zlist = []
-xyzlist = []
-n_atoms_list = []
-for i, mol in enumerate(b.mols):
-	paddedxyz = np.zeros((maxnatoms,3), dtype=np.float32)
-	paddedxyz[:mol.atoms.shape[0]] = mol.coords
-	paddedz = np.zeros((maxnatoms), dtype=np.int32)
-	paddedz[:mol.atoms.shape[0]] = mol.atoms
-	xyzlist.append(paddedxyz)
-	zlist.append(paddedz)
-	n_atoms_list.append(mol.NAtoms())
-	# if i == 1:
-	# 	break
-xyzstack = tf.stack(xyzlist)
-zstack = tf.stack(zlist)
-natomsstack = tf.stack(n_atoms_list)
-r_cutoff = tf.constant(7.0, dtype=tf.float32)
-gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
-atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
-elements = tf.constant([1, 8], dtype=tf.int32)
-tmp = tf_sparse_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4, r_cutoff, 3)
-tmp2 = tf_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4)
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
-options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-run_metadata = tf.RunMetadata()
-# for i in range(a.mols[0].atoms.shape[0]):
-# 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
-@TMTiming("test")
-def get_pairs():
-	tmp3, tmp4 = sess.run([tmp, tmp2], options=options, run_metadata=run_metadata)
-	return tmp3, tmp4
-tmp5, tmp6 = get_pairs()
-# print tmp5[0][0]
-# print tmp6[0][0]
-print np.isclose(tmp5[0][1], tmp6[0][1], 1e-04)
-# print tmp5
-# print tmp6[0][0,440]
-# print tmp5.shape
-# print tmp6.shape
-fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-chrome_trace = fetched_timeline.generate_chrome_trace_format()
-with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-	f.write(chrome_trace)
+# a = MSet()
+# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+# # Tesselate that water to create a box
+# ntess = 1
+# latv = 2.8*np.eye(3)
+# # Start with a water in a ten angstrom box.
+# lat = Lattice(latv)
+# mc = lat.CenteredInLattice(a.mols[0])
+# mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+# mt.WriteXYZfile()
+# b=MSet()
+# for i in range(2):
+# 	b.mols.append(mt)
+# # a=MSet("SmallMols_rand")
+# # a.Load()
+# maxnatoms = b.MaxNAtoms()
+# zlist = []
+# xyzlist = []
+# n_atoms_list = []
+# for i, mol in enumerate(b.mols):
+# 	paddedxyz = np.zeros((maxnatoms,3), dtype=np.float32)
+# 	paddedxyz[:mol.atoms.shape[0]] = mol.coords
+# 	paddedz = np.zeros((maxnatoms), dtype=np.int32)
+# 	paddedz[:mol.atoms.shape[0]] = mol.atoms
+# 	xyzlist.append(paddedxyz)
+# 	zlist.append(paddedz)
+# 	n_atoms_list.append(mol.NAtoms())
+# 	# if i == 1:
+# 	# 	break
+# xyzstack = tf.stack(xyzlist)
+# zstack = tf.stack(zlist)
+# natomsstack = tf.stack(n_atoms_list)
+# r_cutoff = tf.constant(7.0, dtype=tf.float32)
+# gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
+# atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
+# elements = tf.constant([1, 8], dtype=tf.int32)
+# tmp = tf_sparse_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4, r_cutoff, 3)
+# tmp2 = tf_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4)
+# sess = tf.Session()
+# sess.run(tf.global_variables_initializer())
+# options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+# run_metadata = tf.RunMetadata()
+# # for i in range(a.mols[0].atoms.shape[0]):
+# # 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
+# @TMTiming("test")
+# def get_pairs():
+# 	tmp3, tmp4 = sess.run([tmp, tmp2], options=options, run_metadata=run_metadata)
+# 	return tmp3, tmp4
+# tmp5, tmp6 = get_pairs()
+# # print tmp5[0][0]
+# # print tmp6[0][0]
+# print np.isclose(tmp5[0][1], tmp6[0][1], 1e-04)
+# # print tmp5
+# # print tmp6[0][0,440]
+# # print tmp5.shape
+# # print tmp6.shape
+# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+# chrome_trace = fetched_timeline.generate_chrome_trace_format()
+# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+# 	f.write(chrome_trace)
