@@ -863,3 +863,51 @@ def tf_neighbor_list(xyzs, Zs, cutoff):
 			pair_dist.append(mol_pair_dist)
 			pair_dxyz.append(mol_pair_dxyz)
 		return tf.concat(pair_idx, axis=0), tf.concat(pair_dist, axis=0), tf.concat(pair_dxyz, axis=0)
+
+def tf_neighbor_list_sort(xyzs, Zs, num_atoms, cutoff, elements):
+	num_mols = Zs.get_shape().as_list()[0]
+	padding_mask = tf.cast(tf.where(tf.not_equal(Zs, 0)), tf.int32)
+	mol_coords = tf.dynamic_partition(tf.gather_nd(xyzs, padding_mask), padding_mask[:,0], num_mols)
+	for i, mol in enumerate(mol_coords):
+		dx = tf.abs(tf.expand_dims(mol[...,0], axis=-1) - tf.expand_dims(mol[...,0], axis=-2))
+		mol_pair_idx = tf.where(tf.less(dx, cutoff))
+		identity_mask = tf.where(tf.not_equal(mol_pair_idx[:,0], mol_pair_idx[:,1]))
+		mol_pair_idx = tf.gather_nd(mol_pair_idx, identity_mask)
+		mol_pair_dxyz = tf.gather(mol, mol_pair_idx[:,0]) - tf.gather(mol, mol_pair_idx[:,1])
+		mol_pair_dist = tf.norm(mol_pair_dxyz + 1.e-16, axis=1)
+		cutoff_pairs = tf.where(tf.less(mol_pair_dist, cutoff))
+		mol_pair_idx = tf.cast(tf.gather_nd(mol_pair_idx, cutoff_pairs), tf.int32)
+		# pair_element = tf.gather(Zs[i], mol_pair_idx[:,1])
+		# pair_element_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_element, axis=-1),
+		# 					tf.expand_dims(elements, axis=0)))[:,1:], tf.int32)
+		# return tf.gather(mol_pair_idx[:,1], tf.where(tf.equal(mol_pair_idx[:,0], 0)))
+		tfarr = tf.TensorArray(tf.int32, size=num_atoms[i]-11, infer_shape=False)
+
+		def cond(j, arr):
+ 			return tf.less(j, num_atoms[i]-11)
+
+		def body(j, arr):
+			atom_pairs = tf.gather_nd(mol_pair_idx[:,1], tf.where(tf.equal(mol_pair_idx[:,0], j)))
+			pair_element = tf.gather(Zs[i], atom_pairs)
+			pair_element_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_element, axis=-1),
+							tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+			sort_element, sort_idx = tf.nn.top_k(pair_element_idx, k=tf.shape(pair_element_idx)[0])
+			unique, idx, count = tf.unique_with_counts(sort_element)
+			j_idx = tf.map_fn(lambda x: tf.range(x), count)
+			return (tf.add(j, 1), arr.write(j, j_idx))
+
+		_, reconstructed = tf.while_loop(cond, body, (tf.constant(0), tfarr))
+ 		return reconstructed.concat()
+
+		return tf.dynamic_partition(mol_pair_idx, mol_pair_idx[:,0], tf.reduce_max(mol_pair_idx[:,0]))
+		mol_pair_dist = tf.gather_nd(mol_pair_dist, cutoff_pairs)
+		mol_pair_dxyz = tf.gather_nd(mol_pair_dxyz, cutoff_pairs)
+		mol_pair_idx = tf.concat([tf.fill([tf.shape(mol_pair_idx)[0], 1], i), tf.cast(mol_pair_idx, tf.int32), pair_element_idx], axis=-1)
+		return mol_pair_idx
+		_, atom_sort_idx = tf.nn.top_k(mol_pair_idx[:,3], k=tf.shape(mol_pair_idx)[0])
+		return tf.gather(mol_pair_idx, atom_sort_idx)
+		return mol_pair_idx
+		pair_idx.append(tf.concat([tf.fill([tf.shape(mol_pair_idx)[0], 1], i), tf.cast(mol_pair_idx, tf.int32)], axis=-1))
+		pair_dist.append(mol_pair_dist)
+		pair_dxyz.append(mol_pair_dxyz)
+		return pair_element_idx
