@@ -496,7 +496,7 @@ def tf_gaussian_spherical_harmonics(xyzs, Zs, elements, gauss_params, atomic_emb
 	molecule_indices = tf.dynamic_partition(element_indices[:,0:2], element_indices[:,2], num_elements)
 	return element_embeddings, molecule_indices
 
-def tf_gauss_harmonics_channel(xyzs, Zs, elements, gauss_params, l_max):
+def tf_gauss_harmonics_echannel(xyzs, Zs, elements, gauss_params, l_max):
 	"""
 	Encodes atoms into a gaussians * spherical harmonics embedding
 	Works on a batch of molecules. This is the embedding routine used
@@ -573,14 +573,16 @@ def tf_sparse_gauss_harmonics_echannel(xyzs, Zs, elements, gauss_params, l_max, 
 						[tf.shape(pair_dist)[0], tf.shape(gauss_params)[0] * tf.square(l_max + 1) * num_elements])
 
 	mol_embed = tf.dynamic_partition(channel_embed, pair_idx[:,0], num_mols)
-	mol_idx = tf.dynamic_partition(pair_idx[:,1], pair_idx[:,0], num_mols)
+	mol_idx = tf.dynamic_partition(pair_idx[:,1:], pair_idx[:,0], num_mols)
 	mols = []
 	for i in range(num_mols):
-		atom_embed = tf.dynamic_partition(mol_embed[i], mol_idx[i], max_atoms)
-		atoms = []
-		for j in range(max_atoms):
-			atoms.append(tf.reduce_sum(atom_embed[j], axis=0))
-		mols.append(tf.stack(atoms, axis=0))
+		scatter_embed = tf.reduce_sum(tf.scatter_nd(mol_idx[i], mol_embed[i],
+						[max_atoms, max_atoms, num_elements * tf.shape(gauss_params)[0] * (l_max + 1) ** 2]), axis=1)
+		# atom_embed = tf.dynamic_partition(mol_embed[i], mol_idx[i], max_atoms)
+		# atoms = []
+		# for j in range(max_atoms):
+		# 	atoms.append(tf.reduce_sum(atom_embed[j], axis=0))
+		mols.append(scatter_embed)
 
 	embeds = tf.concat(mols, axis=0)
 	atom_idx = tf.where(tf.not_equal(Zs, 0))
