@@ -321,7 +321,7 @@ class NeighborListSet:
 			return trp, trt
 
 	@TMTiming("buildPairsWithBothEleIndex")
-	def buildPairsWithBothEleIndex(self, rcut=5.0, ele=None):
+	def buildPairsWithBothEleIndex(self, rcut=5.0, ele=None, sort_=False):
 		trp  = self.buildPairs(rcut)
 		Z1 = self.ele[trp[:, 0], trp[:, 1]]
 		Z2 = self.ele[trp[:, 0], trp[:, 2]]
@@ -330,7 +330,15 @@ class NeighborListSet:
 		pair_index1 = np.where(np.all(pair_mask1, axis=-1))[1]
 		pair_index2 = np.where(np.all(pair_mask2, axis=-1))[1]
 		trpE1E2 = np.concatenate((trp, pair_index1.reshape((-1,1)), pair_index2.reshape((-1,1))), axis=-1)
+		if sort_:
+			#print ("before sorted:", trpE1E2)
+			index1 = np.argsort(trpE1E2[:,3:])
+			index2 = np.zeros((trpE1E2.shape[0],2), dtype=int)
+			index2[:,:] = np.arange(trpE1E2.shape[0]).reshape((trpE1E2.shape[0],1))
+			trpE1E2[:,1:3] = trpE1E2[:,1:3][index2, index1]
+			trpE1E2[:,3:] = trpE1E2[:,3:][index2, index1]
 		#print ("trpE1E2:", trpE1E2.shape)
+			#print ("after sorted:", trpE1E2)
 		return trpE1E2
 
 	def buildPairsAndTriplesWithEleIndex(self, rcut_pairs=5.0, rcut_triples=5.0, ele=None, elep=None):
