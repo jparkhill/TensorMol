@@ -129,20 +129,22 @@ def tf_sparse_gauss(dist_tensor, gauss_params):
 	exponent = ((tf.square(tf.expand_dims(dist_tensor, axis=-1) - tf.expand_dims(gauss_params[:,0], axis=0)))
 				/ (-2.0 * (gauss_params[:,1] ** 2)))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
-	# gaussian_embed *= tf.expand_dims(tf.where(tf.not_equal(dist_tensor, 0), tf.ones_like(dist_tensor),
-	# 					tf.zeros_like(dist_tensor)), axis=-1)
-	return gaussian_embed
+	xi = (dist_tensor - 6.0) / (7.0 - 6.0)
+	cutoff_factor = 1 - 3 * tf.square(xi) + 2 * tf.pow(xi, 3.0)
+	cutoff_factor = tf.where(tf.greater(dist_tensor, 7.0), tf.zeros_like(cutoff_factor), cutoff_factor)
+	cutoff_factor = tf.where(tf.less(dist_tensor, 6.0), tf.ones_like(cutoff_factor), cutoff_factor)
+	return gaussian_embed * tf.expand_dims(cutoff_factor, axis=-1)
 
 def tf_gauss(dist_tensor, gauss_params):
 	exponent = (tf.square(tf.expand_dims(dist_tensor, axis=-1) - tf.expand_dims(tf.expand_dims(gauss_params[:,0], axis=0), axis=1))) \
 				/ (-2.0 * (gauss_params[:,1] ** 2))
 	gaussian_embed = tf.where(tf.greater(exponent, -25.0), tf.exp(exponent), tf.zeros_like(exponent))
 	identity_mask = tf.matrix_set_diag(tf.ones_like(gaussian_embed[:,:,0]), tf.zeros_like(gaussian_embed[0,:,0]))
-	# xi = (dist_tensor - 5.5) / (6.5 - 5.5)
-	# cutoff_factor = 1 - 3 * tf.square(xi) + 2 * tf.pow(xi, 3.0)
-	# cutoff_factor = tf.where(tf.greater(dist_tensor, 6.5), tf.zeros_like(cutoff_factor), cutoff_factor)
-	# cutoff_factor = tf.where(tf.less(dist_tensor, 5.5), tf.ones_like(cutoff_factor), cutoff_factor)
-	return gaussian_embed * tf.expand_dims(identity_mask, axis=-1)
+	xi = (dist_tensor - 6.0) / (7.0 - 6.0)
+	cutoff_factor = 1 - 3 * tf.square(xi) + 2 * tf.pow(xi, 3.0)
+	cutoff_factor = tf.where(tf.greater(dist_tensor, 7.0), tf.zeros_like(cutoff_factor), cutoff_factor)
+	cutoff_factor = tf.where(tf.less(dist_tensor, 6.0), tf.ones_like(cutoff_factor), cutoff_factor)
+	return gaussian_embed * tf.expand_dims(identity_mask, axis=-1) * tf.expand_dims(cutoff_factor, axis=-1)
 
 def tf_spherical_harmonics_0(inv_dist_tensor):
 	return tf.fill(tf.shape(inv_dist_tensor), tf.constant(0.28209479177387814, dtype=eval(PARAMS["tf_prec"])))
@@ -538,7 +540,7 @@ def tf_gauss_harmonics_echannel(xyzs, Zs, elements, gauss_params, l_max):
 	mol_idx = tf.dynamic_partition(atom_idx, partition_idx, num_elements)
 	return embeds, mol_idx
 
-def tf_sparse_gauss_harmonics_echannel(xyzs, Zs, elements, gauss_params, l_max, r_cutoff, max_atoms):
+def tf_sparse_gauss_harmonics_echannel(xyzs, Zs, num_atoms, elements, gauss_params, l_max, r_cutoff):
 	"""
 	Encodes atoms into a gaussians * spherical harmonics embedding
 	Works on a batch of molecules. This is the embedding routine used
@@ -558,39 +560,25 @@ def tf_sparse_gauss_harmonics_echannel(xyzs, Zs, elements, gauss_params, l_max, 
 	"""
 	num_elements = elements.get_shape().as_list()[0]
 	num_mols = Zs.get_shape().as_list()[0]
-	pair_idx, pair_dist, pair_dxyz = tf_neighbor_list(xyzs, Zs, r_cutoff)
-	pair_element = tf.gather_nd(Zs, pair_idx[:,::2])
-	element_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, pair_idx[:,:2]), axis=-1),
-				tf.expand_dims(elements, axis=-2)))[:,1], tf.int32)
-	gauss = tf_sparse_gauss(pair_dist, gauss_params)
-	harmonics = tf_spherical_harmonics(pair_dxyz, pair_dist, l_max)
+	max_atoms = tf.reduce_max(num_atoms)
+	pair_idx, pair_dist, pair_dxyz = tf_neighbor_list_sort(xyzs, Zs, num_atoms, elements, r_cutoff)
+	k_max = tf.reduce_max(pair_idx[:,3])
+
+	gauss = tf.reshape(tf_sparse_gauss(pair_dist, gauss_params),
+			[tf.shape(pair_dist)[0], tf.shape(gauss_params)[0]])
+	harmonics = tf.reshape(tf_spherical_harmonics(pair_dxyz, pair_dist, l_max),
+				[tf.shape(pair_dist)[0], tf.square(l_max + 1)])
 	pair_embed = tf.reshape(tf.einsum('ij,ik->ijk', gauss, harmonics),
 				[-1, tf.shape(gauss_params)[0] * tf.square(l_max + 1)])
-
-	channel_scatter = tf.where(tf.equal(tf.expand_dims(pair_element, axis=1), tf.expand_dims(elements, axis=0)),
-					tf.ones([tf.shape(pair_dist)[0], num_elements]), tf.zeros([tf.shape(pair_dist)[0], num_elements]))
-	channel_embed = tf.reshape(tf.expand_dims(pair_embed, axis=1) * tf.expand_dims(channel_scatter, axis=-1),
-						[tf.shape(pair_dist)[0], tf.shape(gauss_params)[0] * tf.square(l_max + 1) * num_elements])
-
-	mol_embed = tf.dynamic_partition(channel_embed, pair_idx[:,0], num_mols)
-	mol_idx = tf.dynamic_partition(pair_idx[:,1:], pair_idx[:,0], num_mols)
-	mols = []
-	for i in range(num_mols):
-		scatter_embed = tf.reduce_sum(tf.scatter_nd(mol_idx[i], mol_embed[i],
-						[max_atoms, max_atoms, num_elements * tf.shape(gauss_params)[0] * (l_max + 1) ** 2]), axis=1)
-		# atom_embed = tf.dynamic_partition(mol_embed[i], mol_idx[i], max_atoms)
-		# atoms = []
-		# for j in range(max_atoms):
-		# 	atoms.append(tf.reduce_sum(atom_embed[j], axis=0))
-		mols.append(scatter_embed)
-
-	embeds = tf.concat(mols, axis=0)
-	atom_idx = tf.where(tf.not_equal(Zs, 0))
-	partition_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, atom_idx), axis=1),
-					tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
-
-	embeds = tf.dynamic_partition(embeds, partition_idx, num_elements)
-	mol_idx = tf.dynamic_partition(atom_idx[:,0], partition_idx, num_elements)
+	scatter_embed = tf.reshape(tf.reduce_sum(tf.scatter_nd(pair_idx, pair_embed, [num_mols, max_atoms,
+					num_elements, k_max, tf.shape(gauss_params)[0] * tf.square(l_max + 1)]), axis=3),
+					[num_mols, max_atoms, -1])
+	atom_idxs = tf.where(tf.not_equal(Zs, 0))
+	embeds = tf.gather_nd(scatter_embed, atom_idxs)
+	element_part_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(tf.gather_nd(Zs, atom_idxs), axis=1),
+						tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+	embeds = tf.dynamic_partition(embeds, element_part_idx, num_elements)
+	mol_idx = tf.dynamic_partition(atom_idxs[:,0], element_part_idx, num_elements)
 	return embeds, mol_idx
 
 def tf_random_rotate(xyzs, rot_params, labels = None, return_matrix = False):
@@ -864,50 +852,63 @@ def tf_neighbor_list(xyzs, Zs, cutoff):
 			pair_dxyz.append(mol_pair_dxyz)
 		return tf.concat(pair_idx, axis=0), tf.concat(pair_dist, axis=0), tf.concat(pair_dxyz, axis=0)
 
-def tf_neighbor_list_sort(xyzs, Zs, num_atoms, cutoff, elements):
-	num_mols = Zs.get_shape().as_list()[0]
-	padding_mask = tf.cast(tf.where(tf.not_equal(Zs, 0)), tf.int32)
-	mol_coords = tf.dynamic_partition(tf.gather_nd(xyzs, padding_mask), padding_mask[:,0], num_mols)
-	for i, mol in enumerate(mol_coords):
-		dx = tf.abs(tf.expand_dims(mol[...,0], axis=-1) - tf.expand_dims(mol[...,0], axis=-2))
-		mol_pair_idx = tf.where(tf.less(dx, cutoff))
-		identity_mask = tf.where(tf.not_equal(mol_pair_idx[:,0], mol_pair_idx[:,1]))
-		mol_pair_idx = tf.gather_nd(mol_pair_idx, identity_mask)
-		mol_pair_dxyz = tf.gather(mol, mol_pair_idx[:,0]) - tf.gather(mol, mol_pair_idx[:,1])
-		mol_pair_dist = tf.norm(mol_pair_dxyz + 1.e-16, axis=1)
-		cutoff_pairs = tf.where(tf.less(mol_pair_dist, cutoff))
-		mol_pair_idx = tf.cast(tf.gather_nd(mol_pair_idx, cutoff_pairs), tf.int32)
-		# pair_element = tf.gather(Zs[i], mol_pair_idx[:,1])
-		# pair_element_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_element, axis=-1),
-		# 					tf.expand_dims(elements, axis=0)))[:,1:], tf.int32)
-		# return tf.gather(mol_pair_idx[:,1], tf.where(tf.equal(mol_pair_idx[:,0], 0)))
-		tfarr = tf.TensorArray(tf.int32, size=num_atoms[i]-11, infer_shape=False)
+def tf_neighbor_list_sort(xyzs, Zs, num_atoms, elements, cutoff):
+	with tf.device("/cpu:0"):
+		num_mols = Zs.get_shape().as_list()[0]
+		padding_mask = tf.cast(tf.where(tf.not_equal(Zs, 0)), tf.int32)
+		mol_coords = tf.dynamic_partition(tf.gather_nd(xyzs, padding_mask), padding_mask[:,0], num_mols)
+		idxs, dists, dxyzs = [], [], []
+		for i, mol in enumerate(mol_coords):
+			dx = tf.abs(tf.expand_dims(mol[...,0], axis=-1) - tf.expand_dims(mol[...,0], axis=-2))
+			mol_pair_idx = tf.where(tf.less(dx, cutoff))
+			identity_mask = tf.where(tf.not_equal(mol_pair_idx[:,0], mol_pair_idx[:,1]))
+			mol_pair_idx = tf.gather_nd(mol_pair_idx, identity_mask)
+			mol_pair_dxyz = tf.gather(mol, mol_pair_idx[:,0]) - tf.gather(mol, mol_pair_idx[:,1])
+			mol_pair_dist = tf.norm(mol_pair_dxyz + 1.e-16, axis=1)
+			cutoff_pairs = tf.where(tf.less(mol_pair_dist, cutoff))
+			mol_pair_idx = tf.cast(tf.gather_nd(mol_pair_idx, cutoff_pairs), tf.int32)
+			mol_pair_dist = tf.gather_nd(mol_pair_dist, cutoff_pairs)
+			mol_pair_dxyz = tf.gather_nd(mol_pair_dxyz, cutoff_pairs)
 
-		def cond(j, arr):
- 			return tf.less(j, num_atoms[i]-11)
+			idx_arr = tf.TensorArray(tf.int32, size=num_atoms[i], infer_shape=False)
+			dist_arr = tf.TensorArray(tf.float32, size=num_atoms[i], infer_shape=False)
+			dxyz_arr = tf.TensorArray(tf.float32, size=num_atoms[i], infer_shape=False)
 
-		def body(j, arr):
-			atom_pairs = tf.gather_nd(mol_pair_idx[:,1], tf.where(tf.equal(mol_pair_idx[:,0], j)))
-			pair_element = tf.gather(Zs[i], atom_pairs)
-			pair_element_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_element, axis=-1),
-							tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
-			sort_element, sort_idx = tf.nn.top_k(pair_element_idx, k=tf.shape(pair_element_idx)[0])
-			unique, idx, count = tf.unique_with_counts(sort_element)
-			j_idx = tf.map_fn(lambda x: tf.range(x), count)
-			return (tf.add(j, 1), arr.write(j, j_idx))
+			def cond(j, idx_arr, dist_arr, dxyz_arr):
+	 			return tf.less(j, num_atoms[i])
 
-		_, reconstructed = tf.while_loop(cond, body, (tf.constant(0), tfarr))
- 		return reconstructed.concat()
+			def body(j, idx_arr, dist_arr, dxyz_arr):
+				atom_pairs = tf.gather_nd(mol_pair_idx[:,1], tf.where(tf.equal(mol_pair_idx[:,0], j)))
+				pair_dist = tf.gather_nd(mol_pair_dist, tf.where(tf.equal(mol_pair_idx[:,0], j)))
+				pair_dxyz = tf.gather_nd(mol_pair_dxyz, tf.where(tf.equal(mol_pair_idx[:,0], j)))
+				pair_element = tf.gather(Zs[i], atom_pairs)
+				pair_element_idx = tf.cast(tf.where(tf.equal(tf.expand_dims(pair_element, axis=-1),
+								tf.expand_dims(elements, axis=0)))[:,1], tf.int32)
+				sort_element, sort_idx = tf.nn.top_k(pair_element_idx, k=tf.shape(pair_element_idx)[0])
+				sort_dist = tf.gather(pair_dist, sort_idx)
+				sort_dxyz = tf.gather(pair_dxyz, sort_idx)
 
-		return tf.dynamic_partition(mol_pair_idx, mol_pair_idx[:,0], tf.reduce_max(mol_pair_idx[:,0]))
-		mol_pair_dist = tf.gather_nd(mol_pair_dist, cutoff_pairs)
-		mol_pair_dxyz = tf.gather_nd(mol_pair_dxyz, cutoff_pairs)
-		mol_pair_idx = tf.concat([tf.fill([tf.shape(mol_pair_idx)[0], 1], i), tf.cast(mol_pair_idx, tf.int32), pair_element_idx], axis=-1)
-		return mol_pair_idx
-		_, atom_sort_idx = tf.nn.top_k(mol_pair_idx[:,3], k=tf.shape(mol_pair_idx)[0])
-		return tf.gather(mol_pair_idx, atom_sort_idx)
-		return mol_pair_idx
-		pair_idx.append(tf.concat([tf.fill([tf.shape(mol_pair_idx)[0], 1], i), tf.cast(mol_pair_idx, tf.int32)], axis=-1))
-		pair_dist.append(mol_pair_dist)
-		pair_dxyz.append(mol_pair_dxyz)
-		return pair_element_idx
+
+				unique, _, count = tf.unique_with_counts(sort_element)
+				k_idx_arr = tf.TensorArray(tf.int32, size=tf.shape(unique)[0], infer_shape=False)
+
+				def inner_cond(k, inarr):
+					return tf.less(k, tf.shape(unique)[0])
+
+				def inner_body(k, inarr):
+					k_idx = tf.range(count[k])
+					return (tf.add(k, 1), inarr.write(k, k_idx))
+
+				_, k_idx_arr = tf.while_loop(inner_cond, inner_body, (tf.constant(0), k_idx_arr))
+				atom_idx = tf.concat([tf.fill([tf.shape(atom_pairs)[0], 1], i), tf.fill([tf.shape(atom_pairs)[0], 1], j),
+					tf.expand_dims(sort_element, axis=1), tf.expand_dims(k_idx_arr.concat(), axis=1)], axis=1)
+				return (tf.add(j, 1), idx_arr.write(j, atom_idx), dist_arr.write(j, sort_dist), dxyz_arr.write(j, sort_dxyz))
+
+			_, idx_arr, dist_arr, dxyz_arr = tf.while_loop(cond, body, (tf.constant(0), idx_arr, dist_arr, dxyz_arr))
+			idxs.append(idx_arr.concat())
+			dists.append(dist_arr.concat())
+			dxyzs.append(dxyz_arr.concat())
+		pair_idxs = tf.concat(idxs, axis=0)
+		pair_dists = tf.concat(dists, axis=0)
+		pair_dxyzs = tf.concat(dxyzs, axis=0)
+		return pair_idxs, pair_dists, pair_dxyzs

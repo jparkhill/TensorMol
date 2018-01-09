@@ -1033,8 +1033,9 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 		return
 
 	def compute_normalization(self):
-		xyzs_pl = tf.placeholder(self.tf_precision, shape=tuple([None, self.max_num_atoms, 3]))
-		Zs_pl = tf.placeholder(tf.int32, shape=tuple([None, self.max_num_atoms]))
+		xyzs_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
+		Zs_pl = tf.placeholder(tf.int32, shape=[self.batch_size, self.max_num_atoms])
+		num_atoms_pl = tf.placeholder(tf.int32, shape=[self.batch_size])
 		gaussian_params = tf.Variable(self.gaussian_params, trainable=False, dtype=self.tf_precision)
 		elements = tf.constant(self.elements, dtype = tf.int32)
 
@@ -1042,7 +1043,8 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
-		embeddings, molecule_indices = tf_gauss_harmonics_echannel(rotated_xyzs, Zs_pl, elements, gaussian_params, self.l_max)
+		embeddings, molecule_indices = tf_sparse_gauss_harmonics_echannel(rotated_xyzs, Zs_pl, num_atoms_pl,
+										elements, gaussian_params, self.l_max, 7.0)
 
 		embeddings_list = []
 		for element in range(len(self.elements)):
@@ -1056,7 +1058,8 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 		for ministep in range (0, max(2, int(0.1 * self.num_train_cases/self.batch_size))):
 			batch_data = self.get_energy_train_batch(self.batch_size)
 			labels_list.append(batch_data[2])
-			embedding, molecule_index = sess.run([embeddings, molecule_indices], feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1]})
+			embedding, molecule_index = sess.run([embeddings, molecule_indices],
+									feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1], num_atoms_pl:batch_data[5]})
 			for element in range(len(self.elements)):
 				embeddings_list[element].append(embedding[element])
 		sess.close()
@@ -1092,11 +1095,11 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 		with tf.Graph().as_default():
 			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
 			self.Zs_pl = tf.placeholder(tf.int32, shape=[self.batch_size, self.max_num_atoms])
-			self.energy_pl = tf.placeholder(self.tf_precision, shape=[None])
-			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
-			self.quadrupole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
-			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
-			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[None])
+			self.energy_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size])
+			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, 3])
+			self.quadrupole_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, 3])
+			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
+			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[self.batch_size])
 			self.Reep_pl = tf.placeholder(tf.int32, shape=[None, 3])
 
 			self.gaussian_params = tf.Variable(self.gaussian_params, trainable=True, dtype=self.tf_precision)
@@ -1114,8 +1117,8 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 					tf.random_uniform([self.batch_size], minval=0.1, maxval=1.9, dtype=self.tf_precision)], axis=-1)
 			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
 			self.dipole_labels = tf.squeeze(tf_random_rotate(tf.expand_dims(self.dipole_pl, axis=1), rotation_params))
-			embeddings, molecule_indices = tf_gauss_harmonics_echannel(rotated_xyzs,
-											self.Zs_pl, elements, self.gaussian_params, self.l_max)
+			embeddings, molecule_indices = tf_sparse_gauss_harmonics_echannel(rotated_xyzs, self.Zs_pl,
+												self.num_atoms_pl, elements, self.gaussian_params, self.l_max, 7.0)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
