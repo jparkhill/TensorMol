@@ -105,7 +105,7 @@ class BehlerParinelloDirect(object):
 		return
 
 	def shifted_softplus(self, x):
-		return tf.nn.softplus(x) - tf.log(2.0)
+		return tf.nn.softplus(x) - tf.cast(tf.log(2.0), self.tf_precision)
 
 	def sigmoid_with_param(self, x):
 		return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision)
@@ -238,9 +238,9 @@ class BehlerParinelloDirect(object):
 		dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
-		rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
-		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
+		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
+		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
+		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
 
 	def get_dipole_test_batch(self, batch_size):
 		if batch_size > self.num_test_cases:
@@ -270,9 +270,9 @@ class BehlerParinelloDirect(object):
 		dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
-		rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
-		return [xyzs, Zs, energies, gradients, dipoles, num_atoms, rad_eep]
+		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
+		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
+		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
 
 	def variable_summaries(self, var):
 		"""
@@ -373,7 +373,7 @@ class BehlerParinelloDirect(object):
 		Returns:
 			Filled feed dictionary.
 		"""
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.energy_pl, self.gradients_pl, self.dipole_pl, self.num_atoms_pl, self.Reep_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.energy_pl, self.gradients_pl, self.dipole_pl, self.num_atoms_pl], batch_data)}
 		return feed_dict
 
 	def energy_inference(self, inp, indexs):
@@ -1042,7 +1042,7 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
-		embeddings, molecule_indices = tf_gauss_harmonics_channel(rotated_xyzs, Zs_pl, elements, gaussian_params, self.l_max)
+		embeddings, molecule_indices = tf_gauss_harmonics_echannel(rotated_xyzs, Zs_pl, elements, gaussian_params, self.l_max)
 
 		embeddings_list = []
 		for element in range(len(self.elements)):
@@ -1090,8 +1090,8 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
-			self.Zs_pl = tf.placeholder(tf.int32, shape=[None, self.max_num_atoms])
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
+			self.Zs_pl = tf.placeholder(tf.int32, shape=[self.batch_size, self.max_num_atoms])
 			self.energy_pl = tf.placeholder(self.tf_precision, shape=[None])
 			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
 			self.quadrupole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
@@ -1114,7 +1114,7 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 					tf.random_uniform([self.batch_size], minval=0.1, maxval=1.9, dtype=self.tf_precision)], axis=-1)
 			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
 			self.dipole_labels = tf.squeeze(tf_random_rotate(tf.expand_dims(self.dipole_pl, axis=1), rotation_params))
-			embeddings, molecule_indices = tf_gauss_harmonics_channel(rotated_xyzs,
+			embeddings, molecule_indices = tf_gauss_harmonics_echannel(rotated_xyzs,
 											self.Zs_pl, elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
