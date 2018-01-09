@@ -2110,7 +2110,6 @@ class TensorMolData_BP_Direct_Charge_WithEle_Release(TensorMolData_BP_Direct_EE)
 		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexLinear(self.Rr_cut, self.Ra_cut, self.ele, self.elep)
 		NLEE = NeighborListSet(xyzs, natom, False, False,  Zs)
 		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(self.Ree_cut, self.ele, True)
-		#print ("rad_eep_e1e2:", rad_eep_e1e2)
 		return [xyzs, Zs, Dlabels, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom]
 
 	def GetTestBatch(self,ncases):
