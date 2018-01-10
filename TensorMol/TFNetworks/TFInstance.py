@@ -298,6 +298,36 @@ class Instance:
 			tf.add_to_collection('losses', weight_decay)
 		return var
 
+
+	def _get_weight_variable(self, name, shape):
+		return tf.get_variable(name, shape, self.tf_prec, tf.truncated_normal_initializer(stddev=0.01))
+
+	def _get_bias_variable(self, name, shape):
+		return tf.get_variable(name, shape, self.tf_prec, tf.constant_initializer(0.01, dtype=self.tf_prec))
+
+
+	def _get_variable_with_weight_decay(self, var_name, var_shape, var_stddev, var_wd):
+		"""Helper to create an initialized Variable with weight decay for sharing weights.
+
+		Note that the Variable is initialized with a truncated normal distribution.
+		A weight decay is added only if one is specified.
+
+		Args:
+		name: name of the variable
+		shape: list of ints
+		stddev: standard deviation of a truncated Gaussian
+		wd: add L2Loss weight decay multiplied by this float. If None, weight
+		decay is not added for this Variable.
+
+		Returns:
+		Variable Tensor
+		"""
+		var = tf.get_variable(var_name, var_shape, self.tf_prec, tf.truncated_normal_initializer(stddev=var_stddev))
+		if var_wd is not None:
+			weight_decay = tf.multiply(tf.nn.l2_loss(var), var_wd, name='weight_loss')
+			tf.add_to_collection('losses', weight_decay)
+		return var
+
 	def dropout_selu(self, x, rate, alpha= -1.7580993408473766, fixedPointMean=0.0, fixedPointVar=1.0, noise_shape=None, seed=None, name=None, training=False):
 		"""Dropout to a value with rescaling."""
 		def dropout_selu_impl(x, rate, alpha, noise_shape, seed, name):
