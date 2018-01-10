@@ -727,27 +727,29 @@ def train_Poly_GauSH():
 # a.Save()
 
 PARAMS["tf_prec"] = "tf.float32"
+PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
+PARAMS["SH_NRAD"] = 16
 a = MSet("SmallMols_rand")
-a.Load()
-# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+# a.Load()
+a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 # # # Tesselate that water to create a box
-# ntess = 1
-# latv = 2.8*np.eye(3)
+ntess = 5
+latv = 2.8*np.eye(3)
 # # # Start with a water in a ten angstrom box.
-# lat = Lattice(latv)
-# mc = lat.CenteredInLattice(a.mols[0])
-# mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+lat = Lattice(latv)
+mc = lat.CenteredInLattice(a.mols[0])
+mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
 # # # mt.WriteXYZfile()
-# b=MSet()
-# for i in range(2):
-# 	b.mols.append(mt)
+b=MSet()
+for i in range(1):
+	b.mols.append(mt)
 # # a=MSet("SmallMols_rand")
 # # a.Load()
-maxnatoms = a.MaxNAtoms()
+maxnatoms = b.MaxNAtoms()
 zlist = []
 xyzlist = []
 n_atoms_list = []
-for i, mol in enumerate(a.mols):
+for i, mol in enumerate(b.mols):
 	paddedxyz = np.zeros((maxnatoms,3), dtype=np.float32)
 	paddedxyz[:mol.atoms.shape[0]] = mol.coords
 	paddedz = np.zeros((maxnatoms), dtype=np.int32)
@@ -763,10 +765,10 @@ natomsstack = tf.stack(n_atoms_list)
 r_cutoff = 7.0
 gaussian_params = tf.Variable(PARAMS["RBFS"], trainable=True, dtype=tf.float32)
 # atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
-elements = tf.constant([1, 6, 7, 8], dtype=tf.int32)
-tmp = tf_neighbor_list_sort(xyzstack, zstack, natomsstack, r_cutoff, elements)
-# tmp = tf_sparse_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4, r_cutoff, maxnatoms)
-# tmp2 = tf_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4)
+elements = tf.constant([1, 8], dtype=tf.int32)
+# tmp = tf_neighbor_list_sort(xyzstack, zstack, natomsstack, r_cutoff, elements)
+tmp = tf_sparse_gauss_harmonics_echannel(xyzstack, zstack, natomsstack, elements, gaussian_params, 4, r_cutoff)
+tmp2 = tf_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4)
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -775,13 +777,16 @@ run_metadata = tf.RunMetadata()
 # # 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
 @TMTiming("test")
 def get_pairs():
-	tmp2 = sess.run(tmp, options=options, run_metadata=run_metadata)
-	return tmp2
-tmp3 = get_pairs()
-print tmp3
+	tmp3, tmp4 = sess.run([tmp, tmp2], options=options, run_metadata=run_metadata)
+	return tmp3, tmp4
+tmp5, tmp6 = get_pairs()
+print tmp5[0].shape
+print tmp6[0].shape
 # # print tmp5[0][0]
 # # print tmp6[0][0]
-# print np.isclose(tmp5[0][1], tmp6[0][1], 1e-04)
+print np.isclose(tmp5[0][0], tmp6[0][0], 1e-02)
+# print tmp5[0][0,428]
+# print tmp6[0][0,428]
 # # print tmp5
 # # print tmp6[0][0,440]
 # # print tmp5.shape
