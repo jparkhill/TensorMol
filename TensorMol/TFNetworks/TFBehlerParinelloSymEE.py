@@ -2051,101 +2051,69 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 		ele1 = tf.gather_nd(tf.reshape(Ele,[2]), tf.reshape(Reep_e1e2[:,3],[-1,1]))
 		ele2 = tf.gather_nd(tf.reshape(Ele,[2]), tf.reshape(Reep_e1e2[:,4],[-1,1]))
 		ele12 = tf.transpose(tf.stack([ele1, ele2]))
-		with tf.name_scope("ChargeNet"):
-			delta_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
-			for pair in range(len(self.eles_pairs)):
-				mask = tf.reduce_all(tf.equal(Elep[pair], ele12), 1)
-				masked  = tf.boolean_mask(Reep_e1e2, mask)
-				neg1 = tf.gather_nd(eleneg, masked[:,:2])
-				neg2 = tf.gather_nd(eleneg, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
-				charge1 = tf.gather_nd(charge, masked[:,:2])
-				charge2 = tf.gather_nd(charge, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
-				dist = TFDistancesLinear(xyzs, masked[:,:3])
-				pair_indexs.append(masked)
-				charge_inputs = tf.transpose(tf.stack([neg1, charge1, neg2, charge2, 1.0/dist]))
-				Cbranches.append([])
-				charge_shp_in = tf.shape(charge_inputs)
-					
-				for i in range(len(self.HiddenLayers)):
-					if i == 0:
-						with tf.name_scope(str(pair)+'_hidden1_charge'):
-							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[5, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(5.0)), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
-					else:
-						with tf.name_scope(str(pair)+'_hidden'+str(i+1)+"_charge"):
-							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[i]), weights) + biases))
-				with tf.name_scope(str(pair)+'_regression_linear_charge'):
-					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
-					biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-					Cbranches[-1].append(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[-1]), weights) + biases)
-					shp_out = tf.shape(Cbranches[-1][-1])
-					rshp = tf.reshape(Cbranches[-1][-1],[-1])
-					delta_charge += tf.scatter_nd(masked[:,:2], rshp, [self.batch_size, self.MaxNAtoms])
-					delta_charge -= tf.scatter_nd(tf.transpose(tf.stack([masked[:,0], masked[:,2]])), rshp, [self.batch_size, self.MaxNAtoms])	
-			charge += delta_charge
 
-		mj = tf.transpose(tf.stack([Reep_e1e2[:,0], Reep_e1e2[:,2]]))
-		mji = tf.transpose(tf.stack([Reep_e1e2[:,0], Reep_e1e2[:,2], Reep_e1e2[:,1]]))
-		Ri = tf.gather_nd(xyzsInBohr, Reep_e1e2[:,:2])
-		Rj = tf.gather_nd(xyzsInBohr, mj)
-		D = tf.sqrt(tf.reduce_sum((Ri-Rj)*(Ri-Rj), 1))
-		qi = tf.gather_nd(charge, Reep_e1e2[:,:2])
-		qj = tf.gather_nd(charge, mj)	
-		Ejoni = tf.reshape(qj,[-1,1])*(Ri-Rj)/tf.reshape(D*D,[-1,1])
-		Eionj = tf.reshape(qi,[-1,1])*(Rj-Ri)/tf.reshape(D*D,[-1,1])
+		for loop_num in range(0, 5):
+			mj = tf.transpose(tf.stack([Reep_e1e2[:,0], Reep_e1e2[:,2]]))
+			mji = tf.transpose(tf.stack([Reep_e1e2[:,0], Reep_e1e2[:,2], Reep_e1e2[:,1]]))
+			Ri = tf.gather_nd(xyzsInBohr, Reep_e1e2[:,:2])
+			Rj = tf.gather_nd(xyzsInBohr, mj)
+			D = tf.sqrt(tf.reduce_sum((Ri-Rj)*(Ri-Rj), 1))
+			qi = tf.gather_nd(charge, Reep_e1e2[:,:2])
+			qj = tf.gather_nd(charge, mj)	
+			Ejoni = tf.reshape(qj,[-1,1])*(Ri-Rj)/tf.reshape(D*D,[-1,1])
+			Eionj = tf.reshape(qi,[-1,1])*(Rj-Ri)/tf.reshape(D*D,[-1,1])
+			scattered_Ejoni = tf.scatter_nd(Reep_e1e2[:,:3], Ejoni, [self.batch_size, self.MaxNAtoms, self.MaxNAtoms, 3]) # this needs to be replaced if linear scaling is needed
+			scattered_Eionj = tf.scatter_nd(mji, Eionj, [self.batch_size, self.MaxNAtoms, self.MaxNAtoms, 3]) # this needs to be replaced if linear scaling is needed
+			Ejoni_sum = tf.reduce_sum(scattered_Ejoni,2)
+			Eionj_sum = tf.reduce_sum(scattered_Eionj,2)
+			E_sum = Ejoni_sum + Eionj_sum
+			if loop_num == 0:
+				reuse_flag = False
+			else:
+				reuse_flag = True
+			with tf.variable_scope("ChargeNet", reuse=reuse_flag):
+				delta_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
+				for pair in range(len(self.eles_pairs)):
+					mask = tf.reduce_all(tf.equal(Elep[pair], ele12), 1)
+					masked  = tf.boolean_mask(Reep_e1e2, mask)
+					neg1 = tf.gather_nd(eleneg, masked[:,:2])
+					neg2 = tf.gather_nd(eleneg, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
+					charge1 = tf.gather_nd(charge, masked[:,:2])
+					charge2 = tf.gather_nd(charge, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
+					Ri = tf.gather_nd(xyzsInBohr, masked[:,:2])
+					Rj = tf.gather_nd(xyzsInBohr, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
+					dist  = tf.sqrt(tf.reduce_sum((Ri-Rj)*(Ri-Rj), 1))
+					E1 = tf.gather_nd(E_sum, masked[:,:2])
+					E2 = tf.gather_nd(E_sum, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))			
+					E1_proj = tf.reduce_sum(E1*(Rj-Ri),-1)/dist
+					E2_proj = tf.reduce_sum(E2*(Ri-Rj),-1)/dist
+					pair_indexs.append(masked)
+					charge_inputs = tf.transpose(tf.stack([neg1, charge1, E1_proj, neg2, charge2, E2_proj, 1.0/dist]))
+					Cbranches.append([])
+					charge_shp_in = tf.shape(charge_inputs)
+						
+					for i in range(len(self.HiddenLayers)):
+						if i == 0:
+							with tf.variable_scope(str(pair)+'_hidden1_charge',reuse=reuse_flag):
+								weights = self._get_variable_with_weight_decay(var_name=str(pair)+str(1)+'weights', var_shape=[7, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(7.0)), var_wd=0.001)
+								biases = tf.get_variable(str(pair)+str(1)+"biases", [self.HiddenLayers[i]], self.tf_prec, initializer=tf.constant_initializer(0.0, dtype=self.tf_prec))
+								Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
+						else:
+							with tf.variable_scope(str(pair)+'_hidden'+str(i+1)+"_charge", reuse=reuse_flag):
+								weights = self._get_variable_with_weight_decay(var_name=str(pair)+str(i+1)+'weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
+								biases = tf.get_variable(str(pair)+str(i+1)+"biases", [self.HiddenLayers[i]], self.tf_prec, initializer=tf.constant_initializer(0.0, dtype=self.tf_prec))
+								Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[i]), weights) + biases))
+					with tf.variable_scope(str(pair)+'_regression_linear_charge', reuse=reuse_flag):
+						weights = self._get_variable_with_weight_decay(var_name=str(pair)+'linear_reg_weights_1', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
+						biases = tf.get_variable(str(pair)+"linear_reg_biases_1", [1], self.tf_prec, initializer=tf.constant_initializer(0.0, dtype=self.tf_prec))
+						Cbranches[-1].append(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[-1]), weights) + biases)
+						shp_out = tf.shape(Cbranches[-1][-1])
+						rshp = tf.reshape(Cbranches[-1][-1],[-1])
+						delta_charge += tf.scatter_nd(masked[:,:2], rshp, [self.batch_size, self.MaxNAtoms])
+						delta_charge -= tf.scatter_nd(tf.transpose(tf.stack([masked[:,0], masked[:,2]])), rshp, [self.batch_size, self.MaxNAtoms])	
+				charge += delta_charge
 
-		scattered_Ejoni = tf.scatter_nd(Reep_e1e2[:,:3], Ejoni, [self.batch_size, self.MaxNAtoms, self.MaxNAtoms, 3]) # this needs to be replaced if linear scaling is needed
-		scattered_Eionj = tf.scatter_nd(mji, Eionj, [self.batch_size, self.MaxNAtoms, self.MaxNAtoms, 3]) # this needs to be replaced if linear scaling is needed
 
-		Ejoni_sum = tf.reduce_sum(scattered_Ejoni,2)
-		Eionj_sum = tf.reduce_sum(scattered_Eionj,2)
-		E_sum = Ejoni_sum + Eionj_sum
-
-
-
-		with tf.name_scope("ChargeNet2"):
-			delta_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
-			for pair in range(len(self.eles_pairs)):
-				mask = tf.reduce_all(tf.equal(Elep[pair], ele12), 1)
-				masked  = tf.boolean_mask(Reep_e1e2, mask)
-				neg1 = tf.gather_nd(eleneg, masked[:,:2])
-				neg2 = tf.gather_nd(eleneg, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
-				charge1 = tf.gather_nd(charge, masked[:,:2])
-				charge2 = tf.gather_nd(charge, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))		
-				Ri = tf.gather_nd(xyzsInBohr, masked[:,:2])
-				Rj = tf.gather_nd(xyzsInBohr, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
-				dist  = tf.sqrt(tf.reduce_sum((Ri-Rj)*(Ri-Rj), 1))
-				E1 = tf.gather_nd(E_sum, masked[:,:2])
-				E2 = tf.gather_nd(E_sum, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))			
-				E1_proj = tf.reduce_sum(E1*(Rj-Ri),-1)/dist
-				E2_proj = tf.reduce_sum(E2*(Ri-Rj),-1)/dist
-				pair_indexs.append(masked)
-				charge_inputs = tf.transpose(tf.stack([neg1, charge1, E1_proj, neg2, charge2, E2_proj, 1.0/dist]))
-				Cbranches.append([])
-				charge_shp_in = tf.shape(charge_inputs)
-				for i in range(len(self.HiddenLayers)):
-					if i == 0:
-						with tf.name_scope(str(pair)+'_hidden1_charge2'):
-							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[7, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(7.0)), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
-					else:
-						with tf.name_scope(str(pair)+'_hidden'+str(i+1)+"_charge2"):
-							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[i]), weights) + biases))
-				with tf.name_scope(str(pair)+'_regression_linear_charge2'):
-					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
-					biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
-					Cbranches[-1].append(tf.matmul(tf.nn.dropout(Cbranches[-1][-1], keep_prob[-1]), weights) + biases)
-					shp_out = tf.shape(Cbranches[-1][-1])
-					rshp = tf.reshape(Cbranches[-1][-1],[-1])
-					delta_charge += tf.scatter_nd(masked[:,:2], rshp, [self.batch_size, self.MaxNAtoms])
-					delta_charge -= tf.scatter_nd(tf.transpose(tf.stack([masked[:,0], masked[:,2]])), rshp, [self.batch_size, self.MaxNAtoms])	
-			charge += delta_charge
 		dipole = tf.reduce_sum(tf.multiply(xyzsInBohr, tf.reshape(charge,[self.batch_size,self.MaxNAtoms,1])), axis=1)
 		return  dipole, charge, E_sum
 
