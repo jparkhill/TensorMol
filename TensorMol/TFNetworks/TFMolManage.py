@@ -1405,6 +1405,29 @@ class TFMolManage(TFManage):
 	def EvalBPDirectEELinearSinglePeriodic(self, mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw = True, DoForce=True, DoCharge=False):
 		return self.EvalBPDirectEEUpdateSinglePeriodic( mol, Rr_cut, Ra_cut, Ree_cut, nreal, HasVdw, DoForce, DoCharge)
 
+	def EvalBPDirectChargeSingle(self, mol, Rr_cut, Ra_cut, Ree_cut, HasVdw = False):
+		"""
+		The dipole routine for charge.
+		"""
+		mol_set=MSet()
+		mol_set.mols.append(mol)
+		nmols = len(mol_set.mols)
+		dummy_dipole = np.zeros((nmols, 3))
+		self.TData.MaxNAtoms = mol.NAtoms()
+		xyzs = np.zeros((nmols, self.TData.MaxNAtoms, 3), dtype = np.float64)
+		Zs = np.zeros((nmols, self.TData.MaxNAtoms), dtype = np.int32)
+		natom = np.zeros((nmols), dtype = np.int32)
+		for i, mol in enumerate(mol_set.mols):
+			xyzs[i][:mol.NAtoms()] = mol.coords
+			Zs[i][:mol.NAtoms()] = mol.atoms
+			natom[i] = mol.NAtoms()
+		NL = NeighborListSet(xyzs, natom, True, True, Zs, sort_=True)
+		rad_p_ele, ang_t_elep, mil_j, mil_jk = NL.buildPairsAndTriplesWithEleIndexLinear(Rr_cut, Ra_cut, self.Instances.eles_np, self.Instances.eles_pairs_np)
+		NLEE = NeighborListSet(xyzs, natom, False, False,  Zs)
+		rad_eep_e1e2 = NLEE.buildPairsWithBothEleIndex(Ree_cut, self.Instances.eles_np, True)
+		mol_dipole, atom_charge = self.Instances.evaluate([xyzs, Zs, dummy_dipole, rad_p_ele, ang_t_elep, rad_eep_e1e2, mil_j, mil_jk, 1.0/natom])
+		return mol_dipole, atom_charge
+
 	@TMTiming("TFMolMangePrepare")
 	def Prepare(self):
 		self.Load()
