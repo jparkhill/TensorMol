@@ -271,18 +271,19 @@ def train_energy_symm_func(mset):
 def train_energy_GauSH(mset):
 	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
 	PARAMS["SH_NRAD"] = 16
-	PARAMS["SH_LMAX"] = 4
+	PARAMS["SH_LMAX"] = 8
+	PARAMS["SH_rot_invar"] = True
 	PARAMS["EECutoffOn"] = 0.0
 	PARAMS["Elu_Width"] = 6.0
-	PARAMS["train_gradients"] = False
+	PARAMS["train_gradients"] = True
 	PARAMS["train_dipole"] = False
 	PARAMS["train_rotation"] = False
 	PARAMS["weight_decay"] = None
 	PARAMS["HiddenLayers"] = [512, 512, 512]
-	PARAMS["learning_rate"] = 0.00001
+	PARAMS["learning_rate"] = 0.0001
 	PARAMS["max_steps"] = 250
 	PARAMS["test_freq"] = 5
-	PARAMS["batch_size"] = 200
+	PARAMS["batch_size"] = 100
 	PARAMS["NeuronType"] = "shifted_softplus"
 	PARAMS["tf_prec"] = "tf.float32"
 	PARAMS["Profiling"] = False
@@ -729,20 +730,23 @@ train_energy_GauSH("H2O_wb97xd_1to21_with_prontonated")
 # PARAMS["tf_prec"] = "tf.float32"
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
 # PARAMS["SH_NRAD"] = 16
-# a = MSet()
-# # a.Load()
-# a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
+# a = MSet("SmallMols_rand")
+# a.Load()
+# # a.mols.append(Mol(np.array([1,1,8]),np.array([[0.9,0.1,0.1],[1.,0.9,1.],[0.1,0.1,0.1]])))
 # # # # Tesselate that water to create a box
-# ntess = 16
-# latv = 2.8*np.eye(3)
-# # # # Start with a water in a ten angstrom box.
-# lat = Lattice(latv)
-# mc = lat.CenteredInLattice(a.mols[0])
-# mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
+# # ntess = 16
+# # latv = 2.8*np.eye(3)
+# # # # # Start with a water in a ten angstrom box.
+# # lat = Lattice(latv)
+# # mc = lat.CenteredInLattice(a.mols[0])
+# # mt = Mol(*lat.TessNTimes(mc.atoms,mc.coords,ntess))
 # # # # mt.WriteXYZfile()
 # b=MSet()
 # for i in range(1):
-# 	b.mols.append(mt)
+# 	b.mols.append(a.mols[i])
+# 	new_mol = copy.deepcopy(a.mols[i])
+# 	new_mol.RotateRandomUniform()
+# 	b.mols.append(new_mol)
 # # # a=MSet("SmallMols_rand")
 # # # a.Load()
 # maxnatoms = b.MaxNAtoms()
@@ -767,21 +771,24 @@ train_energy_GauSH("H2O_wb97xd_1to21_with_prontonated")
 # # atomic_embed_factors = tf.Variable(PARAMS["ANES"], trainable=True, dtype=tf.float32)
 # elements = tf.constant([1, 8], dtype=tf.int32)
 # # tmp = tf_neighbor_list_sort(xyzstack, zstack, natomsstack, elements, r_cutoff)
-# tmp = tf_sparse_gauss_harmonics_echannel(xyzstack, zstack, natomsstack, elements, gaussian_params, 4, r_cutoff)
-# # tmp2 = tf_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 4)
+# # tmp = tf_sparse_gauss_harmonics_echannel(xyzstack, zstack, natomsstack, elements, gaussian_params, 4, r_cutoff)
+# tmp2 = tf_gauss_harmonics_echannel(xyzstack, zstack, elements, gaussian_params, 8)
 # sess = tf.Session()
 # sess.run(tf.global_variables_initializer())
-# options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-# run_metadata = tf.RunMetadata()
+# # options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+# # run_metadata = tf.RunMetadata()
 # # # for i in range(a.mols[0].atoms.shape[0]):
 # # # 	print a.mols[0].atoms[i], "   ", a.mols[0].coords[i,0], "   ", a.mols[0].coords[i,1], "   ", a.mols[0].coords[i,2]
 # @TMTiming("test")
 # def get_pairs():
-# 	tmp3 = sess.run(tmp)
+# 	tmp3 = sess.run(tmp2)
 # 	return tmp3
 # tmp5 = get_pairs()
-# print np.isclose(tmp5[0][0], tmp6[0][0], 1e-01)
-# fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-# chrome_trace = fetched_timeline.generate_chrome_trace_format()
-# with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
-# 	f.write(chrome_trace)
+# print tmp5[:13].shape
+# print tmp5[13:].shape
+# print np.allclose(tmp5[:13], tmp5[13:], 1e-03)
+# # print np.isclose(tmp5[0][0], tmp6[0][0], 1e-01)
+# # fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+# # chrome_trace = fetched_timeline.generate_chrome_trace_format()
+# # with open('timeline_step_tmp_tm_nocheck_h2o.json', 'w') as f:
+# # 	f.write(chrome_trace)

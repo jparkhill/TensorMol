@@ -153,7 +153,10 @@ def tf_spherical_harmonics_1(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_0(tf.expand_dims(inv_dist_tensor, axis=-1))
 	l1_harmonics = 0.4886025119029199 * tf.stack([dxyzs[...,1], dxyzs[...,2], dxyzs[...,0]],
 										axis=-1) * tf.expand_dims(inv_dist_tensor, axis=-1)
-	return tf.concat([lower_order_harmonics, l1_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l1_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l1_harmonics], axis=-1)
 
 def tf_spherical_harmonics_2(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_1(dxyzs, inv_dist_tensor)
@@ -163,7 +166,10 @@ def tf_spherical_harmonics_2(dxyzs, inv_dist_tensor):
 			(1.0925484305920792 * dxyzs[...,0] * dxyzs[...,2]),
 			(0.5462742152960396 * (tf.square(dxyzs[...,0]) - 1. * tf.square(dxyzs[...,1])))], axis=-1) \
 			* tf.expand_dims(tf.square(inv_dist_tensor),axis=-1)
-	return tf.concat([lower_order_harmonics, l2_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l2_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l2_harmonics], axis=-1)
 
 def tf_spherical_harmonics_3(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_2(dxyzs, inv_dist_tensor)
@@ -178,7 +184,10 @@ def tf_spherical_harmonics_3(dxyzs, inv_dist_tensor):
 			(1.445305721320277 * (tf.square(dxyzs[...,0]) - 1. * tf.square(dxyzs[...,1])) * dxyzs[...,2]),
 			(0.5900435899266435 * dxyzs[...,0] * (tf.square(dxyzs[...,0]) - 3. * tf.square(dxyzs[...,1])))], axis=-1) \
 				* tf.expand_dims(tf.pow(inv_dist_tensor,3),axis=-1)
-	return tf.concat([lower_order_harmonics, l3_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l3_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l3_harmonics], axis=-1)
 
 def tf_spherical_harmonics_4(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_3(dxyzs, inv_dist_tensor)
@@ -200,7 +209,10 @@ def tf_spherical_harmonics_4(dxyzs, inv_dist_tensor):
 			(0.6258357354491761 * (tf.pow(dxyzs[...,0], 4) - 6. * tf.square(dxyzs[...,0]) * tf.square(dxyzs[...,1]) \
 				+ tf.pow(dxyzs[...,1], 4)))], axis=-1) \
 			* tf.expand_dims(tf.pow(inv_dist_tensor,4),axis=-1)
-	return tf.concat([lower_order_harmonics, l4_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l4_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l4_harmonics], axis=-1)
 
 def tf_spherical_harmonics_5(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_4(dxyzs, inv_dist_tensor)
@@ -230,7 +242,10 @@ def tf_spherical_harmonics_5(dxyzs, inv_dist_tensor):
 			(0.6563820568401701 * dxyzs[...,0] * (tf.pow(dxyzs[...,0], 4) - 10. \
 				* tf.square(dxyzs[...,0]) * tf.square(dxyzs[...,1]) + 5. * tf.pow(dxyzs[...,1], 4)))], axis=-1) \
 			* tf.expand_dims(tf.pow(inv_dist_tensor,5),axis=-1)
-	return tf.concat([lower_order_harmonics, l5_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l5_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l5_harmonics], axis=-1)
 
 def tf_spherical_harmonics_6(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_5(dxyzs, inv_dist_tensor)
@@ -270,7 +285,10 @@ def tf_spherical_harmonics_6(dxyzs, inv_dist_tensor):
 			(0.6831841051919143 * (tf.pow(dxyzs[...,0], 6) - 15. * tf.pow(dxyzs[...,0], 4) * tf.square(dxyzs[...,1]) \
 				+ 15. * tf.square(dxyzs[...,0]) * tf.pow(dxyzs[...,1], 4) - 1. * tf.pow(dxyzs[...,1], 6)))], axis=-1) \
 			* tf.expand_dims(tf.pow(inv_dist_tensor,6),axis=-1)
-	return tf.concat([lower_order_harmonics, l6_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l6_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l6_harmonics], axis=-1)
 
 def tf_spherical_harmonics_7(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_6(dxyzs, inv_dist_tensor)
@@ -331,7 +349,10 @@ def tf_spherical_harmonics_7(dxyzs, inv_dist_tensor):
 				* tf.square(dxyzs[...,1]) + 35. * tf.square(dxyzs[...,0]) * tf.pow(dxyzs[...,1], 4) - 7. \
 				* tf.pow(dxyzs[...,1], 6)))], axis=-1) \
 			* tf.expand_dims(tf.pow(inv_dist_tensor,7),axis=-1)
-	return tf.concat([lower_order_harmonics, l7_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l7_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l7_harmonics], axis=-1)
 
 def tf_spherical_harmonics_8(dxyzs, inv_dist_tensor):
 	lower_order_harmonics = tf_spherical_harmonics_7(dxyzs, inv_dist_tensor)
@@ -409,7 +430,10 @@ def tf_spherical_harmonics_8(dxyzs, inv_dist_tensor):
 				+ 70. * tf.pow(dxyzs[...,0], 4) * tf.pow(dxyzs[...,1], 4) - 28. * tf.square(dxyzs[...,0]) \
 				* tf.pow(dxyzs[...,1], 6) + tf.pow(dxyzs[...,1], 8)))], axis=-1) \
 			* tf.expand_dims(tf.pow(inv_dist_tensor,8),axis=-1)
-	return tf.concat([lower_order_harmonics, l8_harmonics], axis=-1)
+	if PARAMS["SH_rot_invar"]:
+		return tf.concat([lower_order_harmonics, tf.norm(l8_harmonics+1.e-16, axis=-1, keep_dims=True)], axis=-1)
+	else:
+		return tf.concat([lower_order_harmonics, l8_harmonics], axis=-1)
 
 def tf_spherical_harmonics(dxyzs, dist_tensor, max_l):
 	inv_dist_tensor = tf.where(tf.greater(dist_tensor, 1.e-9), tf.reciprocal(dist_tensor), tf.zeros_like(dist_tensor))
@@ -524,7 +548,6 @@ def tf_gauss_harmonics_echannel(xyzs, Zs, elements, gauss_params, l_max):
 	dist_tensor = tf.norm(dxyzs+1.e-16,axis=2)
 	gauss = tf_gauss(dist_tensor, gauss_params)
 	harmonics = tf_spherical_harmonics(dxyzs, dist_tensor, l_max)
-
 	channel_scatter_bool = tf.gather(tf.equal(tf.expand_dims(Zs, axis=1),
 						tf.reshape(elements, [1, num_elements, 1])), atom_idx[:,0])
 	channel_scatter = tf.where(channel_scatter_bool, tf.ones_like(channel_scatter_bool, dtype=eval(PARAMS["tf_prec"])),

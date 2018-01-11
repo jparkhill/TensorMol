@@ -21,6 +21,7 @@ class TMParams(dict):
 		self["SH_LMAX"]=4
 		self["SH_NRAD"]=14
 		self["SH_ORTH"]=1
+		self["SH_rot_invar"] = False
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
