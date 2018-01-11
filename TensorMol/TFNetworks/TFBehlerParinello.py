@@ -111,9 +111,9 @@ class BehlerParinelloDirect(object):
 		return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision)
 
 	def save_checkpoint(self, step):
-		checkpoint_file = os.path.join(self.network_directory,self.name+'-checkpoint-'+str(step))
+		checkpoint_file = os.path.join(self.network_directory,self.name+'-checkpoint')
 		LOGGER.info("Saving checkpoint file %s", checkpoint_file)
-		self.saver.save(self.sess, checkpoint_file)
+		self.saver.save(self.sess, checkpoint_file, global_step=step)
 		return
 
 	def save_network(self):
@@ -203,6 +203,8 @@ class BehlerParinelloDirect(object):
 		"""
 		self.xyz_data, self.Z_data, self.energy_data, self.dipole_data, self.num_atoms_data, self.gradient_data = self.load_data()
 		self.num_test_cases = int(self.test_ratio * self.num_molecules)
+		self.train_idxs = np.arange(int(self.num_molecules - self.num_test_cases))
+		self.test_idxs = np.arange(int(self.num_molecules - self.num_test_cases), self.num_molecules)
 		self.last_train_case = int(self.num_molecules - self.num_test_cases)
 		self.num_train_cases = self.last_train_case
 		self.test_scratch_pointer = self.last_train_case
@@ -230,14 +232,22 @@ class BehlerParinelloDirect(object):
 			raise Exception("Insufficent training data to fill a training batch.\n"\
 					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(batch_size))
 		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
+			np.random.shuffle(self.train_idxs)
 			self.train_scratch_pointer = 0
 		self.train_scratch_pointer += batch_size
-		xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		energies = self.energy_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		xyzs = self.xyz_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		Zs = self.Z_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		energies = self.energy_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		dipoles = self.dipole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		num_atoms = self.num_atoms_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		gradients = self.gradient_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+
+		# xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		# Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		# energies = self.energy_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		# dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		# num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		# gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
 		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
@@ -563,8 +573,17 @@ class BehlerParinelloDirect(object):
 				self.summary_op, self.energy_losses, self.energy_loss, self.rotation_loss], feed_dict=feed_dict)
 				train_rotation_loss += rotation_loss
 			else:
-				_, summaries, total_loss, energy_loss = self.sess.run([self.energy_train_op,
-				self.summary_op, self.energy_losses, self.energy_loss], feed_dict=feed_dict)
+				if self.profiling:
+					_, summaries, total_loss, energy_loss = self.sess.run([self.energy_train_op,
+					self.summary_op, self.energy_losses, self.energy_loss], feed_dict=feed_dict,
+					options=self.options, run_metadata=self.run_metadata)
+					fetched_timeline = timeline.Timeline(self.run_metadata.step_stats)
+					chrome_trace = fetched_timeline.generate_chrome_trace_format()
+					with open('timeline_step_%d.json' % ministep, 'w') as f:
+						f.write(chrome_trace)
+				else:
+					_, summaries, total_loss, energy_loss = self.sess.run([self.energy_train_op,
+					self.summary_op, self.energy_losses, self.energy_loss], feed_dict=feed_dict)
 			train_loss += total_loss
 			train_energy_loss += energy_loss
 			num_mols += self.batch_size
@@ -1043,8 +1062,7 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 				np.pi * tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision),
 				tf.random_uniform([self.batch_size], maxval=2.0, dtype=self.tf_precision)], axis=-1, name="rotation_params")
 		rotated_xyzs = tf_random_rotate(xyzs_pl, rotation_params)
-		embeddings, molecule_indices = tf_sparse_gauss_harmonics_echannel(rotated_xyzs, Zs_pl, num_atoms_pl,
-										elements, gaussian_params, self.l_max, 7.0)
+		embeddings, molecule_indices = tf_gauss_harmonics_echannel(rotated_xyzs, Zs_pl, elements, gaussian_params, self.l_max)
 
 		embeddings_list = []
 		for element in range(len(self.elements)):
@@ -1117,8 +1135,8 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 					tf.random_uniform([self.batch_size], minval=0.1, maxval=1.9, dtype=self.tf_precision)], axis=-1)
 			rotated_xyzs, rotated_gradients = tf_random_rotate(self.xyzs_pl, rotation_params, self.gradients_pl)
 			self.dipole_labels = tf.squeeze(tf_random_rotate(tf.expand_dims(self.dipole_pl, axis=1), rotation_params))
-			embeddings, molecule_indices = tf_sparse_gauss_harmonics_echannel(rotated_xyzs, self.Zs_pl,
-												self.num_atoms_pl, elements, self.gaussian_params, self.l_max, 7.0)
+			embeddings, molecule_indices = tf_gauss_harmonics_echannel(rotated_xyzs, self.Zs_pl,
+											elements, self.gaussian_params, self.l_max)
 			for element in range(len(self.elements)):
 				embeddings[element] -= embeddings_mean[element]
 				embeddings[element] /= embeddings_stddev[element]
