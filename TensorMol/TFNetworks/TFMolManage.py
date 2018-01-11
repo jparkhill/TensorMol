@@ -1545,15 +1545,23 @@ class TFMolManageDirect:
 		Args:
 			maxstep: The number of training steps.
 		"""
+		self.init_network()
+		self.network.train()
+		self.network_name = self.network.name
+		self.save()
+		return
+
+	def restart_training(self, network_directory):
+		print("Loading previous network to continue training...")
+		self.init_network()
+
+	def init_network(self):
 		if self.network_type == "BehlerParinelloDirectSymFunc":
 			self.network = BehlerParinelloDirectSymFunc(self.molecule_set)
 		elif self.network_type == "BehlerParinelloDirectGauSH":
 			self.network = BehlerParinelloDirectGauSH(self.molecule_set)
 		else:
 			raise Exception("Unknown Network Type!")
-		self.network.train()
-		self.network_name = self.network.name
-		self.save()
 		return
 
 	def save(self):
