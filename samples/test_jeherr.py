@@ -287,9 +287,9 @@ def train_energy_GauSH(mset):
 	PARAMS["NeuronType"] = "shifted_softplus"
 	PARAMS["tf_prec"] = "tf.float32"
 	PARAMS["Profiling"] = False
-	a=MSet(mset)
-	a.Load()
-	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectGauSH")
+	# a=MSet(mset)
+	# a.Load()0
+	manager = TFMolManageDirect(mset, network_type = "BehlerParinelloDirectGauSH")
 
 def test_h2o():
 	PARAMS["OptMaxCycles"]=60

@@ -1514,7 +1514,7 @@ class TFMolManage(TFManage):
 		return
 
 class TFMolManageDirect:
-	def __init__(self, molecule_set=None, name=None, train=True, network_type="BehlerParinelloDirectSymFunc"):
+	def __init__(self, mol_set_name=None, name=None, train=True, network_type="BehlerParinelloDirectSymFunc"):
 		"""
 			Args:
 				Name_: If not blank, will try to load a network with that name using Prepare()
@@ -1529,14 +1529,18 @@ class TFMolManageDirect:
 			self.name = name
 			self.prepare()
 			return
-		self.molecule_set = molecule_set
-		self.molecule_set_name = self.molecule_set.name
+		self.mol_set_name = mol_set_name
 		self.network_type = network_type
-		self.name = self.network_type+"_"+self.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+		self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 		if (train):
 			self.train()
 			return
 		return
+
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		del state["network"]
+		return state
 
 	def train(self, maxstep=3000):
 		"""
@@ -1546,9 +1550,9 @@ class TFMolManageDirect:
 			maxstep: The number of training steps.
 		"""
 		self.init_network()
-		self.network.train()
 		self.network_name = self.network.name
 		self.save()
+		self.network.train()
 		return
 
 	def restart_training(self, network_directory):
@@ -1557,18 +1561,17 @@ class TFMolManageDirect:
 
 	def init_network(self):
 		if self.network_type == "BehlerParinelloDirectSymFunc":
-			self.network = BehlerParinelloDirectSymFunc(self.molecule_set)
+			self.network = BehlerParinelloDirectSymFunc(self.mol_set_name)
 		elif self.network_type == "BehlerParinelloDirectGauSH":
-			self.network = BehlerParinelloDirectGauSH(self.molecule_set)
+			self.network = BehlerParinelloDirectGauSH(self.mol_set_name)
 		else:
 			raise Exception("Unknown Network Type!")
 		return
 
 	def save(self):
 		print("Saving TFManager:",self.path+self.name+".tfm")
-		self.molecule_set = None
 		f = open(self.path+self.name+".tfm","wb")
-		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 

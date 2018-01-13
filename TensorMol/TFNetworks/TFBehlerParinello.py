@@ -26,10 +26,10 @@ class BehlerParinelloDirect(object):
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
-	def __init__(self, molecule_set=None, name=None):
+	def __init__(self, mol_set_name=None, name=None):
 		"""
 		Args:
-			molecule_set (TensorMol.MSet object): a class which holds the training data
+			mol_set (TensorMol.MSet object): a class which holds the training data
 			name (str): a name used to recall this network
 
 		Notes:
@@ -65,16 +65,23 @@ class BehlerParinelloDirect(object):
 			return
 
 		#Data parameters
-		self.molecule_set = molecule_set
-		self.molecule_set_name = self.molecule_set.name
-		self.elements = self.molecule_set.AtomTypes()
-		self.max_num_atoms = self.molecule_set.MaxNAtoms()
-		self.num_molecules = len(self.molecule_set.mols)
+		self.mol_set_name = mol_set_name
+		self.mol_set = MSet(self.mol_set_name)
+		self.mol_set.Load()
+		self.elements = self.mol_set.AtomTypes()
+		self.max_num_atoms = self.mol_set.MaxNAtoms()
+		self.num_molecules = len(self.mol_set.mols)
 
 		LOGGER.info("learning rate: %f", self.learning_rate)
 		LOGGER.info("batch size:    %d", self.batch_size)
 		LOGGER.info("max steps:     %d", self.max_steps)
 		return
+
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		del state["mol_set"]
+		del state["activation_function"]
+		return state
 
 	def assign_activation(self):
 		LOGGER.debug("Assigning Activation Function: %s", PARAMS["NeuronType"])
@@ -118,10 +125,8 @@ class BehlerParinelloDirect(object):
 
 	def save_network(self):
 		print("Saving TFInstance")
-		self.clean_scratch()
-		self.clean()
 		f = open(self.network_directory+".tfn","wb")
-		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
@@ -148,7 +153,7 @@ class BehlerParinelloDirect(object):
 		self.scratch_train_outputs = None
 		self.scratch_test_inputs = None
 		self.scratch_test_outputs = None
-		self.molecule_set = None
+		self.mol_set = None
 		self.xyz_data = None
 		self.Z_data = None
 		self.energy_data = None
@@ -160,25 +165,25 @@ class BehlerParinelloDirect(object):
 		"""
 		Recalls the MSet to build training data etc.
 		"""
-		self.molecule_set = MSet(self.molecule_set_name)
-		self.molecule_set.Load()
+		self.mol_set = MSet(self.mol_set_name)
+		self.mol_set.Load()
 		return
 
 	def load_data(self):
-		if (self.molecule_set == None):
+		if (self.mol_set == None):
 			try:
 				self.reload_set()
 			except Exception as Ex:
 				print("TensorData object has no molecule set.", Ex)
 		if self.randomize_data:
-			random.shuffle(self.molecule_set.mols)
+			random.shuffle(self.mol_set.mols)
 		xyzs = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float32)
 		Zs = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
 		num_atoms = np.zeros((self.num_molecules), dtype = np.int32)
 		energies = np.zeros((self.num_molecules), dtype = np.float32)
 		dipoles = np.zeros((self.num_molecules, 3), dtype = np.float32)
 		gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float32)
-		for i, mol in enumerate(self.molecule_set.mols):
+		for i, mol in enumerate(self.mol_set.mols):
 			xyzs[i][:mol.NAtoms()] = mol.coords
 			Zs[i][:mol.NAtoms()] = mol.atoms
 			energies[i] = mol.properties["atomization"]
@@ -743,19 +748,19 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
-	def __init__(self, molecule_set=None, name=None):
+	def __init__(self, mol_set=None, name=None):
 		"""
 		Args:
-			molecule_set (TensorMol.MSet object): a class which holds the training data
+			mol_set (TensorMol.MSet object): a class which holds the training data
 			name (str): a name used to recall this network
 
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
-		BehlerParinelloDirect.__init__(self, molecule_set, name)
+		BehlerParinelloDirect.__init__(self, mol_set, name)
 		if name == None:
 			self.network_type = "BehlerParinelloDirectSymFunc"
-			self.name = self.network_type+"_"+self.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 			self.network_directory = './networks/'+self.name
 			self.set_symmetry_function_params()
 		return
@@ -1032,23 +1037,24 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
-	def __init__(self, molecule_set=None, name=None):
+	def __init__(self, mol_set=None, name=None):
 		"""
 		Args:
-			molecule_set (TensorMol.MSet object): a class which holds the training data
+			mol_set (TensorMol.MSet object): a class which holds the training data
 			name (str): a name used to recall this network
 
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
-		BehlerParinelloDirect.__init__(self, molecule_set, name)
+		BehlerParinelloDirect.__init__(self, mol_set, name)
 		if name == None:
 			self.network_type = "BehlerParinelloDirectGauSH"
-			self.name = self.network_type+"_"+self.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 			self.network_directory = './networks/'+self.name
 			self.l_max = PARAMS["SH_LMAX"]
 			self.gaussian_params = PARAMS["RBFS"]
 			self.atomic_embed_factors = PARAMS["ANES"]
+			self.save_network()
 		return
 
 	def compute_normalization(self):
