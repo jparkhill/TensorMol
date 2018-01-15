@@ -79,8 +79,10 @@ class BehlerParinelloDirect(object):
 
 	def __getstate__(self):
 		state = self.__dict__.copy()
-		del state["mol_set"]
-		del state["activation_function"]
+		remove_vars = ["mol_set", "activation_function", "xyz_data", "Z_data", "energy_data", "dipole_data",
+						"num_atoms_data", "gradient_data"]
+		for var in remove_vars:
+			del state[var]
 		return state
 
 	def assign_activation(self):
@@ -175,8 +177,8 @@ class BehlerParinelloDirect(object):
 				self.reload_set()
 			except Exception as Ex:
 				print("TensorData object has no molecule set.", Ex)
-		if self.randomize_data:
-			random.shuffle(self.mol_set.mols)
+		# if self.randomize_data:
+		# 	random.shuffle(self.mol_set.mols)
 		xyzs = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float32)
 		Zs = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
 		num_atoms = np.zeros((self.num_molecules), dtype = np.int32)
@@ -208,34 +210,36 @@ class BehlerParinelloDirect(object):
 		"""
 		self.xyz_data, self.Z_data, self.energy_data, self.dipole_data, self.num_atoms_data, self.gradient_data = self.load_data()
 		self.num_test_cases = int(self.test_ratio * self.num_molecules)
-		self.train_idxs = np.arange(int(self.num_molecules - self.num_test_cases))
-		self.test_idxs = np.arange(int(self.num_molecules - self.num_test_cases), self.num_molecules)
-		self.last_train_case = int(self.num_molecules - self.num_test_cases)
-		self.num_train_cases = self.last_train_case
-		self.test_scratch_pointer = self.last_train_case
-		self.train_scratch_pointer = 0
+		self.num_train_cases = int(self.num_molecules - self.num_test_cases)
+		case_idxs = np.arange(int(self.num_molecules))
+		np.random.shuffle(case_idxs)
+		self.train_idxs = case_idxs[:int(self.num_molecules - self.num_test_cases)]
+		self.test_idxs = case_idxs[int(self.num_molecules - self.num_test_cases):]
+		self.train_scratch_pointer, self.test_scratch_pointer = 0, 0
+		if self.batch_size > self.num_train_cases:
+			raise Exception("Insufficent training data to fill a training batch.\n"\
+					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(self.batch_size))
+		if self.batch_size > self.num_test_cases:
+			raise Exception("Insufficent testing data to fill a test batch.\n"\
+					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(self.batch_size))
 		LOGGER.debug("Number of training cases: %i", self.num_train_cases)
 		LOGGER.debug("Number of test cases: %i", self.num_test_cases)
 		return
 
 	def get_dipole_train_batch(self, batch_size):
-		if batch_size > self.num_train_cases:
-			raise Exception("Insufficent training data to fill a training batch.\n"\
-					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(batch_size))
 		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
+			np.random.shuffle(self.train_idxs)
 			self.train_scratch_pointer = 0
 		self.train_scratch_pointer += batch_size
-		xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
+		xyzs = self.xyz_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		Zs = self.Z_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		energies = self.energy_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		dipoles = self.dipole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		gradients = self.gradient_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		num_atoms = self.num_atoms_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		return [xyzs, Zs, dipoles, gradients, num_atoms]
 
 	def get_energy_train_batch(self, batch_size):
-		if batch_size > self.num_train_cases:
-			raise Exception("Insufficent training data to fill a training batch.\n"\
-					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(batch_size))
 		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
 			np.random.shuffle(self.train_idxs)
 			self.train_scratch_pointer = 0
@@ -247,44 +251,39 @@ class BehlerParinelloDirect(object):
 		num_atoms = self.num_atoms_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		gradients = self.gradient_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 
-		# xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# energies = self.energy_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
-		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
+		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]
 
 	def get_dipole_test_batch(self, batch_size):
-		if batch_size > self.num_test_cases:
-			raise Exception("Insufficent training data to fill a test batch.\n"\
-					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
-		if self.test_scratch_pointer + batch_size >= self.num_train_cases:
-			self.test_scratch_pointer = self.last_train_case
+		if self.test_scratch_pointer + batch_size >= self.num_test_cases:
+			self.test_scratch_pointer = 0
 		self.test_scratch_pointer += batch_size
-		xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		xyzs = self.xyz_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		Zs = self.Z_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		energies = self.energy_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		dipoles = self.dipole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		gradients = self.gradient_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		num_atoms = self.num_atoms_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		return [xyzs, Zs, dipoles, gradients, num_atoms]
 
 	def get_energy_test_batch(self, batch_size):
-		if batch_size > self.num_test_cases:
-			raise Exception("Insufficent training data to fill a test batch.\n"\
-					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
-		if self.test_scratch_pointer + batch_size >= self.num_train_cases:
-			self.test_scratch_pointer = self.last_train_case
+		if self.test_scratch_pointer + batch_size >= self.num_test_cases:
+			self.test_scratch_pointer = 0
 		self.test_scratch_pointer += batch_size
-		xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		xyzs = self.xyz_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		Zs = self.Z_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		energies = self.energy_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		dipoles = self.dipole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		gradients = self.gradient_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		num_atoms = self.num_atoms_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+
+		# xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
 		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
@@ -705,6 +704,8 @@ class BehlerParinelloDirect(object):
 
 	def train(self):
 		self.load_data_to_scratch()
+		print(self.__getstate__())
+		self.save_network()
 		self.compute_normalization()
 		self.train_prepare()
 		test_freq = PARAMS["test_freq"]
@@ -1054,7 +1055,7 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 			self.l_max = PARAMS["SH_LMAX"]
 			self.gaussian_params = PARAMS["RBFS"]
 			self.atomic_embed_factors = PARAMS["ANES"]
-			self.save_network()
+			# self.save_network()
 		return
 
 	def compute_normalization(self):
