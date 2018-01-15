@@ -1163,14 +1163,15 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 			else:
 				self.total_energy = self.bp_energy
 
-			self.gradients = tf.gather_nd(tf.gradients(self.total_energy, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			xyz_grad, rot_grad = tf.gradients(self.total_energy, [rotated_xyzs, rotation_params])
+			self.gradients = tf.gather_nd(xyz_grad, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
 
 			self.energy_loss = self.loss_op(self.total_energy - self.energy_pl)
 			tf.summary.scalar("energy loss", self.energy_loss)
 			tf.add_to_collection('energy_losses', self.energy_loss)
 			self.gradient_loss = self.loss_op(self.gradients - self.gradient_labels) / tf.cast(tf.reduce_sum(self.num_atoms_pl), self.tf_precision)
-			self.rotation_loss = self.loss_op(tf.gradients(self.total_energy, rotation_params)) / 500.0
+			self.rotation_loss = self.loss_op(rot_grad) / 500.0
 			if self.train_gradients:
 				tf.add_to_collection('energy_losses', self.gradient_loss)
 				tf.summary.scalar("gradient loss", self.gradient_loss)
