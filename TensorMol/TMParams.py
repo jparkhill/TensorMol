@@ -9,7 +9,7 @@ class TMParams(dict):
 	def __init__(self, *args, **kwargs ):
 		myparam = kwargs.pop('myparam', '')
 		dict.__init__(self, *args, **kwargs )
-		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
+		# self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
 		self["CheckLevel"] = 1 # whether to test the consistency of several things...
 		self["PrintTMTimer"] = False # whether to emit timing messages.
 		self["MAX_ATOMIC_NUMBER"] = 10
