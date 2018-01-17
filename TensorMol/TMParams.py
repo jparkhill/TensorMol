@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from __future__ import print_function
-import logging, time, os, sys
+import logging, time, os, sys, warnings
 from math import pi as Pi
 import numpy as np
 import tensorflow as tf
@@ -186,6 +186,7 @@ def TMBanner():
 	print("--------------------------")
 
 def TMLogger(path_):
+	os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 	#Delete Jupyter notebook root logger handler
 	logger = logging.getLogger()
 	logger.handlers = []
@@ -196,7 +197,7 @@ def TMLogger(path_):
 		os.makedirs(path_)
 	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%H.%M.%S_%Y")+'.log')
 	fh.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler()
+	ch = logging.StreamHandler(sys.stdout)
 	ch.setLevel(logging.INFO)
 	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	pformatter = logging.Formatter('%(message)s')

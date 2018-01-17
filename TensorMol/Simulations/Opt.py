@@ -59,16 +59,18 @@ class GeomOptimizer:
 		print("Orig Mol:\n", m)
 		CG = ConjGradient(self.WrappedEForce, m.coords)
 		while( step < self.max_opt_step and rmsgrad > self.thresh and (rmsdisp > 0.000001 or step<5) ):
+			print("~~~~~~~")
 			prev_m = Mol(m.atoms, m.coords)
 			m.coords, energy, frc = CG(m.coords)
-			print("Frc", frc)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/m.coords.shape[0]
 			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/m.coords.shape[0]
 			LOGGER.info("step: %i energy: %0.5f rmsgrad: %0.5f rmsdisp: %0.5f ", step , energy, rmsgrad, rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.properties["Step"] = step
 			prev_m.properties["Energy"] = energy
-			prev_m.WriteXYZfile("./results/", filename,'a',True)
+			# prev_m.WriteXYZfile("./results/", filename,'a',True)
+			# print(prev_m.__str__)
+			print(prev_m.__str__(True).replace(";", "-") + "\n")
 			step+=1
 		# Checks stability in each cartesian direction.
 		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
