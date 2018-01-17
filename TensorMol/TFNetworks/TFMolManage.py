@@ -21,6 +21,7 @@ from ..Math.QuasiNewtonTools import *
 import numpy as np
 import gc
 import time
+import cPickle as pickle
 
 mol_set=MSet()
 
@@ -1552,12 +1553,12 @@ class TFMolManageDirect:
 		self.init_network()
 		self.network_name = self.network.name
 		self.save()
-		self.network.train()
+		self.network.start_training()
 		return
 
-	def restart_training(self, network_directory):
+	def restart_training(self):
 		print("Loading previous network to continue training...")
-		self.init_network()
+		self.network.restart_training()
 
 	def init_network(self):
 		if self.network_type == "BehlerParinelloDirectSymFunc":
@@ -1577,9 +1578,10 @@ class TFMolManageDirect:
 
 	def load(self):
 		print("Loading TFManager...")
-		from ..Containers.PickleTM import UnPickleTM as UnPickleTM
-		tmp = UnPickleTM(self.path+self.name+".tfm")
-		self.__dict__.update(tmp)
+		# from ..Containers.PickleTM import UnPickleTM as UnPickleTM
+		tmp = pickle.load(open(self.path+self.name+".tfm", "rb"))
+		# tmp = UnPickleTM(self.path+self.name+".tfm")
+		self.__dict__.update(tmp.__dict__)
 		print("TFManager Loaded, Reviving Networks.")
 		return
 
