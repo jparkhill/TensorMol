@@ -196,7 +196,7 @@ def TMLogger(path_):
 		os.makedirs(path_)
 	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%H.%M.%S_%Y")+'.log')
 	fh.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler()
+	ch = logging.StreamHandler(sys.stdout)
 	ch.setLevel(logging.INFO)
 	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	pformatter = logging.Formatter('%(message)s')
