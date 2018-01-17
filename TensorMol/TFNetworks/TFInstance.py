@@ -53,7 +53,6 @@ class Instance:
 		# The parameters below belong to tensorflow and its graph
 		# all tensorflow variables cannot be pickled they are populated by Prepare
 		self.PreparedFor=0
-
 		try:
 			self.tf_prec
 		except:
@@ -71,15 +70,14 @@ class Instance:
 		self.activation_function = None
 		self.profiling = PARAMS["Profiling"]
 		self.AssignActivation()
-
-		self.path='./networks/'
+		self.path=PARAMS["networks_directory"]
 		if (Name_ !=  None):
 			self.name = Name_
 			#self.QueryAvailable() # Should be a sanity check on the data files.
 			self.Load() # Network still cannot be used until it is prepared.
-			LOGGER.info("raised network: "+self.train_dir)
+			self.train_dir = PARAMS["networks_directory"]+self.name
+			LOGGER.info("raised network: "+ self.train_dir)
 			return
-
 		self.element = ele_
 		self.TData = TData_
 		self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
@@ -93,7 +91,7 @@ class Instance:
 
 		self.NetType = "None"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		# if (self.element != 0):
 			# self.TData.LoadElementToScratch(self.element, self.tformer)
 			# self.tformer.Print()
@@ -526,7 +524,7 @@ class Instance_fc_classify(Instance):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "fc_classify"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.prob = None
 		#		self.inshape = self.TData.scratch_inputs.shape[1]
 		self.correct = None
@@ -681,7 +679,7 @@ class Instance_fc_sqdiff(Instance):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def evaluate(self, eval_input):
 		# Check sanity of input
@@ -786,7 +784,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		self.outshape = 3
 		TensorMol.TFDescriptors.RawSH.data_precision = self.tf_prec
 		if name != None:
-			self.path = './networks/'
+			self.path = PARAMS["networks_directory"]
 			self.name = name
 			self.Load()
 			self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
@@ -799,7 +797,7 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 			return
 		self.NetType = "fc_sqdiff_GauSH_direct"
 		self.name = self.TData.name+"_"+self.NetType+"_"+str(self.element)+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.trainable = trainable
 		self.orthogonalize = True
 		if (self.trainable):
@@ -1141,7 +1139,7 @@ class FCGauSHDirectRotationInvariant(Instance_fc_sqdiff_GauSH_direct):
 		Instance.__init__(self, TData_, elements_, Name_)
 		self.NetType = "fc_sqdiff_GauSH_direct"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.number_radial = PARAMS["SH_NRAD"]
 		self.l_max = PARAMS["SH_LMAX"]
 		self.gaussian_params = PARAMS["RBFS"][:self.number_radial]
@@ -1379,7 +1377,7 @@ class Instance_del_fc_sqdiff(Instance_fc_sqdiff):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "del_fc_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def inference(self, inputs, bleep, bloop, blop):
 		"""Build the MNIST model up to where it may be used for inference.
@@ -1436,7 +1434,7 @@ class Instance_conv2d_sqdiff(Instance):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "conv2d_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
@@ -1610,7 +1608,7 @@ class Instance_3dconv_sqdiff(Instance):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "3conv_sqdiff"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def placeholder_inputs(self, batch_size):
 		"""Generate placeholder variables to represent the input tensors.
@@ -1779,7 +1777,7 @@ class Instance_KRR(Instance):
 		Instance.__init__(self, TData_, ele_, Name_)
 		self.NetType = "KRR"
 		self.name = self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+str(self.element)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.krr = None
 		return
 

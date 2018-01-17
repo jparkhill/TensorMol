@@ -25,7 +25,7 @@ class TFManage:
 				RandomTData_: Modifes the preparation of training batches.
 				ntrain_: Number of steps to train an element.
 		"""
-		self.path = "./networks/"
+		self.path = PARAMS["networks_directory"]
 		self.TData = TData_
 		self.Trainable = Trainable_
 		self.NetType = NetType_

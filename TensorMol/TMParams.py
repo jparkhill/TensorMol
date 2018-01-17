@@ -152,12 +152,14 @@ class TMParams(dict):
 		self["EECutoffOff"] = 15.0 # switch off between 0 and 1/r occurs at Angstroms.
 		self["Erf_Width"] = 0.2
 		self["DSFAlpha"] = 0.18
-		#paths
-		self["sets_dir"] = "./datasets/"
-		self["results_dir"] = "./results/"
-		self["dens_dir"] = "./densities/"
-		self["log_dir"] = "./logs/"
-		self["networks_directory"] = "./networks"
+		#paths -- Allows for different placement of fast reads/writes.
+		self["tm_root"] = "."
+		self["sets_dir"] = self["tm_root"]+"/datasets/"
+		self["networks_directory"] = self["tm_root"]+"/networks/"
+		self["output_root"] = "."
+		self["results_dir"] = self["output_root"]+"/results/"
+		self["dens_dir"] = self["output_root"]+"/densities/"
+		self["log_dir"] = self["output_root"]+"/logs/"
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 		np.set_printoptions(formatter={'float': '{: .8f}'.format}) #Set pretty printing for numpy arrays
@@ -194,7 +196,7 @@ def TMLogger(path_):
 		os.makedirs(path_)
 	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%H.%M.%S_%Y")+'.log')
 	fh.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler()
+	ch = logging.StreamHandler(sys.stdout)
 	ch.setLevel(logging.INFO)
 	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	pformatter = logging.Formatter('%(message)s')

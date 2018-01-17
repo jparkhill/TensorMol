@@ -22,20 +22,35 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #	Global variables are almost never acceptable except in these few cases
 
 # PARAMETERS
-#  TODO: Migrate these to PARAMS
 PARAMS = TMParams()
+#
+# -- begin Environment set up.
+#
+# if any of these paths do not exist create them.
+def MakeDirIfAbsent(path):
+	if sys.version_info[0]+sys.version_info[1]*0.1<3.2:
+		try:
+			os.makedirs(path)
+		except OSError:
+			if not os.path.isdir(path):
+				raise
+	else:
+		os.makedirs(path, exist_ok=True)
+MakeDirIfAbsent(PARAMS["sets_dir"])
+MakeDirIfAbsent(PARAMS["networks_directory"])
+MakeDirIfAbsent(PARAMS["log_dir"])
+MakeDirIfAbsent(PARAMS["results_dir"])
+MakeDirIfAbsent(PARAMS["dens_dir"])
+MakeDirIfAbsent(PARAMS["log_dir"])
 LOGGER = TMLogger(PARAMS["log_dir"])
 MAX_ATOMIC_NUMBER = 10
 # Derived Quantities and useful things.
-N_CORES = 1
+#  TODO: Migrate these to PARAMS
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
 GRIDS = None
 HAS_GRIDS=False
-#
-# -- begin Environment set up.
-#
 
 LOGGER.info("Searching for Installed Optional Packages...")
 try:

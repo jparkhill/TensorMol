@@ -216,7 +216,7 @@ class MolInstance_DirectForce(MolInstance_fc_sqdiff_BP):
 		self.TData = TData_
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.MaxNAtoms = TData_.MaxNAtoms
 		self.batch_size_output = 4096
 		self.PreparedFor = 0

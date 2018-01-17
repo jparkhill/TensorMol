@@ -39,7 +39,7 @@ class TFMolManage(TFManage):
 				NetType_: Choices of Various network architectures.
 				RandomTData_: Modifes the preparation of training batches.
 		"""
-		self.path = "./networks/"
+		self.path = PARAMS["networks_directory"]
 		self.Trainable = Trainable_
 		if (Name_!=""):
 			self.name = Name_

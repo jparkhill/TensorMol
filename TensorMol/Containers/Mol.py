@@ -37,6 +37,24 @@ class Mol:
 			mset.mols.append(Mol(self.atoms[frags],self.coords[frags]))
 		return mset
 
+	def BuildElectronConfiguration(self,charge_=0,spin_=1):
+		"""
+		fill up electronic configuration.
+		"""
+		nelectron = sum(self.atoms) - charge_
+		nalpha = (nelectron+spin_)//2
+		nbeta = nalpha - self.spin
+		basis = []
+#		VALENCEBASIS = [[[1,0]],[[1,0]],[[1,0],[2,0]],[[1,0],[2,0]]]
+#		for atom in self.atoms:
+#			basis.append(VALENCEBASIS[atom])
+		self.properties["basis"] = basis
+		self.properties["charge"] = charge_
+		self.properties["spin"] = spin_
+		self.properties["nalpha"] = nalpha
+		self.properties["nbeta"] = nbeta
+		return
+
 	def AtomTypes(self):
 		return np.unique(self.atoms)
 

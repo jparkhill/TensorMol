@@ -34,7 +34,7 @@ class MolInstance_DirectForce_tmp(MolInstance_fc_sqdiff_BP):
 		self.TData = TData_
 		self.MaxNAtoms = TData_.MaxNAtoms
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.batch_size_output = 10000
 		self.inp_pl=None
 		self.frce_pl=None
@@ -128,7 +128,7 @@ class MolInstance_DirectBP(MolInstance_fc_sqdiff_BP):
 		self.TData = TData_
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.MaxNAtoms = TData_.MaxNAtoms
 		self.batch_size_output = 4096
 		self.inp_pl=None
@@ -315,7 +315,7 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.NetType = "RawBP_noGrad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 		self.xyzs_pl = None
@@ -685,7 +685,7 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		self.NetType = "RawBPBond_noGrad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 		self.xyzs_pl = None
@@ -974,7 +974,7 @@ class MolPairsTriples(MolInstance):
 		self.element_triples = np.asarray(self.element_triples)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 
@@ -1274,7 +1274,7 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
 		print ("self.activation_function_type: ", self.activation_function_type)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 		self.xyzs_pl = None
@@ -1645,7 +1645,7 @@ class MolInstance_DirectBP_Grad_noGradTrain(MolInstance_DirectBP_Grad):
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_Grad_noGradTrain"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def loss_op(self, output, nn_grads, labels, grads):
 		energy_diff  = tf.subtract(output, labels)
@@ -1672,7 +1672,7 @@ class MolInstance_DirectBP_Grad_NewIndex(MolInstance_DirectBP_Grad):
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_Grad_Update"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def inference(self, inp, indexs):
 		"""
@@ -1793,7 +1793,7 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_Grad_Linear"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def Clean(self):
 		MolInstance_DirectBP_Grad.Clean(self)
@@ -1987,7 +1987,7 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		MolInstance_DirectBP_Grad.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_Grad_Linear"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.TData.ele = self.eles_np
 		self.TData.elep = self.eles_pairs_np
 
@@ -2364,7 +2364,7 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		self.learning_rate_dipole = PARAMS["learning_rate_dipole"]
 		self.learning_rate_energy = PARAMS["learning_rate_energy"]
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.Training_Traget = "Dipole"
 		self.suffix = PARAMS["NetNameSuffix"]
 		self.SetANI1Param()
@@ -3117,7 +3117,7 @@ class MolInstance_DirectBP_EE_ChargeEncode(MolInstance_DirectBP_EE):
 		MolInstance_DirectBP_EE.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.Training_Traget = "Dipole"
 
 	def Clean(self):
@@ -3433,7 +3433,7 @@ class MolInstance_DirectBP_EE_Update(MolInstance_DirectBP_EE):
 		MolInstance_DirectBP_EE.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_Update"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.TData.ele = self.eles_np
 		self.TData.elep = self.eles_pairs_np
 		self.SetANI1Param()
@@ -3641,7 +3641,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update(MolInstance_DirectBP_EE_Charge
 		MolInstance_DirectBP_EE_ChargeEncode.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.Training_Traget = "Dipole"
 		self.TData.ele = self.eles_np
 		self.TData.elep = self.eles_pairs_np
@@ -3758,7 +3758,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		MolInstance_DirectBP_EE_ChargeEncode_Update.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.Training_Traget = "Dipole"
 		self.vdw_R = np.zeros(self.n_eles)
 		self.C6 = np.zeros(self.n_eles)
@@ -4362,7 +4362,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu(MolInstance_Direct
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if self.Ree_on != 0.0:
 			raise Exception("EECutoffOn should equal to zero in DSF_elu")
 		self.elu_width = PARAMS["Elu_Width"]
@@ -4719,7 +4719,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize(MolInsta
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 	def Clean(self):
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw.Clean(self)
@@ -4975,7 +4975,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.keep_prob = np.asarray(PARAMS["KeepProb"])
 		self.nlayer = len(PARAMS["KeepProb"]) - 1
 		self.monitor_mset =  PARAMS["MonitorSet"]
@@ -4985,7 +4985,6 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 	def Clean(self):
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize.Clean(self)
 		self.keep_prob_pl = None
-
 
 	def TrainPrepare(self,  continue_training =False):
 		"""
@@ -6022,7 +6021,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_AvgPool"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.avg_window_size = PARAMS["AvgWindowSize"]
 		self.chop_out = PARAMS["ChopPadding"]
 		self.Emax =  0.15
@@ -6273,7 +6272,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_InputNorm"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.input_avg = []
 		self.input_std = []
 		self.Scatter_Sym_Normalize = []
@@ -6559,7 +6558,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_Conv"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.filters = PARAMS["ConvFilter"]
 		self.kernel_size = PARAMS["ConvKernelSize"]
 		self.strides = PARAMS["ConvStrides"]
@@ -6730,7 +6729,7 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "RawBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_NoGradTrain"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 
 
 	def TrainPrepare(self,  continue_training =False):
