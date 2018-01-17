@@ -762,7 +762,7 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 		if name == None:
 			self.network_type = "BehlerParinelloDirectSymFunc"
 			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
-			self.network_directory = './networks/'+self.name
+			self.network_directory = PARAMS["networks_directory"]+self.name
 			self.set_symmetry_function_params()
 		return
 
@@ -1051,7 +1051,7 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 		if name == None:
 			self.network_type = "BehlerParinelloDirectGauSH"
 			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
-			self.network_directory = './networks/'+self.name
+			self.network_directory = PARAMS["networks_directory"]+self.name
 			self.l_max = PARAMS["SH_LMAX"]
 			self.gaussian_params = PARAMS["RBFS"]
 			self.atomic_embed_factors = PARAMS["ANES"]

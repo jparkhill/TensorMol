@@ -27,7 +27,7 @@ class MolInstance(Instance):
 		Instance.__init__(self, TData_, 0, Name_)
 		self.AssignActivation()
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.Trainable = Trainable_
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
@@ -130,7 +130,7 @@ class MolInstance_fc_classify(MolInstance):
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Instance.__init__: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.prob = None
 		self.correct = None
 
@@ -301,7 +301,7 @@ class MolInstance_fc_sqdiff(MolInstance):
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.hidden1 = PARAMS["hidden1"]
 		self.hidden2 = PARAMS["hidden2"]
 		self.hidden3 = PARAMS["hidden3"]
@@ -465,7 +465,7 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.
@@ -866,7 +866,7 @@ class MolInstance_fc_sqdiff_BP_WithGrad(MolInstance_fc_sqdiff_BP):
 		MolInstance_fc_sqdiff_BP.__init__(self, TData_,  Name_, Trainable_)
 		self.NetType = "fc_sqdiff_BP_WithGrad"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.grad_pl = None
 		self.MaxN3 = None
 		self.GradWeight = PARAMS["GradWeight"]
@@ -1084,7 +1084,7 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 		# Using multidimensional inputs creates all sorts of issues; for the time being only support flat inputs.

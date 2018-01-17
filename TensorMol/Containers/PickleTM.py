@@ -62,6 +62,8 @@ def UnPickleTM(file):
 	tmp.pop('Eval_BPForceSingle',None)
 	tmp.pop('TFMolManage',None)
 	tmp.pop('Prepare',None)
+	tmp.pop('load',None)
+	tmp.pop('save',None)
 	tmp.pop('Trainable',None)
 	tmp.pop('TFMolManage.Trainable',None)
 	tmp.pop('__init__',None)
