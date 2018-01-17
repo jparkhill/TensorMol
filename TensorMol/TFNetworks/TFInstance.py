@@ -53,7 +53,6 @@ class Instance:
 		# The parameters below belong to tensorflow and its graph
 		# all tensorflow variables cannot be pickled they are populated by Prepare
 		self.PreparedFor=0
-
 		try:
 			self.tf_prec
 		except:
@@ -71,15 +70,14 @@ class Instance:
 		self.activation_function = None
 		self.profiling = PARAMS["Profiling"]
 		self.AssignActivation()
-
 		self.path=PARAMS["networks_directory"]
 		if (Name_ !=  None):
 			self.name = Name_
 			#self.QueryAvailable() # Should be a sanity check on the data files.
 			self.Load() # Network still cannot be used until it is prepared.
-			LOGGER.info("raised network: "+self.train_dir)
+			self.train_dir = PARAMS["networks_directory"]+self.name
+			LOGGER.info("raised network: "+ self.train_dir)
 			return
-
 		self.element = ele_
 		self.TData = TData_
 		self.tformer = Transformer(PARAMS["InNormRoutine"], PARAMS["OutNormRoutine"], self.element, self.TData.dig.name, self.TData.dig.OType)
