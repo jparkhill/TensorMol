@@ -22,21 +22,35 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
 #	Global variables are almost never acceptable except in these few cases
 
 # PARAMETERS
-#  TODO: Migrate these to PARAMS
 PARAMS = TMParams()
+#
+# -- begin Environment set up.
+#
+# if any of these paths do not exist create them.
+def MakeDirIfAbsent(path):
+	if sys.version_info[0]+sys.version_info[1]*0.1<3.2:
+		try:
+			os.makedirs(path)
+		except OSError:
+			if not os.path.isdir(path):
+				raise
+	else:
+		os.makedirs(path, exist_ok=True)
+MakeDirIfAbsent(PARAMS["sets_dir"])
+MakeDirIfAbsent(PARAMS["networks_directory"])
+MakeDirIfAbsent(PARAMS["log_dir"])
+MakeDirIfAbsent(PARAMS["results_dir"])
+MakeDirIfAbsent(PARAMS["dens_dir"])
+MakeDirIfAbsent(PARAMS["log_dir"])
 LOGGER = TMLogger(PARAMS["log_dir"])
 MAX_ATOMIC_NUMBER = 10
 # Derived Quantities and useful things.
-N_CORES = 1
+#  TODO: Migrate these to PARAMS
 HAS_PYSCF = False
 HAS_EMB = False
 HAS_TF = False
 GRIDS = None
 HAS_GRIDS=False
-Qchem_RIMP2_Block = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
-#
-# -- begin Environment set up.
-#
 
 LOGGER.info("Searching for Installed Optional Packages...")
 try:
@@ -53,16 +67,7 @@ except Exception as Ex:
 try:
 	import MolEmb
 	HAS_EMB = True
-	LOGGER.debug("MolEmb has been found, Orthogonalizing Radial Basis.")
-	S = MolEmb.Overlap_SH(PARAMS)
-	from TensorMol.LinearOperations import MatrixPower
-	SOrth = MatrixPower(S,-1./2)
-	PARAMS["GauSHSm12"] = SOrth
-	S_Rad = MolEmb.Overlap_RBF(PARAMS)
-	S_RadOrth = MatrixPower(S_Rad,-1./2)
-	PARAMS["SRBF"] = S_RadOrth
-	# THIS SHOULD BE IMPLEMENTED TOO.
-	#PARAMS["GauInvSm12"] = MatrixPower(S,-1./2)
+	LOGGER.debug("MolEmb has been found.")
 except Exception as Ex:
 	print("MolEmb is not installed. Please cd C_API; sudo python setup.py install",Ex)
 	pass
@@ -88,8 +93,6 @@ LOGGER.debug("TMPARAMS----------")
 LOGGER.debug(PARAMS)
 LOGGER.debug("TMPARAMS~~~~~~~~~~")
 
-TOTAL_SENSORY_BASIS=None
-SENSORY_BASIS=None
 if (HAS_PYSCF and HAS_GRIDS):
 	from TensorMol.Grids import *
 	GRIDS = Grids()
@@ -99,8 +102,33 @@ print("--------------------------")
 # -- end Environment set up.
 #
 
+# A simple timing decorator.
+TMTIMER = {}
+TMSTARTTIME = time.time()
+def PrintTMTIMER():
+	LOGGER.info("=======    Accumulated Time Information    =======")
+	LOGGER.info("Category   |||   Time Per Call   |||   Total Elapsed     ")
+	for key in TMTIMER.keys():
+		if (TMTIMER[key][1]>0):
+			LOGGER.info(key+" ||| %0.5f ||| %0.5f ",TMTIMER[key][0]/(TMTIMER[key][1]),TMTIMER[key][0])
+def TMTiming(nm_="Obs"):
+	if (not nm_ in TMTIMER.keys()):
+		TMTIMER[nm_] = [0.,0]
+	def wrap(f):
+		def wf(*args,**kwargs):
+			t0 = time.time()
+			output = f(*args,**kwargs)
+			TMTIMER[nm_][0] += time.time()-t0
+			TMTIMER[nm_][1] += 1
+			return output
+		LOGGER.debug("TMTimed "+nm_+str(TMTIMER[nm_]))
+		return wf
+	return wrap
+
 @atexit.register
 def exitTensorMol():
+	PrintTMTIMER()
+	LOGGER.info("Total Time : %0.5f s",time.time()-TMSTARTTIME)
 	LOGGER.info("~ Adios Homeshake ~")
 
 #
@@ -129,29 +157,65 @@ def AtomicSymbol(number):
 		raise Exception("Unknown Atom")
 	return 0
 
-def SignStep(S):
-	if (S<0.5):
-		return -1.0
-	else:
-		return 1.0
-
-# Choose random samples near point...
-def PointsNear(point,NPts,Dist):
-	disps=Dist*0.2*np.abs(np.log(np.random.rand(NPts,3)))
-	signs=signstep(np.random.random((NPts,3)))
-	return (disps*signs)+point
-
 def LtoS(l):
 	s=""
 	for i in l:
 		s+=str(i)+" "
 	return s
 
-def ErfSoftCut(dist, width, x):
-	return (1-scipy.special.erf(1.0/width*(x-dist)))/2.0
-
 def nCr(n, r):
 	f = math.factorial
 	return int(f(n)/f(r)/f(n-r))
 
-signstep = np.vectorize(SignStep)
+# Wow... Holy shit kun. Stop putting stuff here. Totally inappropriate.
+
+def DSF(R, R_c, alpha):	# http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/10.1063/1.2206581 damp shifted force
+	if R > R_c:
+		return 0.0
+	else:
+		twooversqrtpi = 1.1283791671
+		XX = alpha*R_c
+		ZZ = scipy.special.erfc(XX)/R_c
+		YY = twooversqrtpi*alpha*math.exp(-XX*XX)/R_c
+		LR = (scipy.special.erfc(alpha*R)/R - ZZ + (R-R_c)*(ZZ/R_c+YY))
+		return LR
+
+def DSF_Gradient(R, R_c, alpha):
+	if R > R_c:
+		return 0.0
+	else:
+		twooversqrtpi = 1.1283791671
+		XX = alpha*R_c
+		ZZ = scipy.special.erfc(XX)/R_c
+		YY = twooversqrtpi*alpha*math.exp(-XX*XX)/R_c
+		grads = -((scipy.special.erfc(alpha*R)/R/R + twooversqrtpi*alpha*math.exp(-alpha*R*alpha*R)/R)-(ZZ/R_c + YY))
+		return grads
+
+def EluAjust(x, a, x0, shift):
+	if x > x0:
+		return a*(x-x0)+shift
+	else:
+		return a*(math.exp(x-x0)-1.0)+shift
+
+def sigmoid_with_param(x, prec=tf.float64):
+	return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=prec), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=prec)
+
+def guassian_act(x, prec=tf.float64):
+	return tf.exp(-x*x)
+
+def guassian_rev_tozero(x, prec=tf.float64):
+	return tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
+
+def guassian_rev_tozero_tolinear(x, prec=tf.float64):
+	a = 0.5
+	b = -0.06469509698101589
+	x0 = 0.2687204431537632
+	step1 = tf.where(tf.greater(x, 0.0), 1.0-tf.exp(-x*x), tf.zeros_like(x))
+	return tf.where(tf.greater(x, x0), a*x+b, step1)
+
+def square_tozero_tolinear(x, prec=tf.float64):
+	a = 1.0
+	b = -0.0025
+	x0 = 0.005
+	step1 = tf.where(tf.greater(x, 0.0), 100.0*x*x, tf.zeros_like(x))
+	return tf.where(tf.greater(x, x0), a*x+b, step1)

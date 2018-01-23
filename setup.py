@@ -1,10 +1,18 @@
 # To make TensorMol available.
-# pip install -e .
+# sudo pip install -e .
+#
+# to make and upload a source dist 
+# python setup.py sdist
+# twine upload dist/*
+# And of course also be me. 
+# 
 
-from __future__ import absolute_import
+from __future__ import absolute_import,print_function
 from distutils.core import setup, Extension
 import numpy
 import os
+
+print("Numpy Include Dir: ",numpy.get_include())
 
 LLVM=os.popen('cc --version | grep clang').read().count("LLVM")
 if (not LLVM):
@@ -25,7 +33,7 @@ else:
 
 # run the setup
 setup(name='TensorMol',
-      version='0.1',
+      version='0.2',
       description='TensorFlow+Molecules = TensorMol',
       url='http://github.com/jparkhill/TensorMol',
       author='john parkhill',

@@ -438,6 +438,26 @@ void ANI1_SymFunction(double *ANI1_Sym_data,  const int data_pointer, const doub
 }
 
 //
+//   Everything below here is exposed to python
+//
+
+// To check all your python library is linked correctly.
+static PyObject* EmptyInterfacedFunction(PyObject *self, PyObject  *args)
+{
+	int To;
+	PyArrayObject *xyz;
+	std::cout << "Parsing..." << endl;
+	try {if (!PyArg_ParseTuple(args, "O!i", &PyArray_Type, &xyz, &To))
+		return NULL;}
+		catch(const std::exception &exc)
+	{
+		std::cout << exc.what();
+	}
+	std::cout << "Parsed..." << endl;
+		return Py_BuildValue("i", To);
+	}
+
+//
 // This isn't an embedding; it's fast code to make a go-model potential for a molecule.
 //
 static PyObject* Make_Go(PyObject *self, PyObject  *args) {
@@ -1038,6 +1058,120 @@ static PyObject* Make_DistMat(PyObject *self, PyObject  *args)
 	return SH;
 }
 
+static PyObject* Make_DistMat_ForReal(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	int nreal;
+	if (!PyArg_ParseTuple(args, "O!i", &PyArray_Type, &xyz, &nreal))
+	return NULL;
+	const int nat = (xyz->dimensions)[0];
+	npy_intp outdim[2] = {nreal,nat};
+	PyObject* SH = PyArray_ZEROS(2, outdim, NPY_DOUBLE, 0);
+	double *SH_data,*xyz_data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	for (int i=0; i < nreal; ++i)
+	for (int j=0; j < nat; ++j)
+	{
+		SH_data[i*nat+j] = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
+	}
+	return SH;
+}
+
+/* counts the number of atoms which occur within a radius of those of type z1*/
+static PyObject* CountInRange(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	PyArrayObject *Zs;
+	double cut;
+	double dr;
+	int nreal, ele1, ele2;
+	if (!PyArg_ParseTuple(args, "O!O!iiidd", &PyArray_Type, &Zs, &PyArray_Type, &xyz,  &nreal, &ele1, &ele2, &cut, &dr))
+		return NULL;
+	const int nat = (xyz->dimensions)[0];
+	double *SH_data, *xyz_data;
+	int outdim = int(cut/dr);
+	npy_intp outdima[1] = {outdim};
+	PyObject* SH = PyArray_ZEROS(1, outdima, NPY_DOUBLE, 0);
+	uint8_t* atoms=(uint8_t*)Zs->data;
+	SH_data = (double*) ((PyArrayObject*)SH)->data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	double dist;
+	double nav = 0.0;
+	int di = 0;
+	for (int i=0; i < nreal; ++i)
+		if (atoms[i] == ele1) {
+			nav += 1.0;
+			for (int j=0; j < nat; ++j)
+			{
+				if (atoms[j] == ele2 && i != j) {
+					dist = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2]));
+					di = int(dist/dr);
+					if (di <outdim)
+						for (int k=di; k<outdim; ++k)
+							SH_data[k] += 1.0;
+				}
+			}
+		}
+	for (int k=0; k<outdim; ++k)
+		SH_data[k] /= nav;
+	return SH;
+}
+
+static PyObject* GetRDF_Bin(PyObject *self, PyObject  *args)
+{
+	PyArrayObject *xyz;
+	PyArrayObject *Zs;
+	double cut;
+	double dr;
+	double cellsize;
+	int ele1, ele2;
+	if (!PyArg_ParseTuple(args, "O!O!dddii", &PyArray_Type, &xyz, &PyArray_Type, &Zs, &cut, &dr, &cellsize, &ele1, &ele2))
+	return NULL;
+	int ntess = (int)(cut/cellsize)+1;
+	const int nat = (xyz->dimensions)[0];
+	int nat_p = nat*((int)(pow(2*ntess+1,3)));
+	npy_intp xyzpdim[2] = {nat_p ,3};
+	PyObject* xyzp = PyArray_ZEROS(2, xyzpdim, NPY_DOUBLE, 0);
+	double *SH_data,*xyzp_data, *xyz_data;
+	uint8_t* atoms=(uint8_t*)Zs->data;
+	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
+	xyzp_data = (double*) ((PyArrayObject*) xyzp)->data;
+	for (int n=0; n<nat; ++n) {
+		xyzp_data[n*3+0] = xyz_data[n*3+0];
+		xyzp_data[n*3+1] = xyz_data[n*3+1];
+		xyzp_data[n*3+2] = xyz_data[n*3+2];
+	}
+	int tess_index = 1;
+	for (int i=-ntess; i <= ntess; ++i) {
+		for (int j=-ntess; j <= ntess; ++j)
+			for (int k=-ntess; k <= ntess; ++k)
+			   if (i!=0 || j!=0 || k!=0){
+				for (int n=0; n<nat; ++n) {
+						xyzp_data[(tess_index*nat+n)*3+0] = xyz_data[n*3+0] + i*cellsize;
+						xyzp_data[(tess_index*nat+n)*3+1] = xyz_data[n*3+1] + j*cellsize;
+						xyzp_data[(tess_index*nat+n)*3+2] = xyz_data[n*3+2] + k*cellsize;
+				}
+				tess_index++;
+			   }
+	}
+	PyObject* bin_index = PyList_New(0);
+	double dist;
+	for (int i=0; i < nat; ++i)
+		if (atoms[i] == ele1) {
+			for (int j=0; j < nat_p; ++j)
+			{
+				if (atoms[j%nat] == ele2 && i!=j) {
+					dist = sqrt((xyz_data[i*3+0]-xyzp_data[j*3+0])*(xyz_data[i*3+0]-xyzp_data[j*3+0])+(xyz_data[i*3+1]-xyzp_data[j*3+1])*(xyz_data[i*3+1]-xyzp_data[j*3+1])+(xyz_data[i*3+2]-xyzp_data[j*3+2])*(xyz_data[i*3+2]-xyzp_data[j*3+2])) + 0.00000000001;
+					if (dist < cut) {
+						PyObject* ti = PyInt_FromLong((int)(dist/dr));
+						PyList_Append(bin_index, ti);
+					}
+				}
+			}
+		}
+	return bin_index;
+}
 //
 // Make a neighborlist using a naive, quadratic algorithm.
 // returns a python list.
@@ -1055,19 +1189,48 @@ static PyObject* Make_NListNaive(PyObject *self, PyObject  *args)
 	xyz_data = (double*) ((PyArrayObject*) xyz)->data;
 	const int nat = (xyz->dimensions)[0];
 	// Avoid stupid python reference counting issues by just using std::vector...
+	// Argsort by x.
+	std::vector<double> XX;
+	XX.assign(xyz_data,xyz_data+3*nat);
+	std::vector<int> y(nat);
+	std::size_t n(0);
+	std::generate(y.begin(), y.end(), [&]{ return n++; });
+	std::sort(y.begin(),y.end(), [&](int i1, int i2) { return XX[i1*3] < XX[i2*3]; } );
+	// So y now contains sorted x indices, do the skipping Neighbor list.
 	std::vector< std::vector<int> > tmp(nreal);
-	for (int i=0; i < nreal; ++i)
+	for (int i=0; i< nat; ++i)
 	{
-		for (int j=i+1; j < nat; ++j)
-		{
-			double dij = sqrt((xyz_data[i*3+0]-xyz_data[j*3+0])*(xyz_data[i*3+0]-xyz_data[j*3+0])+(xyz_data[i*3+1]-xyz_data[j*3+1])*(xyz_data[i*3+1]-xyz_data[j*3+1])+(xyz_data[i*3+2]-xyz_data[j*3+2])*(xyz_data[i*3+2]-xyz_data[j*3+2])) + 0.00000000001;
-			if (dij < rng)
+		int I = y[i];
+			// We always work in order of increasing X...
+			for (int j=i+1; j < nat; ++j)
 			{
-				tmp[i].push_back(j);
-				if (j<nreal && DoPerms==1)
-					tmp[j].push_back(i);
+				int J = y[j];
+				if (!(I<nreal || J<nreal))
+					continue;
+				if (fabs(XX[I*3] - XX[J*3]) > rng)//((XX[J*3] - XX[I*3]) > rng)//
+				{
+					break;
+				}
+				double dx = (xyz_data[I*3+0]-xyz_data[J*3+0]);
+				double dy = (xyz_data[I*3+1]-xyz_data[J*3+1]);
+				double dz = (xyz_data[I*3+2]-xyz_data[J*3+2]);
+				double dij = sqrt(dx*dx+dy*dy+dz*dz) + 0.0000000000001;
+				if (dij < rng)
+				{
+					if (I<J)
+					{
+						tmp[I].push_back(J);
+						if (J<nreal && DoPerms==1)
+							tmp[J].push_back(I);
+					}
+					else
+					{
+						tmp[J].push_back(I);
+						if (I<nreal && DoPerms==1)
+							tmp[I].push_back(J);
+					}
+				}
 			}
-		}
 	}
 	PyObject* Tore = PyList_New(nreal);
 	for (int i=0; i < nreal; ++i)
@@ -1678,76 +1841,6 @@ static PyObject*  Make_CM_vary_coords (PyObject *self, PyObject  *args)
 	return  nlist;
 }
 
-
-static PyObject*  Make_PGaussian (PyObject *self, PyObject  *args) {
-
-	PyArrayObject   *xyz, *grids, *atoms_, *elements;
-	PyObject    *eta_py;
-	double   dist_cut;
-	int theatom;
-	if (!PyArg_ParseTuple(args, "O!O!O!O!idO!",
-	&PyArray_Type, &xyz, &PyArray_Type, &grids, &PyArray_Type, &atoms_, &PyArray_Type, &elements, &theatom, &dist_cut,   &PyList_Type, &eta_py))  return NULL;
-	PyObject* PGaussian_all = PyList_New(0);
-	int dim_eta = PyList_Size(eta_py);
-	double  eta[dim_eta];
-	const int nele = (elements->dimensions)[0];
-	npy_intp  gdim[2] = { 3, dim_eta };
-	PyObject* g;
-	double *g_data, *xyz_data, *grids_data;
-	uint8_t* ele=(uint8_t*)elements->data;
-	uint8_t* atoms=(uint8_t*)atoms_->data;
-	double center[3]; // x y z of the center
-	int natom, num_PGaussian;
-	std::array<std::vector<int>, 100> ele_index;  // hold max 100 elements most
-	std::array<std::vector<double>, 100> ele_dist;  //  hold max 100 elements most
-
-
-	npy_intp* Nxyz = xyz->dimensions;
-	natom = Nxyz[0];
-	npy_intp* Ngrids = grids->dimensions;
-	num_PGaussian = Ngrids[0];
-	xyz_data = (double*) xyz->data;
-	grids_data = (double*) grids -> data;
-
-
-	for (int i = 0; i < dim_eta; i++)
-	eta[i] = PyFloat_AsDouble(PyList_GetItem(eta_py, i));
-
-	for (int j = 0; j < natom; j++) {
-		if (j==theatom)
-		continue;
-		for (int k=0; k < nele; k++) {
-			if (atoms[j] == ele[k])
-			ele_index[k].push_back(j);
-		}
-	}
-
-	for  (int i= 0; i < num_PGaussian; i++) {
-		center[0] = grids_data[i*Ngrids[1]+0];
-		center[1] = grids_data[i*Ngrids[1]+1];
-		center[2] = grids_data[i*Ngrids[1]+2];
-		for (int m =0; m < nele; m++) {
-			g = PyArray_SimpleNew(2, gdim, NPY_DOUBLE);
-			g_data = (double*) ((PyArrayObject*) g)->data;
-			for (int k = 0; k < gdim[0]*gdim[1]; k++)
-			g_data[k] = 0.0;
-			if (ele_index[m].size() > 0 ) {
-				PGaussian(g_data,  eta,   dim_eta,  ele_index,  m, center, xyz_data,  dist_cut);
-			}
-			PyList_Append(PGaussian_all, g);
-		}
-	}
-
-	for (int j = 0; j < nele; j++)
-	ele_index[j].clear();
-
-	PyObject* nlist = PyList_New(0);
-	PyList_Append(nlist, PGaussian_all);
-	//         PyList_Append(nlist, AM_all);
-
-	return  nlist;
-}
-
 static PyObject*  Make_ANI1_Sym_deri (PyObject *self, PyObject  *args)
 {
 	PyArrayObject   *xyz, *atoms_, *elements;
@@ -2056,8 +2149,27 @@ static PyObject*  Make_Sym(PyObject *self, PyObject  *args) {
 	return  nlist;
 }
 
+struct module_state {
+	PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+	#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+	#define GETSTATE(m) (&_state)
+	static struct module_state _state;
+#endif
+
+static PyObject * error_out(PyObject *m) {
+		struct module_state *st = GETSTATE(m);
+		PyErr_SetString(st->error, "something bad happened");
+		return NULL;
+}
+
 static PyMethodDef EmbMethods[] =
 {
+	{"EmptyInterfacedFunction", EmptyInterfacedFunction, METH_VARARGS,
+	"EmptyInterfacedFunction method"},
 	{"Make_NListLinear", Make_NListLinear, METH_VARARGS,
 	"Make_NListLinear method"},
 	{"Make_NListNaive", Make_NListNaive, METH_VARARGS,
@@ -2066,6 +2178,12 @@ static PyMethodDef EmbMethods[] =
 	"DipoleAutoCorr method"},
 	{"Make_DistMat", Make_DistMat, METH_VARARGS,
 	"Make_DistMat method"},
+	{"CountInRange", CountInRange, METH_VARARGS,
+	"CountInRange method"},
+	{"Make_DistMat_ForReal", Make_DistMat_ForReal, METH_VARARGS,
+	"Make_DistMat_ForReal method"},
+	{"GetRDF_Bin", GetRDF_Bin, METH_VARARGS,
+	"GetRDF_Bin method"},
 	{"Norm_Matrices", Norm_Matrices, METH_VARARGS,
 	"Norm_Matrices method"},
 	{"Make_CM", Make_CM, METH_VARARGS,
@@ -2098,8 +2216,6 @@ static PyMethodDef EmbMethods[] =
 	"Overlap_RBFS method"},
 	{"Project_SH", Project_SH, METH_VARARGS,
 	"Project_SH method"},
-	{"Make_PGaussian", Make_PGaussian, METH_VARARGS,
-	"Make_PGaussian method"},
 	{"Make_Sym", Make_Sym, METH_VARARGS,
 	"Make_Sym method"},
 	{"Make_Sym_Update", Make_Sym_Update, METH_VARARGS,
@@ -2113,56 +2229,53 @@ static PyMethodDef EmbMethods[] =
 	{NULL, NULL, 0, NULL}
 };
 
-struct module_state {
-    PyObject *error;
-};
 #if PY_MAJOR_VERSION >= 3
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+
+	static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+	    Py_VISIT(GETSTATE(m)->error);
+	    return 0;
+	}
+
+	static int myextension_clear(PyObject *m) {
+	    Py_CLEAR(GETSTATE(m)->error);
+	    return 0;
+	}
+
+  static struct PyModuleDef moduledef = {
+		PyModuleDef_HEAD_INIT,
+		"MolEmb",     /* m_name */
+		"A CAPI for TensorMol",  /* m_doc */
+		sizeof(struct module_state),
+		EmbMethods,    /* m_methods */
+		NULL,                /* m_reload */
+		myextension_traverse,                /* m_traverse */
+		myextension_clear,                /* m_clear */
+		NULL                /* m_free */
+		};
+	#pragma message("Compiling MolEmb for Python3x")
+	#define INITERROR return NULL
+	PyMODINIT_FUNC
+	PyInit_MolEmb(void)
+	{
+		PyObject *m = PyModule_Create(&moduledef);
+		if (m == NULL)
+			INITERROR;
+		struct module_state *st = GETSTATE(m);
+		st->error = PyErr_NewException("MolEmb.Error", NULL, NULL);
+		if (st->error == NULL) {
+			Py_DECREF(m);
+			INITERROR;
+		}
+		import_array();
+		return m;
+	}
 #else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
-
-static PyObject *
-error_out(PyObject *m) {
-    struct module_state *st = GETSTATE(m);
-    PyErr_SetString(st->error, "something bad happened");
-    return NULL;
-}
-
-#if PY_MAJOR_VERSION >= 3
-    static struct PyModuleDef moduledef = {
-        PyModuleDef_HEAD_INIT,
-        "MolEmb",     /* m_name */
-        "A CAPI for TensorMol",  /* m_doc */
-        -1,                  /* m_size */
-        EmbMethods,    /* m_methods */
-        NULL,                /* m_reload */
-        NULL,                /* m_traverse */
-        NULL,                /* m_clear */
-        NULL,                /* m_free */
-    };
-
-#pragma message("Compiling MolEmb for Python3x")
-#define INITERROR return NULL
-
-PyMODINIT_FUNC
-PyInit_MolEmb(void)
-{
-PyObject *m = PyModule_Create(&moduledef);
-if (m == NULL)
-		return NULL;
-
-return m;
-}
-#else
-
-PyMODINIT_FUNC
-initMolEmb(void)
-{
-	(void) Py_InitModule("MolEmb", EmbMethods);
-	/* IMPORTANT: this must be called */
-	import_array();
-	return;
-}
+	PyMODINIT_FUNC
+	initMolEmb(void)
+	{
+		(void) Py_InitModule("MolEmb", EmbMethods);
+		/* IMPORTANT: this must be called */
+		import_array();
+		return;
+	}
 #endif

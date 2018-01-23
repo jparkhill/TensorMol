@@ -11,15 +11,17 @@ class TMParams(dict):
 		dict.__init__(self, *args, **kwargs )
 		self["GIT_REVISION"] = os.popen("git rev-parse --short HEAD").read()
 		self["CheckLevel"] = 1 # whether to test the consistency of several things...
+		self["PrintTMTimer"] = False # whether to emit timing messages.
 		self["MAX_ATOMIC_NUMBER"] = 10
 		# Parameters of MolEmb
-		self["RBFS"] = np.array([[0.24666382, 0.37026093], [0.42773663, 0.47058503], [0.5780647, 0.47249905], [0.63062578, 0.60452219],
-		 						[1.30332807, 1.2604625], [2.2, 2.4], [4.4, 2.4], [6.6, 2.4], [8.8, 2.4], [11., 2.4], [13.2,2.4], [15.4, 2.4]])
-		self["ANES"] = np.array([0.96763427, 1., 1., 1., 1., 2.14952757, 1.95145955, 2.01797792])
+		self["RBFS"] = np.array([[0.35, 0.35], [0.70, 0.35], [1.05, 0.35], [1.40, 0.35], [1.75, 0.35], [2.10, 0.35], [2.45, 0.35],
+									[2.80, 0.35], [3.15, 0.35], [3.50, 0.35], [3.85, 0.35], [4.20, 0.35], [4.55, 0.35], [4.90, 0.35]])
+		self["ANES"] = np.array([2.20, 1.0, 1.0, 1.0, 1.0, 2.55, 3.04, 3.44]) #pauling electronegativity
 		self["SRBF"] = np.zeros((self["RBFS"].shape[0],self["RBFS"].shape[0]))
 		self["SH_LMAX"]=4
-		self["SH_NRAD"]=12
+		self["SH_NRAD"]=14
 		self["SH_ORTH"]=1
+		self["SH_rot_invar"] = False
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
@@ -50,8 +52,10 @@ class TMParams(dict):
 		self["Embedded_Charge_Order"] = 2
 		self["MBE_ORDER"] = 3
 		# Training Parameters
+		self["MonitorSet"] = None
+		self["NetNameSuffix"] = ""
 		self["NeuronType"] = "relu"
-		self["tf_prec"] = "tf.float32"
+		self["tf_prec"] = "tf.float64" # Do not change this to 32.
 		self["learning_rate"] = 0.001
 		self["learning_rate_dipole"] = 0.0001
 		self["learning_rate_energy"] = 0.00001
@@ -67,6 +71,15 @@ class TMParams(dict):
 		self["TestRatio"] = 0.2
 		self["Profiling"] = False
 		self["max_checkpoints"] = 1
+		self["KeepProb"] = 0.7
+		self["weight_decay"] = 0.001
+		self["ConvFilter"] = [32, 64]
+		self["ConvKernelSize"] = [[8,1],[4,1]]
+		self["ConvStrides"] = [[8,1],[4,1]]
+		self["sigmoid_alpha"] = 100.0
+		self["EnergyScalar"] = 1.0
+		self["GradScalar"] = 1.0/20.0
+		self["DipoleScaler"]=1.0
 		# DATA usage parameters
 		self["InNormRoutine"] = None
 		self["OutNormRoutine"] = None
@@ -76,23 +89,29 @@ class TMParams(dict):
 		self["ChopTo"] = None
 		self["RotAvOutputs"] = 1 # Rotational averaging of force outputs.
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
+		self["train_gradients"] = True
+		self["train_dipole"] = True
+		self["train_quadropole"] = False
+		self["train_rotation"] = True
 		# Opt Parameters
-		self["OptMaxCycles"]=20
+		self["OptMaxCycles"]=50
 		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.1
 		self["OptMomentum"] = 0.0
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
-		self["OptMaxBFGS"] = 7
+		self["OptLatticeStep"] = 0.050
 		self["GSSearchAlpha"] = 0.001
-		self["NebNumBeads"] = 10
-		self["NebK"] = 0.01
-		self["NebMaxBFGS"] = 12
+		self["SDStep"] = 0.05
+		self["MaxBFGS"] = 7
+		self["NebSolver"] = "Verlet"
+		self["NebNumBeads"] = 18 # It's important to have enough beads.
+		self["NebK"] = 0.07
+		self["NebKMax"] = 1.0
+		self["NebClimbingImage"] = True
 		self["DiisSize"] = 20
 		self["RemoveInvariant"] = True
-		# Periodic Parameters, only cubic supported.
-		self["CellWidth"] = 15.0 # Angstrom.
 		# MD Parameters
 		self["MDMaxStep"] = 20000
 		self["MDdt"] = 0.2 # In fs.
@@ -113,11 +132,16 @@ class TMParams(dict):
 		self["MDFieldTau"] = 1.2
 		self["MDFieldT0"] = 3.0
 		# Metadynamics parameters
+		self["MetaBumpTime"] = 15.0
 		self["MetaBowlK"] = 0.0
-		self["MetaMaxBumps"] = 2500
+		self["MetaMaxBumps"] = 500
+		self["MetaMDBumpHeight"] = 0.05
+		self["MetaMDBumpWidth"] = 0.1
 		# parameters of electrostatic embedding
 		self["AddEcc"] = True
+		self["OPR12"] = "Poly" # Poly = Polynomial cutoff or Damped-Shifted-Force
 		self["Poly_Width"] = 4.6
+		self["Elu_Width"] = 4.6
 		self["EEOn"] = True # Whether to calculate/read in the required data at all...
 		self["EESwitchFunc"] = "CosLR" # options are Cosine, and Tanh.
 		self["EEVdw"] = True # 1/r => 0.5*(Tanh[(r - EECutoff)/EEdr] + 1)/r
@@ -127,14 +151,18 @@ class TMParams(dict):
 		self["EECutoffOn"] = 4.4 # switch on between 0 and 1/r occurs at Angstroms.
 		self["EECutoffOff"] = 15.0 # switch off between 0 and 1/r occurs at Angstroms.
 		self["Erf_Width"] = 0.2
-		self["DSFAlpha"] = 0.15
-		#paths
-		self["sets_dir"] = "./datasets/"
-		self["results_dir"] = "./results/"
-		self["dens_dir"] = "./densities/"
-		self["log_dir"] = "./logs/"
+		self["DSFAlpha"] = 0.18
+		#paths -- Allows for different placement of fast reads/writes.
+		self["tm_root"] = "."
+		self["sets_dir"] = self["tm_root"]+"/datasets/"
+		self["networks_directory"] = self["tm_root"]+"/networks/"
+		self["output_root"] = "."
+		self["results_dir"] = self["output_root"]+"/results/"
+		self["dens_dir"] = self["output_root"]+"/densities/"
+		self["log_dir"] = self["output_root"]+"/logs/"
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
+		np.set_printoptions(formatter={'float': '{: .8f}'.format}) #Set pretty printing for numpy arrays
 
 	def __str__(self):
 		tore=""
@@ -144,10 +172,13 @@ class TMParams(dict):
 
 def TMBanner():
 	print("--------------------------")
-	if sys.version_info[0] < 3:
-		print(("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.1"))
-	else:
-		print(("    "+chr(0x1350)+chr(0x2107)+chr(0x2115)+chr(0x405)+chr(0x29be)+chr(0x2c64)+'-'+chr(0x164f)+chr(0x29be)+chr(0x2112)+"  0.1"))
+	try:
+		if sys.version_info[0] < 3:
+			print(("    "+unichr(0x1350)+unichr(0x2107)+unichr(0x2115)+unichr(0x405)+unichr(0x29be)+unichr(0x2c64)+'-'+unichr(0x164f)+unichr(0x29be)+unichr(0x2112)+"  0.1"))
+		else:
+			print(("    "+chr(0x1350)+chr(0x2107)+chr(0x2115)+chr(0x405)+chr(0x29be)+chr(0x2c64)+'-'+chr(0x164f)+chr(0x29be)+chr(0x2112)+"  0.1"))
+	except:
+		pass
 	print("--------------------------")
 	print("By using this software you accept the terms of the GNU public license in ")
 	print("COPYING, and agree to attribute the use of this software in publications as: \n")
@@ -163,9 +194,9 @@ def TMLogger(path_):
 	# Check path and make if it doesn't exist...
 	if not os.path.exists(path_):
 		os.makedirs(path_)
-	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%T_%Y")+'.log')
+	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%H.%M.%S_%Y")+'.log')
 	fh.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler()
+	ch = logging.StreamHandler(sys.stdout)
 	ch.setLevel(logging.INFO)
 	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	pformatter = logging.Formatter('%(message)s')

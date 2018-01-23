@@ -5,18 +5,19 @@
 #include <vector>
 
 #ifdef __clang__
-#if __clang_major__ >= 7
-#include <array>
-using namespace std;
+ #if __clang_major__ >= 5
+  #if __clang_major__ < 7
+   #include <tr1/array>
+   using namespace std::tr1;
+  #else
+   #include <array>
+   using namespace std;
+  #endif
+ #endif
 #else
-#include <omp.h>
-#include <tr1/array>
-using namespace std::tr1;
-#endif
-#else
-#include <array>
-#include <omp.h>
-using namespace std;
+ #include <array>
+ #include <omp.h>
+ using namespace std;
 #endif
 
 using namespace std;
