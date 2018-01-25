@@ -18,7 +18,7 @@ import sys
 import numbers
 import random
 if sys.version_info[0] < 3:
-	import cPickle as pickle
+	import pickle
 else:
 	import _pickle as pickle
 import os.path

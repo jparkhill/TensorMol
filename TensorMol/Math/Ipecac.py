@@ -11,7 +11,7 @@ from ..Util import *
 import os, sys, re, random, math, copy, itertools
 import numpy as np
 if sys.version_info[0] < 3:
-	import cPickle as pickle
+	import pickle
 else:
 	import _pickle as pickle
 from .LinearOperations import *

@@ -21,7 +21,7 @@ from ..Math.QuasiNewtonTools import *
 import numpy as np
 import gc
 import time
-import cPickle as pickle
+import pickle
 
 mol_set=MSet()
 

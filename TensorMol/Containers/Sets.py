@@ -10,7 +10,7 @@ from .MolFrag import *
 import numpy as np
 import os,sys,re,copy,time
 if sys.version_info[0] < 3:
-	import cPickle as pickle
+	import pickle
 else:
 	import _pickle as pickle
 

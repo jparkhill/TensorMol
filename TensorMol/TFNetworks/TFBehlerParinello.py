@@ -13,7 +13,7 @@ from __future__ import print_function
 
 import time
 import random
-import cPickle as pickle
+import pickle
 
 from ..Containers.TensorMolData import *
 from ..TFDescriptors.RawSH import *

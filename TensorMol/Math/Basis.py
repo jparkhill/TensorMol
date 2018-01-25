@@ -8,7 +8,7 @@ import os, sys, re, random, math, copy
 import numpy as np
 import sys
 if sys.version_info[0] < 3:
-	import cPickle as pickle
+	import pickle
 else:
 	import _pickle as pickle
 from ..Math import LinearOperations, DigestMol, Digest, Opt, Ipecac
