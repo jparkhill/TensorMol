@@ -148,23 +148,15 @@ class GeomOptimizer:
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
-		veloc=np.zeros(m.coords.shape)
-		old_veloc=np.zeros(m.coords.shape)
-		energy, frc  = self.EnergyAndForce(m.coords)
-		frc = RemoveInvariantForce(m.coords, frc, m.atoms)
-		frc /= JOULEPERKCAL
 		while( step < self.max_opt_step and rmsgrad > self.thresh):
 			prev_m = Mol(m.atoms, m.coords)
 			if step == 0:
 				old_frc = frc
-			energy, frc = self.EnergyAndForce(m.coords)
-			frc = RemoveInvariantForce(m.coords, frc, m.atoms)
-			frc /= JOULEPERHARTREE
-			print(("force:", frc))
+			energy, frc = self.WrappedEForce(m.coords)
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
-			frc = (1-self.momentum)*frc + self.momentum*old_frc
+			frc += self.momentum*old_frc
 			m.coords = m.coords + self.fscale*frc
-			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/veloc.shape[0]
+			rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/m.coords.shape[0]
 			LOGGER.info(filename+"step: %i energy: %0.5f rmsgrad: %0.5f rmsdisp: %0.5f ", step , energy, rmsgrad, rmsdisp)
 			mol_hist.append(prev_m)
 			prev_m.WriteXYZfile("./results/", filename)
@@ -187,6 +179,7 @@ class MetaOptimizer(GeomOptimizer):
 			f_: An EnergyForce routine
 		"""
 		GeomOptimizer.__init__(self,f_)
+		self.thresh = PARAMS["OptThresh"]*5.0
 		self.m = m
 		self.masses = np.array(map(lambda x: ATOMICMASSES[x-1], m.atoms))
 		self.natoms = m.NAtoms()
@@ -200,8 +193,8 @@ class MetaOptimizer(GeomOptimizer):
 		self.lastbumpstep = 0
 		# just put the atoms in a box the size of their max and min coordinates.
 		self.Box =  Box_=np.array((np.max(m.coords)+0.1)*np.eye(3))
-		self.BowlK = 0.0
-		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=1.0, w_=0.5)
+		self.BowlK = 0.002
+		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=1.0, w_=1.3)
 		return
 
 	def WrappedBumpedEForce(self, x_ ,DoForce = True, DoBump=True):
@@ -243,7 +236,7 @@ class MetaOptimizer(GeomOptimizer):
 		LOGGER.info("Bump added!")
 		return
 
-	def MetaOpt(self,m, filename="MetaOptLog",Debug=False):
+	def MetaOptCG(self,m, filename="MetaOptLog",Debug=False, SearchConfs_=False):
 		"""
 		Optimize using An EnergyAndForce Function with conjugate gradients.
 
@@ -258,6 +251,7 @@ class MetaOptimizer(GeomOptimizer):
 		ndives=0
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Mol:\n", m)
+		BM = m.BondMatrix()
 		CG = ConjGradient(self.WrappedBumpedEForce, m.coords)
 		while(step < self.max_opt_step):
 			while( step < self.max_opt_step and rmsgrad > self.thresh and (rmsdisp > 0.000001 or step<5) ):
@@ -273,10 +267,12 @@ class MetaOptimizer(GeomOptimizer):
 				step+=1
 			self.Bump(m.coords)
 			m.Distort(0.01)
-			d = self.Opt(prev_m,"Dive"+str(ndives))
-			self.AppendIfNew( d )
-			self.Bump(d.coords)
-			ndives += 1
+			if ((BM != prev_m.BondMatrix()).any() or SearchConfs_):
+				d = self.Opt(prev_m,"Dive"+str(ndives))
+				BM = prev_m.BondMatrix()
+				self.AppendIfNew( d )
+				self.Bump(d.coords)
+				ndives += 1
 			rmsdisp = 10.0
 			rmsgrad = 10.0
 			step=0
@@ -285,7 +281,7 @@ class MetaOptimizer(GeomOptimizer):
 		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
 		return prev_m
 
-	def MetaOptGD(self,m_, filename="MetaOptLog",Debug=False):
+	def MetaOpt(self,m_, filename="MetaOptLog",Debug=False, SearchConfs_=False):
 		"""
 		Optimize using steepest descent  and an EnergyAndForce Function.
 
@@ -298,33 +294,38 @@ class MetaOptimizer(GeomOptimizer):
 		step=0
 		ndives = 0
 		self.fscale = 0.2
-		self.momentum = 0.5
+		self.momentum = 0.2
 		m = Mol(m_.atoms,m_.coords)
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
-		energy, frc  = self.WrappedBumpedEForce(m.coords)
+		energy, old_frc  = self.WrappedBumpedEForce(m.coords)
+		BM = m.BondMatrix()
 		while(step < self.max_opt_step):
 			while( step < self.max_opt_step and rmsgrad > self.thresh):
 				prev_m = Mol(m.atoms, m.coords)
-				if step == 0:
+				if step > 0:
 					old_frc = frc
 				energy, frc = self.WrappedBumpedEForce(m.coords)
 				if (np.sum(frc*old_frc)<0.0):
 					old_frc *= 0.0
 				rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
-				frc = (1-self.momentum)*frc + self.momentum*old_frc
+				frc += self.momentum*old_frc
 				m.coords = m.coords + self.fscale*frc
 				rmsdisp = np.sum(np.linalg.norm(m.coords-prev_m.coords,axis=1))/m.coords.shape[0]
 				LOGGER.info(filename+"step: %i energy: %0.5f rmsgrad: %0.5f rmsdisp: %0.5f ", step , energy, rmsgrad, rmsdisp)
 				mol_hist.append(prev_m)
 				prev_m.WriteXYZfile("./results/", filename)
 				step+=1
-			m.Distort(0.05)
 			self.Bump(m.coords)
-			self.AppendIfNew( self.Opt(prev_m,"Dive"+str(ndives)) )
-			ndives += 1
+			m.Distort(0.01)
+			if ((BM != prev_m.BondMatrix()).any() or SearchConfs_):
+				d = self.Opt(prev_m,"Dive"+str(ndives))
+				BM = prev_m.BondMatrix()
+				self.AppendIfNew( d )
+				self.Bump(d.coords)
+				ndives += 1
 			rmsdisp = 10.0
 			rmsgrad = 10.0
 			step=0
