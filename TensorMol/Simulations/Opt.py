@@ -131,7 +131,7 @@ class GeomOptimizer:
 		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
 		return prev_m
 
-	def Opt_GD(self,m, filename="OptLog",Debug=False):
+	def OptGD(self,m_, filename="GDOptLog",Debug=False):
 		"""
 		Optimize using steepest descent  and an EnergyAndForce Function.
 
@@ -140,19 +140,22 @@ class GeomOptimizer:
 		"""
 		# Sweeps one at a time
 		rmsdisp = 10.0
-		maxdisp = 10.0
 		rmsgrad = 10.0
-		maxgrad = 10.0
 		step=0
+		ndives = 0
+		m = Mol(m_.atoms,m_.coords)
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
+		energy, old_frc  = self.WrappedEForce(m.coords)
 		while( step < self.max_opt_step and rmsgrad > self.thresh):
 			prev_m = Mol(m.atoms, m.coords)
-			if step == 0:
+			if step > 0:
 				old_frc = frc
 			energy, frc = self.WrappedEForce(m.coords)
+			if (np.sum(frc*old_frc)<0.0):
+				old_frc *= 0.0
 			rmsgrad = np.sum(np.linalg.norm(frc,axis=1))/frc.shape[0]
 			frc += self.momentum*old_frc
 			m.coords = m.coords + self.fscale*frc
@@ -164,9 +167,8 @@ class GeomOptimizer:
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
 		return prev_m
-
 class MetaOptimizer(GeomOptimizer):
-	def __init__(self,f_,m,Box_=False):
+	def __init__(self,f_,m,Box_=False,OnlyHev_=True):
 		"""
 		A Meta-Optimizer performs nested optimization.
 
@@ -177,10 +179,16 @@ class MetaOptimizer(GeomOptimizer):
 
 		Args:
 			f_: An EnergyForce routine
+			m: a molecules
+			Box_: whether to use a box.
+			OnlyHev_: whether to only bump heavy atom bonds.
 		"""
 		GeomOptimizer.__init__(self,f_)
 		self.thresh = PARAMS["OptThresh"]*5.0
 		self.m = m
+		self.fscale = 0.3
+		self.momentum = 0.3
+		self.thresh = 0.005
 		self.masses = np.array(map(lambda x: ATOMICMASSES[x-1], m.atoms))
 		self.natoms = m.NAtoms()
 		self.MaxBumps = PARAMS["MetaMaxBumps"] # think you want this to be >500k
@@ -191,10 +199,12 @@ class MetaOptimizer(GeomOptimizer):
 		self.UseBox = Box_
 		self.Boxer = TFForces.BoxHolder(self.natoms)
 		self.lastbumpstep = 0
+		self.OnlyHev = OnlyHev_
 		# just put the atoms in a box the size of their max and min coordinates.
 		self.Box =  Box_=np.array((np.max(m.coords)+0.1)*np.eye(3))
-		self.BowlK = 0.002
-		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=1.0, w_=1.3)
+		self.BowlK = 0.005
+		#self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=1.0, w_=1.2,Type_="MR")
+		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=0.5, w_=0.6,Type_="MR")
 		return
 
 	def WrappedBumpedEForce(self, x_ ,DoForce = True, DoBump=True):
@@ -218,6 +228,10 @@ class MetaOptimizer(GeomOptimizer):
 		if (self.NBump > 0):
 			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump%self.MaxBumps)
 			BF = JOULEPERHARTREE*BF[0]
+			if (self.OnlyHev):
+				for i in range(self.m.NAtoms()):
+					if (self.m.atoms[i]==1):
+						BF[i] *= 0.0
 		if (DoForce):
 			frc = PF+BF+BxE
 			frc = RemoveInvariantForce(x_, frc, self.m.atoms)
@@ -293,8 +307,6 @@ class MetaOptimizer(GeomOptimizer):
 		rmsgrad = 10.0
 		step=0
 		ndives = 0
-		self.fscale = 0.2
-		self.momentum = 0.2
 		m = Mol(m_.atoms,m_.coords)
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
@@ -321,7 +333,7 @@ class MetaOptimizer(GeomOptimizer):
 			self.Bump(m.coords)
 			m.Distort(0.01)
 			if ((BM != prev_m.BondMatrix()).any() or SearchConfs_):
-				d = self.Opt(prev_m,"Dive"+str(ndives))
+				d = self.OptGD(prev_m,"Dive"+str(ndives))
 				BM = prev_m.BondMatrix()
 				self.AppendIfNew( d )
 				self.Bump(d.coords)
@@ -348,7 +360,7 @@ class MetaOptimizer(GeomOptimizer):
 			odm = MolEmb.Make_DistMat(m.coords)
 			tmp = (mdm-odm)
 			overlaps.append(np.sqrt(np.sum(tmp*tmp)/(mdm.shape[0]*mdm.shape[0])))
-		if (min(overlaps) > 0.005):
+		if (min(overlaps) > self.thresh):
 			print("New Configuration!")
 			m.WriteXYZfile("./results/","NewMin"+str(self.NMinima))
 			self.MinimaCoords[self.NMinima] = m.coords
