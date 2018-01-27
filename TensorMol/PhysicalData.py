@@ -9,10 +9,9 @@ import numpy as np
 from math import pi as Pi
 
 ELEHEATFORM = {1:-0.497912, 6:-37.844411, 7:-54.581501, 8:-75.062219, 9:-99.716370}     # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
-bond_length_thresh = {"HH": 1.1, "HC": 1.4, "HN": 1.4, "HO": 1.3, "CC": 1.7, "CN": 1.7, "CO": 1.7, "NN": 1.7, "NO": 1.7, "OO": 1.7 }
-#bond_length_thresh = {"HH": 1.5, "HC": 1.5, "HN": 1.5, "HO": 1.5, "CC": 1.7, "CN": 1.7, "CO": 1.7, "NN": 1.7, "NO": 1.7, "OO": 1.7 }
-#ele_U = {1:-0.500273, 6:-37.846772, 7:-54.583861, 8:-75.064579, 9:-99.718730}   # ref: https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
+bond_length_thresh = {"HH": 1.1, "HC": 1.4, "HN": 1.4, "HO": 1.3, "CC": 1.7, "CN": 1.7, "CO": 1.7, "NN": 1.7, "NO": 1.7, "OO": 1.7 } # https://figshare.com/articles/Atomref%3A_Reference_thermochemical_energies_of_H%2C_C%2C_N%2C_O%2C_F_atoms./1057643
 ORBITALNAMES = ["1s","2s","2p","3s","3p","4s","3d","4p","5s","4d","5p"]
+NCOREELEC = [0,0, 2,2, 2,2,2,2,2, 2, 10,10, 10,10,10,10,10, 10, 18,18, 18,18,18,18,18,18,18,18,18,18, 18,18,18,18,18, 18, 36,36, 36,36,36,36,36,36,36,36,36,36, 36,36,36,36,36, 36]
 ele_U = {1:-0.500273, 6:-37.8462793, 7:-54.58449,  8:-75.060612}
 ele_E_david = {1: -0.5026682859, 6:-37.8387398670, 8:-75.0586028553}
 atoi = {'H':1,'He':2,'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,'K':19,'Ca':20,'Sc':21,'Ti':22,'Si':23,'V':24,'Cr':25,'Br':35, 'Cs':55, 'Pb':82}

@@ -252,7 +252,107 @@ def MetadynamicsStatistics():
 	traj.Prop()
 
 
+
+def Bullvalene():
+	"""
+	Gather statistics about the metadynamics exploration process varying bump depth, and width.
+	"""
+	sugarXYZ="""20
+
+C          0.98112       -0.46991        0.42376
+C          1.06359       -0.55769       -0.77982
+C          0.18965        0.16579       -1.73869
+C         -1.20916       -0.20825       -1.40751
+C         -1.72118       -0.05451       -0.32246
+C         -1.28117        0.48316        0.96604
+C         -0.33043        1.60964        0.94931
+C          0.10659        2.11114       -0.35456
+C          0.32812        1.61317       -1.43439
+C          0.12451        0.26717        1.35413
+H          1.68037       -1.05279        0.90989
+H          1.79150       -1.17816       -1.16736
+H          0.43620       -0.05734       -2.75571
+H         -1.78386       -0.62829       -2.15471
+H         -2.70043       -0.37943       -0.29970
+H         -2.23007        0.30013        1.42539
+H         -0.30281        2.58361        1.39148
+H          0.26267        3.13127       -0.35191
+H          0.63457        2.23708       -2.19717
+H          0.61944       -0.13762        2.21209
+	"""
+	m = Mol()
+	m.FromXYZString(sugarXYZ)
+
+	#from MolEmb import EmptyInterfacedFunction, Make_NListNaive, Make_NListLinear
+	#print("READ MOL XFOIUDOFIUDFO")
+	#print(m.coords,15.0,m.NAtoms(),True)
+	#EmptyInterfacedFunction(np.zeros((10,3)),13)
+	#print("Passed test")
+	#return
+
+	def GetEnergyForceForMol(m):
+		s = MSet()
+		s.mols.append(m)
+		manager = GetChemSpider12(s)
+		def EnAndForce(x_, DoForce=True):
+			tmpm = Mol(m.atoms,x_)
+			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(tmpm, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+			energy = Etotal[0]
+			force = gradient[0]
+			if DoForce:
+				return energy, force
+			else:
+				return energy
+		return EnAndForce
+	F = GetEnergyForceForMol(m)
+
+	MOpt = MetaOptimizer(F,m)
+	m = MOpt.MetaOpt(m)
+	exit(0)
+
+	PARAMS["MDdt"] = 0.5 # In fs.
+	PARAMS["MDMaxStep"] = 8000
+	PARAMS["MetaBumpTime"] = 10.0
+	PARAMS["MetaMaxBumps"] = 500
+	PARAMS["MetaBowlK"] = 0.0
+	PARAMS["MDThermostat"]="Andersen"
+	PARAMS["MDTemp"]=2500.0
+	PARAMS["MDV0"]=None
+	if 0:
+		PARAMS["MetaMDBumpHeight"] = 0.000
+		PARAMS["MetaMDBumpWidth"] = 0.5
+		traj = MetaDynamics(None, m,"MetaMD_000_05",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 0.500
+		PARAMS["MetaMDBumpWidth"] = 0.5
+		traj = MetaDynamics(None, m,"MetaMD_050_05",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 0.500
+		PARAMS["MetaMDBumpWidth"] = 1.0
+		traj = MetaDynamics(None, m,"MetaMD_050_10",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 0.500
+		PARAMS["MetaMDBumpWidth"] = 2.0
+		traj = MetaDynamics(None, m,"MetaMD_050_20",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 1.000
+		PARAMS["MetaMDBumpWidth"] = 1.0
+		traj = MetaDynamics(None, m,"MetaMD_100_10",F)
+		traj.Prop()
+		PARAMS["MetaMDBumpHeight"] = 1.000
+		PARAMS["MetaMDBumpWidth"] = 2.0
+		traj = MetaDynamics(None, m,"MetaMD_100_20",F)
+		traj.Prop()
+	PARAMS["MetaBumpTime"] = 10.0
+	PARAMS["MetaMDBumpHeight"] = 0.70
+	PARAMS["MetaMDBumpWidth"] = 1.0
+	PARAMS["MetaBowlK"] = 0.0
+#	traj = MetaDynamics(None, m,"MetaMD_100_10_X",F)
+	traj = VelocityVerlet(None, m,"Bullvalene",F)
+	traj.Prop()
+
+
 #Eval()
 #TestBetaHairpin()
 #TestUrey()
-MetadynamicsStatistics()
+Bullvalene()
