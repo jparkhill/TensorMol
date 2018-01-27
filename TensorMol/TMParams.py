@@ -91,7 +91,7 @@ class TMParams(dict):
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		self["train_gradients"] = True
 		self["train_dipole"] = True
-		self["train_quadropole"] = False
+		self["train_quadrupole"] = False
 		self["train_rotation"] = True
 		# Opt Parameters
 		self["OptMaxCycles"]=50
