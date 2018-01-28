@@ -167,24 +167,29 @@ class GeomOptimizer:
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
 		return prev_m
+
 class MetaOptimizer(GeomOptimizer):
-	def __init__(self,f_,m,Box_=False,OnlyHev_=True):
+	def __init__(self,f_,m,StopAfter_=20,Box_=False,OnlyHev_=True):
 		"""
 		A Meta-Optimizer performs nested optimization.
-
 		The outer loop has a bump potential to find new initial geometries.
 		the inner loop digs down to new minima.
-
 		it saves the record of minima it reaches.
+		The default parameters are tuned to find nearby reactions.
+		Conformational search should probably be done with internal coordinates
+		not distance matrices.
 
 		Args:
 			f_: An EnergyForce routine
 			m: a molecules
+			StopAfter_: Look for this many nearby minima.
 			Box_: whether to use a box.
 			OnlyHev_: whether to only bump heavy atom bonds.
 		"""
 		GeomOptimizer.__init__(self,f_)
 		self.thresh = PARAMS["OptThresh"]*5.0
+		self.StopAfter = StopAfter_
+		self.OnlyHev = OnlyHev_
 		self.m = m
 		self.fscale = 0.3
 		self.momentum = 0.3
@@ -193,16 +198,15 @@ class MetaOptimizer(GeomOptimizer):
 		self.natoms = m.NAtoms()
 		self.MaxBumps = PARAMS["MetaMaxBumps"] # think you want this to be >500k
 		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
-		self.MinimaCoords = np.zeros((self.MaxBumps,self.natoms,3))
+		self.MinimaCoords = np.zeros((self.StopAfter,self.natoms,3))
 		self.NMinima = 0
 		self.NBump = 0
 		self.UseBox = Box_
 		self.Boxer = TFForces.BoxHolder(self.natoms)
 		self.lastbumpstep = 0
-		self.OnlyHev = OnlyHev_
 		# just put the atoms in a box the size of their max and min coordinates.
 		self.Box =  Box_=np.array((np.max(m.coords)+0.1)*np.eye(3))
-		self.BowlK = 0.005
+		self.BowlK = 0.01
 		#self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=1.0, w_=1.2,Type_="MR")
 		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, h_=0.5, w_=0.6,Type_="MR")
 		return
@@ -295,7 +299,7 @@ class MetaOptimizer(GeomOptimizer):
 		print("Final Energy:", self.EnergyAndForce(prev_m.coords,False))
 		return prev_m
 
-	def MetaOpt(self,m_, filename="MetaOptLog",Debug=False, SearchConfs_=False):
+	def MetaOpt(self,m_=None, filename="MetaOptLog",Debug=False, SearchConfs_=False):
 		"""
 		Optimize using steepest descent  and an EnergyAndForce Function.
 
@@ -307,14 +311,16 @@ class MetaOptimizer(GeomOptimizer):
 		rmsgrad = 10.0
 		step=0
 		ndives = 0
-		m = Mol(m_.atoms,m_.coords)
+		m = Mol(self.m.atoms,self.m.coords)
+		if (m_ != None):
+			m = Mol(m_.atoms,m_.coords)
 		mol_hist = []
 		prev_m = Mol(m.atoms, m.coords)
 		print("Orig Coords", m.coords)
 		#print "Initial force", self.tfm.evaluate(m, i), "Real Force", m.properties["forces"][i]
 		energy, old_frc  = self.WrappedBumpedEForce(m.coords)
 		BM = m.BondMatrix()
-		while(step < self.max_opt_step):
+		while(self.NMinima < self.StopAfter):
 			while( step < self.max_opt_step and rmsgrad > self.thresh):
 				prev_m = Mol(m.atoms, m.coords)
 				if step > 0:
@@ -344,7 +350,7 @@ class MetaOptimizer(GeomOptimizer):
 			PARAMS["GSSearchAlpha"]=0.1
 		# Checks stability in each cartesian direction.
 		#prev_m.coords = LineSearchCart(Energy, prev_m.coords)
-		return prev_m
+		return self.MinimaCoords
 
 	def AppendIfNew(self,m):
 		overlaps = []
@@ -363,7 +369,7 @@ class MetaOptimizer(GeomOptimizer):
 		if (min(overlaps) > self.thresh):
 			print("New Configuration!")
 			m.WriteXYZfile("./results/","NewMin"+str(self.NMinima))
-			self.MinimaCoords[self.NMinima] = m.coords
+			self.MinimaCoords[self.NMinima] = m.coords.copy()
 			self.NMinima += 1
 			self.Bump(m.coords)
 		else:

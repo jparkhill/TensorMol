@@ -306,8 +306,9 @@ H          0.61944       -0.13762        2.21209
 		return EnAndForce
 	F = GetEnergyForceForMol(m)
 
-	MOpt = MetaOptimizer(F,m)
-	m = MOpt.MetaOpt(m)
+	#MOpt = MetaOptimizer(F,m)
+	#m = MOpt.MetaOpt(m)
+	w = LocalReactions(F,m,10)
 	exit(0)
 
 	PARAMS["MDdt"] = 0.5 # In fs.
