@@ -1561,10 +1561,10 @@ class TFMolManageDirect:
 		self.network.restart_training()
 
 	def init_network(self):
-		if self.network_type == "BehlerParinelloDirectSymFunc":
-			self.network = BehlerParinelloDirectSymFunc(self.mol_set_name)
-		elif self.network_type == "BehlerParinelloDirectGauSH":
-			self.network = BehlerParinelloDirectGauSH(self.mol_set_name)
+		if self.network_type == "BPSymFunc":
+			self.network = BehlerParinelloSymFunc(self.mol_set_name)
+		elif self.network_type == "BPGauSH":
+			self.network = BehlerParinelloGauSH(self.mol_set_name)
 		else:
 			raise Exception("Unknown Network Type!")
 		return

@@ -266,7 +266,7 @@ def train_energy_symm_func(mset):
 	a=MSet(mset)
 	a.Load()
 	print "Number of Mols: ", len(a.mols)
-	manager = TFMolManageDirect(a, network_type = "BehlerParinelloDirectSymFunc")
+	manager = TFMolManageDirect(a, network_type = "BPSymFunc")
 
 def train_energy_GauSH(mset):
 	PARAMS["RBFS"] = np.stack((np.linspace(0.1, 6.0, 16), np.repeat(0.35, 16)), axis=1)
@@ -287,7 +287,7 @@ def train_energy_GauSH(mset):
 	PARAMS["NeuronType"] = "shifted_softplus"
 	PARAMS["tf_prec"] = "tf.float32"
 	PARAMS["Profiling"] = False
-	manager = TFMolManageDirect(mset, network_type = "BehlerParinelloDirectGauSH")
+	manager = TFMolManageDirect(mset, network_type = "BPGauSH")
 
 def test_h2o():
 	PARAMS["OptMaxCycles"]=60
@@ -700,10 +700,20 @@ def GetWaterNetwork():
 	meta.Prop()
 
 def water_meta_opt():
-	a=MSet("water_hexamer_metamd")
+	a=MSet("water10")
 	a.ReadXYZ()
 	TreatedAtoms = a.AtomTypes()
 	m=a.mols[0]
+	PARAMS["MDdt"] = 0.5
+	PARAMS["RemoveInvariant"] = True
+	PARAMS["MDMaxStep"] = 50000
+	PARAMS["MDThermostat"] = "Andersen"
+	PARAMS["MDTemp"]= 600.0
+	PARAMS["MDV0"] = "Random"
+	PARAMS["MetaMDBumpHeight"] = 1.0
+	PARAMS["MetaMDBumpWidth"] = 2.0
+	PARAMS["MetaBowlK"] = 0.2
+	PARAMS["MetaBumpTime"] = 5.0
 	PARAMS["tf_prec"] = "tf.float64"
 	PARAMS["NeuronType"] = "sigmoid_with_param"
 	PARAMS["sigmoid_alpha"] = 100.0
@@ -720,19 +730,67 @@ def water_meta_opt():
 	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
 	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
 	manager=TFMolManage("water_network",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	atomization_energy = 0.0
+	for atom in mol.atoms:
+		if atom in ele_U:
+			atomization_energy += ele_U[atom]
 	def EnAndForce(x_, DoForce=True):
 		mtmp = Mol(m.atoms,x_)
 		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
-		energy = Etotal[0]
+		energy = Etotal[0] + atomization_energy
 		force = gradient[0]
 		if DoForce:
 			return energy, force
 		else:
 			return energy
-	Opt = GeomOptimizer(EnAndForce)
-	for i in range(len(a.mols)/100):
-		mo=Opt.Opt(a.mols[i*100],"water_hex_opt_"+str(i*100))
-		mo.WriteXYZfile("./results/", "water_hex_opt_"+str(i*100)+"_final")
+
+
+def water_meta_react():
+	a=MSet("water10")
+	a.ReadXYZ()
+	TreatedAtoms = a.AtomTypes()
+	m=a.mols[0]
+	PARAMS["MDdt"] = 0.5
+	PARAMS["RemoveInvariant"] = True
+	PARAMS["MDMaxStep"] = 50000
+	PARAMS["MDThermostat"] = "Andersen"
+	PARAMS["MDTemp"]= 600.0
+	PARAMS["MDV0"] = "Random"
+	PARAMS["MetaMDBumpHeight"] = 2.0
+	PARAMS["MetaMDBumpWidth"] = 3.0
+	PARAMS["MetaBowlK"] = 0.2
+	PARAMS["MetaBumpTime"] = 5.0
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["NeuronType"] = "sigmoid_with_param"
+	PARAMS["sigmoid_alpha"] = 100.0
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["DSFAlpha"] = 0.18
+	PARAMS["AddEcc"] = True
+	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 1.0]
+	PARAMS["OptMaxCycles"]= 2000
+	PARAMS["OptThresh"] =0.00002
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("water_network",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	atomization_energy = 0.0
+	for atom in m.atoms:
+		if atom in ele_U:
+			atomization_energy += ele_U[atom]
+	def EnAndForce(x_, DoForce=True):
+		mtmp = Mol(m.atoms,x_)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		energy = Etotal[0] + atomization_energy
+		force = gradient[0]
+		if DoForce:
+			return energy, force
+		else:
+			return energy
+	meta = MetaDynamics(EnAndForce, m,name_="water_10react", EandF_=EnAndForce)
+	meta.Prop()
 
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 # PARAMS["SH_NRAD"] = 32
@@ -757,8 +815,8 @@ def water_meta_opt():
 # train_forces_GauSH_direct("SmallMols_rand")
 # test_tf_neighbor()
 # train_energy_pairs_triples()
-# train_energy_symm_func("H2O_wb97xd_1to21_with_prontonated")
-# train_energy_GauSH("H2O_wb97xd_1to21_with_prontonated")
+# train_energy_symm_func("water_wb97xd_6311gss")
+# train_energy_GauSH("water_wb97xd_6311gss")
 # test_h2o()
 # evaluate_BPSymFunc("nicotine_vib")
 # water_dimer_plot()
@@ -769,7 +827,8 @@ def water_meta_opt():
 # train_Poly_GauSH()
 #water_ir()
 # GetWaterNetwork()
-water_meta_opt()
+# water_meta_opt()
+water_meta_react()
 
 # f=open("nicotine_md_aimd_log.dat","r")
 # f2=open("nicotine_md_aimd_energies.dat", "w")

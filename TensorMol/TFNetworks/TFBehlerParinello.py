@@ -20,7 +20,7 @@ from ..TFDescriptors.RawSH import *
 from ..TFDescriptors.RawSymFunc import *
 from tensorflow.python.client import timeline
 
-class BehlerParinelloDirect(object):
+class BehlerParinelloNetwork(object):
 	"""
 	Base class for Behler-Parinello network using embedding from RawEmbeddings.py
 	Do not use directly, only for inheritance to derived classes
@@ -693,9 +693,7 @@ class BehlerParinelloDirect(object):
 		return test_loss
 
 
-
-
-class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
+class BehlerParinelloSymFunc(BehlerParinelloNetwork):
 	"""
 	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
 	also has sparse evaluation using an updated version of the
@@ -710,9 +708,9 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
-		BehlerParinelloDirect.__init__(self, mol_set, name)
+		BehlerParinelloNetwork.__init__(self, mol_set, name)
 		if name == None:
-			self.network_type = "BehlerParinelloDirectSymFunc"
+			self.network_type = "BPSymFunc"
 			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 			self.network_directory = PARAMS["networks_directory"]+self.name
 			self.set_symmetry_function_params()
@@ -861,8 +859,12 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 		return
 
 	def print_epoch(self, step, duration, loss, energy_loss, gradient_loss, num_mols, testing=False):
-		LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
-		step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
+		if testing:
+			LOGGER.info("step: %5d  duration: %.3f  test loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
+		else:
+			LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
 		return
 
 	def evaluate_prepare(self):
@@ -984,7 +986,7 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 		return energy[:len(mols)]
 
 
-class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
+class BehlerParinelloGauSH(BehlerParinelloNetwork):
 	"""
 	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
 	also has sparse evaluation using an updated version of the
@@ -999,9 +1001,9 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
-		BehlerParinelloDirect.__init__(self, mol_set, name)
+		BehlerParinelloNetwork.__init__(self, mol_set, name)
 		if name == None:
-			self.network_type = "BehlerParinelloDirectGauSH"
+			self.network_type = "BPGauSH"
 			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
 			self.network_directory = PARAMS["networks_directory"]+self.name
 			self.l_max = PARAMS["SH_LMAX"]
@@ -1152,8 +1154,12 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 		return
 
 	def print_epoch(self, step, duration, loss, energy_loss, gradient_loss, rotation_loss, num_mols, testing=False):
-		LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f  rotation loss: %.10f",
-		step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols, rotation_loss / num_mols)
+		if testing:
+			LOGGER.info("step: %5d  duration: %.3f  test loss: %.10f  energy loss: %.10f  gradient loss: %.10f  rotation loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols, rotation_loss / num_mols)
+		else:
+			LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f  rotation loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols, rotation_loss / num_mols)
 		return
 
 	def evaluate_prepare(self):
