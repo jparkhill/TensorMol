@@ -91,18 +91,18 @@ class TMParams(dict):
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		self["train_gradients"] = True
 		self["train_dipole"] = True
-		self["train_quadropole"] = False
+		self["train_quadrupole"] = False
 		self["train_rotation"] = True
 		# Opt Parameters
 		self["OptMaxCycles"]=50
 		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.1
-		self["OptMomentum"] = 0.0
+		self["OptMomentum"] = 0.5
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
 		self["OptLatticeStep"] = 0.050
-		self["GSSearchAlpha"] = 0.001
+		self["GSSearchAlpha"] = 0.05
 		self["SDStep"] = 0.05
 		self["MaxBFGS"] = 7
 		self["NebSolver"] = "Verlet"
@@ -182,7 +182,7 @@ def TMBanner():
 	print("--------------------------")
 	print("By using this software you accept the terms of the GNU public license in ")
 	print("COPYING, and agree to attribute the use of this software in publications as: \n")
-	print("K.Yao, J. E. Herr, D. Toth, J. Parkhill. TensorMol 0.1 (2016)")
+	print("K.Yao, J. E. Herr, D. Toth, R. McKintyre, J. Garside, J. Parkhill. TensorMol 0.2 (2018)")
 	print("--------------------------")
 
 def TMLogger(path_):

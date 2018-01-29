@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from ..PhysicalData import *
 from ..Util import *
-from .LinearOperations import * 
+from .LinearOperations import *
 
 def RmsForce(f_):
 	return np.mean(np.linalg.norm(f_,axis=1))
@@ -364,6 +364,12 @@ class ConjGradient:
 		self.thresh = thresh_
 		self.alpha = PARAMS["GSSearchAlpha"]
 		return
+	def Reset(self,x0_):
+		self.xold = x0_.copy()
+		self.e, self.gold  = self.EForce(x0_)
+		self.s = self.gold.copy()
+		self.thresh = thresh_
+		self.alpha = PARAMS["GSSearchAlpha"]
 	def BetaPR(self,g):
 		betapr = np.sum((g)*(g - self.gold))/(np.sum(self.gold*self.gold))
 		self.gold = g.copy()
@@ -408,9 +414,11 @@ class ConjGradient:
 			if (fa < fc and fa < fd and fa < fb):
 				#print fa,fc,fd,fb
 				#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
-				print("Line Search: Overstep")
+				print("Line Search: Overstep alpha=",self.alpha)
 				if (self.alpha > 0.00001):
 					self.alpha /= 1.8001
+				elif self.alpha < 0.0001:
+					print("ARE YOU SURE FORCE MATCHES ENERGY??? ")					
 				else:
 					print("Keeping step")
 					return a
@@ -425,7 +433,7 @@ class ConjGradient:
 			elif (fb < fc and fb < fd and fb < fa):
 				#print fa,fc,fd,fb
 				#print RmsForce(fpa), RmsForce(fpc), RmsForce(fpd), RmsForce(fpb)
-				print("Line Search: Understep")
+				print("Line Search: Understep alpha=",self.alpha)
 				if (self.alpha < 100.0):
 					self.alpha *= 1.8
 				a = x0_

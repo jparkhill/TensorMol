@@ -47,6 +47,7 @@ class BehlerParinelloNetwork(object):
 		self.path = PARAMS["networks_directory"]
 		self.train_gradients = PARAMS["train_gradients"]
 		self.train_dipole = PARAMS["train_dipole"]
+		self.train_quadrupole = PARAMS["train_quadrupole"]
 		self.train_rotation = PARAMS["train_rotation"]
 		self.profiling = PARAMS["Profiling"]
 		self.activation_function_type = PARAMS["NeuronType"]
@@ -204,20 +205,26 @@ class BehlerParinelloNetwork(object):
 				self.reload_set()
 			except Exception as Ex:
 				print("TensorData object has no molecule set.", Ex)
-		xyzs = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float32)
-		Zs = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
-		num_atoms = np.zeros((self.num_molecules), dtype = np.int32)
-		energies = np.zeros((self.num_molecules), dtype = np.float32)
-		dipoles = np.zeros((self.num_molecules, 3), dtype = np.float32)
-		gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float32)
+		self.xyz_data = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float64)
+		self.Z_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
+		self.num_atoms_data = np.zeros((self.num_molecules), dtype = np.int32)
+		self.energy_data = np.zeros((self.num_molecules), dtype = np.float64)
+		if self.train_dipole:
+			self.dipole_data = np.zeros((self.num_molecules, 3), dtype = np.float64)
+		if self.train_quadrupole:
+			self.quadrupole_data = np.zeros((self.num_molecules, 2, 3), dtype = np.float64)
+		self.gradient_data = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float64)
 		for i, mol in enumerate(self.mol_set.mols):
-			xyzs[i][:mol.NAtoms()] = mol.coords
-			Zs[i][:mol.NAtoms()] = mol.atoms
-			energies[i] = mol.properties["atomization"]
-			dipoles[i] = mol.properties["dipole"]
-			num_atoms[i] = mol.NAtoms()
-			gradients[i][:mol.NAtoms()] = mol.properties["gradients"]
-		return xyzs, Zs, energies, dipoles, num_atoms, gradients
+			self.xyz_data[i][:mol.NAtoms()] = mol.coords
+			self.Z_data[i][:mol.NAtoms()] = mol.atoms
+			self.energy_data[i] = mol.properties["atomization"]
+			if self.train_dipole:
+				self.dipole_data[i] = mol.properties["dipole"]
+			if self.train_quadrupole:
+				self.quadrupole_data[i] = mol.properties["quadrupole"]
+			self.num_atoms_data[i] = mol.NAtoms()
+			self.gradient_data[i][:mol.NAtoms()] = mol.properties["gradients"]
+		return
 
 	def load_data_to_scratch(self):
 		"""
@@ -233,7 +240,7 @@ class BehlerParinelloNetwork(object):
 		Note:
 			Also determines mean stoichiometry
 		"""
-		self.xyz_data, self.Z_data, self.energy_data, self.dipole_data, self.num_atoms_data, self.gradient_data = self.load_data()
+		self.load_data()
 		self.num_test_cases = int(self.test_ratio * self.num_molecules)
 		self.num_train_cases = int(self.num_molecules - self.num_test_cases)
 		case_idxs = np.arange(int(self.num_molecules))

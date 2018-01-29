@@ -420,10 +420,13 @@ class Mol:
 		tmp = (mdm-odm)
 		return np.sqrt(np.sum(tmp*tmp)/(mdm.shape[0]*mdm.shape[0]))
 
-	def MolGrids(self, ngrids = 250):
-		grids = np.zeros((ngrids, ngrids, ngrids), dtype=np.uint8)
-		grids = grids.reshape(ngrids**3)   #kind of ugly, but lets keep it for now
-		return grids
+	def BondMatrix(self,tol_ = 1.6):
+		"""
+		Returns a natom x natom matrix representing the bonds
+		of this molecule.
+		"""
+		mdm = MolEmb.Make_DistMat(self.coords)
+		return np.where(mdm < 1.3,np.ones(mdm.shape),np.zeros(mdm.shape))
 
 	def SpanningGrid(self,num=250,pad=4.,Flatten=True, Cubic = True):
 		''' Returns a regular grid the molecule fits into '''
