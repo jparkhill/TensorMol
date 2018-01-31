@@ -182,7 +182,7 @@ def TMBanner():
 	print("--------------------------")
 	print("By using this software you accept the terms of the GNU public license in ")
 	print("COPYING, and agree to attribute the use of this software in publications as: \n")
-	print("K.Yao, J. E. Herr, D. Toth, R. McKintyre, J. Garside, J. Parkhill. TensorMol 0.2 (2018)")
+	print("K.Yao, J. E. Herr, D. Toth, R. McIntyre, J. Garside, J. Parckhill. TensorMol 0.2 (2018)")
 	print("--------------------------")
 
 def TMLogger(path_):

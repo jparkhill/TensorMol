@@ -207,6 +207,7 @@ class BehlerParinelloNetwork(object):
 				print("TensorData object has no molecule set.", Ex)
 		self.xyz_data = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float64)
 		self.Z_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
+		self.mulliken_charges_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.float64)
 		self.num_atoms_data = np.zeros((self.num_molecules), dtype = np.int32)
 		self.energy_data = np.zeros((self.num_molecules), dtype = np.float64)
 		if self.train_dipole:
@@ -217,6 +218,7 @@ class BehlerParinelloNetwork(object):
 		for i, mol in enumerate(self.mol_set.mols):
 			self.xyz_data[i][:mol.NAtoms()] = mol.coords
 			self.Z_data[i][:mol.NAtoms()] = mol.atoms
+			self.mulliken_charges_data[i][:mol.NAtoms()] = mol.properties["mulliken_charges"]
 			self.energy_data[i] = mol.properties["atomization"]
 			if self.train_dipole:
 				self.dipole_data[i] = mol.properties["dipole"]
@@ -267,9 +269,10 @@ class BehlerParinelloNetwork(object):
 		Zs = self.Z_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		energies = self.energy_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		dipoles = self.dipole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		quadrupoles = self.quadrupole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		gradients = self.gradient_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		num_atoms = self.num_atoms_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
-		return [xyzs, Zs, dipoles, gradients, num_atoms]
+		return [xyzs, Zs, dipoles, quadrupoles, gradients, num_atoms]
 
 	def get_energy_train_batch(self, batch_size):
 		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
@@ -295,9 +298,11 @@ class BehlerParinelloNetwork(object):
 		Zs = self.Z_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		energies = self.energy_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		dipoles = self.dipole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		quadrupoles = self.quadrupole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		gradients = self.gradient_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		num_atoms = self.num_atoms_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
-		return [xyzs, Zs, dipoles, gradients, num_atoms]
+		mulliken_charges = self.mulliken_charges_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		return [xyzs, Zs, dipoles, quadrupoles, gradients, num_atoms, mulliken_charges]
 
 	def get_energy_test_batch(self, batch_size):
 		if self.test_scratch_pointer + batch_size >= self.num_test_cases:
@@ -370,7 +375,7 @@ class BehlerParinelloNetwork(object):
 		Returns:
 			Filled feed dictionary.
 		"""
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.dipole_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.dipole_pl, self.quadrupole_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
 		return feed_dict
 
 	def fill_energy_feed_dict(self, batch_data):
@@ -484,12 +489,12 @@ class BehlerParinelloNetwork(object):
 			delta_charge = net_charge / tf.cast(natom, self.tf_precision)
 			charges = output - tf.expand_dims(delta_charge, axis=1)
 			dipole = tf.reduce_sum(xyzs * tf.expand_dims(charges, axis=-1), axis=1)
-			if (PARAMS["train_quadropole"]):
+			if (PARAMS["train_quadrupole"]):
 				quadrupole_coords = 3 * tf.stack([tf.stack([tf.square(xyzs[...,0]), xyzs[...,0] * xyzs[...,1], tf.square(xyzs[...,1])], axis=-1),
 									tf.stack([xyzs[...,0] * xyzs[...,2], xyzs[...,1] * xyzs[...,2], tf.square(xyzs[...,2])], axis=-1)], axis=-2)
-				quadrupole_coords -= tf.norm(xyzs + 1e-24, axis=-1, keep_dims=True)
+				quadrupole_coords -= tf.expand_dims(tf.reduce_sum(tf.square(xyzs), axis=-1, keepdims=True), axis=-1)
 				quadrupole = tf.reduce_sum(quadrupole_coords * tf.expand_dims(tf.expand_dims(charges, axis=-1), axis=-1), axis=1)
-		return dipole, charges, net_charge, variables
+		return dipole, quadrupole, charges, net_charge, variables
 
 	def optimizer(self, loss, learning_rate, momentum, variables):
 		"""
@@ -527,20 +532,22 @@ class BehlerParinelloNetwork(object):
 		train_loss =  0.0
 		train_energy_loss = 0.0
 		train_dipole_loss = 0.0
+		train_quadrupole_loss = 0.0
 		# train_charge_loss = 0.0
 		train_gradient_loss = 0.0
 		num_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.get_dipole_train_batch(self.batch_size)
 			feed_dict = self.fill_dipole_feed_dict(batch_data)
-			_, total_loss, dipole_loss = self.sess.run([self.dipole_train_op, self.dipole_losses, self.dipole_loss], feed_dict=feed_dict)
+			_, total_loss, dipole_loss, quadrupole_loss = self.sess.run([self.dipole_train_op, self.dipole_losses, self.dipole_loss, self.quadrupole_loss], feed_dict=feed_dict)
 			train_loss += total_loss
 			train_dipole_loss += dipole_loss
+			train_quadrupole_loss += quadrupole_loss
 			# train_charge_loss += charge_loss
 			num_mols += self.batch_size
 		duration = time.time() - start_time
-		LOGGER.info("step: %5d    duration: %10.5f  train loss: %13.10f  dipole loss: %13.10f", step, duration,
-			train_loss / num_mols, train_dipole_loss / num_mols)
+		LOGGER.info("step: %5d    duration: %10.5f  train loss: %13.10f  dipole loss: %13.10f  quadrupole loss: %13.10f", step, duration,
+			train_loss / num_mols, train_dipole_loss / num_mols, train_quadrupole_loss / num_mols)
 		return
 
 	def energy_train_step(self, step):
@@ -607,39 +614,52 @@ class BehlerParinelloNetwork(object):
 		num_mols = 0
 		test_loss = 0.0
 		test_dipole_loss = 0.0
+		test_quadrupole_loss = 0.0
 		# test_charge_loss = 0.0
 		test_epoch_dipole_labels, test_epoch_dipole_outputs = [], []
+		test_epoch_quadrupole_labels, test_epoch_quadrupole_outputs = [], []
 		test_net_charges = []
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data = self.get_dipole_test_batch(self.batch_size)
-			feed_dict = self.fill_dipole_feed_dict(batch_data)
-			dipoles, dipole_labels, total_loss, dipole_loss, gaussian_params = self.sess.run([self.dipoles, self.dipole_labels,
-			self.dipole_losses, self.dipole_loss, self.gaussian_params],  feed_dict=feed_dict)
+			feed_dict = self.fill_dipole_feed_dict(batch_data[:-1])
+			dipoles, dipole_labels, total_loss, dipole_loss, quadrupoles, quadrupole_labels, quadrupole_loss, charges = self.sess.run([self.dipoles, self.dipole_labels,
+			self.dipole_losses, self.dipole_loss, self.quadrupoles, self.quadrupole_pl, self.quadrupole_loss, self.charges],  feed_dict=feed_dict)
 			num_mols += self.batch_size
 			test_loss += total_loss
 			test_dipole_loss += dipole_loss
+			test_quadrupole_loss += quadrupole_loss
 			# test_charge_loss += charge_loss
 			test_epoch_dipole_labels.append(dipole_labels)
 			test_epoch_dipole_outputs.append(dipoles)
+			test_epoch_quadrupole_labels.append(quadrupole_labels)
+			test_epoch_quadrupole_outputs.append(quadrupoles)
 			# test_net_charges.append(net_charges)
 		test_epoch_dipole_labels = np.concatenate(test_epoch_dipole_labels)
 		test_epoch_dipole_outputs = np.concatenate(test_epoch_dipole_outputs)
 		test_epoch_dipole_errors = test_epoch_dipole_labels - test_epoch_dipole_outputs
+		test_epoch_quadrupole_labels = np.concatenate(test_epoch_quadrupole_labels)
+		test_epoch_quadrupole_outputs = np.concatenate(test_epoch_quadrupole_outputs)
+		test_epoch_quadrupole_errors = test_epoch_quadrupole_labels - test_epoch_quadrupole_outputs
 		# test_net_charges = np.concatenate(test_net_charges)
 		duration = time.time() - start_time
 		# for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 		# 	LOGGER.info("Net Charges: %11.8f", test_net_charges[i])
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 			LOGGER.info("Dipole label: %s  Dipole output: %s", test_epoch_dipole_labels[i], test_epoch_dipole_outputs[i])
+		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
+			LOGGER.info("Quadrupole label: %s  Quadrupole output: %s", test_epoch_quadrupole_labels[i], test_epoch_quadrupole_outputs[i])
 		# LOGGER.info("MAE  Dipole: %11.8f  Net Charge: %11.8f", np.mean(np.abs(test_epoch_dipole_errors)), np.mean(np.abs(test_net_charges)))
 		# LOGGER.info("MSE  Dipole: %11.8f  Net Charge: %11.8f", np.mean(test_epoch_dipole_errors), np.mean(test_net_charges))
 		# LOGGER.info("RMSE Dipole: %11.8f  Net Charge: %11.8f", np.sqrt(np.mean(np.square(test_epoch_dipole_errors))), np.sqrt(np.mean(np.square(test_net_charges))))
-		LOGGER.info("MAE  Dipole: %11.8f", np.mean(np.abs(test_epoch_dipole_errors)))
-		LOGGER.info("MSE  Dipole: %11.8f", np.mean(test_epoch_dipole_errors))
-		LOGGER.info("RMSE Dipole: %11.8f", np.sqrt(np.mean(np.square(test_epoch_dipole_errors))))
-		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
-		LOGGER.info("step: %5d    duration: %10.5f   test loss: %13.10f  dipole loss: %13.10f", step, duration,
-			test_loss / num_mols, test_dipole_loss / num_mols)
+		LOGGER.info("MAE  Dipole: %11.8f  MAE  Quadrupole: %11.8f", np.mean(np.abs(test_epoch_dipole_errors)), np.mean(np.abs(test_epoch_quadrupole_errors)))
+		LOGGER.info("MSE  Dipole: %11.8f  MSE  Quadrupole: %11.8f", np.mean(test_epoch_dipole_errors), np.mean(test_epoch_quadrupole_errors))
+		LOGGER.info("RMSE Dipole: %11.8f  RMSE Quadrupole: %11.8f", np.sqrt(np.mean(np.square(test_epoch_dipole_errors))), np.sqrt(np.mean(np.square(test_epoch_quadrupole_errors))))
+		for i in range(10):
+			print("Charge     " + str(i) + ": " + str(charges[i]))
+			print("Batch      " + str(i) + ": " + str(batch_data[-1][i]))
+			print("Net Charge " + str(i) + ": " + str(np.sum(charges[i])))
+		LOGGER.info("step: %5d    duration: %10.5f   test loss: %13.10f  dipole loss: %13.10f  quadrupole loss: %13.10f", step, duration,
+			test_loss / num_mols, test_dipole_loss / num_mols, test_quadrupole_loss / num_mols)
 		return test_loss
 
 	def energy_test_step(self, step):
@@ -789,14 +809,17 @@ class BehlerParinelloSymFunc(BehlerParinelloNetwork):
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
-			self.Zs_pl = tf.placeholder(tf.int32, shape=[None, self.max_num_atoms])
-			self.energy_pl = tf.placeholder(self.tf_precision, shape=[None])
-			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
-			self.quadrupole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
-			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
-			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[None])
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
+			self.Zs_pl = tf.placeholder(tf.int32, shape=[self.batch_size, self.max_num_atoms])
+			self.energy_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size])
+			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, 3])
+			self.quadrupole_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, 2, 3])
+			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
+			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[self.batch_size])
 			self.Reep_pl = tf.placeholder(tf.int32, shape=[None, 3])
+
+			self.dipole_labels = self.dipole_pl
+			self.quadrupole_labels = self.quadrupole_pl
 
 			elements = tf.constant(self.elements, dtype = tf.int32)
 			element_pairs = tf.constant(self.element_pairs, dtype = tf.int32)
@@ -814,26 +837,26 @@ class BehlerParinelloSymFunc(BehlerParinelloNetwork):
 			embeddings_max = tf.constant(self.embeddings_max, dtype = self.tf_precision)
 			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
 			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
-			gradients_mean = tf.constant(self.gradients_mean, dtype = self.tf_precision)
-			gradients_stddev = tf.constant(self.gradients_stddev, dtype = self.tf_precision)
 			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
-			element_embeddings, mol_indices = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements,
+			embeddings, mol_idx = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements,
 					element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
 			for element in range(len(self.elements)):
-				element_embeddings[element] /= embeddings_max[element]
-			norm_bp_energy, energy_variables = self.energy_inference(embeddings, mol_indices)
+				embeddings[element] /= embeddings_max[element]
+			norm_bp_energy, energy_variables = self.energy_inference(embeddings, mol_idx)
 			self.bp_energy = (norm_bp_energy * self.labels_stddev) + self.labels_mean
 
 			if self.train_dipole:
-				self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
+				self.dipoles, self.quadrupoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, mol_idx, self.xyzs_pl, self.num_atoms_pl)
 				if (PARAMS["OPR12"]=="DSF"):
 					self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
 				elif (PARAMS["OPR12"]=="Poly"):
-					self.coulomb_energy = PolynomialRangeSepCoulomb(rotated_xyzs, self.charges, self.Reep_pl, 5.0, 12.0, 5.0)
+					self.coulomb_energy = PolynomialRangeSepCoulomb(self.xyzs_pl, self.charges, self.Reep_pl, 5.0, 12.0, 5.0)
 				self.total_energy = self.bp_energy + self.coulomb_energy
-				self.dipole_loss = self.loss_op(self.dipoles - self.dipole_labels)
+				self.dipole_loss = self.loss_op(self.dipoles - self.dipole_pl)
+				self.quadrupole_loss = self.loss_op(self.quadrupoles - self.quadrupole_pl)
 				tf.add_to_collection('dipole_losses', self.dipole_loss)
+				tf.add_to_collection('quadrupole_losses', self.quadrupole_loss)
 				self.dipole_losses = tf.add_n(tf.get_collection('dipole_losses'))
 				tf.summary.scalar("dipole losses", self.dipole_losses)
 				self.dipole_train_op = self.optimizer(self.dipole_losses, self.learning_rate, self.momentum, dipole_variables)
