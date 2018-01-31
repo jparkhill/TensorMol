@@ -792,6 +792,108 @@ def water_meta_react():
 	meta = MetaDynamics(EnAndForce, m,name_="water_10react", EandF_=EnAndForce)
 	meta.Prop()
 
+def meta_opt():
+	a=MSet("water10")
+	a.ReadXYZ()
+	TreatedAtoms = a.AtomTypes()
+	m=a.mols[0]
+	PARAMS["MDdt"] = 0.5
+	PARAMS["RemoveInvariant"] = True
+	PARAMS["MDMaxStep"] = 50000
+	PARAMS["MDThermostat"] = "Andersen"
+	PARAMS["MDTemp"]= 600.0
+	PARAMS["MDV0"] = "Random"
+	PARAMS["MetaMDBumpHeight"] = 2.0
+	PARAMS["MetaMDBumpWidth"] = 3.0
+	PARAMS["MetaMaxBumps"] = 2000
+	PARAMS["MetaBowlK"] = 0.2
+	PARAMS["MetaBumpTime"] = 5.0
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["NeuronType"] = "sigmoid_with_param"
+	PARAMS["sigmoid_alpha"] = 100.0
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["DSFAlpha"] = 0.18
+	PARAMS["AddEcc"] = True
+	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 1.0]
+	PARAMS["OptMaxCycles"]= 2000
+	PARAMS["OptThresh"] =0.00002
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("water_network",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	atomization_energy = 0.0
+	for atom in m.atoms:
+		if atom in ele_U:
+			atomization_energy += ele_U[atom]
+	def EnAndForce(x_, DoForce=True):
+		mtmp = Mol(m.atoms,x_)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		energy = Etotal[0] + atomization_energy
+		force = gradient[0]
+		if DoForce:
+			return energy, force
+		else:
+			return energy
+#	PARAMS["OptMaxCycles"]=500
+	web = LocalReactions(EnAndForce,m,50)
+	exit(0)
+	Opt = MetaOptimizer(EnAndForce,m,Box_=False)
+	Opt.MetaOpt(m)
+
+def water_web():
+	a=MSet("WebPath")
+	a.ReadXYZ()
+	TreatedAtoms = a.AtomTypes()
+	m=a.mols[0]
+	PARAMS["MDdt"] = 0.5
+	PARAMS["RemoveInvariant"] = True
+	PARAMS["MDMaxStep"] = 50000
+	PARAMS["MDThermostat"] = "Andersen"
+	PARAMS["MDTemp"]= 600.0
+	PARAMS["MDV0"] = "Random"
+	PARAMS["MetaMDBumpHeight"] = 2.0
+	PARAMS["MetaMDBumpWidth"] = 3.0
+	PARAMS["MetaMaxBumps"] = 2000
+	PARAMS["MetaBowlK"] = 0.2
+	PARAMS["MetaBumpTime"] = 5.0
+	PARAMS["tf_prec"] = "tf.float64"
+	PARAMS["NeuronType"] = "sigmoid_with_param"
+	PARAMS["sigmoid_alpha"] = 100.0
+	PARAMS["HiddenLayers"] = [500, 500, 500]
+	PARAMS["EECutoff"] = 15.0
+	PARAMS["EECutoffOn"] = 0
+	PARAMS["Elu_Width"] = 4.6  # when elu is used EECutoffOn should always equal to 0
+	PARAMS["EECutoffOff"] = 15.0
+	PARAMS["DSFAlpha"] = 0.18
+	PARAMS["AddEcc"] = True
+	PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 1.0]
+	PARAMS["OptMaxCycles"]= 2000
+	PARAMS["OptThresh"] =0.00002
+	d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")
+	tset = TensorMolData_BP_Direct_EE_WithEle(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+	manager=TFMolManage("water_network",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout",False,False)
+	atomization_energy = 0.0
+	for atom in m.atoms:
+		if atom in ele_U:
+			atomization_energy += ele_U[atom]
+	def EnAndForce(x_, DoForce=True):
+		mtmp = Mol(m.atoms,x_)
+		Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(mtmp, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		energy = Etotal[0] + atomization_energy
+		force = gradient[0]
+		if DoForce:
+			return energy, force
+		else:
+			return energy
+	f=open("web_energies.dat", "w")
+	for i, mol in enumerate(a.mols):
+		en = EnAndForce(mol.coords, DoForce=False)
+		f.write(str(i)+"  "+str(en*627.509)+"\n")
+	f.close()
+
 # PARAMS["RBFS"] = np.stack((np.linspace(0.1, 5.0, 32), np.repeat(0.25, 32)), axis=1)
 # PARAMS["SH_NRAD"] = 32
 # PARAMS["SH_LMAX"] = 4
@@ -828,7 +930,9 @@ def water_meta_react():
 #water_ir()
 # GetWaterNetwork()
 # water_meta_opt()
-water_meta_react()
+# water_meta_react()
+# meta_opt()
+water_web()
 
 # f=open("nicotine_md_aimd_log.dat","r")
 # f2=open("nicotine_md_aimd_energies.dat", "w")
