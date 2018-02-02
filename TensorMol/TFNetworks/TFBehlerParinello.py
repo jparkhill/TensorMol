@@ -84,7 +84,10 @@ class BehlerParinelloNetwork(object):
 		remove_vars = ["mol_set", "activation_function", "xyz_data", "Z_data", "energy_data", "dipole_data",
 						"num_atoms_data", "gradient_data"]
 		for var in remove_vars:
-			del state[var]
+			try:
+				del state[var]
+			except:
+				pass
 		return state
 
 	def assign_activation(self):
@@ -177,7 +180,6 @@ class BehlerParinelloNetwork(object):
 
 	def save_network(self):
 		print("Saving TFInstance")
-		print(self.__dict__)
 		f = open(self.network_directory+".tfn","wb")
 		pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
@@ -207,7 +209,7 @@ class BehlerParinelloNetwork(object):
 				print("TensorData object has no molecule set.", Ex)
 		self.xyz_data = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float64)
 		self.Z_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
-		self.mulliken_charges_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.float64)
+		# self.mulliken_charges_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.float64)
 		self.num_atoms_data = np.zeros((self.num_molecules), dtype = np.int32)
 		self.energy_data = np.zeros((self.num_molecules), dtype = np.float64)
 		if self.train_dipole:
@@ -218,7 +220,7 @@ class BehlerParinelloNetwork(object):
 		for i, mol in enumerate(self.mol_set.mols):
 			self.xyz_data[i][:mol.NAtoms()] = mol.coords
 			self.Z_data[i][:mol.NAtoms()] = mol.atoms
-			self.mulliken_charges_data[i][:mol.NAtoms()] = mol.properties["mulliken_charges"]
+			# self.mulliken_charges_data[i][:mol.NAtoms()] = mol.properties["mulliken_charges"]
 			self.energy_data[i] = mol.properties["atomization"]
 			if self.train_dipole:
 				self.dipole_data[i] = mol.properties["dipole"]
@@ -282,13 +284,13 @@ class BehlerParinelloNetwork(object):
 		xyzs = self.xyz_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		Zs = self.Z_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		energies = self.energy_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
-		dipoles = self.dipole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		# dipoles = self.dipole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		num_atoms = self.num_atoms_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		gradients = self.gradient_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 
 		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
-		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]
+		return [xyzs, Zs, energies, gradients, num_atoms]
 
 	def get_dipole_test_batch(self, batch_size):
 		if self.test_scratch_pointer + batch_size >= self.num_test_cases:
@@ -311,7 +313,7 @@ class BehlerParinelloNetwork(object):
 		xyzs = self.xyz_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		Zs = self.Z_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		energies = self.energy_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
-		dipoles = self.dipole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		# dipoles = self.dipole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		gradients = self.gradient_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 		num_atoms = self.num_atoms_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
 
@@ -323,7 +325,7 @@ class BehlerParinelloNetwork(object):
 		# gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
-		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
+		return [xyzs, Zs, energies, gradients, num_atoms]#, rad_eep]
 
 	def variable_summaries(self, var):
 		"""
@@ -389,7 +391,7 @@ class BehlerParinelloNetwork(object):
 		Returns:
 			Filled feed dictionary.
 		"""
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.energy_pl, self.gradients_pl, self.dipole_pl, self.num_atoms_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.energy_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
 		return feed_dict
 
 	def energy_inference(self, inp, indexs):
@@ -1067,7 +1069,7 @@ class BehlerParinelloGauSH(BehlerParinelloNetwork):
 			batch_data = self.get_energy_train_batch(self.batch_size)
 			labels_list.append(batch_data[2])
 			embedding, molecule_index = sess.run([embeddings, molecule_indices],
-									feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1], num_atoms_pl:batch_data[5]})
+									feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1], num_atoms_pl:batch_data[4]})
 			for element in range(len(self.elements)):
 				embeddings_list[element].append(embedding[element])
 		sess.close()
