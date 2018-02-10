@@ -237,3 +237,103 @@ class BoxedMetaDynamics(VelocityVerlet):
 			LOGGER.info("Step: %i time: %.1f(fs) <KE>(kJ/mol): %.5f <|a|>(m/s2): %.5f <EPot>(Eh): %.5f <Etot>(kJ/mol): %.5f Teff(K): %.5f", step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, self.KE/1000.0+self.EPot*KJPERHARTREE, Teff)
 			print(("per step cost:", time.time() -t ))
 		return
+
+class NearbyMinima(MetaDynamics):
+	def __init__(self,f_,g0_,name_="MinimaSearch",EandF_=None):
+		"""
+		Searches for nearby minima and stores unique new minima.
+		optimizes without the bump every 50fs.
+
+		Args:
+			f_: A routine which returns the force.
+			g0_: an initial molecule.
+			name_: a name for output.
+			EandF_: a routine returning the energy and the force.
+			PARAMS["BowlK"] : a force constant of an attractive potential.
+		"""
+		VelocityVerlet.__init__(self, f_, g0_, name_, EandF_)
+		self.BumpTime = PARAMS["MetaBumpTime"]
+		self.MaxBumps = PARAMS["MetaMaxBumps"]
+		self.bump_height = PARAMS["MetaMDBumpHeight"]
+		self.bump_width = PARAMS["MetaMDBumpWidth"]
+		self.BumpCoords = np.zeros((self.MaxBumps,self.natoms,3))
+		self.NBump = 0
+		self.DStat = OnlineEstimator(MolEmb.Make_DistMat(self.x))
+		self.BowlK = PARAMS["MetaBowlK"]
+		if (self.Tstat.name != "Andersen"):
+			LOGGER.info("I really recommend you use Andersen Thermostat with Meta-Dynamics.")
+		self.Bumper = TFForces.BumpHolder(self.natoms, self.MaxBumps, self.BowlK, self.bump_height, self.bump_width,"MR")
+
+	def BumpForce(self,x_):
+		BE = 0.0
+		BF = np.zeros(x_.shape)
+		if (self.NBump > 0):
+			BE, BF = self.Bumper.Bump(self.BumpCoords.astype(np.float32), x_.astype(np.float32), self.NBump%self.MaxBumps)
+		if (self.EnergyAndForce != None):
+			self.RealPot, PF = self.EnergyAndForce(x_)
+		else:
+			PF = self.ForceFunction(x_)
+		if self.NBump > 0:
+			BF[0] *= self.m[:,None]
+		PF += JOULEPERHARTREE*BF[0]
+		PF = RemoveInvariantForce(x_,PF,self.m)
+		return BE+self.RealPot, PF
+
+	def Bump(self):
+		self.BumpCoords[self.NBump%self.MaxBumps] = self.x
+		self.NBump += 1
+		LOGGER.info("Bump added!")
+		return
+
+	def Prop(self):
+		"""
+		Propagate VelocityVerlet
+		"""
+		step = 0
+		bumptimer = self.BumpTime
+		mintimer = 50.0
+		self.md_log = np.zeros((self.maxstep, 11)) # time Dipoles Energy
+		self.configs = []
+		while(step < self.maxstep):
+			t = time.time()
+			self.t = step*self.dt
+			bumptimer -= self.dt
+			mintimer -= self.dt
+			self.KE = KineticEnergy(self.v,self.m)
+			Teff = (2./3.)*self.KE/IDEALGASR
+			if (PARAMS["MDThermostat"]==None):
+				self.x , self.v, self.a, self.EPot = VelocityVerletStep(self.BumpForce, self.a, self.x, self.v, self.m, self.dt, self.BumpForce)
+			else:
+				self.x , self.v, self.a, self.EPot, self.force = self.Tstat.step(self.BumpForce, self.a, self.x, self.v, self.m, self.dt, self.BumpForce)
+
+			self.md_log[step,0] = self.t
+			self.md_log[step,4] = self.KE
+			self.md_log[step,5] = self.EPot
+			self.md_log[step,6] = self.KE+(self.EPot-self.EPot0)*JOULEPERHARTREE
+			self.md_log[step,7] = self.RealPot
+
+			# Add an averager which accumulates RMS distance. Also, wow the width is small.
+			Eav, Evar = self.EnergyStat(self.RealPot)
+			Dav, Dvar = self.DStat(MolEmb.Make_DistMat(self.x))
+			self.md_log[step,8] = Eav
+			self.md_log[step,9] = Evar
+			self.md_log[step,10] = np.linalg.norm(Dvar)
+
+			if (bumptimer < 0.0):
+				self.Bump()
+				bumptimer = self.BumpTime
+			if (mintimer < 0.0):
+				# optimize off this guess.
+				Opt()
+				mintimer=50.0
+			if (step%10==0 and PARAMS["MDLogTrajectory"]):
+				self.WriteTrajectory()
+			if (step%500==0):
+				np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
+
+			LOGGER.info("Step: %i time: %.1f(fs) KE(kJ/mol): %.5f <|a|>(m/s2): %.5f EPot(Eh): %.5f <EPot(Eh)>: %.5f Etot(kJ/mol): %.5f  <d(D_ij)^2>: %.5f Teff(K): %.5f",
+					step, self.t, self.KE/1000.0,  np.linalg.norm(self.a) , self.EPot, Eav, self.md_log[step,6]/1000.0, self.md_log[step,10], Teff)
+			print(("per step cost:", time.time() -t ))
+			step+=1
+		np.savetxt("./results/"+"MDLog"+self.name+".txt",self.md_log)
+		return

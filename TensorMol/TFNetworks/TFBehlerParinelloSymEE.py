@@ -82,7 +82,7 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 
 		self.NetType = "RawBP_EandG"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.keep_prob = np.asarray(PARAMS["KeepProb"])
 		self.nlayer = len(PARAMS["KeepProb"]) - 1
 		self.monitor_mset =  PARAMS["MonitorSet"]
@@ -729,7 +729,7 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 
 		self.NetType = "RawBP_EE_SymFunction"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.keep_prob = np.asarray(PARAMS["KeepProb"])
 		self.nlayer = len(PARAMS["KeepProb"]) - 1
 		self.monitor_mset =  PARAMS["MonitorSet"]
@@ -1775,13 +1775,13 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 
 		self.NetType = "RawBP_Charge_SymFunction"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType+"_"+self.suffix
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.keep_prob = np.asarray(PARAMS["KeepProb"])
 		self.nlayer = len(PARAMS["KeepProb"]) - 1
 		self.monitor_mset =  PARAMS["MonitorSet"]
-	
+
 		print ("self.eles_pairs:",self.eles_pairs)
-		
+
 
 	def SetANI1Param(self, prec=np.float64):
 		"""
@@ -2063,7 +2063,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			Rj = tf.gather_nd(xyzsInBohr, mj)
 			D = tf.sqrt(tf.reduce_sum((Ri-Rj)*(Ri-Rj), 1))
 			qi = tf.gather_nd(charge, Reep_e1e2[:,:2])
-			qj = tf.gather_nd(charge, mj)	
+			qj = tf.gather_nd(charge, mj)
 			Ejoni = tf.reshape(qj,[-1,1])*(Ri-Rj)/tf.reshape(D*D,[-1,1])
 			Eionj = tf.reshape(qi,[-1,1])*(Rj-Ri)/tf.reshape(D*D,[-1,1])
 			scattered_Ejoni = tf.scatter_nd(Reep_e1e2[:,:3], Ejoni, [self.batch_size, self.MaxNAtoms, self.MaxNAtoms, 3]) # this needs to be replaced if linear scaling is needed
@@ -2088,7 +2088,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 					Rj = tf.gather_nd(xyzsInBohr, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
 					dist  = tf.sqrt(tf.reduce_sum((Ri-Rj)*(Ri-Rj), 1))
 					E1 = tf.gather_nd(E_sum, masked[:,:2])
-					E2 = tf.gather_nd(E_sum, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))			
+					E2 = tf.gather_nd(E_sum, tf.transpose(tf.stack([masked[:,0], masked[:,2]])))
 					E1_proj = tf.reduce_sum(E1*(Rj-Ri),-1)/dist
 					E2_proj = tf.reduce_sum(E2*(Ri-Rj),-1)/dist
 					pair_indexs.append(masked)
@@ -2096,7 +2096,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 					#charge_inputs = tf.transpose(tf.stack([neg1, charge1, E1_proj, neg2, charge2, E2_proj, 1.0/dist]))
 					Cbranches.append([])
 					charge_shp_in = tf.shape(charge_inputs)
-						
+
 					for i in range(len(self.HiddenLayers)):
 						if i == 0:
 							with tf.variable_scope(str(pair)+'_hidden1_charge',reuse=reuse_flag):
@@ -2115,7 +2115,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 						shp_out = tf.shape(Cbranches[-1][-1])
 						rshp = tf.reshape(Cbranches[-1][-1],[-1])
 						delta_charge += tf.scatter_nd(masked[:,:2], rshp, [self.batch_size, self.MaxNAtoms])
-						delta_charge -= tf.scatter_nd(tf.transpose(tf.stack([masked[:,0], masked[:,2]])), rshp, [self.batch_size, self.MaxNAtoms])	
+						delta_charge -= tf.scatter_nd(tf.transpose(tf.stack([masked[:,0], masked[:,2]])), rshp, [self.batch_size, self.MaxNAtoms])
 				charge += delta_charge
 
 

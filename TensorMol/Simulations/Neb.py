@@ -15,7 +15,7 @@ import random
 import time
 
 class NudgedElasticBand:
-	def __init__(self,f_,g0_,g1_):
+	def __init__(self,f_,g0_,g1_,name_="Neb",thresh_=None,nbeads_=None):
 		"""
 		Nudged Elastic band. JCP 113 9978
 
@@ -27,9 +27,14 @@ class NudgedElasticBand:
 		Returns:
 			A reaction path.
 		"""
+		self.name = name_
 		self.thresh = PARAMS["OptThresh"]
+		if (thresh_ != None):
+			self.thresh= thresh_
 		self.max_opt_step = PARAMS["OptMaxCycles"]
 		self.nbeads = PARAMS["NebNumBeads"]
+		if (nbeads_!=None):
+			self.nbeads = nbeads_
 		self.k = PARAMS["NebK"]
 		self.f = f_
 		self.atoms = g0_.atoms.copy()
@@ -42,8 +47,11 @@ class NudgedElasticBand:
 		self.Esi = np.zeros(self.nbeads) # Integrated
 		self.Rs = np.zeros(self.nbeads) # Distance between beads.
 		self.Solver=None
+		self.step=0
 		if (PARAMS["NebSolver"]=="SD"):
 			self.Solver = SteepestDescent(self.WrappedEForce,self.beads)
+		if (PARAMS["NebSolver"]=="Verlet"):
+			self.Solver = VerletOptimizer(self.WrappedEForce,self.beads)
 		elif (PARAMS["NebSolver"]=="BFGS"):
 			self.Solver = BFGS_WithLinesearch(self.WrappedEForce,self.beads)
 		elif (PARAMS["NebSolver"]=="DIIS"):
@@ -180,15 +188,16 @@ class NudgedElasticBand:
 		Optimize the nudged elastic band using the solver that has been selected.
 		"""
 		# Sweeps one at a time
-		step=0
+		self.step=0
 		self.Fs = np.ones(self.beads.shape)
 		PES = np.zeros((self.max_opt_step, self.nbeads))
-		while(step < self.max_opt_step and np.sqrt(np.mean(self.Fs*self.Fs))>self.thresh):
+		while(self.step < self.max_opt_step and np.sqrt(np.mean(self.Fs*self.Fs))>self.thresh):
 			# Update the positions of every bead together.
 			self.beads, energy, self.Fs = self.Solver(self.beads)
-			PES[step] = self.Es.copy()
+			PES[self.step] = self.Es.copy()
 			self.IntegrateEnergy()
 			print("Rexn Profile: ", self.Es, self.Esi)
+			self.TSI = np.argmax(self.Es)
 			beadFs = [np.linalg.norm(x) for x in self.Fs[1:-1]]
 			beadFperp = [np.linalg.norm(self.Perpendicular(self.Fs[i],self.Ts[i])) for i in range(1,self.nbeads-1)]
 			beadRs = [np.linalg.norm(self.beads[x+1]-self.beads[x]) for x in range(self.nbeads-1)]
@@ -201,10 +210,10 @@ class NudgedElasticBand:
 			minforce = np.min(beadFs)
 				#rmsdisp[i] = np.sum(np.linalg.norm((prev_m.coords-m.coords),axis=1))/m.coords.shape[0]
 				#maxdisp[i] = np.amax(np.linalg.norm((prev_m.coords - m.coords), axis=1))
-			if (step%10==0):
+			if (self.step%10==0):
 				self.WriteTrajectory(filename)
-			LOGGER.info("Step: %i Objective: %.5f RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", step, np.sum(PES[step]), np.sqrt(np.mean(self.Fs*self.Fs)), np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
-			step+=1
+			LOGGER.info(self.name+"Step: %i Objective: %.5f RMS Gradient: %.5f  Max Gradient: %.5f |F_perp| : %.5f |F_spring|: %.5f ", self.step, np.sum(PES[self.step]), np.sqrt(np.mean(self.Fs*self.Fs)), np.max(self.Fs),np.mean(beadFperp),np.linalg.norm(self.Ss))
+			self.step+=1
 		#self.HighQualityPES()
 		print("Activation Energy:",np.max(self.Es)-np.min(self.Es))
 		np.savetxt("./results/NEB_"+filename+"_Energy.txt",PES)

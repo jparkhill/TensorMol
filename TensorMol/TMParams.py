@@ -21,6 +21,7 @@ class TMParams(dict):
 		self["SH_LMAX"]=4
 		self["SH_NRAD"]=14
 		self["SH_ORTH"]=1
+		self["SH_rot_invar"] = False
 		self["SH_MAXNR"]=self["RBFS"].shape[0]
 		self["AN1_r_Rc"] = 4.6  # orgin ANI1 set
 		self["AN1_a_Rc"] = 3.1  # orgin ANI1 set
@@ -90,18 +91,18 @@ class TMParams(dict):
 		self["OctahedralAveraging"] = 0 # Octahedrally Average Outputs
 		self["train_gradients"] = True
 		self["train_dipole"] = True
-		self["train_quadropole"] = False
+		self["train_quadrupole"] = False
 		self["train_rotation"] = True
 		# Opt Parameters
 		self["OptMaxCycles"]=50
 		self["OptThresh"]=0.0001
 		self["OptMaxStep"]=0.1
 		self["OptStepSize"] = 0.1
-		self["OptMomentum"] = 0.0
+		self["OptMomentum"] = 0.5
 		self["OptMomentumDecay"] = 0.8
 		self["OptPrintLvl"] = 1
 		self["OptLatticeStep"] = 0.050
-		self["GSSearchAlpha"] = 0.001
+		self["GSSearchAlpha"] = 0.05
 		self["SDStep"] = 0.05
 		self["MaxBFGS"] = 7
 		self["NebSolver"] = "Verlet"
@@ -151,12 +152,14 @@ class TMParams(dict):
 		self["EECutoffOff"] = 15.0 # switch off between 0 and 1/r occurs at Angstroms.
 		self["Erf_Width"] = 0.2
 		self["DSFAlpha"] = 0.18
-		#paths
-		self["sets_dir"] = "./datasets/"
-		self["results_dir"] = "./results/"
-		self["dens_dir"] = "./densities/"
-		self["log_dir"] = "./logs/"
-		self["networks_directory"] = "./networks"
+		#paths -- Allows for different placement of fast reads/writes.
+		self["tm_root"] = "."
+		self["sets_dir"] = self["tm_root"]+"/datasets/"
+		self["networks_directory"] = self["tm_root"]+"/networks/"
+		self["output_root"] = "."
+		self["results_dir"] = self["output_root"]+"/results/"
+		self["dens_dir"] = self["output_root"]+"/densities/"
+		self["log_dir"] = self["output_root"]+"/logs/"
 		# Garbage we're putting here for now.
 		self["Qchem_RIMP2_Block"] = "$rem\n   jobtype   sp\n   method   rimp2\n   MAX_SCF_CYCLES  200\n   basis   cc-pvtz\n   aux_basis rimp2-cc-pvtz\n   symmetry   false\n   INCFOCK 0\n   thresh 12\n   SCF_CONVERGENCE 12\n$end\n"
 		np.set_printoptions(formatter={'float': '{: .8f}'.format}) #Set pretty printing for numpy arrays
@@ -179,7 +182,7 @@ def TMBanner():
 	print("--------------------------")
 	print("By using this software you accept the terms of the GNU public license in ")
 	print("COPYING, and agree to attribute the use of this software in publications as: \n")
-	print("K.Yao, J. E. Herr, D. Toth, J. Parkhill. TensorMol 0.1 (2016)")
+	print("K.Yao, J. E. Herr, D. Toth, R. McIntyre, J. Garside, J. Parckhill. TensorMol 0.2 (2018)")
 	print("--------------------------")
 
 def TMLogger(path_):
@@ -193,7 +196,7 @@ def TMLogger(path_):
 		os.makedirs(path_)
 	fh = logging.FileHandler(filename=path_+time.strftime("%a_%b_%d_%H.%M.%S_%Y")+'.log')
 	fh.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler()
+	ch = logging.StreamHandler(sys.stdout)
 	ch.setLevel(logging.INFO)
 	fformatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	pformatter = logging.Formatter('%(message)s')

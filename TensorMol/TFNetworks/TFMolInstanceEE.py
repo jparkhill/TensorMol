@@ -24,7 +24,7 @@ class MolInstance_BP_Dipole(MolInstance_fc_sqdiff_BP):
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		self.learning_rate = 0.0001
 		#self.learning_rate = 0.00001
 		self.momentum = 0.95
@@ -403,7 +403,7 @@ class MolInstance_BP_Dipole_2(MolInstance_BP_Dipole):
 		MolInstance.__init__(self, TData_,  Name_, Trainable_)
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+str(self.TData.order)+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		#self.learning_rate = 0.0001
 		self.momentum = 0.95
 		if (self.Trainable):
@@ -849,7 +849,7 @@ class MolInstance_BP_Dipole_2_Direct(MolInstance_DirectBP_NoGrad):
 		self.NetType = "RawBP_Dipole"
 		self.name = "Mol_"+self.TData.name+"_"+self.TData.dig.name+"_"+self.NetType
 		LOGGER.debug("Raised Instance: "+self.name)
-		self.train_dir = './networks/'+self.name
+		self.train_dir = PARAMS["networks_directory"]+self.name
 		if (self.Trainable):
 			self.TData.LoadDataToScratch(self.tformer)
 		self.xyzs_pl = None

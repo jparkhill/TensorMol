@@ -13,23 +13,24 @@ from __future__ import print_function
 
 import time
 import random
+import cPickle as pickle
 
 from ..Containers.TensorMolData import *
 from ..TFDescriptors.RawSH import *
 from ..TFDescriptors.RawSymFunc import *
 from tensorflow.python.client import timeline
 
-class BehlerParinelloDirect(object):
+class BehlerParinelloNetwork(object):
 	"""
 	Base class for Behler-Parinello network using embedding from RawEmbeddings.py
 	Do not use directly, only for inheritance to derived classes
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
-	def __init__(self, molecule_set=None, name=None):
+	def __init__(self, mol_set_name=None, name=None):
 		"""
 		Args:
-			molecule_set (TensorMol.MSet object): a class which holds the training data
+			mol_set (TensorMol.MSet object): a class which holds the training data
 			name (str): a name used to recall this network
 
 		Notes:
@@ -46,6 +47,7 @@ class BehlerParinelloDirect(object):
 		self.path = PARAMS["networks_directory"]
 		self.train_gradients = PARAMS["train_gradients"]
 		self.train_dipole = PARAMS["train_dipole"]
+		self.train_quadrupole = PARAMS["train_quadrupole"]
 		self.train_rotation = PARAMS["train_rotation"]
 		self.profiling = PARAMS["Profiling"]
 		self.activation_function_type = PARAMS["NeuronType"]
@@ -65,16 +67,28 @@ class BehlerParinelloDirect(object):
 			return
 
 		#Data parameters
-		self.molecule_set = molecule_set
-		self.molecule_set_name = self.molecule_set.name
-		self.elements = self.molecule_set.AtomTypes()
-		self.max_num_atoms = self.molecule_set.MaxNAtoms()
-		self.num_molecules = len(self.molecule_set.mols)
+		self.mol_set_name = mol_set_name
+		self.mol_set = MSet(self.mol_set_name)
+		self.mol_set.Load()
+		self.elements = self.mol_set.AtomTypes()
+		self.max_num_atoms = self.mol_set.MaxNAtoms()
+		self.num_molecules = len(self.mol_set.mols)
 
 		LOGGER.info("learning rate: %f", self.learning_rate)
 		LOGGER.info("batch size:    %d", self.batch_size)
 		LOGGER.info("max steps:     %d", self.max_steps)
 		return
+
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		remove_vars = ["mol_set", "activation_function", "xyz_data", "Z_data", "energy_data", "dipole_data",
+						"num_atoms_data", "gradient_data"]
+		for var in remove_vars:
+			try:
+				del state[var]
+			except:
+				pass
+		return state
 
 	def assign_activation(self):
 		LOGGER.debug("Assigning Activation Function: %s", PARAMS["NeuronType"])
@@ -110,6 +124,54 @@ class BehlerParinelloDirect(object):
 	def sigmoid_with_param(self, x):
 		return tf.log(1.0+tf.exp(tf.multiply(tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision), x)))/tf.cast(PARAMS["sigmoid_alpha"], dtype=self.tf_precision)
 
+	def start_training(self):
+		self.load_data_to_scratch()
+		self.compute_normalization()
+		self.save_network()
+		self.train_prepare()
+		self.train()
+
+	def restart_training(self):
+		self.reload_set()
+		self.load_data_to_scratch()
+		self.train_prepare(restart=True)
+		self.train()
+
+	def train(self):
+		test_freq = PARAMS["test_freq"]
+		if self.train_dipole:
+			mini_test_loss = 1e10
+			for step in range(1, 51):
+				self.dipole_train_step(step)
+				if step%test_freq==0:
+					test_loss = self.dipole_test_step(step)
+					if (test_loss < mini_test_loss):
+						mini_test_loss = test_loss
+						self.save_checkpoint(step)
+			LOGGER.info("Continue training dipole until new best checkpoint found.")
+			train_energy_flag = False
+			step += 1
+			while train_energy_flag == False:
+				self.dipole_train_step(step)
+				test_loss = self.dipole_test_step(step)
+				if (test_loss < mini_test_loss):
+					mini_test_loss = test_loss
+					self.save_checkpoint(step)
+					train_energy_flag=True
+					LOGGER.info("New best checkpoint found. Starting energy network training.")
+				step += 1
+		mini_test_loss = 1e10
+		for step in range(1, self.max_steps+1):
+			self.energy_train_step(step)
+			if step%test_freq==0:
+				test_loss = self.energy_test_step(step)
+				if (test_loss < mini_test_loss):
+					mini_test_loss = test_loss
+					self.save_checkpoint(step)
+		self.sess.close()
+		self.save_network()
+		return
+
 	def save_checkpoint(self, step):
 		checkpoint_file = os.path.join(self.network_directory,self.name+'-checkpoint')
 		LOGGER.info("Saving checkpoint file %s", checkpoint_file)
@@ -118,74 +180,55 @@ class BehlerParinelloDirect(object):
 
 	def save_network(self):
 		print("Saving TFInstance")
-		self.clean_scratch()
-		self.clean()
 		f = open(self.network_directory+".tfn","wb")
-		pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+		pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
 		f.close()
 		return
 
 	def load_network(self):
 		LOGGER.info("Loading TFInstance")
-		f = open(self.path+"/"+self.name+".tfn","rb")
-		import TensorMol.PickleTM
-		network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
-		# self.clean()
-		self.__dict__.update(network_member_variables)
-		f.close()
-		checkpoint_files = [x for x in os.listdir(self.network_directory) if (x.count('checkpoint')>0 and x.count('meta')==0)]
-		if (len(checkpoint_files)>0):
-			self.latest_checkpoint_file = checkpoint_files[0]
-		else:
-			LOGGER.error("Network not found in directory: %s", self.network_directory)
-			LOGGER.error("Network directory contents: %s", str(os.listdir(self.network_directory)))
-		return
-
-	def clean_scratch(self):
-		self.scratch_state = None
-		self.scratch_pointer = 0
-		self.scratch_train_inputs = None
-		self.scratch_train_outputs = None
-		self.scratch_test_inputs = None
-		self.scratch_test_outputs = None
-		self.molecule_set = None
-		self.xyz_data = None
-		self.Z_data = None
-		self.energy_data = None
-		self.gradient_data = None
-		self.num_atoms_data = None
+		# import TensorMol.PickleTM
+		# network_member_variables = TensorMol.PickleTM.UnPickleTM(f)
+		network = pickle.load(open(self.path+"/"+self.name+".tfn","rb"))
+		self.__dict__.update(network.__dict__)
 		return
 
 	def reload_set(self):
 		"""
 		Recalls the MSet to build training data etc.
 		"""
-		self.molecule_set = MSet(self.molecule_set_name)
-		self.molecule_set.Load()
+		self.mol_set = MSet(self.mol_set_name)
+		self.mol_set.Load()
 		return
 
 	def load_data(self):
-		if (self.molecule_set == None):
+		if (self.mol_set == None):
 			try:
 				self.reload_set()
 			except Exception as Ex:
 				print("TensorData object has no molecule set.", Ex)
-		if self.randomize_data:
-			random.shuffle(self.molecule_set.mols)
-		xyzs = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float32)
-		Zs = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
-		num_atoms = np.zeros((self.num_molecules), dtype = np.int32)
-		energies = np.zeros((self.num_molecules), dtype = np.float32)
-		dipoles = np.zeros((self.num_molecules, 3), dtype = np.float32)
-		gradients = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float32)
-		for i, mol in enumerate(self.molecule_set.mols):
-			xyzs[i][:mol.NAtoms()] = mol.coords
-			Zs[i][:mol.NAtoms()] = mol.atoms
-			energies[i] = mol.properties["atomization"]
-			dipoles[i] = mol.properties["dipole"]
-			num_atoms[i] = mol.NAtoms()
-			gradients[i][:mol.NAtoms()] = mol.properties["gradients"]
-		return xyzs, Zs, energies, dipoles, num_atoms, gradients
+		self.xyz_data = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype = np.float64)
+		self.Z_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.int32)
+		# self.mulliken_charges_data = np.zeros((self.num_molecules, self.max_num_atoms), dtype = np.float64)
+		self.num_atoms_data = np.zeros((self.num_molecules), dtype = np.int32)
+		self.energy_data = np.zeros((self.num_molecules), dtype = np.float64)
+		if self.train_dipole:
+			self.dipole_data = np.zeros((self.num_molecules, 3), dtype = np.float64)
+		if self.train_quadrupole:
+			self.quadrupole_data = np.zeros((self.num_molecules, 2, 3), dtype = np.float64)
+		self.gradient_data = np.zeros((self.num_molecules, self.max_num_atoms, 3), dtype=np.float64)
+		for i, mol in enumerate(self.mol_set.mols):
+			self.xyz_data[i][:mol.NAtoms()] = mol.coords
+			self.Z_data[i][:mol.NAtoms()] = mol.atoms
+			# self.mulliken_charges_data[i][:mol.NAtoms()] = mol.properties["mulliken_charges"]
+			self.energy_data[i] = mol.properties["atomization"]
+			if self.train_dipole:
+				self.dipole_data[i] = mol.properties["dipole"]
+			if self.train_quadrupole:
+				self.quadrupole_data[i] = mol.properties["quadrupole"]
+			self.num_atoms_data[i] = mol.NAtoms()
+			self.gradient_data[i][:mol.NAtoms()] = mol.properties["gradients"]
+		return
 
 	def load_data_to_scratch(self):
 		"""
@@ -201,36 +244,25 @@ class BehlerParinelloDirect(object):
 		Note:
 			Also determines mean stoichiometry
 		"""
-		self.xyz_data, self.Z_data, self.energy_data, self.dipole_data, self.num_atoms_data, self.gradient_data = self.load_data()
+		self.load_data()
 		self.num_test_cases = int(self.test_ratio * self.num_molecules)
-		self.train_idxs = np.arange(int(self.num_molecules - self.num_test_cases))
-		self.test_idxs = np.arange(int(self.num_molecules - self.num_test_cases), self.num_molecules)
-		self.last_train_case = int(self.num_molecules - self.num_test_cases)
-		self.num_train_cases = self.last_train_case
-		self.test_scratch_pointer = self.last_train_case
-		self.train_scratch_pointer = 0
+		self.num_train_cases = int(self.num_molecules - self.num_test_cases)
+		case_idxs = np.arange(int(self.num_molecules))
+		np.random.shuffle(case_idxs)
+		self.train_idxs = case_idxs[:int(self.num_molecules - self.num_test_cases)]
+		self.test_idxs = case_idxs[int(self.num_molecules - self.num_test_cases):]
+		self.train_scratch_pointer, self.test_scratch_pointer = 0, 0
+		if self.batch_size > self.num_train_cases:
+			raise Exception("Insufficent training data to fill a training batch.\n"\
+					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(self.batch_size))
+		if self.batch_size > self.num_test_cases:
+			raise Exception("Insufficent testing data to fill a test batch.\n"\
+					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(self.batch_size))
 		LOGGER.debug("Number of training cases: %i", self.num_train_cases)
 		LOGGER.debug("Number of test cases: %i", self.num_test_cases)
 		return
 
 	def get_dipole_train_batch(self, batch_size):
-		if batch_size > self.num_train_cases:
-			raise Exception("Insufficent training data to fill a training batch.\n"\
-					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(batch_size))
-		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
-			self.train_scratch_pointer = 0
-		self.train_scratch_pointer += batch_size
-		xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		return [xyzs, Zs, dipoles, gradients, num_atoms]
-
-	def get_energy_train_batch(self, batch_size):
-		if batch_size > self.num_train_cases:
-			raise Exception("Insufficent training data to fill a training batch.\n"\
-					+str(self.num_train_cases)+" cases in dataset with a batch size of "+str(batch_size))
 		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
 			np.random.shuffle(self.train_idxs)
 			self.train_scratch_pointer = 0
@@ -239,50 +271,61 @@ class BehlerParinelloDirect(object):
 		Zs = self.Z_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		energies = self.energy_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		dipoles = self.dipole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		quadrupoles = self.quadrupole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		gradients = self.gradient_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		num_atoms = self.num_atoms_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		return [xyzs, Zs, dipoles, quadrupoles, gradients, num_atoms]
+
+	def get_energy_train_batch(self, batch_size):
+		if self.train_scratch_pointer + batch_size >= self.num_train_cases:
+			np.random.shuffle(self.train_idxs)
+			self.train_scratch_pointer = 0
+		self.train_scratch_pointer += batch_size
+		xyzs = self.xyz_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		Zs = self.Z_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		energies = self.energy_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
+		# dipoles = self.dipole_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		num_atoms = self.num_atoms_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 		gradients = self.gradient_data[self.train_idxs[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]]
 
-		# xyzs = self.xyz_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# Zs = self.Z_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# energies = self.energy_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# dipoles = self.dipole_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# num_atoms = self.num_atoms_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
-		# gradients = self.gradient_data[self.train_scratch_pointer - batch_size:self.train_scratch_pointer]
 		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
-		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
+		return [xyzs, Zs, energies, gradients, num_atoms]
 
 	def get_dipole_test_batch(self, batch_size):
-		if batch_size > self.num_test_cases:
-			raise Exception("Insufficent training data to fill a test batch.\n"\
-					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
-		if self.test_scratch_pointer + batch_size >= self.num_train_cases:
-			self.test_scratch_pointer = self.last_train_case
+		if self.test_scratch_pointer + batch_size >= self.num_test_cases:
+			self.test_scratch_pointer = 0
 		self.test_scratch_pointer += batch_size
-		xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		return [xyzs, Zs, dipoles, gradients, num_atoms]
+		xyzs = self.xyz_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		Zs = self.Z_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		energies = self.energy_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		dipoles = self.dipole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		quadrupoles = self.quadrupole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		gradients = self.gradient_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		num_atoms = self.num_atoms_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		mulliken_charges = self.mulliken_charges_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		return [xyzs, Zs, dipoles, quadrupoles, gradients, num_atoms, mulliken_charges]
 
 	def get_energy_test_batch(self, batch_size):
-		if batch_size > self.num_test_cases:
-			raise Exception("Insufficent training data to fill a test batch.\n"\
-					+str(self.num_test_cases)+" cases in dataset with a batch size of "+str(num_cases_batch))
-		if self.test_scratch_pointer + batch_size >= self.num_train_cases:
-			self.test_scratch_pointer = self.last_train_case
+		if self.test_scratch_pointer + batch_size >= self.num_test_cases:
+			self.test_scratch_pointer = 0
 		self.test_scratch_pointer += batch_size
-		xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
-		gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		xyzs = self.xyz_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		Zs = self.Z_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		energies = self.energy_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		# dipoles = self.dipole_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		gradients = self.gradient_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+		num_atoms = self.num_atoms_data[self.test_idxs[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]]
+
+		# xyzs = self.xyz_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# Zs = self.Z_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# energies = self.energy_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# dipoles = self.dipole_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# num_atoms = self.num_atoms_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
+		# gradients = self.gradient_data[self.test_scratch_pointer - batch_size:self.test_scratch_pointer]
 		# NLEE = NeighborListSet(xyzs, num_atoms, False, False, None)
 		# rad_eep = NLEE.buildPairs(self.coulomb_cutoff)
-		return [xyzs, Zs, energies, gradients, dipoles, num_atoms]#, rad_eep]
+		return [xyzs, Zs, energies, gradients, num_atoms]#, rad_eep]
 
 	def variable_summaries(self, var):
 		"""
@@ -323,41 +366,6 @@ class BehlerParinelloDirect(object):
 			tf.add_to_collection('losses', weightdecay)
 		return variable
 
-	def clean(self):
-		self.sess = None
-		self.xyzs_pl = None
-		self.Zs_pl = None
-		self.energy_pl = None
-		self.dipole_pl = None
-		self.quadrupole_pl = None
-		self.gradients_pl = None
-		self.num_atoms_pl = None
-		self.Reep_pl = None
-		self.bp_energy = None
-		self.gradients = None
-		self.gradient_labels = None
-		self.dipoles = None
-		self.charges = None
-		self.net_charge = None
-		self.dipole_labels = None
-		self.coulomb_energy = None
-		self.total_energy = None
-		self.energy_losses = None
-		self.dipole_losses = None
-		self.energy_loss = None
-		self.dipole_loss = None
-		self.gradient_loss = None
-		self.charge_loss = None
-		self.dipole_train_op = None
-		self.energy_train_op = None
-		self.saver = None
-		self.summary_writer = None
-		self.summary_op = None
-		self.activation_function = None
-		self.options = None
-		self.run_metadata = None
-		return
-
 	def fill_dipole_feed_dict(self, batch_data):
 		"""
 		Fill the tensorflow feed dictionary.
@@ -369,7 +377,7 @@ class BehlerParinelloDirect(object):
 		Returns:
 			Filled feed dictionary.
 		"""
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.dipole_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.dipole_pl, self.quadrupole_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
 		return feed_dict
 
 	def fill_energy_feed_dict(self, batch_data):
@@ -383,7 +391,7 @@ class BehlerParinelloDirect(object):
 		Returns:
 			Filled feed dictionary.
 		"""
-		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.energy_pl, self.gradients_pl, self.dipole_pl, self.num_atoms_pl], batch_data)}
+		feed_dict={i: d for i, d in zip([self.xyzs_pl, self.Zs_pl, self.energy_pl, self.gradients_pl, self.num_atoms_pl], batch_data)}
 		return feed_dict
 
 	def energy_inference(self, inp, indexs):
@@ -483,12 +491,12 @@ class BehlerParinelloDirect(object):
 			delta_charge = net_charge / tf.cast(natom, self.tf_precision)
 			charges = output - tf.expand_dims(delta_charge, axis=1)
 			dipole = tf.reduce_sum(xyzs * tf.expand_dims(charges, axis=-1), axis=1)
-			if (PARAMS["train_quadropole"]):
+			if (PARAMS["train_quadrupole"]):
 				quadrupole_coords = 3 * tf.stack([tf.stack([tf.square(xyzs[...,0]), xyzs[...,0] * xyzs[...,1], tf.square(xyzs[...,1])], axis=-1),
 									tf.stack([xyzs[...,0] * xyzs[...,2], xyzs[...,1] * xyzs[...,2], tf.square(xyzs[...,2])], axis=-1)], axis=-2)
-				quadrupole_coords -= tf.norm(xyzs + 1e-24, axis=-1, keep_dims=True)
+				quadrupole_coords -= tf.expand_dims(tf.reduce_sum(tf.square(xyzs), axis=-1, keepdims=True), axis=-1)
 				quadrupole = tf.reduce_sum(quadrupole_coords * tf.expand_dims(tf.expand_dims(charges, axis=-1), axis=-1), axis=1)
-		return dipole, charges, net_charge, variables
+		return dipole, quadrupole, charges, net_charge, variables
 
 	def optimizer(self, loss, learning_rate, momentum, variables):
 		"""
@@ -526,20 +534,22 @@ class BehlerParinelloDirect(object):
 		train_loss =  0.0
 		train_energy_loss = 0.0
 		train_dipole_loss = 0.0
+		train_quadrupole_loss = 0.0
 		# train_charge_loss = 0.0
 		train_gradient_loss = 0.0
 		num_mols = 0
 		for ministep in range (0, int(Ncase_train/self.batch_size)):
 			batch_data = self.get_dipole_train_batch(self.batch_size)
 			feed_dict = self.fill_dipole_feed_dict(batch_data)
-			_, total_loss, dipole_loss = self.sess.run([self.dipole_train_op, self.dipole_losses, self.dipole_loss], feed_dict=feed_dict)
+			_, total_loss, dipole_loss, quadrupole_loss = self.sess.run([self.dipole_train_op, self.dipole_losses, self.dipole_loss, self.quadrupole_loss], feed_dict=feed_dict)
 			train_loss += total_loss
 			train_dipole_loss += dipole_loss
+			train_quadrupole_loss += quadrupole_loss
 			# train_charge_loss += charge_loss
 			num_mols += self.batch_size
 		duration = time.time() - start_time
-		LOGGER.info("step: %5d    duration: %10.5f  train loss: %13.10f  dipole loss: %13.10f", step, duration,
-			train_loss / num_mols, train_dipole_loss / num_mols)
+		LOGGER.info("step: %5d    duration: %10.5f  train loss: %13.10f  dipole loss: %13.10f  quadrupole loss: %13.10f", step, duration,
+			train_loss / num_mols, train_dipole_loss / num_mols, train_quadrupole_loss / num_mols)
 		return
 
 	def energy_train_step(self, step):
@@ -606,39 +616,52 @@ class BehlerParinelloDirect(object):
 		num_mols = 0
 		test_loss = 0.0
 		test_dipole_loss = 0.0
+		test_quadrupole_loss = 0.0
 		# test_charge_loss = 0.0
 		test_epoch_dipole_labels, test_epoch_dipole_outputs = [], []
+		test_epoch_quadrupole_labels, test_epoch_quadrupole_outputs = [], []
 		test_net_charges = []
 		for ministep in range (0, int(Ncase_test/self.batch_size)):
 			batch_data = self.get_dipole_test_batch(self.batch_size)
-			feed_dict = self.fill_dipole_feed_dict(batch_data)
-			dipoles, dipole_labels, total_loss, dipole_loss, gaussian_params = self.sess.run([self.dipoles, self.dipole_labels,
-			self.dipole_losses, self.dipole_loss, self.gaussian_params],  feed_dict=feed_dict)
+			feed_dict = self.fill_dipole_feed_dict(batch_data[:-1])
+			dipoles, dipole_labels, total_loss, dipole_loss, quadrupoles, quadrupole_labels, quadrupole_loss, charges = self.sess.run([self.dipoles, self.dipole_labels,
+			self.dipole_losses, self.dipole_loss, self.quadrupoles, self.quadrupole_pl, self.quadrupole_loss, self.charges],  feed_dict=feed_dict)
 			num_mols += self.batch_size
 			test_loss += total_loss
 			test_dipole_loss += dipole_loss
+			test_quadrupole_loss += quadrupole_loss
 			# test_charge_loss += charge_loss
 			test_epoch_dipole_labels.append(dipole_labels)
 			test_epoch_dipole_outputs.append(dipoles)
+			test_epoch_quadrupole_labels.append(quadrupole_labels)
+			test_epoch_quadrupole_outputs.append(quadrupoles)
 			# test_net_charges.append(net_charges)
 		test_epoch_dipole_labels = np.concatenate(test_epoch_dipole_labels)
 		test_epoch_dipole_outputs = np.concatenate(test_epoch_dipole_outputs)
 		test_epoch_dipole_errors = test_epoch_dipole_labels - test_epoch_dipole_outputs
+		test_epoch_quadrupole_labels = np.concatenate(test_epoch_quadrupole_labels)
+		test_epoch_quadrupole_outputs = np.concatenate(test_epoch_quadrupole_outputs)
+		test_epoch_quadrupole_errors = test_epoch_quadrupole_labels - test_epoch_quadrupole_outputs
 		# test_net_charges = np.concatenate(test_net_charges)
 		duration = time.time() - start_time
 		# for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 		# 	LOGGER.info("Net Charges: %11.8f", test_net_charges[i])
 		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
 			LOGGER.info("Dipole label: %s  Dipole output: %s", test_epoch_dipole_labels[i], test_epoch_dipole_outputs[i])
+		for i in [random.randint(0, self.batch_size - 1) for _ in xrange(20)]:
+			LOGGER.info("Quadrupole label: %s  Quadrupole output: %s", test_epoch_quadrupole_labels[i], test_epoch_quadrupole_outputs[i])
 		# LOGGER.info("MAE  Dipole: %11.8f  Net Charge: %11.8f", np.mean(np.abs(test_epoch_dipole_errors)), np.mean(np.abs(test_net_charges)))
 		# LOGGER.info("MSE  Dipole: %11.8f  Net Charge: %11.8f", np.mean(test_epoch_dipole_errors), np.mean(test_net_charges))
 		# LOGGER.info("RMSE Dipole: %11.8f  Net Charge: %11.8f", np.sqrt(np.mean(np.square(test_epoch_dipole_errors))), np.sqrt(np.mean(np.square(test_net_charges))))
-		LOGGER.info("MAE  Dipole: %11.8f", np.mean(np.abs(test_epoch_dipole_errors)))
-		LOGGER.info("MSE  Dipole: %11.8f", np.mean(test_epoch_dipole_errors))
-		LOGGER.info("RMSE Dipole: %11.8f", np.sqrt(np.mean(np.square(test_epoch_dipole_errors))))
-		LOGGER.info("Gaussian paramaters: %s", gaussian_params)
-		LOGGER.info("step: %5d    duration: %10.5f   test loss: %13.10f  dipole loss: %13.10f", step, duration,
-			test_loss / num_mols, test_dipole_loss / num_mols)
+		LOGGER.info("MAE  Dipole: %11.8f  MAE  Quadrupole: %11.8f", np.mean(np.abs(test_epoch_dipole_errors)), np.mean(np.abs(test_epoch_quadrupole_errors)))
+		LOGGER.info("MSE  Dipole: %11.8f  MSE  Quadrupole: %11.8f", np.mean(test_epoch_dipole_errors), np.mean(test_epoch_quadrupole_errors))
+		LOGGER.info("RMSE Dipole: %11.8f  RMSE Quadrupole: %11.8f", np.sqrt(np.mean(np.square(test_epoch_dipole_errors))), np.sqrt(np.mean(np.square(test_epoch_quadrupole_errors))))
+		for i in range(10):
+			print("Charge     " + str(i) + ": " + str(charges[i]))
+			print("Batch      " + str(i) + ": " + str(batch_data[-1][i]))
+			print("Net Charge " + str(i) + ": " + str(np.sum(charges[i])))
+		LOGGER.info("step: %5d    duration: %10.5f   test loss: %13.10f  dipole loss: %13.10f  quadrupole loss: %13.10f", step, duration,
+			test_loss / num_mols, test_dipole_loss / num_mols, test_quadrupole_loss / num_mols)
 		return test_loss
 
 	def energy_test_step(self, step):
@@ -698,65 +721,27 @@ class BehlerParinelloDirect(object):
 		self.print_epoch(step, duration, test_loss, test_energy_loss, test_gradient_loss, test_rotation_loss, num_mols, testing=True)
 		return test_loss
 
-	def train(self):
-		self.load_data_to_scratch()
-		self.compute_normalization()
-		self.train_prepare()
-		test_freq = PARAMS["test_freq"]
-		if self.train_dipole:
-			mini_test_loss = 1e10
-			for step in range(1, 51):
-				self.dipole_train_step(step)
-				if step%test_freq==0:
-					test_loss = self.dipole_test_step(step)
-					if (test_loss < mini_test_loss):
-						mini_test_loss = test_loss
-						self.save_checkpoint(step)
-			LOGGER.info("Continue training dipole until new best checkpoint found.")
-			train_energy_flag = False
-			step += 1
-			while train_energy_flag == False:
-				self.dipole_train_step(step)
-				test_loss = self.dipole_test_step(step)
-				if (test_loss < mini_test_loss):
-					mini_test_loss = test_loss
-					self.save_checkpoint(step)
-					train_energy_flag=True
-					LOGGER.info("New best checkpoint found. Starting energy network training.")
-				step += 1
-		mini_test_loss = 1e10
-		for step in range(1, self.max_steps+1):
-			self.energy_train_step(step)
-			if step%test_freq==0:
-				test_loss = self.energy_test_step(step)
-				if (test_loss < mini_test_loss):
-					mini_test_loss = test_loss
-					self.save_checkpoint(step)
-		self.sess.close()
-		self.save_network()
-		return
 
-
-class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
+class BehlerParinelloSymFunc(BehlerParinelloNetwork):
 	"""
 	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
-	def __init__(self, molecule_set=None, name=None):
+	def __init__(self, mol_set=None, name=None):
 		"""
 		Args:
-			molecule_set (TensorMol.MSet object): a class which holds the training data
+			mol_set (TensorMol.MSet object): a class which holds the training data
 			name (str): a name used to recall this network
 
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
-		BehlerParinelloDirect.__init__(self, molecule_set, name)
+		BehlerParinelloNetwork.__init__(self, mol_set, name)
 		if name == None:
-			self.network_type = "BehlerParinelloDirectSymFunc"
-			self.name = self.network_type+"_"+self.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
-			self.network_directory = './networks/'+self.name
+			self.network_type = "BPSymFunc"
+			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+			self.network_directory = PARAMS["networks_directory"]+self.name
 			self.set_symmetry_function_params()
 		return
 
@@ -826,14 +811,17 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 			continue_training: should read the graph variables from a saved checkpoint.
 		"""
 		with tf.Graph().as_default():
-			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
-			self.Zs_pl = tf.placeholder(tf.int32, shape=[None, self.max_num_atoms])
-			self.energy_pl = tf.placeholder(self.tf_precision, shape=[None])
-			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
-			self.quadrupole_pl = tf.placeholder(self.tf_precision, shape=[None, 3])
-			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[None, self.max_num_atoms, 3])
-			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[None])
+			self.xyzs_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
+			self.Zs_pl = tf.placeholder(tf.int32, shape=[self.batch_size, self.max_num_atoms])
+			self.energy_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size])
+			self.dipole_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, 3])
+			self.quadrupole_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, 2, 3])
+			self.gradients_pl = tf.placeholder(self.tf_precision, shape=[self.batch_size, self.max_num_atoms, 3])
+			self.num_atoms_pl = tf.placeholder(tf.int32, shape=[self.batch_size])
 			self.Reep_pl = tf.placeholder(tf.int32, shape=[None, 3])
+
+			self.dipole_labels = self.dipole_pl
+			self.quadrupole_labels = self.quadrupole_pl
 
 			elements = tf.constant(self.elements, dtype = tf.int32)
 			element_pairs = tf.constant(self.element_pairs, dtype = tf.int32)
@@ -851,26 +839,26 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 			embeddings_max = tf.constant(self.embeddings_max, dtype = self.tf_precision)
 			labels_mean = tf.constant(self.labels_mean, dtype = self.tf_precision)
 			labels_stddev = tf.constant(self.labels_stddev, dtype = self.tf_precision)
-			gradients_mean = tf.constant(self.gradients_mean, dtype = self.tf_precision)
-			gradients_stddev = tf.constant(self.gradients_stddev, dtype = self.tf_precision)
 			num_atoms_batch = tf.reduce_sum(self.num_atoms_pl)
 
-			element_embeddings, mol_indices = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements,
+			embeddings, mol_idx = tf_symmetry_functions(self.xyzs_pl, self.Zs_pl, elements,
 					element_pairs, radial_cutoff, angular_cutoff, radial_rs, angular_rs, theta_s, zeta, eta)
 			for element in range(len(self.elements)):
-				element_embeddings[element] /= embeddings_max[element]
-			norm_bp_energy, energy_variables = self.energy_inference(embeddings, mol_indices)
+				embeddings[element] /= embeddings_max[element]
+			norm_bp_energy, energy_variables = self.energy_inference(embeddings, mol_idx)
 			self.bp_energy = (norm_bp_energy * self.labels_stddev) + self.labels_mean
 
 			if self.train_dipole:
-				self.dipoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, molecule_indices, rotated_xyzs, self.num_atoms_pl)
+				self.dipoles, self.quadrupoles, self.charges, self.net_charge, dipole_variables = self.dipole_inference(embeddings, mol_idx, self.xyzs_pl, self.num_atoms_pl)
 				if (PARAMS["OPR12"]=="DSF"):
 					self.coulomb_energy = tf_coulomb_dsf_elu(rotated_xyzs, self.charges, self.Reep_pl, elu_width, dsf_alpha, coulomb_cutoff)
 				elif (PARAMS["OPR12"]=="Poly"):
-					self.coulomb_energy = PolynomialRangeSepCoulomb(rotated_xyzs, self.charges, self.Reep_pl, 5.0, 12.0, 5.0)
+					self.coulomb_energy = PolynomialRangeSepCoulomb(self.xyzs_pl, self.charges, self.Reep_pl, 5.0, 12.0, 5.0)
 				self.total_energy = self.bp_energy + self.coulomb_energy
-				self.dipole_loss = self.loss_op(self.dipoles - self.dipole_labels)
+				self.dipole_loss = self.loss_op(self.dipoles - self.dipole_pl)
+				self.quadrupole_loss = self.loss_op(self.quadrupoles - self.quadrupole_pl)
 				tf.add_to_collection('dipole_losses', self.dipole_loss)
+				tf.add_to_collection('quadrupole_losses', self.quadrupole_loss)
 				self.dipole_losses = tf.add_n(tf.get_collection('dipole_losses'))
 				tf.summary.scalar("dipole losses", self.dipole_losses)
 				self.dipole_train_op = self.optimizer(self.dipole_losses, self.learning_rate, self.momentum, dipole_variables)
@@ -903,8 +891,12 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 		return
 
 	def print_epoch(self, step, duration, loss, energy_loss, gradient_loss, num_mols, testing=False):
-		LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
-		step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
+		if testing:
+			LOGGER.info("step: %5d  duration: %.3f  test loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
+		else:
+			LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols)
 		return
 
 	def evaluate_prepare(self):
@@ -1026,26 +1018,26 @@ class BehlerParinelloDirectSymFunc(BehlerParinelloDirect):
 		return energy[:len(mols)]
 
 
-class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
+class BehlerParinelloGauSH(BehlerParinelloNetwork):
 	"""
 	Behler-Parinello network using symmetry function embedding from RawEmbeddings.py
 	also has sparse evaluation using an updated version of the
 	neighbor list, and a polynomial cutoff coulomb interaction.
 	"""
-	def __init__(self, molecule_set=None, name=None):
+	def __init__(self, mol_set=None, name=None):
 		"""
 		Args:
-			molecule_set (TensorMol.MSet object): a class which holds the training data
+			mol_set (TensorMol.MSet object): a class which holds the training data
 			name (str): a name used to recall this network
 
 		Notes:
 			if name != None, attempts to load a previously saved network, otherwise assumes a new network
 		"""
-		BehlerParinelloDirect.__init__(self, molecule_set, name)
+		BehlerParinelloNetwork.__init__(self, mol_set, name)
 		if name == None:
-			self.network_type = "BehlerParinelloDirectGauSH"
-			self.name = self.network_type+"_"+self.molecule_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
-			self.network_directory = './networks/'+self.name
+			self.network_type = "BPGauSH"
+			self.name = self.network_type+"_"+self.mol_set_name+"_"+time.strftime("%a_%b_%d_%H.%M.%S_%Y")
+			self.network_directory = PARAMS["networks_directory"]+self.name
 			self.l_max = PARAMS["SH_LMAX"]
 			self.gaussian_params = PARAMS["RBFS"]
 			self.atomic_embed_factors = PARAMS["ANES"]
@@ -1077,7 +1069,7 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 			batch_data = self.get_energy_train_batch(self.batch_size)
 			labels_list.append(batch_data[2])
 			embedding, molecule_index = sess.run([embeddings, molecule_indices],
-									feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1], num_atoms_pl:batch_data[5]})
+									feed_dict = {xyzs_pl:batch_data[0], Zs_pl:batch_data[1], num_atoms_pl:batch_data[4]})
 			for element in range(len(self.elements)):
 				embeddings_list[element].append(embedding[element])
 		sess.close()
@@ -1096,13 +1088,7 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 		self.label_shape = labels[0].shape
 		return
 
-	def clean(self):
-		BehlerParinelloDirect.clean(self)
-		self.gaussian_params = None
-		self.rotation_loss = None
-		return
-
-	def train_prepare(self,  continue_training =False):
+	def train_prepare(self, restart=False):
 		"""
 		Get placeholders, graph and losses in order to begin training.
 		Also assigns the desired padding.
@@ -1157,14 +1143,15 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 			else:
 				self.total_energy = self.bp_energy
 
-			self.gradients = tf.gather_nd(tf.gradients(self.total_energy, rotated_xyzs)[0], tf.where(tf.not_equal(self.Zs_pl, 0)))
+			xyz_grad, rot_grad = tf.gradients(self.total_energy, [rotated_xyzs, rotation_params])
+			self.gradients = tf.gather_nd(xyz_grad, tf.where(tf.not_equal(self.Zs_pl, 0)))
 			self.gradient_labels = tf.gather_nd(rotated_gradients, tf.where(tf.not_equal(self.Zs_pl, 0)))
 
 			self.energy_loss = self.loss_op(self.total_energy - self.energy_pl)
 			tf.summary.scalar("energy loss", self.energy_loss)
 			tf.add_to_collection('energy_losses', self.energy_loss)
 			self.gradient_loss = self.loss_op(self.gradients - self.gradient_labels) / tf.cast(tf.reduce_sum(self.num_atoms_pl), self.tf_precision)
-			self.rotation_loss = self.loss_op(tf.gradients(self.total_energy, rotation_params)) / 500.0
+			self.rotation_loss = self.loss_op(rot_grad) / 500.0
 			if self.train_gradients:
 				tf.add_to_collection('energy_losses', self.gradient_loss)
 				tf.summary.scalar("gradient loss", self.gradient_loss)
@@ -1185,19 +1172,26 @@ class BehlerParinelloDirectGauSH(BehlerParinelloDirect):
 
 			self.energy_train_op = self.optimizer(self.energy_losses, self.learning_rate, self.momentum, energy_variables)
 			self.summary_op = tf.summary.merge_all()
-			init = tf.global_variables_initializer()
 			self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 			self.saver = tf.train.Saver(max_to_keep = self.max_checkpoints)
 			self.summary_writer = tf.summary.FileWriter(self.network_directory, self.sess.graph)
-			self.sess.run(init)
+			if restart:
+				self.saver.restore(self.sess, tf.train.latest_checkpoint(self.network_directory))
+			else:
+				init = tf.global_variables_initializer()
+				self.sess.run(init)
 			if self.profiling:
 				self.options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 				self.run_metadata = tf.RunMetadata()
 		return
 
 	def print_epoch(self, step, duration, loss, energy_loss, gradient_loss, rotation_loss, num_mols, testing=False):
-		LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f  rotation loss: %.10f",
-		step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols, rotation_loss / num_mols)
+		if testing:
+			LOGGER.info("step: %5d  duration: %.3f  test loss: %.10f  energy loss: %.10f  gradient loss: %.10f  rotation loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols, rotation_loss / num_mols)
+		else:
+			LOGGER.info("step: %5d  duration: %.3f  train loss: %.10f  energy loss: %.10f  gradient loss: %.10f  rotation loss: %.10f",
+			step, duration, loss / num_mols, energy_loss / num_mols, gradient_loss / num_mols, rotation_loss / num_mols)
 		return
 
 	def evaluate_prepare(self):

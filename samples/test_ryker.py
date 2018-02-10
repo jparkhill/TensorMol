@@ -3,6 +3,41 @@ import os
 import numpy as np
 import time
 
+def test():
+	a = MSet("water_aug_cc_pvdz")
+	a.Load()
+	for mol in a.mols:
+		mol.properties["quadrupole"] = mol.properties["quads"]
+		mol.properties["dipole"] = mol.properties["dipoles"]
+		mol.properties["gradients"] = mol.properties["forces"]
+		del mol.properties["quads"]
+		del mol.properties["dipoles"]
+		del mol.properties["forces"]
+		mol.CalculateAtomization()
+	a.Save()
+
+def make_mini_set(filename):
+	a = MSet(filename)
+	a.Load()
+	b = MSet("water_aug_cc_pvdz_mini")
+	for i in range(1100):
+		b.mols.append(a.mols[i])
+	b.Save()
+
+def train_energy_symm_func(mset):
+	PARAMS["train_energy_gradients"] = False
+	PARAMS["weight_decay"] = None
+	PARAMS["HiddenLayers"] = [512, 512, 512]
+	PARAMS["learning_rate"] = 0.0001
+	PARAMS["max_steps"] = 500
+	PARAMS["test_freq"] = 1
+	PARAMS["batch_size"] = 100
+	PARAMS["NeuronType"] = "shifted_softplus"
+	PARAMS["tf_prec"] = "tf.float32"
+	PARAMS["train_dipole"] = True
+	PARAMS["train_quadrupole"] = True
+	manager = TFMolManageDirect(mset, network_type = "BPSymFunc")
+
 def get_losses(filename):
 	# Returns train_loss, energy_loss, grad_loss, ...
 	# test_train_loss, test_energy_loss, test_grad_loss
@@ -39,7 +74,8 @@ def optimize_taxol():
 	Taxol.ReadXYZ()
 	GeomOptimizer("EnergyForceField").Opt(Taxol, filename="OptLog", Debug=False)
 
-
-
-get_losses("networks/nicotine_aimd_log.txt")
+#test()
+#make_mini_set("water_aug_cc_pvdz")
+train_energy_symm_func("water_aug_cc_pvdz_mini")
+#get_losses("networks/nicotine_aimd_log.txt")
 #optimize_taxol()
