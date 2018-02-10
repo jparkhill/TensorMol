@@ -10,6 +10,7 @@ renametable = {
 	'TensorMol.TFMolInstance_EE': 'TensorMol.TFMolInstanceEE',
 	'TensorMol.TensorMolData': 'TensorMol.Containers.TensorMolData',
 	'TensorMol.Mol': 'TensorMol.Containers.Mol',
+	'TensorMol.Sets': 'TensorMol.Containers.Sets',
 	'DigestMol': 'TensorMol.Containers.DigestMol',
 	'TensorMol.DigestMol': 'TensorMol.Containers.DigestMol',
 	'TensorMol.TFMolInstanceDirect': 'TensorMol.TFNetworks.TFMolInstanceDirect',

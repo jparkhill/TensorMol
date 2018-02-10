@@ -1875,7 +1875,8 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			eta = tf.Variable(self.eta, trainable=False, dtype = self.tf_prec)
 			self.Scatter_Sym, self.Sym_Index  = TFSymSet_Scattered_Linear_WithEle_Release(self.xyzs_pl, self.Zs_pl, Ele, SFPr2, Rr_cut, Elep, SFPa2, zeta, eta, Ra_cut, self.Radp_Ele_pl, self.Angt_Elep_pl, self.mil_j_pl, self.mil_jk_pl)
 			#self.dipole, self.charge = self.dipole_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.Reep_e1e2_pl,  self.keep_prob_pl)
-			self.eleneg = self.eleneg_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.keep_prob_pl)
+			#self.eleneg = self.eleneg_inference(self.Scatter_Sym, self.Sym_Index, self.xyzs_pl, self.natom_pl, self.keep_prob_pl)
+			self.eleneg = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
 			self.ini_charge = tf.zeros([self.batch_size, self.MaxNAtoms], dtype=self.tf_prec)
 			self.dipole, self.charge, self.debug1 = self.pairwise_charge_exchange(self.Sym_Index, self.xyzs_pl, self.Zs_pl, self.eleneg, self.ini_charge, Ele, Elep, self.Reep_e1e2_pl, self.keep_prob_pl)
 			self.total_loss, self.dipole_loss = self.loss_op(self.dipole, self.Dlabel_pl, self.natom_pl)
@@ -1944,24 +1945,27 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 					if i == 0:
 						with tf.name_scope(str(self.eles[e])+'_hidden1_charge'):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.inshape, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.inshape))), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
+							#biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							#Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
+							Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights)))
 							dipole_wb.append(weights)
-							dipole_wb.append(biases)
+							#dipole_wb.append(biases)
 					else:
 						with tf.name_scope(str(self.eles[e])+'_hidden'+str(i+1)+"_charge"):
 							weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[i-1], self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[i-1]))), var_wd=0.001)
-							biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
-							Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[i]), weights) + biases))
+							#biases = tf.Variable(tf.zeros([self.HiddenLayers[i]], dtype=self.tf_prec), name='biases')
+							#Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[i]), weights) + biases))
+							Dbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[i]), weights)))
 							dipole_wb.append(weights)
-							dipole_wb.append(biases)
+							#dipole_wb.append(biases)
 				with tf.name_scope(str(self.eles[e])+'_regression_linear_charge'):
 					charge_shp = tf.shape(charge_inputs)
 					weights = self._variable_with_weight_decay(var_name='weights', var_shape=[self.HiddenLayers[-1], 1], var_stddev=1.0/(10+math.sqrt(float(self.HiddenLayers[-1]))), var_wd=None)
-					biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
+					#biases = tf.Variable(tf.zeros([1], dtype=self.tf_prec), name='biases')
 					dipole_wb.append(weights)
-					dipole_wb.append(biases)
-					Dbranches[-1].append(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[-1]), weights) + biases)
+					#dipole_wb.append(biases)
+					#Dbranches[-1].append(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[-1]), weights) + biases)
+					Dbranches[-1].append(tf.matmul(tf.nn.dropout(Dbranches[-1][-1], keep_prob[-1]), weights))
 					shp_out = tf.shape(Dbranches[-1][-1])
 					cut = tf.slice(Dbranches[-1][-1],[0,0],[shp_out[0],1])
 					rshp = tf.reshape(cut,[1,shp_out[0]])
@@ -2088,14 +2092,15 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 					E1_proj = tf.reduce_sum(E1*(Rj-Ri),-1)/dist
 					E2_proj = tf.reduce_sum(E2*(Ri-Rj),-1)/dist
 					pair_indexs.append(masked)
-					charge_inputs = tf.transpose(tf.stack([neg1, charge1, E1_proj, neg2, charge2, E2_proj, 1.0/dist]))
+					charge_inputs = tf.transpose(tf.stack([charge1, E1_proj, charge2, E2_proj, 1.0/dist]))
+					#charge_inputs = tf.transpose(tf.stack([neg1, charge1, E1_proj, neg2, charge2, E2_proj, 1.0/dist]))
 					Cbranches.append([])
 					charge_shp_in = tf.shape(charge_inputs)
 						
 					for i in range(len(self.HiddenLayers)):
 						if i == 0:
 							with tf.variable_scope(str(pair)+'_hidden1_charge',reuse=reuse_flag):
-								weights = self._get_variable_with_weight_decay(var_name=str(pair)+str(1)+'weights', var_shape=[7, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(7.0)), var_wd=0.001)
+								weights = self._get_variable_with_weight_decay(var_name=str(pair)+str(1)+'weights', var_shape=[5, self.HiddenLayers[i]], var_stddev=1.0/(10+math.sqrt(5.0)), var_wd=0.001)
 								biases = tf.get_variable(str(pair)+str(1)+"biases", [self.HiddenLayers[i]], self.tf_prec, initializer=tf.constant_initializer(0.0, dtype=self.tf_prec))
 								Cbranches[-1].append(self.activation_function(tf.matmul(tf.nn.dropout(charge_inputs, keep_prob[i]), weights) + biases))
 						else:
@@ -2259,7 +2264,8 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 			print ("loading the session..")
 			self.EvalPrepare()
 		feed_dict=self.fill_feed_dict(batch_data+[np.ones(self.nlayer+1)])
-		mol_dipole, atom_charge = self.sess.run([self.dipole, self.charge], feed_dict=feed_dict)
+		mol_dipole, atom_charge, eleneg = self.sess.run([self.dipole, self.charge, self.eleneg], feed_dict=feed_dict)
+		#print ("eleneg:", eleneg)
 		return mol_dipole, atom_charge
 
 	def EvalPrepare(self,  continue_training =False):
