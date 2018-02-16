@@ -31,6 +31,9 @@
  - Nudged Elastic Band
  - Path integral simulations via interface with [I-PI](https://github.com/i-pi/i-pi) MD engine.
 
+## News: 
+ - Did we disappear? NO! but TensorMol0.2 is being developed in a private developers branch. It'll be back here soon. 
+
 ## License: GPLv3
 By using this software you agree to the terms in COPYING
 
