@@ -458,7 +458,8 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 		self.activation_function_type = PARAMS["NeuronType"]
 		self.AssignActivation()
 		#print ("self.activation_function:\n\n", self.activation_function)
-		if (batch_data[0].shape[1] != self.MaxNAtoms):
+		print ("self.batch_size:", self.batch_size, " nmol:", nmol)
+		if (batch_data[0].shape[1] != self.MaxNAtoms or self.batch_size != nmol):
 			self.MaxNAtoms = batch_data[0].shape[1]
 			self.batch_size = nmol
 			print ("self.batch_size:", self.batch_size, "  self.MaxNAtoms:", self.MaxNAtoms)
@@ -1432,7 +1433,7 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 		self.activation_function_type = PARAMS["NeuronType"]
 		self.AssignActivation()
 		#print ("self.activation_function:\n\n", self.activation_function)
-		if (batch_data[0].shape[1] != self.MaxNAtoms):
+		if (batch_data[0].shape[1] != self.MaxNAtoms or self.batch_size != nmol):
 			self.MaxNAtoms = batch_data[0].shape[1]
 			self.batch_size = nmol
 			print ("self.batch_size:", self.batch_size, "  self.MaxNAtoms:", self.MaxNAtoms)
@@ -2251,7 +2252,7 @@ class MolInstance_DirectBP_Charge_SymFunction(MolInstance_fc_sqdiff_BP):
 		self.activation_function_type = PARAMS["NeuronType"]
 		self.AssignActivation()
 		#print ("self.activation_function:\n\n", self.activation_function)
-		if (batch_data[0].shape[1] != self.MaxNAtoms):
+		if (batch_data[0].shape[1] != self.MaxNAtoms or self.batch_size != nmol):
 			self.MaxNAtoms = batch_data[0].shape[1]
 			self.batch_size = nmol
 			print ("self.batch_size:", self.batch_size, "  self.MaxNAtoms:", self.MaxNAtoms)

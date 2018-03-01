@@ -134,3 +134,19 @@ if (0):
 	md = IRTrajectory(EnAndForce, ChargeField, m, "morphine_IR_300K", anneal.v)
 	md.Prop()
 	WriteDerDipoleCorrelationFunction(md.mu_his) # CorrelationFunction is stored in "./results/MutMu0.txt" by default
+
+#Evaluate a Set
+if (0):
+	a=MSet("set_test", center_=False)
+	a.ReadXYZ("set_test")
+	Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSet(a, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+	print ("Etotal:", Etotal)
+
+	Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+	print ("Etotal:", Etotal)
+	
+	Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(a.mols[1], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+	print ("Etotal:", Etotal)
+
+	Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(a.mols[2], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+	print ("Etotal:", Etotal)
