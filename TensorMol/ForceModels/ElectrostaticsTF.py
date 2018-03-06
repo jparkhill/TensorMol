@@ -49,8 +49,8 @@ def TFDistance(A):
 	r = tf.reshape(r, [-1, 1]) # For the later broadcast.
 	# Tensorflow can only reverse mode grad the sqrt if all these elements
 	# are nonzero
-	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r) + tf.cast(1e-26,tf.float64)
-	return tf.sqrt(D)
+	D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r)
+	return tf.sqrt(tf.clip_by_value(D,1e-36,1e36))
 
 def TFDistances(r_):
 	"""
@@ -67,8 +67,8 @@ def TFDistances(r_):
 	rmtt = tf.transpose(rmt,perm=[0,2,1])
 	# Tensorflow can only reverse mode grad of sqrt if all these elements
 	# are nonzero
-	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt + tf.cast(1e-28,tf.float64)
-	return tf.sqrt(D)
+	D = rmt - 2*tf.einsum('ijk,ilk->ijl',r_,r_) + rmtt
+	return tf.sqrt(tf.clip_by_value(D,1e-36,1e36))
 
 def TFDistanceLinear(B,NZP):
 	"""
@@ -83,8 +83,8 @@ def TFDistanceLinear(B,NZP):
 	Ij = tf.slice(NZP,[0,1],[-1,1])
 	Ri = tf.gather_nd(B,Ii)
 	Rj = tf.gather_nd(B,Ij)
-	A = Ri - Rj + 1e-26
-	return tf.sqrt(tf.reduce_sum(A*A, 1))
+	A = Ri - Rj
+	return tf.sqrt(tf.clip_by_value(tf.reduce_sum(A*A, 1),1e-36,1e36))
 
 def TFDistancesLinear(B,NZP):
 	"""
@@ -102,8 +102,8 @@ def TFDistancesLinear(B,NZP):
 	Ij = tf.concat([tf.slice(NZP,[0,0],[-1,1]),tf.slice(NZP,[0,2],[-1,1])],1)
 	Ri = tf.gather_nd(B,Ii)
 	Rj = tf.gather_nd(B,Ij)
-	A = Ri - Rj + 1e-26
-	D = tf.sqrt(tf.reduce_sum(A*A, 1))
+	A = Ri - Rj
+	D = tf.sqrt(tf.clip_by_value(tf.reduce_sum(A*A, 1),1e-36,1e36))
 	return D
 
 def BumpEnergy(h,w,xyz,x,nbump):
