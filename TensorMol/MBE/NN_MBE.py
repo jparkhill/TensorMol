@@ -4,10 +4,10 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
-from .Sets import *
-from .TFMolManage import *
-from .Mol import *
-from .Electrostatics import *
+from ..Containers.Sets import *
+from ..TFNetworks.TFMolManage import *
+from ..Containers.Mol import *
+from ..ForceModels.Electrostatics import *
 
 class NN_MBE:
 	def __init__(self,tfm_=None):

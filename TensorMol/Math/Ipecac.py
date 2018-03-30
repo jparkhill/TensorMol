@@ -15,9 +15,9 @@ if sys.version_info[0] < 3:
 else:
 	import _pickle as pickle
 from .LinearOperations import *
-from .DigestMol import *
-from .Digest import *
-from .Opt import * 
+from ..Containers.DigestMol import *
+from ..Containers.Digest import *
+from ..Simulations.Opt import *
 from scipy import optimize
 
 class Ipecac:

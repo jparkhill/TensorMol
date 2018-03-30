@@ -4,9 +4,9 @@ from __future__ import absolute_import
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]=""
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.NN_MBE import *
-from TensorMol.TMIPIinterface import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
+from TensorMol.MBE.NN_MBE import *
+from TensorMol.Interfaces.TMIPIinterface import *
 import random
 
 def TestIPI():
@@ -67,7 +67,7 @@ def TestIPI():
 			force = gradient[0]
 			print ("energy:", energy)
 			return energy, force
-		
+
 		ForceField = lambda x: EnAndForce(x)[-1]
 		EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)

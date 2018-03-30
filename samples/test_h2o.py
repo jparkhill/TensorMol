@@ -4,9 +4,9 @@ from __future__ import absolute_import
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]=""
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.NN_MBE import *
-from TensorMol.TMIPIinterface import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
+from TensorMol.MBE.NN_MBE import *
+from TensorMol.Interfaces.TMIPIinterface import *
 import random
 
 def TrainPrepare():
@@ -1193,7 +1193,7 @@ def Eval():
 		manager=TFMolManage("Mol_H2O_wb97xd_1to21_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw_1",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode_Update_vdw",False,False)
 		m = a.mols[0]
 		#print manager.EvalBPDirectEEUpdateSinglePeriodic(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], m.NAtoms())
-		print manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
+		print (manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True))
 		return
 		#charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[6]
 		#bp_atom = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[2]
@@ -1280,9 +1280,9 @@ def Eval():
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
 		outlist = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], HasVdw=True)
-		print outlist
-		print np.sum(outlist[5].reshape((-1,3)),axis=-1)
-		print np.sum((outlist[5].reshape((-1,1))*m.coords), axis=0)
+		print (outlist)
+		print (np.sum(outlist[5].reshape((-1,3)),axis=-1))
+		print (np.sum((outlist[5].reshape((-1,1))*m.coords), axis=0))
 
 		charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)[5]
 		Ecc = 0.0
@@ -1389,12 +1389,12 @@ def Eval():
 
 		m = a.mols[-2]
 		outlist =  manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-		print outlist[4]
+		print (outlist[4])
 		return
-		print "self.Ree_on:", manager.Instances.Ree_on
-		print outlist
-		print np.sum(outlist[4].reshape((-1,3)),axis=-1)
-		print np.sum((outlist[4].reshape((-1,1))*m.coords), axis=0)
+		print ("self.Ree_on:", manager.Instances.Ree_on)
+		print (outlist)
+		print (np.sum(outlist[4].reshape((-1,3)),axis=-1))
+		print (np.sum((outlist[4].reshape((-1,1))*m.coords), axis=0))
 		charge = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])[4]
 		Ecc = 0.0
 		for i in range (0, m.NAtoms()):
@@ -1943,7 +1943,7 @@ def TestEE():
 		energy = Etotal[0]
 		force = gradient[0]
 		return energy, force
-	e1 = QchemDFT(a.mols[0],basis_ = '6-311g**',xc_='wB97X-D', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=False):
+	e1 = QchemDFT(a.mols[0],basis_ = '6-311g**',xc_='wB97X-D', jobtype_='sp', filename_='tmp', path_='./qchem/', threads=False)
 
 #TrainPrepare()
 #Train()

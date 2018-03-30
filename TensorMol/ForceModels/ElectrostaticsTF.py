@@ -10,7 +10,7 @@ from __future__ import division
 from __future__ import print_function
 import numpy as np
 import math, time, os, sys, os.path
-from TensorMol.Util import *
+from ..Util import *
 
 if (HAS_TF):
 	import tensorflow as tf

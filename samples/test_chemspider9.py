@@ -3,8 +3,8 @@ from __future__ import print_function
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.NN_MBE import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
+from TensorMol.MBE.NN_MBE import *
 
 
 def TrainPrepare():
@@ -90,49 +90,49 @@ def TrainPrepare():
 		dic_list_3 = pickle.load(open("./datasets/H2O_metady_bowl02.dat", "rb"))
 		dic_list = dic_list_1 + dic_list_2 + dic_list_3
 		random.shuffle(dic_list)
-            for dic in dic_list:
-                    atoms = []
-                    for atom in dic['atoms']:
-                            atoms.append(AtomicNumber(atom))
-                    atoms = np.asarray(atoms, dtype=np.uint8)
-                    mol = Mol(atoms, dic['xyz'])
-                    mol.properties['mul_charges'] = dic['mul_charges']
-                    mol.properties['dipole'] = dic['dipole']
-		mol.properties['scf_dipole'] = dic['scf_dipole']
-                    mol.properties['energy'] = dic['energy']
-		mol.properties['scf_energy'] = dic['scf_energy']
-                    mol.properties['gradients'] = dic['gradients']
-		mol.properties['atomization'] = dic['energy']
-		for i in range (0, mol.NAtoms()):
-			mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
-                    a.mols.append(mol)
+		for dic in dic_list:
+				atoms = []
+				for atom in dic['atoms']:
+					atoms.append(AtomicNumber(atom))
+				atoms = np.asarray(atoms, dtype=np.uint8)
+				mol = Mol(atoms, dic['xyz'])
+				mol.properties['mul_charges'] = dic['mul_charges']
+				mol.properties['dipole'] = dic['dipole']
+				mol.properties['scf_dipole'] = dic['scf_dipole']
+				mol.properties['energy'] = dic['energy']
+				mol.properties['scf_energy'] = dic['scf_energy']
+				mol.properties['gradients'] = dic['gradients']
+				mol.properties['atomization'] = dic['energy']
+				for i in range (0, mol.NAtoms()):
+					mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
+				a.mols.append(mol)
 
 		b = MSet("H2O_bowl02_rimp2_force_dipole")
-                for dic in dic_list_3:
-                        atoms = []
-                        for atom in dic['atoms']:
-                                atoms.append(AtomicNumber(atom))
-                        atoms = np.asarray(atoms, dtype=np.uint8)
-                        mol = Mol(atoms, dic['xyz'])
-                        mol.properties['mul_charges'] = dic['mul_charges']
-                        mol.properties['dipole'] = dic['dipole']
+		for dic in dic_list_3:
+			atoms = []
+			for atom in dic['atoms']:
+				atoms.append(AtomicNumber(atom))
+			atoms = np.asarray(atoms, dtype=np.uint8)
+			mol = Mol(atoms, dic['xyz'])
+			mol.properties['mul_charges'] = dic['mul_charges']
+			mol.properties['dipole'] = dic['dipole']
 			mol.properties['scf_dipole'] = dic['scf_dipole']
-                        mol.properties['energy'] = dic['energy']
+			mol.properties['energy'] = dic['energy']
 			mol.properties['scf_energy'] = dic['scf_energy']
-                        mol.properties['gradients'] = dic['gradients']
+			mol.properties['gradients'] = dic['gradients']
 			mol.properties['atomization'] = dic['energy']
 			for i in range (0, mol.NAtoms()):
 				mol.properties['atomization'] -= RIMP2Atom[mol.atoms[i]]
-                        b.mols.append(mol)
+			b.mols.append(mol)
 		print("number of a mols:", len(a.mols))
 		print("number of b mols:", len(b.mols))
-                a.Save()
+		a.Save()
 		b.Save()
 
 
 	if (0):
 		a = MSet("chemspider9_force")
-                a.Load()
+		a.Load()
 		rmsgrad = np.zeros((len(a.mols)))
 		for i, mol in enumerate(a.mols):
 			rmsgrad[i] = (np.sum(np.square(mol.properties['gradients'])))**0.5
@@ -140,17 +140,17 @@ def TrainPrepare():
 		print("mean:", meangrad, "std:", np.std(rmsgrad))
 		np.savetxt("chemspider9_force_dist.dat", rmsgrad)
 		for i, mol in enumerate(a.mols):
-                        rmsgrad = (np.sum(np.square(mol.properties['gradients'])))**0.5
+			rmsgrad = (np.sum(np.square(mol.properties['gradients'])))**0.5
 			if 2 > rmsgrad > 1.5:
 				mol.WriteXYZfile(fname="large_force")
 				print(rmsgrad)
 
 	if (0):
 		a = MSet("chemspider9_force")
-                a.Load()
-                b = MSet("chemspider9_force_cleaned")
-                for i, mol in enumerate(a.mols):
-                        rmsgrad = (np.sum(np.square(mol.properties['gradients'])))**0.5
+		a.Load()
+		b = MSet("chemspider9_force_cleaned")
+		for i, mol in enumerate(a.mols):
+			rmsgrad = (np.sum(np.square(mol.properties['gradients'])))**0.5
 			if rmsgrad <= 1.5:
 				b.mols.append(mol)
 		b.Save()
@@ -166,271 +166,271 @@ def TrainPrepare():
 
 def TrainForceField():
 	if (0):
-                a = MSet("chemspider9_force_cleaned")
+		a = MSet("chemspider9_force_cleaned")
 		a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["hidden1"] = 1000
-                PARAMS["hidden2"] = 1000
-                PARAMS["hidden3"] = 1000
-                PARAMS["learning_rate"] = 0.001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 101
-                PARAMS["batch_size"] = 28
-                PARAMS["test_freq"] = 2
-                PARAMS["tf_prec"] = "tf.float64"
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["hidden1"] = 1000
+		PARAMS["hidden2"] = 1000
+		PARAMS["hidden3"] = 1000
+		PARAMS["learning_rate"] = 0.001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 101
+		PARAMS["batch_size"] = 28
+		PARAMS["test_freq"] = 2
+		PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["GradScaler"] = 0.05
 		PARAMS["NeuronType"] = "relu"
 		PARAMS["HiddenLayers"] = [200, 200, 200]
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
 		#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+		manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
 		#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train(maxstep=101)
+		manager.Train(maxstep=101)
 
 
-        if (0):
-                a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 1101
-                PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 4.0
-		PARAMS["Erf_Width"] = 0.2
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 100
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train()
+		if (0):
+			a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
+			a.Load()
+			TreatedAtoms = a.AtomTypes()
+			PARAMS["learning_rate"] = 0.00001
+			PARAMS["momentum"] = 0.95
+			PARAMS["max_steps"] = 1101
+			PARAMS["batch_size"] = 1000
+			PARAMS["test_freq"] = 10
+			PARAMS["tf_prec"] = "tf.float64"
+			PARAMS["GradScaler"] = 1.0
+			PARAMS["DipoleScaler"]=1.0
+			PARAMS["NeuronType"] = "relu"
+			PARAMS["HiddenLayers"] = [200, 200, 200]
+			PARAMS["EECutoff"] = 15.0
+			PARAMS["EECutoffOn"] = 4.0
+			PARAMS["Erf_Width"] = 0.2
+			PARAMS["EECutoffOff"] = 15.0
+			PARAMS["learning_rate_dipole"] = 0.0001
+			PARAMS["learning_rate_energy"] = 0.00001
+			PARAMS["SwitchEpoch"] = 100
+			d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+			tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+			#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+			manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+			#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+			manager.Train()
 
 	if (0):
-                a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.0001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 2
-                PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 1
-                PARAMS["tf_prec"] = "tf.float64"
+		a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
+		a.Load()
+		TreatedAtoms = a.AtomTypes()
+		PARAMS["learning_rate"] = 0.0001
+		PARAMS["momentum"] = 0.95
+		PARAMS["max_steps"] = 2
+		PARAMS["batch_size"] = 1000
+		PARAMS["test_freq"] = 1
+		PARAMS["tf_prec"] = "tf.float64"
 		PARAMS["GradScaler"] = 1.0
 		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
+		PARAMS["NeuronType"] = "relu"
+		PARAMS["HiddenLayers"] = [200, 200, 200]
 		PARAMS["EECutoff"] = 15.0
 		PARAMS["EECutoffOn"] = 4.4
 		PARAMS["EECutoffOff"] = 15.0
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_rimp2_force_dipole_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_1",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Continue_Training(target="All")
+		d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+		tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+		#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+		manager=TFMolManage("Mol_H2O_augmented_more_cutoff5_rimp2_force_dipole_ANI1_Sym_Direct_fc_sqdiff_BP_Direct_EE_1",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+		#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+		manager.Continue_Training(target="All")
 
 	#New radius
 
-        if (0):
-                a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 901
-                PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 7.0
-		PARAMS["AN1_r_Rc"] = 8.0
-		PARAMS["AN1_num_r_Rs"] = 64
-		PARAMS["Erf_Width"] = 0.4
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 100
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train()
+		if (0):
+			a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
+			a.Load()
+			TreatedAtoms = a.AtomTypes()
+			PARAMS["learning_rate"] = 0.00001
+			PARAMS["momentum"] = 0.95
+			PARAMS["max_steps"] = 901
+			PARAMS["batch_size"] = 1000
+			PARAMS["test_freq"] = 10
+			PARAMS["tf_prec"] = "tf.float64"
+			PARAMS["GradScaler"] = 1.0
+			PARAMS["DipoleScaler"]=1.0
+			PARAMS["NeuronType"] = "relu"
+			PARAMS["HiddenLayers"] = [200, 200, 200]
+			PARAMS["EECutoff"] = 15.0
+			PARAMS["EECutoffOn"] = 7.0
+			PARAMS["AN1_r_Rc"] = 8.0
+			PARAMS["AN1_num_r_Rs"] = 64
+			PARAMS["Erf_Width"] = 0.4
+			PARAMS["EECutoffOff"] = 15.0
+			PARAMS["learning_rate_dipole"] = 0.0001
+			PARAMS["learning_rate_energy"] = 0.00001
+			PARAMS["SwitchEpoch"] = 100
+			d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+			tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+			#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+			manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+			#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+			manager.Train()
 
 	#New radius: 5 A
-        if (1):
-                a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 901
-                PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 7.0
-		PARAMS["AN1_r_Rc"] = 5.0
-		PARAMS["Erf_Width"] = 0.4
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 100
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train()
+		if (1):
+			a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
+			a.Load()
+			TreatedAtoms = a.AtomTypes()
+			PARAMS["learning_rate"] = 0.00001
+			PARAMS["momentum"] = 0.95
+			PARAMS["max_steps"] = 901
+			PARAMS["batch_size"] = 1000
+			PARAMS["test_freq"] = 10
+			PARAMS["tf_prec"] = "tf.float64"
+			PARAMS["GradScaler"] = 1.0
+			PARAMS["DipoleScaler"]=1.0
+			PARAMS["NeuronType"] = "relu"
+			PARAMS["HiddenLayers"] = [200, 200, 200]
+			PARAMS["EECutoff"] = 15.0
+			PARAMS["EECutoffOn"] = 7.0
+			PARAMS["AN1_r_Rc"] = 5.0
+			PARAMS["Erf_Width"] = 0.4
+			PARAMS["EECutoffOff"] = 15.0
+			PARAMS["learning_rate_dipole"] = 0.0001
+			PARAMS["learning_rate_energy"] = 0.00001
+			PARAMS["SwitchEpoch"] = 100
+			d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+			tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+			#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+			manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+			#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+			manager.Train()
 
 	# With Charge Encode
-        if (0):
-                a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 901
-                PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 7.0
-		PARAMS["AN1_r_Rc"] = 8.0
-		PARAMS["AN1_num_r_Rs"] = 64
-		PARAMS["Erf_Width"] = 0.4
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 100
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train()
+		if (0):
+			a = MSet("H2O_augmented_more_cutoff5_rimp2_force_dipole")
+			a.Load()
+			TreatedAtoms = a.AtomTypes()
+			PARAMS["learning_rate"] = 0.00001
+			PARAMS["momentum"] = 0.95
+			PARAMS["max_steps"] = 901
+			PARAMS["batch_size"] = 1000
+			PARAMS["test_freq"] = 10
+			PARAMS["tf_prec"] = "tf.float64"
+			PARAMS["GradScaler"] = 1.0
+			PARAMS["DipoleScaler"]=1.0
+			PARAMS["NeuronType"] = "relu"
+			PARAMS["HiddenLayers"] = [200, 200, 200]
+			PARAMS["EECutoff"] = 15.0
+			PARAMS["EECutoffOn"] = 7.0
+			PARAMS["AN1_r_Rc"] = 8.0
+			PARAMS["AN1_num_r_Rs"] = 64
+			PARAMS["Erf_Width"] = 0.4
+			PARAMS["EECutoffOff"] = 15.0
+			PARAMS["learning_rate_dipole"] = 0.0001
+			PARAMS["learning_rate_energy"] = 0.00001
+			PARAMS["SwitchEpoch"] = 100
+			d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+			tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+			#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+			manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode") # Initialzie a manager than manage the training of neural network.
+			#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+			manager.Train()
 
 
 	#New radius: 8 A and long distance pair
 
-        if (0):
-                a = MSet("H2O_augmented_more_rimp2_force_dipole")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 901
-                PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [512, 512, 512]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 7.0
-		PARAMS["AN1_r_Rc"] = 8.0
-		PARAMS["AN1_num_r_Rs"] = 64
-		PARAMS["Erf_Width"] = 0.4
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 100
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train()
+		if (0):
+			a = MSet("H2O_augmented_more_rimp2_force_dipole")
+			a.Load()
+			TreatedAtoms = a.AtomTypes()
+			PARAMS["learning_rate"] = 0.00001
+			PARAMS["momentum"] = 0.95
+			PARAMS["max_steps"] = 901
+			PARAMS["batch_size"] = 1000
+			PARAMS["test_freq"] = 10
+			PARAMS["tf_prec"] = "tf.float64"
+			PARAMS["GradScaler"] = 1.0
+			PARAMS["DipoleScaler"]=1.0
+			PARAMS["NeuronType"] = "relu"
+			PARAMS["HiddenLayers"] = [512, 512, 512]
+			PARAMS["EECutoff"] = 15.0
+			PARAMS["EECutoffOn"] = 7.0
+			PARAMS["AN1_r_Rc"] = 8.0
+			PARAMS["AN1_num_r_Rs"] = 64
+			PARAMS["Erf_Width"] = 0.4
+			PARAMS["EECutoffOff"] = 15.0
+			PARAMS["learning_rate_dipole"] = 0.0001
+			PARAMS["learning_rate_energy"] = 0.00001
+			PARAMS["SwitchEpoch"] = 100
+			d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+			tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+			#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+			manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+			#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+			manager.Train()
 
 
-        if (1):
+		if (1):
 		#New radius: 8 A and long distance pair and bowl potential with K=0.2
-                #a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
-		a =  MSet("H2O_bowl02_rimp2_force_dipole")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 901
-                PARAMS["batch_size"] = 1000
-                PARAMS["test_freq"] = 10
-                PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [200, 200, 200]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 7.0
-		PARAMS["AN1_r_Rc"] = 8.0
-		PARAMS["AN1_num_r_Rs"] = 64
-		PARAMS["Erf_Width"] = 0.4
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 100
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train()
+			#a = MSet("H2O_augmented_more_bowl02_rimp2_force_dipole")
+			a =  MSet("H2O_bowl02_rimp2_force_dipole")
+			a.Load()
+			TreatedAtoms = a.AtomTypes()
+			PARAMS["learning_rate"] = 0.00001
+			PARAMS["momentum"] = 0.95
+			PARAMS["max_steps"] = 901
+			PARAMS["batch_size"] = 1000
+			PARAMS["test_freq"] = 10
+			PARAMS["tf_prec"] = "tf.float64"
+			PARAMS["GradScaler"] = 1.0
+			PARAMS["DipoleScaler"]=1.0
+			PARAMS["NeuronType"] = "relu"
+			PARAMS["HiddenLayers"] = [200, 200, 200]
+			PARAMS["EECutoff"] = 15.0
+			PARAMS["EECutoffOn"] = 7.0
+			PARAMS["AN1_r_Rc"] = 8.0
+			PARAMS["AN1_num_r_Rs"] = 64
+			PARAMS["Erf_Width"] = 0.4
+			PARAMS["EECutoffOff"] = 15.0
+			PARAMS["learning_rate_dipole"] = 0.0001
+			PARAMS["learning_rate_energy"] = 0.00001
+			PARAMS["SwitchEpoch"] = 100
+			d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+			tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+			#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+			manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE") # Initialzie a manager than manage the training of neural network.
+			#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+			manager.Train()
 
 
 	# With Chemspider9 Metadyn
-        if (0):
-                a = MSet("chemspider9_metady_force")
-                a.Load()
-                TreatedAtoms = a.AtomTypes()
-                PARAMS["learning_rate"] = 0.00001
-                PARAMS["momentum"] = 0.95
-                PARAMS["max_steps"] = 101
-                PARAMS["batch_size"] = 35
-                PARAMS["test_freq"] = 2
-                PARAMS["tf_prec"] = "tf.float64"
-		PARAMS["GradScaler"] = 1.0
-		PARAMS["DipoleScaler"]=1.0
-                PARAMS["NeuronType"] = "relu"
-                PARAMS["HiddenLayers"] = [1000, 1000, 1000]
-		PARAMS["EECutoff"] = 15.0
-		PARAMS["EECutoffOn"] = 7.0
-		PARAMS["Erf_Width"] = 0.4
-		#PARAMS["AN1_r_Rc"] = 8.0
-		#PARAMS["AN1_num_r_Rs"] = 64
-		PARAMS["EECutoffOff"] = 15.0
-		PARAMS["learning_rate_dipole"] = 0.0001
-		PARAMS["learning_rate_energy"] = 0.00001
-		PARAMS["SwitchEpoch"] = 10
-                d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
-                tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
-                #tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
-                manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode") # Initialzie a manager than manage the training of neural network.
-                #manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
-                manager.Train()
+		if (0):
+			a = MSet("chemspider9_metady_force")
+			a.Load()
+			TreatedAtoms = a.AtomTypes()
+			PARAMS["learning_rate"] = 0.00001
+			PARAMS["momentum"] = 0.95
+			PARAMS["max_steps"] = 101
+			PARAMS["batch_size"] = 35
+			PARAMS["test_freq"] = 2
+			PARAMS["tf_prec"] = "tf.float64"
+			PARAMS["GradScaler"] = 1.0
+			PARAMS["DipoleScaler"]=1.0
+			PARAMS["NeuronType"] = "relu"
+			PARAMS["HiddenLayers"] = [1000, 1000, 1000]
+			PARAMS["EECutoff"] = 15.0
+			PARAMS["EECutoffOn"] = 7.0
+			PARAMS["Erf_Width"] = 0.4
+			#PARAMS["AN1_r_Rc"] = 8.0
+			#PARAMS["AN1_num_r_Rs"] = 64
+			PARAMS["EECutoffOff"] = 15.0
+			PARAMS["learning_rate_dipole"] = 0.0001
+			PARAMS["learning_rate_energy"] = 0.00001
+			PARAMS["SwitchEpoch"] = 10
+			d = MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="EnergyAndDipole")  # Initialize a digester that apply descriptor for the fragme
+			tset = TensorMolData_BP_Direct_EE(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True) # Initialize TensorMolData that contain the training data fo
+			#tset = TensorMolData_BP_Multipole_2_Direct(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = False)
+			manager=TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EE_ChargeEncode") # Initialzie a manager than manage the training of neural network.
+			#manager=TFMolManage("",tset,False,"Dipole_BP_2_Direct")
+			manager.Train()
 
 def EvalForceField():
 	if (0):
@@ -448,11 +448,11 @@ def EvalForceField():
 		PARAMS["NeuronType"] = "relu"
 		PARAMS["HiddenLayers"] = [200, 200, 200]
 		PARAMS["EECutoff"] = 15.0
-                PARAMS["EECutoffOn"] = 7.0
-                PARAMS["AN1_r_Rc"] = 5.0
-                PARAMS["AN1_num_r_Rs"] = 32
-                PARAMS["Erf_Width"] = 0.4
-                PARAMS["EECutoffOff"] = 15.0
+		PARAMS["EECutoffOn"] = 7.0
+		PARAMS["AN1_r_Rc"] = 5.0
+		PARAMS["AN1_num_r_Rs"] = 32
+		PARAMS["Erf_Width"] = 0.4
+		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
 		PARAMS["SwitchEpoch"] = 100
@@ -465,51 +465,51 @@ def EvalForceField():
 		#print manager.EvalBPDirectEESingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		m = a.mols[4]
 		#def EnAndForce(x_):
-                #        m.coords = x_
-                #        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-                #        energy = Etotal[0]
-                #        force = gradient[0]
-                #        return energy, force
-                #ForceField = lambda x: EnAndForce(x)[-1]
-                #EnergyForceField = lambda x: EnAndForce(x)
+				#		m.coords = x_
+				#		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+				#		energy = Etotal[0]
+				#		force = gradient[0]
+				#		return energy, force
+				#ForceField = lambda x: EnAndForce(x)[-1]
+				#EnergyForceField = lambda x: EnAndForce(x)
 
 		#PARAMS["MDdt"] = 0.2
-        	#PARAMS["RemoveInvariant"]=True
-        	#PARAMS["MDMaxStep"] = 10000
-        	#PARAMS["MDThermostat"] = "Nose"
-        	#PARAMS["MDV0"] = None
+			#PARAMS["RemoveInvariant"]=True
+			#PARAMS["MDMaxStep"] = 10000
+			#PARAMS["MDThermostat"] = "Nose"
+			#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 300.0
-                #PARAMS["MDAnnealT0"] = 0.0
+				#PARAMS["MDAnnealT0"] = 0.0
 		#PARAMS["MDAnnealSteps"] = 2000
-       	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
-       	 	#anneal.Prop()
-       	 	#m.coords = anneal.Minx.copy()
-       	 	#m.WriteXYZfile("./results/", "Anneal_opt")
+	   	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
+	   	 	#anneal.Prop()
+	   	 	#m.coords = anneal.Minx.copy()
+	   	 	#m.WriteXYZfile("./results/", "Anneal_opt")
 
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(m)
-                #PARAMS["MDThermostat"] = "Nose"
-                #PARAMS["MDTemp"] = 30
-                #PARAMS["MDdt"] = 0.1
-                #PARAMS["RemoveInvariant"]=True
-                #PARAMS["MDV0"] = None
-                #PARAMS["MDMaxStep"] = 10000
-                #md = VelocityVerlet(None, m, "11OO",EnergyForceField)
-                #md.Prop()
+				#PARAMS["MDThermostat"] = "Nose"
+				#PARAMS["MDTemp"] = 30
+				#PARAMS["MDdt"] = 0.1
+				#PARAMS["RemoveInvariant"]=True
+				#PARAMS["MDV0"] = None
+				#PARAMS["MDMaxStep"] = 10000
+				#md = VelocityVerlet(None, m, "11OO",EnergyForceField)
+				#md.Prop()
 
 		#mset=MSet("NeigborMB_test")
 		#mset.ReadXYZ("NeigborMB_test")
 		#MBEterms = MBNeighbors(mset.mols[0].coords, mset.mols[0].atoms, [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14]])
 		#mbe =  NN_MBE_Linear(manager)
 		#def EnAndForce(x_):
-                #        mset.mols[0].coords = x_
+				#		mset.mols[0].coords = x_
 		#	MBEterms.Update(mset.mols[0].coords, 10.0, 10.0)
-                #        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(b.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+				#		Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(b.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		#	mbe.EnergyForceDipole(MBEterms)
-                #        energy = Etotal[0]
-                #        force = gradient[0]
-                #        return energy, force
-                #EnergyForceField = lambda x: EnAndForce(x)
+				#		energy = Etotal[0]
+				#		force = gradient[0]
+				#		return energy, force
+				#EnergyForceField = lambda x: EnAndForce(x)
 
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(b.mols[0])
@@ -518,53 +518,53 @@ def EvalForceField():
 		#mbe.EnergyForceDipole(MBEterms)
 
 		def EnAndForce(x_):
-                        m.coords = x_
-                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-                        energy = Etotal[0]
-                        force = gradient[0]
-                        return energy, force
+						m.coords = x_
+						Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+						energy = Etotal[0]
+						force = gradient[0]
+						return energy, force
 
 		def EnForceCharge(x_):
-                        m.coords = x_
-                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-                        energy = Etotal[0]
-                        force = gradient[0]
-                        return energy, force, atom_charge
+						m.coords = x_
+						Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+						energy = Etotal[0]
+						force = gradient[0]
+						return energy, force, atom_charge
 
 		def ChargeField(x_):
-                        m.coords = x_
-                        Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
-                        energy = Etotal[0]
-                        force = gradient[0]
-                        return atom_charge[0]
+						m.coords = x_
+						Etotal, Ebp, Ecc, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEESingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
+						energy = Etotal[0]
+						force = gradient[0]
+						return atom_charge[0]
 
-                ForceField = lambda x: EnAndForce(x)[-1]
-		EnergyField = lambda x: EnAndForce(x)[0]
-                EnergyForceField = lambda x: EnAndForce(x)
+						ForceField = lambda x: EnAndForce(x)[-1]
+						EnergyField = lambda x: EnAndForce(x)[0]
+						EnergyForceField = lambda x: EnAndForce(x)
 
 		#PARAMS["OptMaxCycles"]=200
 		#Opt = GeomOptimizer(EnergyForceField)
 		#m=Opt.Opt(m)
 
 		PARAMS["MDdt"] = 0.2
-        	PARAMS["RemoveInvariant"]=True
-        	PARAMS["MDMaxStep"] = 10000
-        	PARAMS["MDThermostat"] = "Nose"
-        	PARAMS["MDV0"] = None
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDMaxStep"] = 10000
+		PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDV0"] = None
 		PARAMS["MDAnnealTF"] = 300.0
-                PARAMS["MDAnnealT0"] = 0.0
+		PARAMS["MDAnnealT0"] = 0.0
 		PARAMS["MDAnnealSteps"] = 10000
-       	 	anneal = Annealer(EnergyForceField, None, m, "Anneal")
-       	 	anneal.Prop()
-       	 	m.coords = anneal.Minx.copy()
-       	 	m.WriteXYZfile("./results/", "Anneal_opt")
-	        PARAMS["MDThermostat"] = None
-	        PARAMS["MDTemp"] = 0
-	        PARAMS["MDdt"] = 0.1
-	        PARAMS["MDV0"] = None
-	        PARAMS["MDMaxStep"] = 100000
-	        md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
-	        md.Prop()
+		anneal = Annealer(EnergyForceField, None, m, "Anneal")
+		anneal.Prop()
+		m.coords = anneal.Minx.copy()
+		m.WriteXYZfile("./results/", "Anneal_opt")
+		PARAMS["MDThermostat"] = None
+		PARAMS["MDTemp"] = 0
+		PARAMS["MDdt"] = 0.1
+		PARAMS["MDV0"] = None
+		PARAMS["MDMaxStep"] = 100000
+		md = IRTrajectory(EnAndForce, ChargeField, m, "IR")
+		md.Prop()
 		WriteDerDipoleCorrelationFunction(md.mu_his)
 
 
@@ -584,11 +584,11 @@ def EvalForceField():
 		PARAMS["NeuronType"] = "relu"
 		PARAMS["HiddenLayers"] = [200, 200, 200]
 		PARAMS["EECutoff"] = 15.0
-                PARAMS["EECutoffOn"] = 7.0
-                PARAMS["AN1_r_Rc"] = 5.0
-                PARAMS["AN1_num_r_Rs"] = 32
-                PARAMS["Erf_Width"] = 0.4
-                PARAMS["EECutoffOff"] = 15.0
+		PARAMS["EECutoffOn"] = 7.0
+		PARAMS["AN1_r_Rc"] = 5.0
+		PARAMS["AN1_num_r_Rs"] = 32
+		PARAMS["Erf_Width"] = 0.4
+		PARAMS["EECutoffOff"] = 15.0
 		PARAMS["learning_rate_dipole"] = 0.0001
 		PARAMS["learning_rate_energy"] = 0.00001
 		PARAMS["SwitchEpoch"] = 100
@@ -601,17 +601,17 @@ def EvalForceField():
 		#print manager.EvalBPDirectEESingle(a.mols[0], PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"])
 		m = a.mols[5]
 		#PARAMS["MDdt"] = 0.2
-        	#PARAMS["RemoveInvariant"]=True
-        	#PARAMS["MDMaxStep"] = 2000
-        	#PARAMS["MDThermostat"] = "Nose"
-        	#PARAMS["MDV0"] = None
+			#PARAMS["RemoveInvariant"]=True
+			#PARAMS["MDMaxStep"] = 2000
+			#PARAMS["MDThermostat"] = "Nose"
+			#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 0.0
-                #PARAMS["MDAnnealT0"] = 300.0
+				#PARAMS["MDAnnealT0"] = 300.0
 		#PARAMS["MDAnnealSteps"] = 2000
-       	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
-       	 	#anneal.Prop()
-       	 	#m.coords = anneal.Minx.copy()
-       	 	#m.WriteXYZfile("./results/", "Anneal_opt")
+	   	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
+	   	 	#anneal.Prop()
+	   	 	#m.coords = anneal.Minx.copy()
+	   	 	#m.WriteXYZfile("./results/", "Anneal_opt")
 
 		mono_index = []
 		for i in range (0, 10):
@@ -619,35 +619,35 @@ def EvalForceField():
 		MBEterms = MBNeighbors(m.coords, m.atoms, mono_index)
 		mbe =  NN_MBE_Linear(manager)
 		def EnAndForce(x_):
-                        m.coords = x_
-			MBEterms.Update(m.coords, 10, 10)
-                        Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
-                        energy = Etotal
-                        force = gradient
-                        return energy, force
+						m.coords = x_
+						MBEterms.Update(m.coords, 10, 10)
+						Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
+						energy = Etotal
+						force = gradient
+						return energy, force
 
-                EnergyForceField = lambda x: EnAndForce(x)
+						EnergyForceField = lambda x: EnAndForce(x)
 		print(EnergyForceField(m.coords))
 		#Opt = GeomOptimizer(EnergyForceField)
 		#Opt.Opt(m)
 
 		#PARAMS["MDdt"] = 0.2
-        	#PARAMS["RemoveInvariant"]=True
-        	#PARAMS["MDMaxStep"] = 2000
-        	#PARAMS["MDThermostat"] = "Nose"
-        	#PARAMS["MDV0"] = None
+			#PARAMS["RemoveInvariant"]=True
+			#PARAMS["MDMaxStep"] = 2000
+			#PARAMS["MDThermostat"] = "Nose"
+			#PARAMS["MDV0"] = None
 		#PARAMS["MDAnnealTF"] = 0.0
-                #PARAMS["MDAnnealT0"] = 100.0
+				#PARAMS["MDAnnealT0"] = 100.0
 		#PARAMS["MDAnnealSteps"] = 200
-       	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
-       	 	#anneal.Prop()
-       	 	#m.coords = anneal.Minx.copy()
-       	 	#m.WriteXYZfile("./results/", "Anneal_opt")
+	   	 	#anneal = Annealer(EnergyForceField, None, m, "Anneal")
+	   	 	#anneal.Prop()
+	   	 	#m.coords = anneal.Minx.copy()
+	   	 	#m.WriteXYZfile("./results/", "Anneal_opt")
 
 		def ChargeField(x_):
 			m.coords = x_
-                        MBEterms.Update(m.coords, 20.0, 20.0)
-                        Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
+			MBEterms.Update(m.coords, 20.0, 20.0)
+			Etotal, gradient, charge = mbe.EnergyForceDipole(MBEterms)
 			return charge
 
 		ForceField = lambda x: EnAndForce(x)[-1]
@@ -667,15 +667,15 @@ def EvalForceField():
 		#m.coords = anneal.x.copy()
 
 
-                PARAMS["MDThermostat"] = "Nose"
+		PARAMS["MDThermostat"] = "Nose"
 		PARAMS["MDTemp"] = 30
-                PARAMS["MDdt"] = 0.1
-                PARAMS["RemoveInvariant"]=True
-                PARAMS["MDV0"] = None
-                PARAMS["MDMaxStep"] = 10000
-                warm = VelocityVerlet(ForceField, m,"warm",EnergyForceField)
-                warm.Prop()
-                m.coords = warm.x.copy()
+		PARAMS["MDdt"] = 0.1
+		PARAMS["RemoveInvariant"]=True
+		PARAMS["MDV0"] = None
+		PARAMS["MDMaxStep"] = 10000
+		warm = VelocityVerlet(ForceField, m,"warm",EnergyForceField)
+		warm.Prop()
+		m.coords = warm.x.copy()
 
 		PARAMS["MDThermostat"] = None
 		PARAMS["MDTemp"] = 0
@@ -814,14 +814,14 @@ def EvalForceField():
 		EnergyForceField = lambda x: EnAndForce(x)
 
 
-                #PARAMS["MDThermostat"] = "Nose"
+				#PARAMS["MDThermostat"] = "Nose"
 		#PARAMS["MDTemp"] = 600
-                #PARAMS["MDdt"] = 1.0
-                #PARAMS["RemoveInvariant"]=True
-                #PARAMS["MDV0"] = None
-                #PARAMS["MDMaxStep"] = 10000
-                #warm = VelocityVerlet(ForceField, m,"warm_chemspider12",EnergyForceField)
-                #warm.Prop()
+				#PARAMS["MDdt"] = 1.0
+				#PARAMS["RemoveInvariant"]=True
+				#PARAMS["MDV0"] = None
+				#PARAMS["MDMaxStep"] = 10000
+				#warm = VelocityVerlet(ForceField, m,"warm_chemspider12",EnergyForceField)
+				#warm.Prop()
 
 		PARAMS["MDdt"] = 0.5
 		PARAMS["RemoveInvariant"]=True

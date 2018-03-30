@@ -11,7 +11,7 @@ import os
 import numpy as np
 from math import *
 from random import *
-from TensorMol.ElectrostaticsTF import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
 PARAMS["Profiling"] = 0
 
 def GetEnergyAndForceFromManager(MName_, a):

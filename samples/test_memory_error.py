@@ -4,8 +4,8 @@ memory_util.vlog(1)
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="2"
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.NN_MBE import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
+from TensorMol.MBE.NN_MBE import *
 
 a = MSet("chemspider9_metady_force")
 a.Load()
