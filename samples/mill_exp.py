@@ -4,9 +4,9 @@ from __future__ import absolute_import
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]=""
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.NN_MBE import *
-from TensorMol.TMIPIinterface import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
+from TensorMol.MBE.NN_MBE import *
+from TensorMol.Interfaces.TMIPIinterface import *
 import random
 
 def Prepare():
@@ -33,16 +33,16 @@ def Prepare():
 						index = 2
 					elif s < np.sum(portion[:4]):
 						index = 3
-					else:	
+					else:
 						index = 4
 					print ("index:",index)
 					m = a.mols[index]
 					tm_coords += list(m.coords+np.asarray([i*space,j*space,k*space]))
 					tm_atoms += list(m.atoms)
 		tm_coords  = np.asarray(tm_coords )
-		tm_atoms = np.asarray(tm_atoms, dtype=int)	
+		tm_atoms = np.asarray(tm_atoms, dtype=int)
 		tm = Mol(tm_atoms, tm_coords)
-		tm.WriteXYZfile(fpath="./datasets", fname="reactor")	
+		tm.WriteXYZfile(fpath="./datasets", fname="reactor")
 	if (0):
 		a=MSet("watercube", center_=False)
 		a.ReadXYZ("watercube")
@@ -57,11 +57,11 @@ def Prepare():
 			for j in range(0, repeat):
 				for k in range(0, repeat):
 					tm_coords[p*m.NAtoms():(p+1)*m.NAtoms()]=m.coords+np.asarray([i*space,j*space,k*space])
-					tm_atoms[p*m.NAtoms():(p+1)*m.NAtoms()]=m.atoms		
+					tm_atoms[p*m.NAtoms():(p+1)*m.NAtoms()]=m.atoms
 					p += 1
 		tm = Mol(tm_atoms, tm_coords)
-		tm.WriteXYZfile(fpath="./datasets", fname="watercube")	
-		
+		tm.WriteXYZfile(fpath="./datasets", fname="watercube")
+
 
 def Eval():
 	if (1):
@@ -135,7 +135,7 @@ def Eval():
 				else:
 					return energy
 			return EnAndForce
-	
+
 		def EnForceCharge(x_):
 			m.coords = x_
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
@@ -166,7 +166,7 @@ def Eval():
 			else:
 				return np.asarray([QchemDFT(Mol(m.atoms,x_),basis_ = '6-31g*',xc_='b3lyp', jobtype_='sp', threads=24)])[0]
 		#DFTForceField = lambda x: np.asarray([QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='sp', threads=12)])[0]
-		DFTDipoleField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='dipole', threads=12)	
+		DFTDipoleField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='dipole', threads=12)
 		#ForceField = lambda x: EnAndForce(x)[-1]
 		#EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)
@@ -255,7 +255,7 @@ def Eval():
 				else:
 					return energy
 			return EnAndForce
-	
+
 		def EnForceCharge(x_):
 			m.coords = x_
 			Etotal, Ebp, Ebp_atom, Ecc, Evdw, mol_dipole, atom_charge, gradient = manager.EvalBPDirectEEUpdateSingle(m, PARAMS["AN1_r_Rc"], PARAMS["AN1_a_Rc"], PARAMS["EECutoffOff"], True)
@@ -286,7 +286,7 @@ def Eval():
 			else:
 				return np.asarray([QchemDFT(Mol(m.atoms,x_),basis_ = '6-31g*',xc_='b3lyp', jobtype_='sp', threads=24)])[0]
 		#DFTForceField = lambda x: np.asarray([QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='sp', threads=12)])[0]
-		DFTDipoleField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='dipole', threads=12)	
+		DFTDipoleField = lambda x: QchemDFT(Mol(m.atoms,x),basis_ = '6-31g',xc_='b3lyp', jobtype_='dipole', threads=12)
 		#ForceField = lambda x: EnAndForce(x)[-1]
 		#EnergyField = lambda x: EnAndForce(x)[0]
 		EnergyForceField = lambda x: EnAndForce(x)

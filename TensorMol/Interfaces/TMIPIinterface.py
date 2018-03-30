@@ -1,6 +1,6 @@
 import socket
 import numpy as np
-from TensorMol.PhysicalData import *
+from ..PhysicalData import *
 
 
 HDRLEN = 12

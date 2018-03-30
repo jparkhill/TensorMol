@@ -3,7 +3,7 @@ from __future__ import print_function
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="2"
-from TensorMol.ElectrostaticsTF import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
 
 def TrainPrepare():
 	if (0):

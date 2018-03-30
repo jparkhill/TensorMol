@@ -3,8 +3,8 @@ from __future__ import print_function
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
-from TensorMol.ElectrostaticsTF import *
-from TensorMol.NN_MBE import *
+from TensorMol.ForceModels.ElectrostaticsTF import *
+from TensorMol.MBE.NN_MBE import *
 
 
 def TrainPrepare():

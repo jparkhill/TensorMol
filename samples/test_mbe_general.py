@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from TensorMol import *
-from TensorMol.NN_MBE import *
-from TensorMol.MBE_Opt import *
+from TensorMol.MBE.NN_MBE import *
+from TensorMol.MBE.MBE_Opt import *
 from TensorMol import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
