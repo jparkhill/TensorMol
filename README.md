@@ -50,6 +50,7 @@ pip install -r requirements.txt
 pip install -e .
 # If you are using python3x
 pip3 install -e .
+cd samples
 python test.py
 ```
 
