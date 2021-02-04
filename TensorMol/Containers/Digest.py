@@ -49,7 +49,7 @@ class Digester:
 
 		self.SamplingType = PARAMS["dig_SamplingType"]
 		self.TrainSampDistance=2.0 #how far in Angs to sample on average.
-		self.ngrid = PARAMS["dig_ngrid"] #this is a shitty parameter if we go with anything other than RDF and should be replaced.
+		self.ngrid = PARAMS["dig_ngrid"] #this is a bad parameter if we go with anything other than RDF and should be replaced.
 		self.BlurRadius = PARAMS["BlurRadius"] # Stdev of gaussian used as prob of atom
 		self.SensRadius=6.0 # Distance which is used for input.
 		self.embtime=0.0

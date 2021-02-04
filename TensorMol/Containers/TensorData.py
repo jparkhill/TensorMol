@@ -109,7 +109,7 @@ class TensorData():
 		print("TrainDigest input shape: ", tins.shape)
 		print("TrainDigest output shape: ", touts.shape)
 		if (self.dig.eshape == None or self.dig.lshape ==None):
-			raise Exception("Ain't got no fucking shape.")
+			raise Exception("Ain't got no shape.")
 
 	def BuildTrainMolwise(self, name_="gdb9", atypes=[], append=False, MakeDebug=False):
 		"""

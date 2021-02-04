@@ -200,7 +200,7 @@ class Grids:
 		except Exception as Ex:
 			print(mol.atom)
 			raise Ex
-		# All this shit could be Pre-Computed...
+		# All this stuff could be Pre-Computed...
 		# Really any grid could be used.
 		orbs=gto.eval_gto('GTOval_sph',mol._atm,mol._bas,mol._env,self.Grid*1.889725989)
 		nbas=orbs.shape[1]

@@ -1,5 +1,5 @@
 """
-Routines for running external Ab-Initio packages to get shit out of mol.py
+Routines for running external Ab-Initio packages to get stuff out of mol.py
 """
 from __future__ import absolute_import
 from __future__ import print_function

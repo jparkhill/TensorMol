@@ -585,7 +585,7 @@ class Mol:
 
 # ---------------------------------------------------------------
 #  Functions related to energy models and sampling.
-#  all this shit should be moved into a "class Calculator"
+#  all this stuff should be moved into a "class Calculator"
 # ---------------------------------------------------------------
 
 	def BuildDistanceMatrix(self):

@@ -18,7 +18,7 @@ class MolDigester:
 		self.SensRadius = SensRadius_
 		self.eles = eles_
 		self.neles = len(eles_) # Consistent list of atoms in the order they are treated.
-		self.ngrid = 5 #this is a shitty parameter if we go with anything other than RDF and should be replaced.
+		self.ngrid = 5 #this is a bad parameter if we go with anything other than RDF and should be replaced.
 		self.nsym = self.neles+(self.neles+1)*self.neles  # channel of sym functions
 		if (name_ == "CZ"):
 			self.eshape = 1 # HACK

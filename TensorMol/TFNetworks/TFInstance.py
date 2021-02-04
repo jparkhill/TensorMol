@@ -264,7 +264,7 @@ class Instance:
 		LOGGER.info("Unpickling TFInstance...")
 		from ..Containers.PickleTM import UnPickleTM as UnPickleTM
 		tmp = UnPickleTM(self.path+self.name+".tfn")
-		# All this shit should be deleteable after re-training.
+		# All this stuff should be deleteable after re-training.
 		self.__dict__.update(tmp)
 		chkfiles = [x for x in os.listdir(self.train_dir) if (x.count('chk')>0 and x.count('meta')==0)]
 		# if (len(chkfiles)>0):
@@ -386,13 +386,13 @@ class Instance:
 		Returns:
 		feed_dict: The feed dictionary mapping from placeholders to values.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[0]))):
-			LOGGER.error("I was fed shit")
-			raise Exception("DontEatShit")
+			LOGGER.error("I was fed bad data")
+			raise Exception("DontEatBadData")
 		if (not np.all(np.isfinite(batch_data[1]))):
-			LOGGER.error("I was fed shit")
-			raise Exception("DontEatShit")
+			LOGGER.error("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict = {embeds_pl: batch_data[0], labels_pl: batch_data[1],}
 		return feed_dict
 
@@ -963,10 +963,10 @@ class Instance_fc_sqdiff_GauSH_direct(Instance):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl] + [self.Zs_pl] + [self.labels_pl], [batch_data[0]] + [batch_data[1]] + [batch_data[2]])}
 		return feed_dict
 

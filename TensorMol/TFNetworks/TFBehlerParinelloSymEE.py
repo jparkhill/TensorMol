@@ -577,8 +577,8 @@ class MolInstance_DirectBP_EandG_SymFunction(MolInstance_fc_sqdiff_BP):
 			Filled feed dictionary.
 		"""
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl]  + [self.mil_j_pl]  + [self.mil_jk_pl] + [self.natom_pl] + [self.keep_prob_pl], batch_data)}
 		return feed_dict
 
@@ -1632,8 +1632,8 @@ class MolInstance_DirectBP_EE_SymFunction(MolInstance_fc_sqdiff_BP):
 			Filled feed dictionary.
 		"""
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_e1e2_pl] + [self.mil_j_pl]  + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl] + [self.keep_prob_pl], batch_data)}
 		return feed_dict
 
