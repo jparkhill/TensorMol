@@ -5,7 +5,7 @@ import TensorMol as tm
 import numpy as np
 
 # Todo: This default model type isn't doing anything. Change to None and make sure nothing breaks. -JD
-def GenerateData(model_="Huckel"):
+def GenerateData(model_=None):
     """
     Generate random configurations in a reasonable range.
     and calculate their energies and forces.
@@ -19,43 +19,44 @@ def GenerateData(model_="Huckel"):
     """
     # Configuration
     nsamp = 10000 # Number of configurations to sample
-    crds = np.random.uniform(low=1.0, high=4.0,size = (nsamp,3,3)) # Coordinates of the atom
-    st = tm.MSet() # Molecule dataset this function generates
+    coords = np.random.uniform(low=1.0, high=4.0, size = (nsamp,3,3)) # Generate random 3D coordinates for nsamp atoms
 
-    # Select between the model type.
+    # Initialize our dataset
+    dataset = tm.MSet()
     # Morse -> Energy / Forces
-    if (model_=="Morse"):
+    if model_ == "Morse":
         MDL = tm.MorseModel()
-    # QuantuMElectrostatic -> Energy / Forces / Dipole / Charges
+        atomic_numbers = np.array([1,1,1], dtype=np.uint8) # Hydrogen / Hydrogen / Hydrogen
+    # QuantumElectrostatic -> Energy / Forces / Dipole / Charges
     else:
         MDL = tm.QuantumElectrostatic()
+        atomic_numbers = np.array([3,1,1], dtype=np.uint8) # Lithium / Hydrogen / Hydrogen
 
-    # Todo: This loop could be improved by pre-initializing the list, instead of appending to it at the end of
-    #       each iteration of the for-loop. Would make the code more readable than working with st.mols[-1] each
-    #       time as well. -JD
-    # Run an iteration of the simulation and update the dataset
-    for s in range(nsamp):
-        # If Morse Model (Energy & Forces)
+    # Populate the dataset with a set of molecules
+    dataset.mols = [tm.Mol(atomic_numbers, coords[sample]) for sample in range(nsamp)]
+
+    # Iterate over each molecule in the dataset and calculate properties
+    for molecule in range(nsamp):
+        # If Morse Model (Energy & Forces & 0-dipole)
         if (model_=="Morse"):
-            st.mols.append(tm.Mol(np.array([1.,1.,1.]),crds[s]))
-            en,f = MDL(crds[s])
-            st.mols[-1].properties["dipole"] = np.array([0.,0.,0.])
+            energy, force = MDL(coords[molecule])
+            dipole = np.array([0., 0., 0.])
         # If Quantum Electrostatic Model (Energy, Force, Dipole, Charge)
         else:
-            st.mols.append(tm.Mol(np.array([3.,1.,1.]),crds[s]))
-            en, f, d, q = MDL(crds[s])
-            st.mols[-1].properties["dipole"] = d
-            st.mols[-1].properties["charges"] = q
-        st.mols[-1].properties["energy"] = en
-        st.mols[-1].properties["force"] = f
-        st.mols[-1].properties["gradients"] = -1.0*f
-        st.mols[-1].CalculateAtomization()
-    return st
+            energy, force, dipole, charge = MDL(coords[molecule])
+            dataset.mols[molecule].properties["charges"] = charge
+        # Store dipole / energy / force /gradients
+        dataset.mols[molecule].properties["dipole"] = dipole
+        dataset.mols[molecule].properties["energy"] = energy
+        dataset.mols[molecule].properties["force"] = force
+        dataset.mols[molecule].properties["gradients"] = -1.0*force
+        dataset.mols[molecule].CalculateAtomization()
+    return dataset
 
 def TestTraining():
     # Generate Dataset
-    a = GenerateData()
-    TreatedAtoms = a.AtomTypes()
+    dataset = GenerateData()
+    TreatedAtoms = dataset.AtomTypes()
     # Set some global state
     tm.PARAMS["NetNameSuffix"] = "training_sample"
     tm.PARAMS["learning_rate"] = 0.00001
@@ -70,10 +71,10 @@ def TestTraining():
     tm.PARAMS["sigmoid_alpha"] = 100.0  # activation params
     tm.PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 1.0] # each layer's keep probability for dropout
     # Create the embedding for the molecule
-    d = tm.MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
-    tset = tm.TensorMolData_BP_Direct_EandG_Release(a, d, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
+    embeddings = tm.MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
+    tset = tm.TensorMolData_BP_Direct_EandG_Release(dataset, embeddings, order_=1, num_indis_=1, type_="mol",  WithGrad_ = True)
     # Spawn a manager for the TensorFlow instances 
-    manager=tm.TFMolManage("",tset,False,"fc_sqdiff_BP_Direct_EandG_SymFunction")
+    manager=tm.TFMolManage("", tset, False, "fc_sqdiff_BP_Direct_EandG_SymFunction")
     tm.PARAMS['Profiling']=0
     # Train the final model
     manager.Train(1)
