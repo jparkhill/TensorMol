@@ -133,7 +133,6 @@ def exitTensorMol():
 
 #
 # All the garbage below here needs to be removed, organized
-# and the perpretrators genetalia scattered to the four winds.
 #
 
 def complement(a,b):
