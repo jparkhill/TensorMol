@@ -22,9 +22,9 @@ def GenerateData(model_="Huckel"):
     st = MSet() # Molecule dataset this function generates
     # Todo: The next few lines don't seem to do anything, since the MDL variable gets over-written, and the others
     #       never get used. Keeping them here in case their removal breaks anything. -JD
-    MDL = None
-    natom = 4 # Number of atoms
-    ANS = np.array([3,1,1])
+    #MDL = None
+    #natom = 4 # Number of atoms
+    #ANS = np.array([3,1,1])
 
     # Select between the model type.
     # Morse -> Energy / Forces
@@ -59,15 +59,15 @@ def GenerateData(model_="Huckel"):
 # Todo: This function doesn't seem to ever get used, and this is the only location in the repo where
 #       BehlerParinelloDirectGauSH ever gets called. Commenting it out for now, probably will remove
 #       in a future verison. Legacy code that never got trimmed? -JD
-def TestTraining_John():
-   # Global state is controlled by PARAMS
-   # PARAMS gets pulled into the TM namespace in TensorMol/__init__.py by importing TensorMol/Utils
-   # TensorMol/Utils pulls PARAMS into the namespace from TensorMol/TMParams.py
-    PARAMS["train_dipole"] = True
-    tset = GenerateData()
-    net = BehlerParinelloDirectGauSH(tset)
-    net.train()
-    return
+#def TestTraining_John():
+#   # Global state is controlled by PARAMS
+#   # PARAMS gets pulled into the TM namespace in TensorMol/__init__.py by importing TensorMol/Utils
+#   # TensorMol/Utils pulls PARAMS into the namespace from TensorMol/TMParams.py
+#    PARAMS["train_dipole"] = True
+#    tset = GenerateData()
+#    net = BehlerParinelloDirectGauSH(tset)
+#    net.train()
+#    return
 
 def TestTraining():
     # Generate Dataset
@@ -96,11 +96,11 @@ def TestTraining():
     manager.Train(1)
 
 # Todo: This doesn't seem to be doing anything? -JD
-def TestOpt():
-    return
+#def TestOpt():
+#    return
 
 # Todo: This doesn't seem tod o anything either. -JD
-def TestMD():
-    return
+#def TestMD():
+#    return
 
 TestTraining()
