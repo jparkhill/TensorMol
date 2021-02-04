@@ -44,7 +44,7 @@ setup(name='TensorMol',
       install_requires=[
         "tensorflow==1.8.0",
         "scipy==1.2.3"
-        ]
+        ],
       zip_safe=False,
       include_package_data=True,
       ext_modules=[MolEmb])
