@@ -43,7 +43,8 @@ setup(name='TensorMol',
       packages=['TensorMol'],
       install_requires=[
         "tensorflow==1.8.0",
-        "scipy==1.2.3"
+        "scipy==1.2.3",
+        "pyscf==1.7.5.1"
         ],
       zip_safe=False,
       include_package_data=True,
