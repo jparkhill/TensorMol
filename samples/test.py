@@ -4,6 +4,22 @@ Generates artificial data for H_3, learns a potential for it, tests it in optimi
 import TensorMol as tm
 import numpy as np
 
+# Global configuration for the neural network
+configuration = {"NetNameSuffix": "training_sample",
+"learning_rate": 0.00001,
+"momentum": 0.95,
+"max_steps": 15,  # Train for 5 epochs in total
+"batch_size": 100,
+"test_freq": 5,  # Test for every epoch
+"tf_prec": "tf.float64",  # double precsion
+"EnergyScalar": 1.0,
+"GradScalar": 1.0 / 20.0,
+"NeuronType": "sigmoid_with_param",  # choose activation function
+"sigmoid_alpha": 100.0,  # activation params
+"KeepProb": [1.0, 1.0, 1.0, 1.0],  # each layer's keep probability for dropout
+'Profiling': 0
+}
+tm.PARAMS.update(configuration)
 
 def GenerateData(model_=None):
     """
@@ -58,27 +74,16 @@ def TestTraining():
     # Generate Dataset
     dataset = GenerateData()
     TreatedAtoms = dataset.AtomTypes()
-    # Set some global state
-    tm.PARAMS["NetNameSuffix"] = "training_sample"
-    tm.PARAMS["learning_rate"] = 0.00001
-    tm.PARAMS["momentum"] = 0.95
-    tm.PARAMS["max_steps"] = 15  # Train for 5 epochs in total
-    tm.PARAMS["batch_size"] = 100
-    tm.PARAMS["test_freq"] = 5  # Test for every epoch
-    tm.PARAMS["tf_prec"] = "tf.float64"  # double precsion
-    tm.PARAMS["EnergyScalar"] = 1.0
-    tm.PARAMS["GradScalar"] = 1.0 / 20.0
-    tm.PARAMS["NeuronType"] = "sigmoid_with_param"  # choose activation function
-    tm.PARAMS["sigmoid_alpha"] = 100.0  # activation params
-    tm.PARAMS["KeepProb"] = [1.0, 1.0, 1.0, 1.0]  # each layer's keep probability for dropout
+
     # Create the embedding for the molecule
     embeddings = tm.MolDigester(TreatedAtoms, name_="ANI1_Sym_Direct", OType_="AtomizationEnergy")
     tset = tm.TensorMolData_BP_Direct_EandG_Release(dataset, embeddings, order_=1, num_indis_=1, type_="mol", WithGrad_=True)
+
     # Spawn a manager for the TensorFlow instances 
     manager = tm.TFMolManage("", tset, False, "fc_sqdiff_BP_Direct_EandG_SymFunction")
-    tm.PARAMS['Profiling'] = 0
+
     # Train the final model
     manager.Train(1)
 
-
 TestTraining()
+
