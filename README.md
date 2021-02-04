@@ -42,13 +42,14 @@ By using this software you agree to the terms in COPYING
  - Install TensorFlow(>1.1) as well as scipy, otherwise TensorMol is self-contained.
  - Works on OSX, Ubuntu, and Windows subsystem for Linux:
 ```
-git clone https://github.com/jparkhill/TensorMol.git
+git clone git@github.com:Exabyte-io/TensorMol.git 
+git checkout dev
 cd TensorMol
 pip install -r requirements.txt
 # If you are using python2x
-sudo pip install -e .
+pip install -e .
 # If you are using python3x
-sudo pip3 install -e .
+pip3 install -e .
 python test.py
 ```
 
