@@ -4,7 +4,6 @@ Generates artificial data for H_3, learns a potential for it, tests it in optimi
 import TensorMol as tm
 import numpy as np
 
-# Todo: This default model type isn't doing anything. Change to None and make sure nothing breaks. -JD
 def GenerateData(model_=None):
     """
     Generate random configurations in a reasonable range.
