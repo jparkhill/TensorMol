@@ -73,7 +73,7 @@ class TensorMolData(TensorData):
 		print("self.dig input shape: ", self.dig.eshape)
 		print("self.dig output shape: ", self.dig.lshape)
 		if (self.dig.eshape == None or self.dig.lshape ==None):
-			raise Exception("Ain't got no fucking shape.")
+			raise Exception("Ain't got no shape.")
 
 	def BuildTrain(self, name_="gdb9",  append=False):
 		self.CheckShapes()

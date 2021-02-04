@@ -167,7 +167,7 @@ def nCr(n, r):
 	f = math.factorial
 	return int(f(n)/f(r)/f(n-r))
 
-# Wow... Holy shit kun. Stop putting stuff here. Totally inappropriate.
+# Wow... Holy heck kun. Stop putting stuff here. Totally inappropriate.
 
 def DSF(R, R_c, alpha):	# http://aip.scitation.org.proxy.library.nd.edu/doi/pdf/10.1063/1.2206581 damp shifted force
 	if R > R_c:

@@ -74,7 +74,7 @@ class Ipecac:
 		# else:
 		coords = guess_
 		# atoms = np.ones(len(atoms_), dtype=np.uint8)
-		# Now shit gets real. Create a function to minimize.
+		# Now things get real. Create a function to minimize.
 		objective = lambda crds: self.EmbAtomwiseErr(Mol(atoms,crds.reshape(natoms,3)),emb_)
 		if (1):
 			def callbk(x_):

@@ -241,7 +241,7 @@ class NeighborListSet:
 				for i in range(self.nmol):
 					self.nlist.append(NeighborList(x_[i,:nnz_[i]],DoTriples_,DoPerms_, self.ele[i,:nnz_[i]], self.alg, self.sort))
 		else:
-			raise Exception("Using fucked up old code.")
+			raise Exception("Using messed up old code.")
 			self.PairMaker = PairProvider(self.nmol,self.maxnatom)
 		return
 

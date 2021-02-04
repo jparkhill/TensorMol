@@ -501,10 +501,10 @@ class MolInstance_DirectBP_NoGrad(MolInstance_fc_sqdiff_BP):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]])}
 		return feed_dict
 
@@ -828,10 +828,10 @@ class MolInstance_DirectBPBond_NoGrad(MolInstance_fc_sqdiff_BP):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.Zxyzs_pl]+[self.BondIdxMatrix_pl]+[self.label_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]])}
 		return feed_dict
 
@@ -1116,10 +1116,10 @@ class MolPairsTriples(MolInstance):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl] + [self.Zs_pl] + [self.labels_pl], [batch_data[0]] + [batch_data[1]] + [batch_data[2]])}
 		return feed_dict
 
@@ -1433,10 +1433,10 @@ class MolInstance_DirectBP_Grad(MolInstance_fc_sqdiff_BP):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.grads_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]] + [batch_data[3]])}
 		return feed_dict
 
@@ -1812,10 +1812,10 @@ class MolInstance_DirectBP_Grad_Linear(MolInstance_DirectBP_Grad):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.grads_pl] + [self.Radp_pl] + [self.Angt_pl], [batch_data[0]]+[batch_data[1]]+[batch_data[2]] + [batch_data[3]] + [batch_data[4]] + [batch_data[5]])}
 		return feed_dict
 
@@ -2071,10 +2071,10 @@ class MolInstance_DirectBP_Grad_Linear_EmbOpt(MolInstance_DirectBP_Grad):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.label_pl] + [self.grads_pl] + [self.n_atoms] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.mil_jk_pl], batch_data)}
 		return feed_dict
 
@@ -2656,10 +2656,10 @@ class MolInstance_DirectBP_EE(MolInstance_DirectBP_Grad_Linear):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_pl] + [self.Angt_pl] + [self.Reep_pl] + [self.natom_pl] + [self.AddEcc_pl], batch_data)}
 		return feed_dict
 
@@ -3548,10 +3548,10 @@ class MolInstance_DirectBP_EE_Update(MolInstance_DirectBP_EE):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_pl] + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl], batch_data)}
 		return feed_dict
 
@@ -3738,10 +3738,10 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update(MolInstance_DirectBP_EE_Charge
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_pl] + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl], batch_data)}
 		return feed_dict
 
@@ -4119,10 +4119,10 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw(MolInstance_DirectBP_EE_Ch
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_e1e2_pl] + [self.mil_j_pl]  + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl], batch_data)}
 		return feed_dict
 
@@ -5154,10 +5154,10 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_pl] + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl] + [self.keep_prob_pl], batch_data)}
 		return feed_dict
 
@@ -5908,10 +5908,10 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout(
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_e1e2_pl] + [self.mil_j_pl]  + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl] + [self.keep_prob_pl], batch_data)}
 		return feed_dict
 
@@ -6574,10 +6574,10 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_pl] + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl] + [self.keep_prob_pl], batch_data)}
 		return feed_dict
 
@@ -6818,10 +6818,10 @@ class MolInstance_DirectBP_EE_ChargeEncode_Update_vdw_DSF_elu_Normalize_Dropout_
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit")
-			raise Exception("DontEatShit")
+			print("I was fed bad data")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip([self.xyzs_pl]+[self.Zs_pl]+[self.Elabel_pl] + [self.Dlabel_pl] + [self.grads_pl] + [self.Radp_Ele_pl] + [self.Angt_Elep_pl] + [self.Reep_pl] + [self.mil_jk_pl] + [self.natom_pl] + [self.AddEcc_pl] + [self.keep_prob_pl], batch_data)}
 		return feed_dict
 

@@ -626,17 +626,17 @@ class MolInstance_fc_sqdiff_BP(MolInstance_fc_sqdiff):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		for e in range(len(self.eles)):
 			if (not np.all(np.isfinite(batch_data[0][e]),axis=(0,1))):
-				print("I was fed shit1")
-				raise Exception("DontEatShit")
+				print("I was fed baddata1")
+				raise Exception("DontEatBadData")
 			if (not np.all(np.isfinite(batch_data[1][e]),axis=(0,1))):
-				print("I was fed shit3")
-				raise Exception("DontEatShit")
+				print("I was fed baddata3")
+				raise Exception("DontEatBadData")
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit4")
-			raise Exception("DontEatShit")
+			print("I was fed baddata4")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip(self.inp_pl+self.mats_pl+[self.label_pl], batch_data[0]+batch_data[1]+[batch_data[2]])}
 		return feed_dict
 
@@ -1234,14 +1234,14 @@ class MolInstance_fc_sqdiff_BP_Update(MolInstance_fc_sqdiff_BP):
 		Returns:
 			Filled feed dictionary.
 		"""
-		# Don't eat shit.
+		# Don't eat bad data.
 		for e in range(len(self.eles)):
 			if (not np.all(np.isfinite(batch_data[0][e]),axis=(0,1))):
-				print("I was fed shit1")
-				raise Exception("DontEatShit")
+				print("I was fed baddata1")
+				raise Exception("DontEatBadData")
 		if (not np.all(np.isfinite(batch_data[2]),axis=(0))):
-			print("I was fed shit4")
-			raise Exception("DontEatShit")
+			print("I was fed baddata4")
+			raise Exception("DontEatBadData")
 		feed_dict={i: d for i, d in zip(self.inp_pl+self.index_pl+[self.label_pl], batch_data[0]+batch_data[1]+[batch_data[2]])}
 		return feed_dict
 
