@@ -41,6 +41,15 @@ By using this software you agree to the terms in COPYING
 ## Installation:
  - Works on OSX, Ubuntu, and Windows subsystem for Linux:
 ```
+# If you do not want installation of TensorMol to change your existing packages, then ensure
+# you have created a new virtual environment for the version of python you wish to use
+virtualenv .env
+# Note that you will need to source the virtualenv each time you want to use tensormol:
+source .env/bin/activate
+# To leave the environment, you can always use the deactivate command.
+
+# While in the virtual environment:
+
 # Clone in the repo
 git clone git@github.com:Exabyte-io/TensorMol.git 
 git checkout dev
