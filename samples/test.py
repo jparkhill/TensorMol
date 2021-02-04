@@ -2,6 +2,7 @@
 Generates artificial data for H_3, learns a potential for it, tests it in optimizations and whatnot.
 """
 from TensorMol import *
+import numpy as np
 
 # Todo: This default model type isn't doing anything. Change to None and make sure nothing breaks. -JD
 def GenerateData(model_="Huckel"):
@@ -18,13 +19,8 @@ def GenerateData(model_="Huckel"):
     """
     # Configuration
     nsamp = 10000 # Number of configurations to sample
-    crds = np.random.uniform(4.0,size = (nsamp,3,3)) # Coordinates of the atom
+    crds = np.random.uniform(low=1.0, high=4.0,size = (nsamp,3,3)) # Coordinates of the atom
     st = MSet() # Molecule dataset this function generates
-    # Todo: The next few lines don't seem to do anything, since the MDL variable gets over-written, and the others
-    #       never get used. Keeping them here in case their removal breaks anything. -JD
-    #MDL = None
-    #natom = 4 # Number of atoms
-    #ANS = np.array([3,1,1])
 
     # Select between the model type.
     # Morse -> Energy / Forces
@@ -56,19 +52,6 @@ def GenerateData(model_="Huckel"):
         st.mols[-1].CalculateAtomization()
     return st
 
-# Todo: This function doesn't seem to ever get used, and this is the only location in the repo where
-#       BehlerParinelloDirectGauSH ever gets called. Commenting it out for now, probably will remove
-#       in a future verison. Legacy code that never got trimmed? -JD
-#def TestTraining_John():
-#   # Global state is controlled by PARAMS
-#   # PARAMS gets pulled into the TM namespace in TensorMol/__init__.py by importing TensorMol/Utils
-#   # TensorMol/Utils pulls PARAMS into the namespace from TensorMol/TMParams.py
-#    PARAMS["train_dipole"] = True
-#    tset = GenerateData()
-#    net = BehlerParinelloDirectGauSH(tset)
-#    net.train()
-#    return
-
 def TestTraining():
     # Generate Dataset
     a = GenerateData()
@@ -95,12 +78,5 @@ def TestTraining():
     # Train the final model
     manager.Train(1)
 
-# Todo: This doesn't seem to be doing anything? -JD
-#def TestOpt():
-#    return
-
-# Todo: This doesn't seem tod o anything either. -JD
-#def TestMD():
-#    return
-
 TestTraining()
+
