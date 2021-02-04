@@ -12,6 +12,7 @@ from distutils.core import setup, Extension
 import numpy
 import os
 
+# Todo: There is probably a way we can do this without requiring a numpy dependency. -JD
 print("Numpy Include Dir: ",numpy.get_include())
 
 LLVM=os.popen('cc --version | grep clang').read().count("LLVM")
