@@ -39,32 +39,49 @@
 By using this software you agree to the terms in COPYING
 
 ## Installation:
- - Works on OSX, Ubuntu, and Windows subsystem for Linux:
-```
-# If you do not want installation of TensorMol to change your existing packages, then ensure
-# you have created a new virtual environment for the version of python you wish to use
-virtualenv .env
-# Note that you will need to source the virtualenv each time you want to use tensormol:
-source .env/bin/activate
-# To leave the environment, you can always use the deactivate command.
 
-# While in the virtual environment:
+Works on OSX, Ubuntu, and Windows subsystem for Linux.
 
-# Clone in the repo
-git clone git@github.com:Exabyte-io/TensorMol.git 
-git checkout dev
-cd TensorMol
+1. Clone repository:
+    
+    ```bash
+    git clone git@github.com:Exabyte-io/TensorMol.git    
+    ```
 
-# If you are using python2x
-pip install -e .
+    or, if SSH connectivity with GitHub is not set up, use HTTPS:
 
-# If you are using python3x
-pip3 install -e .
+    ```bash
+    git clone https://github.com/Exabyte-io/TensorMol.git    
+    ```
 
-# Test the repo
-cd samples
-python test.py
-```
+1. Install [virtualenv](https://virtualenv.pypa.io/en/stable/) using [pip](https://pip.pypa.io/en/stable/) if not already present:
+
+    ```bash
+    pip install virtualenv
+    ```
+
+1. Create virtual environment:
+
+    ```bash
+    virtualenv tensormol-venv
+    source venv/bin/activate
+    ```
+
+1. Install the package with pip:
+
+    ```bash
+    # If using python2x
+    pip install -e .
+    # If python3x
+    pip3 install -e .
+    ```
+
+1. Test the installation:
+
+    ```bash
+    cd samples
+    python test.py
+    ```
 
 ## Demo of training a neural network force field using TensorMol:
  - Copy the training script into the tensormol folder:```cp samples/training_sample.py  .``` Run the script: ```python training_sample.py ``` This will train a network force field for water.  
