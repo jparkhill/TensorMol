@@ -6,20 +6,21 @@ import numpy as np
 
 # Global configuration for the neural network
 configuration = {"NetNameSuffix": "training_sample",
-"learning_rate": 0.00001,
-"momentum": 0.95,
-"max_steps": 15,  # Train for 5 epochs in total
-"batch_size": 100,
-"test_freq": 5,  # Test for every epoch
-"tf_prec": "tf.float64",  # double precsion
-"EnergyScalar": 1.0,
-"GradScalar": 1.0 / 20.0,
-"NeuronType": "sigmoid_with_param",  # choose activation function
-"sigmoid_alpha": 100.0,  # activation params
-"KeepProb": [1.0, 1.0, 1.0, 1.0],  # each layer's keep probability for dropout
-'Profiling': 0
-}
+                 "learning_rate": 0.00001,
+                 "momentum": 0.95,
+                 "max_steps": 15,  # Train for 5 epochs in total
+                 "batch_size": 100,
+                 "test_freq": 5,  # Test for every epoch
+                 "tf_prec": "tf.float64",  # double precsion
+                 "EnergyScalar": 1.0,
+                 "GradScalar": 1.0 / 20.0,
+                 "NeuronType": "sigmoid_with_param",  # choose activation function
+                 "sigmoid_alpha": 100.0,  # activation params
+                 "KeepProb": [1.0, 1.0, 1.0, 1.0],  # each layer's keep probability for dropout
+                 'Profiling': 0
+                 }
 tm.PARAMS.update(configuration)
+
 
 def GenerateData(model_=None):
     """
@@ -85,5 +86,5 @@ def TestTraining():
     # Train the final model
     manager.Train(1)
 
-TestTraining()
 
+TestTraining()
