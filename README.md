@@ -70,6 +70,7 @@ Works on OSX, Ubuntu, and Windows subsystem for Linux.
 1. Install the package with pip:
 
     ```bash
+    # Navigate into the repository directory
     # If using python2x
     pip install -e .
     # If python3x
