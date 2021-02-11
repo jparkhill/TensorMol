@@ -15,7 +15,7 @@ class lazy_numpy_include(object):
     """
     Lazy evaluation of numpy import
     """
-    def ___str__(self):
+    def __str__(self):
         import numpy
         return numpy.get_include()
 
